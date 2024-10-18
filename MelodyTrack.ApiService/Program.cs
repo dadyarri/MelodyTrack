@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using MelodyTrack.ApiService.Storage;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,8 @@ builder.Services
             ds.Version = "v1";
         };
     });
+
+builder.AddNpgsqlDbContext<AppDbContext>("melodytrack_db");
 
 var app = builder.Build();
 

@@ -1,6 +1,13 @@
 var builder = DistributedApplication.CreateBuilder(args);
 
-var apiService = builder.AddProject<Projects.MelodyTrack_ApiService>("apiservice");
+var postgresDb = builder
+    .AddPostgres("postgresdb")
+    .WithPgWeb()
+    .AddDatabase("melodytrack_db");
+
+var apiService = builder
+    .AddProject<Projects.MelodyTrack_ApiService>("apiservice")
+    .WithReference(postgresDb);
 
 builder.AddProject<Projects.MelodyTrack_Web>("webfrontend")
     .WithExternalHttpEndpoints()
