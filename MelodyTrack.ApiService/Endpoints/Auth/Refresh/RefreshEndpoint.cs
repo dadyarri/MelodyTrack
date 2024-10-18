@@ -2,8 +2,11 @@ namespace MelodyTrack.ApiService.Endpoints.Auth.Refresh;
 
 using FastEndpoints;
 using Login;
+using Microsoft.AspNetCore.Http.HttpResults;
 
-public class RefreshEndpoint : Ep.Req<RefreshRequest>.Res<LoginResponse>
+public class RefreshEndpoint : Ep
+    .Req<RefreshRequest>
+    .Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -11,8 +14,9 @@ public class RefreshEndpoint : Ep.Req<RefreshRequest>.Res<LoginResponse>
         Routes("/auth/refresh");
     }
 
-    public override async Task<LoginResponse> HandleAsync(RefreshRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+        RefreshRequest req, CancellationToken ct)
     {
-        return new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" };
+        return TypedResults.Ok(new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" });
     }
 }

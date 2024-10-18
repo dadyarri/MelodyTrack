@@ -2,8 +2,11 @@
 
 using FastEndpoints;
 using Login;
+using Microsoft.AspNetCore.Http.HttpResults;
 
-public class RegisterEndpoint : Ep.Req<RegisterRequest>.Res<LoginResponse>
+public class RegisterEndpoint : Ep
+    .Req<RegisterRequest>
+    .Res<Results<Ok<LoginResponse>, Conflict, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -12,11 +15,9 @@ public class RegisterEndpoint : Ep.Req<RegisterRequest>.Res<LoginResponse>
         AllowAnonymous();
     }
 
-    public async override Task<LoginResponse> HandleAsync(RegisterRequest request, CancellationToken ct)
+    public async override Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> HandleAsync(
+        RegisterRequest request, CancellationToken ct)
     {
-        return new LoginResponse
-        {
-            AccessToken = "access-token", RefreshToken = "refresh-token"
-        };
+        return TypedResults.Ok(new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" });
     }
 }
