@@ -1,0 +1,48 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.11.35327.3
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.AppHost", "MelodyTrack.AppHost\MelodyTrack.AppHost.csproj", "{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.ServiceDefaults", "MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj", "{A6760E93-794E-4F8E-BDF3-0938B52CE9B3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.ApiService", "MelodyTrack.ApiService\MelodyTrack.ApiService.csproj", "{1968F506-B324-4FDB-ACA4-C357C5CC26CA}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.Web", "MelodyTrack.Web\MelodyTrack.Web.csproj", "{EF12754D-57BE-4DA6-8565-B6ADCED898F3}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.Tests", "MelodyTrack.Tests\MelodyTrack.Tests.csproj", "{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A6760E93-794E-4F8E-BDF3-0938B52CE9B3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A6760E93-794E-4F8E-BDF3-0938B52CE9B3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A6760E93-794E-4F8E-BDF3-0938B52CE9B3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A6760E93-794E-4F8E-BDF3-0938B52CE9B3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {09912DB0-CA6E-4FB0-A072-F8F093228C64}
+	EndGlobalSection
+EndGlobal
