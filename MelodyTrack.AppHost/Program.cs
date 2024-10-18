@@ -3,7 +3,7 @@ var builder = DistributedApplication.CreateBuilder(args);
 var postgresDb = builder
     .AddPostgres("postgresdb")
     .WithPgWeb()
-    .AddDatabase("melodytrack_db");
+    .AddDatabase("melodytrack-db");
 
 var apiService = builder
     .AddProject<Projects.MelodyTrack_ApiService>("apiservice")

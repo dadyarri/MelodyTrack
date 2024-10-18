@@ -26,7 +26,7 @@ builder.Services
         };
     });
 
-builder.AddNpgsqlDbContext<AppDbContext>("melodytrack_db");
+builder.AddNpgsqlDbContext<AppDbContext>("melodytrack-db");
 
 var app = builder.Build();
 
