@@ -10,8 +10,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.ApiService", "M
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.Web", "MelodyTrack.Web\MelodyTrack.Web.csproj", "{EF12754D-57BE-4DA6-8565-B6ADCED898F3}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.Tests", "MelodyTrack.Tests\MelodyTrack.Tests.csproj", "{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -34,10 +32,6 @@ Global
 		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{EF12754D-57BE-4DA6-8565-B6ADCED898F3}.Release|Any CPU.Build.0 = Release|Any CPU
-		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{9D570A87-DA45-4A2D-A6B4-CFCE9025C0A6}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
