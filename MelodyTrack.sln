@@ -16,6 +16,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configs", "Configs", "{F6BF
 		.gitignore = .gitignore
 	EndProjectSection
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Aspire", "Aspire", "{65283FA6-E918-46F3-BE9F-C1663F34E74D}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Projects", "Projects", "{1F07ACC1-B577-4620-8743-18CD9DB23069}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -44,5 +48,11 @@ Global
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {09912DB0-CA6E-4FB0-A072-F8F093228C64}
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{2EBBD2FB-A6BD-4983-8D45-E17DD5EC1C25} = {65283FA6-E918-46F3-BE9F-C1663F34E74D}
+		{A6760E93-794E-4F8E-BDF3-0938B52CE9B3} = {65283FA6-E918-46F3-BE9F-C1663F34E74D}
+		{1968F506-B324-4FDB-ACA4-C357C5CC26CA} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
+		{EF12754D-57BE-4DA6-8565-B6ADCED898F3} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
 	EndGlobalSection
 EndGlobal
