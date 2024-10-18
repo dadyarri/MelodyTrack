@@ -16,7 +16,7 @@ public class RegisterEndpoint : Ep.Req<RegisterRequest>.Res<LoginResponse>
     {
         return new LoginResponse
         {
-            AccessToken = "access-token", RefreshToken = "refresh-token", ValidUntil = DateTime.UtcNow.AddHours(1)
+            AccessToken = "access-token", RefreshToken = "refresh-token"
         };
     }
 }

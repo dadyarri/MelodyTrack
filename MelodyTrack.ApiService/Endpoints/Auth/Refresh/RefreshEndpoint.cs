@@ -13,9 +13,6 @@ public class RefreshEndpoint : Ep.Req<RefreshRequest>.Res<LoginResponse>
 
     public override async Task<LoginResponse> HandleAsync(RefreshRequest req, CancellationToken ct)
     {
-        return new LoginResponse
-        {
-            AccessToken = "access-token", RefreshToken = "refresh-token", ValidUntil = DateTime.UtcNow.AddHours(1)
-        };
+        return new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" };
     }
 }
