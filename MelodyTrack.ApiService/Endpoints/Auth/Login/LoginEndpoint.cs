@@ -1,10 +1,11 @@
-﻿namespace MelodyTrack.ApiService.Endpoints.Auth.Login;
+namespace MelodyTrack.ApiService.Endpoints.Auth.Login;
 
 using FastEndpoints;
+using MelodyTrack.ApiService.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using ProblemDetails = FastEndpoints.ProblemDetails;
 
-public class LoginEndpoint : Ep
+public class LoginEndpoint(AuthService authService) : Ep
     .Req<LoginRequest>
     .Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
@@ -15,14 +16,16 @@ public class LoginEndpoint : Ep
         AllowAnonymous();
     }
 
-    public async override Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
-        LoginRequest request, CancellationToken ct)
+    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+        LoginRequest req, CancellationToken ct)
     {
-        if (request.Email != "me@example.com" || request.Password != "password")
+        if (req.Email != "me@example.com" || req.Password != "password")
         {
             return TypedResults.Unauthorized();
         }
 
-        return TypedResults.Ok(new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" });
+        var result = await authService.LoginAsync(req, ct);
+
+        return TypedResults.Ok(result);
     }
 }
