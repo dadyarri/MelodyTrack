@@ -1,127 +1,173 @@
 namespace MelodyTrack.ApiService.Services;
 
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
+using System.Text;
+using Ardalis.Result;
+using Configuration;
+using Endpoints.Auth.Login;
+using Endpoints.Auth.Logout;
+using Endpoints.Auth.Register;
 using FastEndpoints.Security;
 using JetBrains.Annotations;
-using MelodyTrack.ApiService.Configuration;
-using MelodyTrack.ApiService.Endpoints.Auth.Login;
-using MelodyTrack.ApiService.Endpoints.Auth.Logout;
-using MelodyTrack.ApiService.Endpoints.Auth.Register;
-using MelodyTrack.ApiService.Storage;
-using MelodyTrack.ApiService.Storage.Entities;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Tokens;
+using Storage;
+using Storage.Entities;
 
 [PublicAPI]
-public class AuthService(AppDbContext db, SecurityConfiguration securityConfiguration) : IService
+public class AuthService(AppDbContext db, SecurityConfiguration securityConfiguration)
+    : IService
 {
     /// <summary>
     /// Do not change!
     /// </summary>
     private const int SaltSize = 256 / 8;
+
     private const int KeySize = 256 / 8;
     private const int Iterations = 210_000;
     private static readonly HashAlgorithmName Algorithm = HashAlgorithmName.SHA512;
 
+    private readonly TokenValidationParameters validationParameters = new()
+    {
+        ValidateLifetime = true,
+        ValidateIssuerSigningKey = true,
+        IssuerSigningKey =
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityConfiguration.AccessTokenSigningKey)),
+        ClockSkew = TimeSpan.Zero
+    };
+
     /// <summary>
     /// Registers a new user with the provided credentials.
     /// </summary>
-    /// <param name="email">User's email address.</param>
-    /// <param name="password">User's plain text password.</param>
+    /// <param name="request">Request to register user</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, containing the result of the registration process.</returns>
-    public async Task<bool> RegisterUserAsync(RegisterRequest request, CancellationToken ct)
+    public async Task<Result<LoginResponse>> RegisterUserAsync(RegisterRequest request, CancellationToken ct)
     {
-
         if (await db.Users.AnyAsync(u => u.Email == request.Email, ct))
         {
-            return false;
+            return Result.Conflict();
         }
 
         var user = new User
         {
-            Email = request.Email,
-            DisplayName = request.DisplayName,
-            Password = HashPassword(request.Password)
-        };
-
-        var result = new LoginResponse
-        {
-            AccessToken = GenerateAccessToken(user),
-            RefreshToken = GenerateRefreshToken(user)
+            Email = request.Email, DisplayName = request.DisplayName, Password = HashPassword(request.Password)
         };
 
         await db.Users.AddAsync(user, ct);
         await db.SaveChangesAsync(ct);
 
-        return true;
-
+        return Result.Success(new LoginResponse
+        {
+            AccessToken = GenerateAccessToken(user), RefreshToken = GenerateRefreshToken(user)
+        });
     }
 
     /// <summary>
     /// Authenticates the user with the given email and password.
     /// Issues a new access token and refresh token if successful.
     /// </summary>
-    /// <param name="email">User's email address.</param>
-    /// <param name="password">User's plain text password.</param>
+    /// <param name="request">Request to login user</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, containing tokens if authentication is successful.</returns>
-    public async Task<LoginResponse?> LoginAsync(LoginRequest request, CancellationToken ct)
+    public async Task<Result<LoginResponse>> LoginAsync(LoginRequest request, CancellationToken ct)
     {
         var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email, ct);
 
         if (user == null)
         {
-            return null;
+            return Result.Unauthorized();
         }
 
         var result = VerifyHashedPassword(user.Password, request.Password);
 
         if (result != PasswordVerificationResult.Success)
         {
-            return null;
+            return Result.Unauthorized();
         }
 
-        return result == PasswordVerificationResult.Failed ? null : new LoginResponse
-        {
-            AccessToken = GenerateAccessToken(user),
-            RefreshToken = GenerateRefreshToken(user),
-        };
-
+        return Result.Success(BuildLoginResponse(user));
     }
+
+    private LoginResponse BuildLoginResponse(User user) =>
+        new() { AccessToken = GenerateAccessToken(user), RefreshToken = GenerateRefreshToken(user), };
 
     /// <summary>
     /// Generates new access and refresh tokens using a valid refresh token.
     /// </summary>
     /// <param name="refreshToken">The refresh token to exchange for a new access token.</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, containing new tokens.</returns>
-    public async Task<LoginResponse?> RefreshTokensAsync(string refreshToken)
+    public async Task<Result<LoginResponse>> RefreshTokensAsync(string refreshToken, CancellationToken ct)
     {
-        var token = await db.RefreshTokens.FirstOrDefaultAsync(e => e.Token == refreshToken && e.ExpireAt > DateTime.UtcNow);
+        var token = await db.RefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(e => e.Token == refreshToken && e.ExpireAt > DateTime.UtcNow && !e.Revoked, ct);
+
         if (token == null)
         {
-            return null;
+            return Result.Unauthorized();
         }
 
-        var token = new RefreshToken
-        {
-            Token = GenerateRefreshToken()
-        }
+        var rt = GenerateRefreshToken(token.User);
+        var at = GenerateAccessToken(token.User);
+
+        token = new RefreshToken { Token = rt, User = token.User };
+
+        await db.RefreshTokens.AddAsync(token, ct);
+        await db.SaveChangesAsync(ct);
+
+        return Result.Success(new LoginResponse { AccessToken = at, RefreshToken = rt });
     }
 
     /// <summary>
     /// Revokes the specified refresh token, invalidating it for future use.
     /// </summary>
     /// <param name="refreshToken">The refresh token to revoke.</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether the token was successfully revoked.</returns>
-    public Task<bool> RevokeRefreshTokenAsync(string refreshToken) { }
+    public async Task<Result> RevokeRefreshTokenAsync(string refreshToken, CancellationToken ct)
+    {
+        var token = await db.RefreshTokens
+            .Include(rt => rt.User)
+            .FirstOrDefaultAsync(e => e.Token == refreshToken && e.ExpireAt > DateTime.UtcNow, ct);
+
+        if (token == null)
+        {
+            return Result.Unauthorized();
+        }
+
+        token.Revoked = true;
+
+        await db.SaveChangesAsync(ct);
+
+        return Result.NoContent();
+    }
 
     /// <summary>
     /// Verifies the validity of an access token (e.g., JWT validation).
     /// </summary>
     /// <param name="accessToken">The access token to validate.</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether the token is valid.</returns>
-    public Task<bool> ValidateAccessTokenAsync(string accessToken) { }
+    public async Task<bool> ValidateAccessTokenAsync(string accessToken)
+    {
+        var tokenValidationParameters = validationParameters;
+
+        var tokenHandler = new JwtSecurityTokenHandler();
+
+        var result = await tokenHandler.ValidateTokenAsync(accessToken, tokenValidationParameters);
+
+        if (result is null) { return false; }
+
+        var foundJti = result.Claims.TryGetValue(JwtRegisteredClaimNames.Jti, out var jti);
+
+        if (!foundJti) { return false; }
+
+        return !await db.BannedTokens.AnyAsync(e => e.Jti == (string)jti!);
+    }
 
     /// <summary>
     /// Initiates the password reset process by sending a reset token to the user's email.
@@ -149,15 +195,17 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
     /// <returns>Task that represents the asynchronous operation, indicating whether the password reset was successful.</returns>
     public async Task<bool> ResetPasswordAsync(string resetToken, string newPassword)
     {
-
     }
 
     /// <summary>
     /// Logs the user out by invalidating any active tokens (access and refresh).
     /// </summary>
-    /// <param name="userId">The ID of the user to log out.</param>
+    /// <param name="request">Request to logout user</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether logout was successful.</returns>
-    public async Task<bool> LogoutAsync(LogoutRequest request) { }
+    public async Task<bool> LogoutAsync(LogoutRequest request)
+    {
+
+    }
 
     private string HashPassword(string password)
     {
@@ -234,12 +282,12 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
     }
 
     private string GenerateAccessToken(User user) => JwtBearer.CreateToken(opts =>
-        {
-            opts.SigningKey = securityConfiguration.AccessTokenSigningKey;
-            opts.ExpireAt = DateTime.UtcNow.AddMinutes(15);
-            opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
-            opts.User.Claims.Add(new Claim(JwtRegisteredClaimNames.Jti, GenerateRandomString()));
-        });
+    {
+        opts.SigningKey = securityConfiguration.AccessTokenSigningKey;
+        opts.ExpireAt = DateTime.UtcNow.AddMinutes(15);
+        opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
+        opts.User.Claims.Add(new Claim(JwtRegisteredClaimNames.Jti, GenerateRandomString()));
+    });
 
     private static string GenerateRefreshToken(User user) => Convert.ToBase64String(user.Id.ToByteArray()).TrimEnd('=');
 
@@ -250,6 +298,7 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
         {
             rng.GetBytes(randomBytes);
         }
+
         return Convert.ToBase64String(randomBytes);
     }
 }
