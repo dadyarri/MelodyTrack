@@ -1,5 +1,6 @@
-using MelodyTrack.Web;
+using MelodyTrack.Web.Api;
 using MelodyTrack.Web.Components;
+using Refit;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,12 +13,8 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddOutputCache();
 
-builder.Services.AddHttpClient<WeatherApiClient>(client =>
-    {
-        // This URL uses "https+http://" to indicate HTTPS is preferred over HTTP.
-        // Learn more about service discovery scheme resolution at https://aka.ms/dotnet/sdschemes.
-        client.BaseAddress = new("https+http://apiservice");
-    });
+builder.Services.AddRefitClient<IMelodyTrackApi>()
+    .ConfigureHttpClient(client => client.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]));
 
 var app = builder.Build();
 

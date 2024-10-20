@@ -1,4 +1,4 @@
-namespace MelodyTrack.ApiService.Endpoints.Auth.Reset;
+namespace MelodyTrack.Common.Contracts.Auth.Reset;
 
 public class ResetRequest
 {

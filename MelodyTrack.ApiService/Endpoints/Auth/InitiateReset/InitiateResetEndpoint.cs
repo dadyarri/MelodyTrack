@@ -1,6 +1,7 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.InitiateReset;
 
 using Ardalis.Result;
+using Common.Contracts.Auth.InitiateReset;
 using FastEndpoints;
 using Services;
 

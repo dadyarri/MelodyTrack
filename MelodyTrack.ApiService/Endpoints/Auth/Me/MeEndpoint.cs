@@ -1,5 +1,6 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.Me;
 
+using Common.Contracts.Auth.Me;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
 

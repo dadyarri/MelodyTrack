@@ -1,4 +1,4 @@
-namespace MelodyTrack.ApiService.Endpoints.Auth.Me;
+namespace MelodyTrack.Common.Contracts.Auth.Me;
 
 public class MeResponse
 {

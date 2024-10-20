@@ -1,5 +1,7 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.Reset;
 
+using Common.Contracts.Auth.Login;
+using Common.Contracts.Auth.Reset;
 using FastEndpoints;
 using Login;
 using Services;

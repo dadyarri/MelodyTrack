@@ -1,6 +1,8 @@
 ﻿namespace MelodyTrack.ApiService.Endpoints.Auth.Register;
 
 using Ardalis.Result;
+using Common.Contracts.Auth.Login;
+using Common.Contracts.Auth.Register;
 using FastEndpoints;
 using Login;
 using Services;

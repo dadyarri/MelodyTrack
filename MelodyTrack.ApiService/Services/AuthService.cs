@@ -5,6 +5,9 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using Ardalis.Result;
+using Common.Contracts.Auth.InitiateReset;
+using Common.Contracts.Auth.Login;
+using Common.Contracts.Auth.Reset;
 using Configuration;
 using Endpoints.Auth.InitiateReset;
 using Endpoints.Auth.Login;
@@ -16,9 +19,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Storage;
 using Storage.Entities;
-using LoginRequest = Endpoints.Auth.Login.LoginRequest;
-using RegisterRequest = Endpoints.Auth.Register.RegisterRequest;
-using RefreshRequest = Endpoints.Auth.Refresh.RefreshRequest;
+using LoginRequest = Common.Contracts.Auth.Login.LoginRequest;
+using RegisterRequest = Common.Contracts.Auth.Register.RegisterRequest;
+using RefreshRequest = Common.Contracts.Auth.Refresh.RefreshRequest;
 
 [PublicAPI]
 public class AuthService(AppDbContext db, SecurityConfiguration securityConfiguration)

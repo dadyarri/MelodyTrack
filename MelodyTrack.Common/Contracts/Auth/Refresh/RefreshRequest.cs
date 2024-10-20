@@ -1,4 +1,4 @@
-namespace MelodyTrack.ApiService.Endpoints.Auth.Refresh;
+namespace MelodyTrack.Common.Contracts.Auth.Refresh;
 
 public class RefreshRequest
 {

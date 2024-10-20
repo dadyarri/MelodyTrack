@@ -1,4 +1,4 @@
-﻿namespace MelodyTrack.ApiService.Endpoints.Auth.Register;
+﻿namespace MelodyTrack.Common.Contracts.Auth.Register;
 
 using JetBrains.Annotations;
 

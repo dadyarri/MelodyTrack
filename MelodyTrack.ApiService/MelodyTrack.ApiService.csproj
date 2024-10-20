@@ -25,6 +25,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\MelodyTrack.Common\MelodyTrack.Common.csproj" />
     <ProjectReference Include="..\MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj" />
   </ItemGroup>
 
