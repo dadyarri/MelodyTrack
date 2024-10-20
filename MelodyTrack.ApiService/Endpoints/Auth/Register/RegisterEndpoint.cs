@@ -1,12 +1,11 @@
 ﻿namespace MelodyTrack.ApiService.Endpoints.Auth.Register;
 
+using Ardalis.Result;
 using FastEndpoints;
 using Login;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Services;
 
-public class RegisterEndpoint : Ep
-    .Req<RegisterRequest>
-    .Res<Results<Ok<LoginResponse>, Conflict, ProblemDetails>>
+public class RegisterEndpoint(AuthService authService) : Ep.Req<RegisterRequest>.Res<Result<LoginResponse>>
 {
     public override void Configure()
     {
@@ -15,9 +14,6 @@ public class RegisterEndpoint : Ep
         AllowAnonymous();
     }
 
-    public async override Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> HandleAsync(
-        RegisterRequest request, CancellationToken ct)
-    {
-        return TypedResults.Ok(new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" });
-    }
+    public override async Task<Result<LoginResponse>> HandleAsync(RegisterRequest request, CancellationToken ct) =>
+        await authService.RegisterUserAsync(request, ct);
 }

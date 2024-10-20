@@ -6,9 +6,9 @@ using System.Security.Cryptography;
 using System.Text;
 using Ardalis.Result;
 using Configuration;
+using Endpoints.Auth.InitiateReset;
 using Endpoints.Auth.Login;
-using Endpoints.Auth.Logout;
-using Endpoints.Auth.Register;
+using Endpoints.Auth.Reset;
 using FastEndpoints.Security;
 using JetBrains.Annotations;
 using Microsoft.AspNetCore.Identity;
@@ -16,6 +16,9 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Storage;
 using Storage.Entities;
+using LoginRequest = Endpoints.Auth.Login.LoginRequest;
+using RegisterRequest = Endpoints.Auth.Register.RegisterRequest;
+using RefreshRequest = Endpoints.Auth.Refresh.RefreshRequest;
 
 [PublicAPI]
 public class AuthService(AppDbContext db, SecurityConfiguration securityConfiguration)
@@ -98,14 +101,15 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
     /// <summary>
     /// Generates new access and refresh tokens using a valid refresh token.
     /// </summary>
-    /// <param name="refreshToken">The refresh token to exchange for a new access token.</param>
+    /// <param name="request">Request to refresh tokens</param>
     /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, containing new tokens.</returns>
-    public async Task<Result<LoginResponse>> RefreshTokensAsync(string refreshToken, CancellationToken ct)
+    public async Task<Result<LoginResponse>> RefreshTokensAsync(RefreshRequest request, CancellationToken ct)
     {
         var token = await db.RefreshTokens
             .Include(rt => rt.User)
-            .FirstOrDefaultAsync(e => e.Token == refreshToken && e.ExpireAt > DateTime.UtcNow && !e.Revoked, ct);
+            .FirstOrDefaultAsync(e => e.Token == request.RefreshToken && e.ExpireAt > DateTime.UtcNow && !e.Revoked,
+                ct);
 
         if (token == null)
         {
@@ -151,8 +155,9 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
     /// Verifies the validity of an access token (e.g., JWT validation).
     /// </summary>
     /// <param name="accessToken">The access token to validate.</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether the token is valid.</returns>
-    public async Task<bool> ValidateAccessTokenAsync(string accessToken)
+    public async Task<bool> ValidateAccessTokenAsync(string accessToken, CancellationToken ct)
     {
         var tokenValidationParameters = validationParameters;
 
@@ -166,45 +171,64 @@ public class AuthService(AppDbContext db, SecurityConfiguration securityConfigur
 
         if (!foundJti) { return false; }
 
-        return !await db.BannedTokens.AnyAsync(e => e.Jti == (string)jti!);
+        return !await db.BannedTokens.AnyAsync(e => e.Jti == (string)jti!, ct);
     }
 
     /// <summary>
     /// Initiates the password reset process by sending a reset token to the user's email.
     /// </summary>
-    /// <param name="email">User's email address.</param>
+    /// <param name="request">Request to initiate password reset process</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether the reset email was successfully sent.</returns>
-    public async Task<bool> InitiatePasswordResetAsync(string email)
+    public async Task<Result> InitiatePasswordResetAsync(InitiateResetRequest request, CancellationToken ct)
     {
-        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email);
+        var user = await db.Users.FirstOrDefaultAsync(u => u.Email == request.Email, ct);
 
         if (user == null)
         {
-            return false;
+            return Result.Unauthorized();
         }
 
+        var token = new ResetToken
+        {
+            Token = GenerateRandomString(), User = user, ExpireAt = DateTime.UtcNow.AddMinutes(20)
+        };
+
+        await db.ResetTokens.AddAsync(token, ct);
+        await db.SaveChangesAsync(ct);
+
         // TODO: Add sending emails
-        return true;
+        return Result.NoContent();
     }
 
     /// <summary>
     /// Resets the user's password using a valid reset token.
     /// </summary>
-    /// <param name="resetToken">The token sent to the user's email for password reset.</param>
-    /// <param name="newPassword">The new password to set.</param>
+    /// <param name="request">Request to reset password</param>
+    /// <param name="ct">Cancellation token</param>
     /// <returns>Task that represents the asynchronous operation, indicating whether the password reset was successful.</returns>
-    public async Task<bool> ResetPasswordAsync(string resetToken, string newPassword)
+    public async Task<Result<LoginResponse>> ResetPasswordAsync(ResetRequest request, CancellationToken ct)
     {
-    }
+        var token = await db.ResetTokens
+            .Where(e => !e.Used && e.ExpireAt > DateTime.UtcNow)
+            .Include(e => e.User)
+            .FirstOrDefaultAsync(r => r.Token == request.ResetCode, ct);
 
-    /// <summary>
-    /// Logs the user out by invalidating any active tokens (access and refresh).
-    /// </summary>
-    /// <param name="request">Request to logout user</param>
-    /// <returns>Task that represents the asynchronous operation, indicating whether logout was successful.</returns>
-    public async Task<bool> LogoutAsync(LogoutRequest request)
-    {
+        if (token is null)
+        {
+            return Result.Unauthorized();
+        }
 
+        token.User.Password = HashPassword(request.NewPassword);
+
+        await db.RefreshTokens
+            .Include(e => e.User)
+            .Where(e => e.User == token.User)
+            .ExecuteUpdateAsync(e => e.SetProperty(t => t.Revoked, true), ct);
+
+        await db.SaveChangesAsync(ct);
+
+        return Result.Success(BuildLoginResponse(token.User));
     }
 
     private string HashPassword(string password)

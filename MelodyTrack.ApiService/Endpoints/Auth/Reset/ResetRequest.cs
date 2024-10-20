@@ -1,6 +1,7 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.Reset;
 
-public class RestoreRequest
+public class ResetRequest
 {
-    public required string Email { get; set; }
+    public string ResetCode { get; set; }
+    public string NewPassword { get; set; }
 }

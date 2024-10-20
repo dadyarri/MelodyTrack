@@ -1,22 +1,18 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.Reset;
 
-using System.Threading;
-using System.Threading.Tasks;
 using FastEndpoints;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Login;
+using Services;
 
-public class ResetEndpoint : Ep.Req<RestoreRequest>.Res<Results<NoContent, ProblemDetails>>
+public class ResetEndpoint(AuthService authService) : Ep.Req<ResetRequest>.Res<LoginResponse>
 {
     public override void Configure()
     {
         Verbs(Http.POST);
-        Routes("/auth/reset");
+        Routes("/auth/reset/confirm");
         AllowAnonymous();
     }
 
-    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(RestoreRequest req, CancellationToken ct)
-    {
-        // TODO: Add sending emails
-        throw new NotImplementedException();
-    }
+    public override async Task<LoginResponse> ExecuteAsync(ResetRequest req, CancellationToken ct) =>
+        await authService.ResetPasswordAsync(req, ct);
 }

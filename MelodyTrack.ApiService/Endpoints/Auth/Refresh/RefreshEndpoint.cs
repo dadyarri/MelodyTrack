@@ -1,12 +1,11 @@
 namespace MelodyTrack.ApiService.Endpoints.Auth.Refresh;
 
+using Ardalis.Result;
 using FastEndpoints;
 using Login;
-using Microsoft.AspNetCore.Http.HttpResults;
+using Services;
 
-public class RefreshEndpoint : Ep
-    .Req<RefreshRequest>
-    .Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class RefreshEndpoint(AuthService authService) : Ep.Req<RefreshRequest>.Res<Result<LoginResponse>>
 {
     public override void Configure()
     {
@@ -14,9 +13,6 @@ public class RefreshEndpoint : Ep
         Routes("/auth/refresh");
     }
 
-    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
-        RefreshRequest req, CancellationToken ct)
-    {
-        return TypedResults.Ok(new LoginResponse { AccessToken = "access-token", RefreshToken = "refresh-token" });
-    }
+    public override async Task<Result<LoginResponse>> ExecuteAsync(RefreshRequest req, CancellationToken ct) =>
+        await authService.RefreshTokensAsync(req, ct);
 }
