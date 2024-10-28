@@ -1,8 +1,10 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using MelodyTrack.ApiService.Configuration;
 using MelodyTrack.ApiService.Services;
 using MelodyTrack.ApiService.Storage;
+using Microsoft.Extensions.Options;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +31,12 @@ builder.Services
 
 builder.AddNpgsqlDbContext<AppDbContext>("melodytrack-db");
 
-foreach (var service in typeof(IService).Assembly.GetTypes().Where(t => typeof(IService).IsAssignableFrom(t)))
+builder.Services.Configure<SecurityConfiguration>(builder.Configuration.GetRequiredSection("Security"));
+builder.Services.AddSingleton(resolver => resolver.GetRequiredService<IOptions<SecurityConfiguration>>().Value);
+
+var services = typeof(IService).Assembly.GetTypes()
+    .Where(t => typeof(IService).IsAssignableFrom(t) && !t.IsInterface);
+foreach (var service in services)
 {
     builder.Services.AddTransient(service);
 }
@@ -46,4 +53,3 @@ app
     .UseSwaggerUi();
 
 app.Run();
-
