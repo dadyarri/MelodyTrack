@@ -13,8 +13,14 @@ builder.Services.AddRazorComponents()
 
 builder.Services.AddOutputCache();
 
+var uriString = builder.Configuration.GetRequiredSection("Api").GetRequiredSection("BaseUrl").Value ??
+                throw new InvalidOperationException();
+
 builder.Services.AddRefitClient<IMelodyTrackApi>()
-    .ConfigureHttpClient(client => client.BaseAddress = new Uri(builder.Configuration["Api:BaseUrl"]));
+    .ConfigureHttpClient(client =>
+    {
+        client.BaseAddress = new Uri(uriString);
+    });
 
 var app = builder.Build();
 
