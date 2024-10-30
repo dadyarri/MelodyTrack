@@ -10,7 +10,6 @@
     <PackageReference Include="Ardalis.Result" Version="10.0.0" />
     <PackageReference Include="Ardalis.Result.AspNetCore" Version="10.0.0" />
     <PackageReference Include="Ardalis.Result.FluentValidation" Version="10.0.0" />
-    <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="8.2.1" />
     <PackageReference Include="FastEndpoints" Version="5.30.0" />
     <PackageReference Include="FastEndpoints.Security" Version="5.30.0" />
     <PackageReference Include="FastEndpoints.Swagger" Version="5.30.0" />
@@ -26,7 +25,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\MelodyTrack.Common\MelodyTrack.Common.csproj" />
-    <ProjectReference Include="..\MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
