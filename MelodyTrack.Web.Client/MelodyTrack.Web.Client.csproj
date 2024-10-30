@@ -13,9 +13,9 @@
     <PackageReference Include="Microsoft.Extensions.Http" Version="8.0.1" />
     <PackageReference Include="System.Net.Http.Json" Version="8.0.1" />
     <PackageReference Include="Radzen.Blazor" Version="5.5.1" />
-    <Compile Include="../Server/Models/**/*.cs" />
+    <Compile Include="../MelodyTrack.Web.Server/Models/**/*.cs" />
   </ItemGroup>
   <ItemGroup>
-    <ServiceWorker Include="../Server/wwwroot/service-worker.js" PublishedContent="../Server/wwwroot/service-worker.published.js" />
+    <ServiceWorker Include="../MelodyTrack.Web.Server/wwwroot/service-worker.js" PublishedContent="../MelodyTrack.Web.Server/wwwroot/service-worker.published.js" />
   </ItemGroup>
 </Project>
