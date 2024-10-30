@@ -1,0 +1,11 @@
+/* Hide mobile menu on desktop and vice versa */
+.desktop-nav {
+    display: flex;
+}
+
+/* Show mobile menu on smaller screens */
+@media (max-width: 768px) {
+    .desktop-nav {
+        display: none;
+    }
+}

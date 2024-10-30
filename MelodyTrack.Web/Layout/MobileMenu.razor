@@ -1,0 +1,49 @@
+@inject IJSRuntime Js
+
+<div class="mobile-nav-button">
+    <RadzenButton Icon="menu" Click="ToggleMenu"/>
+</div>
+
+<div class="mobile-nav">
+    <RadzenCard Style="@(_isMenuOpen ? "" : "display: none")" class="mobile-menu" id="mobileMenu">
+        <RadzenPanelMenu Multiple="false">
+            <RadzenPanelMenuItem Text="Главная" Icon="home" Path="/" Click="ToggleMenu"/>
+            <RadzenPanelMenuItem Text="Клиенты" Icon="group" Path="/clients" Click="ToggleMenu"/>
+            <RadzenPanelMenuItem Text="Календарь" Icon="calendar_month" Path="/calendar" Click="ToggleMenu"/>
+            <RadzenPanelMenuItem Text="Статистика" Icon="monitoring" Path="/stats" Click="ToggleMenu"/>
+        </RadzenPanelMenu>
+    </RadzenCard>
+</div>
+
+
+@code {
+    private bool _isMenuOpen;
+    private DotNetObjectReference<MobileMenu>? _dotNetHelper;
+
+    private void ToggleMenu()
+    {
+        _isMenuOpen = !_isMenuOpen;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && _isMenuOpen)
+        {
+            _dotNetHelper = DotNetObjectReference.Create(this);
+            await Js.InvokeVoidAsync("outsideClickListener", _dotNetHelper, "mobileMenu", "CloseMenu");
+        }
+    }
+
+    [JSInvokable]
+    public void CloseMenu()
+    {
+        _isMenuOpen = false;
+        StateHasChanged();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _dotNetHelper?.Dispose();
+    }
+
+}

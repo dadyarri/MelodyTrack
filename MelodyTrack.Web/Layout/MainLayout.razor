@@ -1,0 +1,23 @@
+﻿@inherits LayoutComponentBase
+
+<head>
+    <RadzenTheme Theme="material" @rendermode="@RenderMode.InteractiveWebAssembly" />
+    <script src="_content/Radzen.Blazor/Radzen.Blazor.js?v=@(typeof(Radzen.Colors).Assembly.GetName().Version)"></script>
+</head>
+<div class="page">
+    <div>
+        <NavMenu/>
+    </div>
+
+    <main>
+        <RadzenComponents @rendermode="@RenderMode.InteractiveWebAssembly" />
+        <div class="top-row px-4 auth">
+            <MobileMenu></MobileMenu>
+            <LoginDisplay/>
+        </div>
+
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
