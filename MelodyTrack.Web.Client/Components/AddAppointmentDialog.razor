@@ -1,0 +1,23 @@
+@using MelodyTrack.Web.Client.Models
+<RadzenTemplateForm TItem="Appointment" Data="@model" Submit=@OnSubmit>
+    <RadzenStack Gap="1rem">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap">
+            <RadzenLabel Text="Название услуги" Style="width: 10rem;" />
+            <RadzenTextBox @bind-Value="@model.Service" Name="Text" Style="width: 15rem;" />
+            <RadzenRequiredValidator Component="Text" Text="Title is required" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" DateFormat="dd.MM.yyyy hh:mm" HourFormat="24" >
+            <RadzenLabel Text="Начало" Style="width: 10rem;" />
+            <RadzenDatePicker @bind-Value="@model.StartTime" Name="Start" ShowTime="true" Style="width: 15rem;" />
+            <RadzenRequiredValidator Component="Start" Text="Start is required" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Wrap="FlexWrap.Wrap" DateFormat="dd.MM.yyyy hh:mm" HourFormat="24" >
+            <RadzenLabel Text="Конец" Style="width: 10rem;" />
+            <RadzenDatePicker Name="End" @bind-Value="@model.EndTime" ShowTime="true" Style="width: 15rem;" />
+            <RadzenRequiredValidator Component="End" Text="End is required" />
+        </RadzenStack>
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" >
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
