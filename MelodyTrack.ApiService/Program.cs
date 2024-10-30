@@ -1,3 +1,4 @@
+using System.Globalization;
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
@@ -6,11 +7,14 @@ using MelodyTrack.ApiService.Services;
 using MelodyTrack.ApiService.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add service defaults & Aspire components.
-builder.AddServiceDefaults();
+builder.Host.UseSerilog((ctx, lc) =>
+{
+    lc.WriteTo.Console(formatProvider: CultureInfo.InvariantCulture);
+});
 
 builder.Services
     .AddProblemDetails()
