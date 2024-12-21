@@ -1,56 +1,28 @@
+﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.11.35327.3
+VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MelodyTrack.ApiService", "MelodyTrack.ApiService\MelodyTrack.ApiService.csproj", "{1968F506-B324-4FDB-ACA4-C357C5CC26CA}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.Web", "MelodyTrack.Web\MelodyTrack.Web.csproj", "{8545407E-05B7-4F69-9A8A-025E63474DD6}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Configs", "Configs", "{F6BFE724-1D6A-47ED-B300-279B30873442}"
-	ProjectSection(SolutionItems) = preProject
-		.editorconfig = .editorconfig
-		.gitignore = .gitignore
-	EndProjectSection
-EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Projects", "Projects", "{1F07ACC1-B577-4620-8743-18CD9DB23069}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.Common", "MelodyTrack.Common\MelodyTrack.Common.csproj", "{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.Web.Client", "MelodyTrack.Web.Client\MelodyTrack.Web.Client.csproj", "{E2A6B2F1-A234-45F7-858D-AEC23BC59372}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.Web.Server", "MelodyTrack.Web.Server\MelodyTrack.Web.Server.csproj", "{B59C9026-F898-45D0-BDD5-83AA288D190F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MelodyTrack.Common", "MelodyTrack.Common\MelodyTrack.Common.csproj", "{DAAEE627-6691-46EE-B68D-3F09C04824EA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{1968F506-B324-4FDB-ACA4-C357C5CC26CA}.Release|Any CPU.Build.0 = Release|Any CPU
-		{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8}.Release|Any CPU.Build.0 = Release|Any CPU
-		{E2A6B2F1-A234-45F7-858D-AEC23BC59372}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{E2A6B2F1-A234-45F7-858D-AEC23BC59372}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{E2A6B2F1-A234-45F7-858D-AEC23BC59372}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{E2A6B2F1-A234-45F7-858D-AEC23BC59372}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B59C9026-F898-45D0-BDD5-83AA288D190F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B59C9026-F898-45D0-BDD5-83AA288D190F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B59C9026-F898-45D0-BDD5-83AA288D190F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B59C9026-F898-45D0-BDD5-83AA288D190F}.Release|Any CPU.Build.0 = Release|Any CPU
-	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {09912DB0-CA6E-4FB0-A072-F8F093228C64}
-	EndGlobalSection
-	GlobalSection(NestedProjects) = preSolution
-		{1968F506-B324-4FDB-ACA4-C357C5CC26CA} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
-		{A5C898EC-40D2-43E0-BC8B-E04C5C812CF8} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
-		{E2A6B2F1-A234-45F7-858D-AEC23BC59372} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
-		{B59C9026-F898-45D0-BDD5-83AA288D190F} = {1F07ACC1-B577-4620-8743-18CD9DB23069}
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{8545407E-05B7-4F69-9A8A-025E63474DD6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8545407E-05B7-4F69-9A8A-025E63474DD6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8545407E-05B7-4F69-9A8A-025E63474DD6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8545407E-05B7-4F69-9A8A-025E63474DD6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{DAAEE627-6691-46EE-B68D-3F09C04824EA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{DAAEE627-6691-46EE-B68D-3F09C04824EA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{DAAEE627-6691-46EE-B68D-3F09C04824EA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{DAAEE627-6691-46EE-B68D-3F09C04824EA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

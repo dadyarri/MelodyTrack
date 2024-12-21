@@ -1,0 +1,42 @@
+﻿@using Microsoft.AspNetCore.Components.WebAssembly.Authentication
+@inject AuthenticationStateProvider AuthenticationStateProvider
+@inject NavigationManager Navigation
+
+<AuthorizeView>
+    <Authorized>
+        <RadzenRow Gap="10px" AlignItems="AlignItems.Center">
+            <RadzenImage Path="@ProfilePicturePath" Style="border-radius: 50%; height: 35px" AlternateText="avatar"/>
+            <RadzenText TextStyle="TextStyle.Subtitle1">@context.User.Identity?.Name</RadzenText>
+            <RadzenButton Variant="Variant.Flat" Click="BeginLogOut" Text="Выйти" Icon="logout"
+                          ButtonStyle="ButtonStyle.Primary"/>
+        </RadzenRow>
+    </Authorized>
+    <NotAuthorized>
+        <RadzenButton Variant="Variant.Flat" Click="BeginLogIn" Text="Войти" Icon="login"
+                      ButtonStyle="ButtonStyle.Primary"/>
+    </NotAuthorized>
+</AuthorizeView>
+
+@code{
+
+    private string? ProfilePicturePath;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var authState = await AuthenticationStateProvider.GetAuthenticationStateAsync();
+        var user = authState.User;
+
+        ProfilePicturePath = user.FindFirst(x => x.Type == "picture")?.Value;
+    }
+
+    public void BeginLogOut()
+    {
+        Navigation.NavigateToLogout("authentication/logout");
+    }
+
+    public void BeginLogIn()
+    {
+        Navigation.NavigateTo("authentication/login");
+    }
+
+}

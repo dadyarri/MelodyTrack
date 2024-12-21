@@ -1,0 +1,12 @@
+<RadzenRow JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+    <RadzenText TextStyle="TextStyle.H1">@Heading</RadzenText>
+    @if (ChildContent is not null)
+    {
+        @ChildContent
+    }
+</RadzenRow>
+
+@code {
+    [Parameter] public required string Heading { get; set; }
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+}
