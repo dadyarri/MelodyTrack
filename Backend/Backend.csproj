@@ -13,4 +13,9 @@
       </Content>
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="FastEndpoints" Version="5.33.0" />
+      <PackageReference Include="FastEndpoints.Security" Version="5.33.0" />
+    </ItemGroup>
+
 </Project>
