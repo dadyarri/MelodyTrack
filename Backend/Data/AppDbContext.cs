@@ -12,4 +12,8 @@ public class AppDbContext : DbContext
     public virtual DbSet<Service> Services { get; set; }
     public virtual DbSet<ServiceHistory> Schedule { get; set; }
     public virtual DbSet<ServicePriceHistory> ServicePriceHistories { get; set; }
+
+    public AppDbContext(DbContextOptions<AppDbContext> options)
+    {
+    }
 }
