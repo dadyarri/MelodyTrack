@@ -483,3 +483,5 @@ fabric.properties
 *.db
 *.db-shm
 *.db-wal
+
+launchSettings.json
