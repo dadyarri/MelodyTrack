@@ -1,5 +1,7 @@
 using Backend.Data;
+using Backend.Utils;
 using FastEndpoints;
+using FastEndpoints.Security;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -24,17 +26,10 @@ try
 {
     var builder = WebApplication.CreateBuilder(args);
 
-    builder.Services
-        .AddAuthentication(
-            opts =>
-            {
-                opts.DefaultScheme = JwtBearerDefaults.AuthenticationScheme;
-                opts.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
-            }
-        )
-        .AddJwtBearer(opts =>
-        {
-        });
+    builder.Services.AddAuthenticationJwtBearer(opts =>
+    {
+        opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("JWT_SIGNING_KEY");
+    });
 
     builder.Services.AddAuthorization();
     builder.Services.AddFastEndpoints();
