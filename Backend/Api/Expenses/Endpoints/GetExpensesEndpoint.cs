@@ -1,0 +1,32 @@
+﻿using Backend.Api.Base.Models;
+using Backend.Data;
+using Backend.Data.Entities;
+using FastEndpoints;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+
+namespace Backend.Api.Expenses.Endpoints;
+
+public class GetExpensesEndpoint(AppDbContext db)
+    : Endpoint<PaginationRequest, Results<Ok<PaginatedResponse<Expense>>, ProblemDetails>>
+{
+    public override void Configure()
+    {
+        Get("/api/expenses");
+    }
+
+    public override async Task<Results<Ok<PaginatedResponse<Expense>>, ProblemDetails>> ExecuteAsync(
+        PaginationRequest req, CancellationToken ct)
+    {
+        var skipped = req.PageSize * (req.Page - 1);
+        var expenses = await db.Expenses
+            .Skip(skipped)
+            .Take(req.PageSize)
+            .ToListAsync(ct);
+
+        var expensesCount = await db.Expenses.CountAsync(cancellationToken: ct);
+
+        return TypedResults.Ok(PaginatedResponse<Expense>.Create(expenses, expensesCount, req.Page, req.PageSize,
+            skipped));
+    }
+}
