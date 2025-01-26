@@ -8,5 +8,5 @@ public class Service : BaseModel
 
     public string Description { get; set; } = string.Empty;
 
-    [EmailAddress] public required string Provider { get; set; }
+    public required User Provider { get; set; }
 }
