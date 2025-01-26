@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace Backend.Api.Clients.Endpoints;
 
 public class CreateClientEndpoint(AppDbContext db)
-    : Endpoint<CreateClientRequest, Results<Ok<CreateEntityResponse>, ProblemDetails>>
+    : Endpoint<UpdateClientRequest, Results<Ok<CreateEntityResponse>, ProblemDetails>>
 {
     public override void Configure()
     {
         Post("/api/clients");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(CreateClientRequest req,
+    public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {
         var client = new Client

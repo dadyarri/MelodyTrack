@@ -4,7 +4,7 @@ using JetBrains.Annotations;
 namespace Backend.Api.Clients.Models;
 
 [UsedImplicitly]
-public class CreateClientRequest
+public class UpdateClientRequest
 {
     [MaxLength(100)] public required string FirstName { get; set; }
 
