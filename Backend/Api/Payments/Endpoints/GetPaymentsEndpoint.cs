@@ -13,7 +13,6 @@ public class GetPaymentsEndpoint(AppDbContext db)
     public override void Configure()
     {
         Get("/api/payments");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<PaginatedResponse<Payment>>, ProblemDetails>> ExecuteAsync(

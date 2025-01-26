@@ -13,7 +13,6 @@ public class CreateClientEndpoint(AppDbContext db)
     public override void Configure()
     {
         Post("/api/clients");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(CreateClientRequest req,
@@ -33,6 +32,8 @@ public class CreateClientEndpoint(AppDbContext db)
         };
         await db.Clients.AddAsync(client, ct);
         await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation("{Name} created a new client", HttpContext.User.Identity?.Name);
 
         return TypedResults.Ok(new CreateEntityResponse
         {

@@ -13,7 +13,6 @@ public class GetClientsEndpoint(AppDbContext db)
     public override void Configure()
     {
         Get("/api/clients");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<PaginatedResponse<Client>>, NotFound, ProblemDetails>> ExecuteAsync(

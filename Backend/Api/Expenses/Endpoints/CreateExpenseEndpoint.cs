@@ -13,7 +13,6 @@ public class CreateExpenseEndpoint(AppDbContext db)
     public override void Configure()
     {
         Post("/api/expenses");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(CreateExpenseRequest req,

@@ -13,7 +13,6 @@ public class GetExpensesEndpoint(AppDbContext db)
     public override void Configure()
     {
         Get("/api/expenses");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<PaginatedResponse<Expense>>, ProblemDetails>> ExecuteAsync(

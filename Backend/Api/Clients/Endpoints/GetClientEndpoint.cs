@@ -14,7 +14,6 @@ public class GetClientEndpoint(AppDbContext db)
     public override void Configure()
     {
         Get("/api/clients/{id:long}");
-        AllowAnonymous();
     }
 
     public override async Task<Results<Ok<GetClientResponse>, NotFound, ProblemDetails>> ExecuteAsync(
