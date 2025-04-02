@@ -21,7 +21,7 @@ public class RegisterEndpoint(AppDbContext db) : Endpoint<RegisterRequest, Resul
     public override async Task<Results<Ok<LoginResponse>, Conflict, ProblemDetails>> ExecuteAsync(RegisterRequest req,
         CancellationToken ct)
     {
-        UserUtils.CreatePasswordHash(req.Password, out var passwordHash, out var passwordSalt);
+        UserUtils.CreatePasswordHash(req.Password, out var passwordSalt, out var passwordHash);
 
         var user = new User
         {
