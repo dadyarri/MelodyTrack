@@ -34,13 +34,24 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddFastEndpoints();
     builder.Services.AddSerilog();
-    var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "database.db");
 
-    Log.Debug("Database is stored in {DatabasePath}", dbPath);
-
-    builder.Services.AddDbContextPool<AppDbContext>(
-        opts => opts.UseSqlite($"Data Source={dbPath}")
-    );
+    // Database configuration
+    if (builder.Environment.IsProduction())
+    {
+        var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("DATABASE_URL");
+        builder.Services.AddDbContextPool<AppDbContext>(
+            opts => opts.UseNpgsql(connectionString)
+        );
+        Log.Information("Using PostgreSQL database in production");
+    }
+    else
+    {
+        var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "database.db");
+        builder.Services.AddDbContextPool<AppDbContext>(
+            opts => opts.UseSqlite($"Data Source={dbPath}")
+        );
+        Log.Debug("Using SQLite database in development at {DatabasePath}", dbPath);
+    }
 
     var app = builder.Build();
 
