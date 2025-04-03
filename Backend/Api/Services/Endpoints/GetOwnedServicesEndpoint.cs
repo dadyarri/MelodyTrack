@@ -1,4 +1,5 @@
-﻿using Backend.Api.Services.Models;
+﻿using System.Security.Claims;
+using Backend.Api.Services.Models;
 using Backend.Data;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -8,30 +9,30 @@ namespace Backend.Api.Services.Endpoints;
 
 public class GetOwnedServicesEndpoint(AppDbContext db)
     : Endpoint<EmptyRequest,
-        Results<Ok<List<ServiceDto>>, UnauthorizedHttpResult, ProblemDetails>>
+        Results<Ok<List<ServiceDto>>, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
         Get("/api/services");
     }
 
-    public override async Task<Results<Ok<List<ServiceDto>>, UnauthorizedHttpResult, ProblemDetails>>
+    public override async Task<Results<Ok<List<ServiceDto>>, ForbidHttpResult, ProblemDetails>>
         ExecuteAsync(
             EmptyRequest req,
             CancellationToken ct)
     {
-        var login = User.Identity?.Name;
+        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
         {
-            return TypedResults.Unauthorized();
+            return TypedResults.Forbid();
         }
 
-        var user = await db.Users.Where(e => e.Username == login).FirstOrDefaultAsync(ct);
+        var user = await db.Users.Where(e => e.Username == login.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            return TypedResults.Unauthorized();
+            return TypedResults.Forbid();
         }
 
         var services = await db.Services

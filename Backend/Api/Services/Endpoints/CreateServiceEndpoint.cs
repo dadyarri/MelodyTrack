@@ -1,4 +1,5 @@
-﻿using Backend.Api.Base.Models;
+﻿using System.Security.Claims;
+using Backend.Api.Base.Models;
 using Backend.Api.Services.Models;
 using Backend.Data;
 using Backend.Data.Entities;
@@ -22,14 +23,14 @@ public class CreateServiceEndpoint(AppDbContext db)
             CreateServiceRequest req,
             CancellationToken ct)
     {
-        var login = User.Identity?.Name;
+        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.Where(e => e.Username == login).FirstOrDefaultAsync(ct);
+        var user = await db.Users.Where(e => e.Username == login.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
