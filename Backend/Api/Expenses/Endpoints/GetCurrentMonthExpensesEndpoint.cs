@@ -30,7 +30,7 @@ public class GetCurrentMonthExpensesEndpoint(AppDbContext dbContext)
             Expenses = expenses
         };
 
-        await SendOkAsync(response, ct);
+        await Send.OkAsync(response, ct);
     }
 }
 
