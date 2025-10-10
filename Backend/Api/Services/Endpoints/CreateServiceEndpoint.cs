@@ -25,17 +25,11 @@ public class CreateServiceEndpoint(AppDbContext db)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
-        if (login is null)
-        {
-            return TypedResults.Unauthorized();
-        }
+        if (login is null) return TypedResults.Unauthorized();
 
         var user = await db.Users.Where(e => e.Username == login.Value).FirstOrDefaultAsync(ct);
 
-        if (user is null)
-        {
-            return TypedResults.Unauthorized();
-        }
+        if (user is null) return TypedResults.Unauthorized();
 
         var service = new Service
         {
@@ -59,7 +53,7 @@ public class CreateServiceEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = service.Id,
+            Id = service.Id
         });
     }
 }

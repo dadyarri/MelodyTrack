@@ -13,7 +13,7 @@ using SerilogTracing.Expressions;
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
-    .WriteTo.Console(Formatters.CreateConsoleTextFormatter(theme: TemplateTheme.Code))
+    .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
     .CreateLogger();
 
 using var listener = new ActivityListenerConfiguration()

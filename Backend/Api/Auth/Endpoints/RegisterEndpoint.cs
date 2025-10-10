@@ -10,7 +10,8 @@ using RegisterRequest = Backend.Api.Auth.Models.RegisterRequest;
 
 namespace Backend.Api.Auth.Endpoints;
 
-public class RegisterEndpoint(AppDbContext db) : Endpoint<RegisterRequest, Results<Ok<LoginResponse>, Conflict, ProblemDetails>>
+public class RegisterEndpoint(AppDbContext db)
+    : Endpoint<RegisterRequest, Results<Ok<LoginResponse>, Conflict, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -29,15 +30,12 @@ public class RegisterEndpoint(AppDbContext db) : Endpoint<RegisterRequest, Resul
             FirstName = req.FirstName,
             LastName = req.LastName,
             PasswordHash = passwordHash,
-            PasswordSalt = passwordSalt,
+            PasswordSalt = passwordSalt
         };
 
         var hasUser = await db.Users.Where(e => e.Username == user.Username).AnyAsync(ct);
 
-        if (hasUser)
-        {
-            return TypedResults.Conflict();
-        }
+        if (hasUser) return TypedResults.Conflict();
 
         await db.Users.AddAsync(user, ct);
         await db.SaveChangesAsync(ct);

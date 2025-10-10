@@ -24,17 +24,14 @@ public class CreatePaymentEndpoint(AppDbContext db)
             .Where(e => e.Id == req.ClientId)
             .FirstOrDefaultAsync(ct);
 
-        if (client == null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (client == null) return TypedResults.NotFound();
 
         var payment = new Payment
         {
             Client = client,
             Description = req.Description,
             Amount = req.Amount,
-            Date = DateTime.UtcNow,
+            Date = DateTime.UtcNow
         };
 
         await db.Payments.AddAsync(payment, ct);
@@ -42,7 +39,7 @@ public class CreatePaymentEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = payment.Id,
+            Id = payment.Id
         });
     }
 }

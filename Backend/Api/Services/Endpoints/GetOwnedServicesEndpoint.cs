@@ -23,17 +23,11 @@ public class GetOwnedServicesEndpoint(AppDbContext db)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
-        if (login is null)
-        {
-            return TypedResults.Forbid();
-        }
+        if (login is null) return TypedResults.Forbid();
 
         var user = await db.Users.Where(e => e.Username == login.Value).FirstOrDefaultAsync(ct);
 
-        if (user is null)
-        {
-            return TypedResults.Forbid();
-        }
+        if (user is null) return TypedResults.Forbid();
 
         var services = await db.Services
             .Where(e => e.Provider == user)
@@ -48,10 +42,7 @@ public class GetOwnedServicesEndpoint(AppDbContext db)
 
             var price = 0m;
 
-            if (latestPrice is not null)
-            {
-                price = latestPrice.Price;
-            }
+            if (latestPrice is not null) price = latestPrice.Price;
 
             serviceDtos.Add(new ServiceDto
             {

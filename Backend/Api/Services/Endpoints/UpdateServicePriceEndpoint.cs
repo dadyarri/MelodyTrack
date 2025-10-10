@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Services.Endpoints;
 
 public class UpdateServicePriceEndpoint(AppDbContext db)
-    : Endpoint<UpdateServicePriceRequest, Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, ProblemDetails>>
+    : Endpoint<UpdateServicePriceRequest,
+        Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -24,28 +25,19 @@ public class UpdateServicePriceEndpoint(AppDbContext db)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
-        if (login is null)
-        {
-            return TypedResults.Unauthorized();
-        }
+        if (login is null) return TypedResults.Unauthorized();
 
         var user = await db.Users.Where(e => e.Username == login.Value).FirstOrDefaultAsync(ct);
 
-        if (user is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-        
+        if (user is null) return TypedResults.Unauthorized();
+
         var id = Route<long>("id");
 
         var service = await db.Services
             .Where(e => e.Id == id && e.Provider == user)
             .FirstOrDefaultAsync(ct);
 
-        if (service is null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (service is null) return TypedResults.NotFound();
 
         var priceHistory = new ServicePriceHistory
         {
@@ -59,7 +51,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = priceHistory.Id,
+            Id = priceHistory.Id
         });
     }
-} 
+}

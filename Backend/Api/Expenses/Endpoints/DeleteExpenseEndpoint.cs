@@ -20,10 +20,7 @@ public class DeleteExpenseEndpoint(AppDbContext db)
 
         var expense = await db.Expenses.Where(e => e.Id == expenseId).FirstOrDefaultAsync(ct);
 
-        if (expense == null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (expense == null) return TypedResults.NotFound();
 
         db.Remove(expense);
 
@@ -31,4 +28,4 @@ public class DeleteExpenseEndpoint(AppDbContext db)
 
         return TypedResults.NoContent();
     }
-} 
+}

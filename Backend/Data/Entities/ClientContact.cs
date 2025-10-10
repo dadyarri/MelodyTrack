@@ -2,7 +2,7 @@
 
 namespace Backend.Data.Entities;
 
-public class ClientContact: BaseModel
+public class ClientContact : BaseModel
 {
     [Url] public string? Vk { get; set; }
 

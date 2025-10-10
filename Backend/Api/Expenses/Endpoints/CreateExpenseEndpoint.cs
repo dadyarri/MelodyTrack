@@ -22,7 +22,7 @@ public class CreateExpenseEndpoint(AppDbContext db)
         {
             Description = req.Description,
             Amount = req.Amount,
-            Date = DateTime.UtcNow,
+            Date = DateTime.UtcNow
         };
 
         await db.Expenses.AddAsync(expense, ct);
@@ -30,7 +30,7 @@ public class CreateExpenseEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = expense.Id,
+            Id = expense.Id
         });
     }
 }

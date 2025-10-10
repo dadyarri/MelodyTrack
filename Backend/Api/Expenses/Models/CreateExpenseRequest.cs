@@ -8,5 +8,5 @@ public class CreateExpenseRequest
 {
     [MaxLength(200)] public required string Description { get; set; }
 
-    [Range(0, (double)decimal.MaxValue)] public required decimal Amount { get; set; }
+    public required decimal Amount { get; set; }
 }

@@ -31,7 +31,7 @@ public static class UserUtils
             ),
             ExpireAt = expireAt,
             FirstName = user.FirstName,
-            LastName = user.LastName,
+            LastName = user.LastName
         };
     }
 

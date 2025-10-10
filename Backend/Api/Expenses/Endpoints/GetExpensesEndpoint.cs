@@ -24,7 +24,7 @@ public class GetExpensesEndpoint(AppDbContext db)
             .Take(req.PageSize)
             .ToListAsync(ct);
 
-        var expensesCount = await db.Expenses.CountAsync(cancellationToken: ct);
+        var expensesCount = await db.Expenses.CountAsync(ct);
 
         return TypedResults.Ok(PaginatedResponse<Expense>.Create(expenses, expensesCount, req.Page, req.PageSize,
             skipped));

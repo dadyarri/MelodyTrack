@@ -24,10 +24,7 @@ public class
 
         var client = await db.Clients.Where(e => e.Id == clientId).FirstOrDefaultAsync(ct);
 
-        if (client == null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (client == null) return TypedResults.NotFound();
 
         client.FirstName = req.FirstName;
         client.LastName = req.LastName;
@@ -36,7 +33,7 @@ public class
         {
             Phone = req.Phone,
             Telegram = req.Telegram,
-            Vk = req.Vk,
+            Vk = req.Vk
         };
 
         await db.SaveChangesAsync(ct);

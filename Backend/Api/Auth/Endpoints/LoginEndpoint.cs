@@ -22,10 +22,7 @@ public class LoginEndpoint(AppDbContext db)
     {
         var user = await db.Users.Where(e => e.Username == req.Username).FirstOrDefaultAsync(ct);
 
-        if (user == null || !UserUtils.IsValidPassword(user, req))
-        {
-            return TypedResults.Unauthorized();
-        }
+        if (user == null || !UserUtils.IsValidPassword(user, req)) return TypedResults.Unauthorized();
 
         return TypedResults.Ok(UserUtils.CreateAccessToken(user));
     }

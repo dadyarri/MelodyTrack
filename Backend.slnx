@@ -1,6 +1,6 @@
 ﻿<Solution>
-  <Folder Name="/Other stuff/">
-    <File Path=".gitignore" />
-  </Folder>
-  <Project Path="Backend\Backend.csproj" Type="Classic C#" />
+    <Folder Name="/Other stuff/">
+        <File Path=".gitignore"/>
+    </Folder>
+    <Project Path="Backend\Backend.csproj" Type="Classic C#"/>
 </Solution>

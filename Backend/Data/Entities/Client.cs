@@ -2,7 +2,7 @@
 
 namespace Backend.Data.Entities;
 
-public class Client: BaseModel
+public class Client : BaseModel
 {
     [MaxLength(100)] public required string FirstName { get; set; } = string.Empty;
 

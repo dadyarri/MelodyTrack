@@ -1,12 +1,10 @@
-﻿using System.ComponentModel.DataAnnotations;
-
-namespace Backend.Data.Entities;
+﻿namespace Backend.Data.Entities;
 
 public class ServicePriceHistory : BaseModel
 {
     public required Service Service { get; set; }
 
-    [Range(0, (double)decimal.MaxValue)] public required decimal Price { get; set; }
+    public required decimal Price { get; set; }
 
     public required DateTime EffectiveDate { get; set; }
 

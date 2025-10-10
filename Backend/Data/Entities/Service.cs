@@ -1,6 +1,6 @@
-﻿namespace Backend.Data.Entities;
+﻿using System.ComponentModel.DataAnnotations;
 
-using System.ComponentModel.DataAnnotations;
+namespace Backend.Data.Entities;
 
 public class Service : BaseModel
 {

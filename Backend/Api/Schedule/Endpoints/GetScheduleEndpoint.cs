@@ -25,17 +25,11 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
-        if (login is null)
-        {
-            return TypedResults.Forbid();
-        }
+        if (login is null) return TypedResults.Forbid();
 
         var user = await dbContext.Users.Where(u => u.Username == login.Value).FirstOrDefaultAsync(ct);
 
-        if (user is null)
-        {
-            return TypedResults.Forbid();
-        }
+        if (user is null) return TypedResults.Forbid();
 
         var query = dbContext.Schedule
             .Include(sh => sh.Service)

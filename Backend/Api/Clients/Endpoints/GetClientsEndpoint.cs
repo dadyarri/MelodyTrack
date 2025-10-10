@@ -1,7 +1,6 @@
 ﻿using Backend.Api.Base.Models;
 using Backend.Api.Clients.Models;
 using Backend.Data;
-using Backend.Data.Entities;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -16,12 +15,13 @@ public class GetClientsEndpoint(AppDbContext db)
         Get("/api/clients");
     }
 
-    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceResponse>>, NotFound, ProblemDetails>> ExecuteAsync(
-        PaginationRequest req,
-        CancellationToken ct)
+    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceResponse>>, NotFound, ProblemDetails>>
+        ExecuteAsync(
+            PaginationRequest req,
+            CancellationToken ct)
     {
         var skipped = req.PageSize * (req.Page - 1);
-        
+
         // Get clients with their contacts
         var clients = await db.Clients
             .Include(e => e.Contacts)
@@ -30,7 +30,7 @@ public class GetClientsEndpoint(AppDbContext db)
             .ToListAsync(ct);
 
         // Get total count
-        var clientsCount = await db.Clients.CountAsync(cancellationToken: ct);
+        var clientsCount = await db.Clients.CountAsync(ct);
 
         // Calculate balances for each client
         var clientBalances = new List<ClientWithBalanceResponse>();
@@ -64,9 +64,9 @@ public class GetClientsEndpoint(AppDbContext db)
         }
 
         return TypedResults.Ok(PaginatedResponse<ClientWithBalanceResponse>.Create(
-            clientBalances, 
-            clientsCount, 
-            req.Page, 
+            clientBalances,
+            clientsCount,
+            req.Page,
             req.PageSize,
             skipped));
     }

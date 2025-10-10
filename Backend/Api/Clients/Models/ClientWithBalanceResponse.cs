@@ -10,4 +10,4 @@ public class ClientWithBalanceResponse
     public string? Patronymic { get; set; }
     public required ClientContact? Contacts { get; set; }
     public required decimal Balance { get; set; }
-} 
+}

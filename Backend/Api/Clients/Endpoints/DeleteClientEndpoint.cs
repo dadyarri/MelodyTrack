@@ -20,10 +20,7 @@ public class DeleteClientEndpoint(AppDbContext db)
 
         var client = await db.Clients.Where(e => e.Id == clientId).FirstOrDefaultAsync(ct);
 
-        if (client == null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (client == null) return TypedResults.NotFound();
 
         db.Remove(client);
 

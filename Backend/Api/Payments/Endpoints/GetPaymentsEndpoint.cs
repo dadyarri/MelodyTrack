@@ -24,7 +24,7 @@ public class GetPaymentsEndpoint(AppDbContext db)
             .Take(req.PageSize)
             .ToListAsync(ct);
 
-        var paymentsCount = await db.Payments.CountAsync(cancellationToken: ct);
+        var paymentsCount = await db.Payments.CountAsync(ct);
 
         return TypedResults.Ok(PaginatedResponse<Payment>.Create(payments, paymentsCount, req.Page, req.PageSize,
             skipped));

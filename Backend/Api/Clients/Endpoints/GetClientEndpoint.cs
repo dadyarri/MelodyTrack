@@ -1,7 +1,6 @@
 ﻿using Backend.Api.Base.Models;
 using Backend.Api.Clients.Models;
 using Backend.Data;
-using Backend.Data.Entities;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -25,10 +24,7 @@ public class GetClientEndpoint(AppDbContext db)
             .Include(e => e.Contacts)
             .FirstOrDefaultAsync(ct);
 
-        if (client == null)
-        {
-            return TypedResults.NotFound();
-        }
+        if (client == null) return TypedResults.NotFound();
 
         var payments = await db.Payments
             .Include(e => e.Client)

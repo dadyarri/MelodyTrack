@@ -27,7 +27,7 @@ public class CreateClientEndpoint(AppDbContext db)
             {
                 Phone = req.Phone,
                 Telegram = req.Telegram,
-                Vk = req.Vk,
+                Vk = req.Vk
             }
         };
         await db.Clients.AddAsync(client, ct);
@@ -37,7 +37,7 @@ public class CreateClientEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = client.Id,
+            Id = client.Id
         });
     }
 }

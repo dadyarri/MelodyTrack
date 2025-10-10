@@ -1,6 +1,6 @@
-using FastEndpoints;
 using Backend.Data;
 using Backend.Data.Entities;
+using FastEndpoints;
 using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Expenses.Endpoints;
@@ -39,4 +39,4 @@ public class CurrentMonthExpensesResponse
     public decimal TotalAmount { get; set; }
     public int Count { get; set; }
     public List<Expense> Expenses { get; set; } = new();
-} 
+}
