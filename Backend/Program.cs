@@ -2,7 +2,7 @@ using Backend.Data;
 using Backend.Utils;
 using FastEndpoints;
 using FastEndpoints.Security;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using FastEndpoints.Swagger;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 using Serilog.Events;
@@ -34,21 +34,28 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddFastEndpoints();
     builder.Services.AddSerilog();
+    builder.Services.SwaggerDocument(o =>
+    {
+        o.DocumentSettings = s =>
+        {
+            s.DocumentName = "Melody Track";
+            s.Title = "Melody Track API";
+            s.Version = "v1";
+        };
+    });
 
     // Database configuration
     if (builder.Environment.IsProduction())
     {
         var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("DATABASE_URL");
-        builder.Services.AddDbContextPool<AppDbContext>(
-            opts => opts.UseNpgsql(connectionString)
+        builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
         );
         Log.Information("Using PostgreSQL database in production");
     }
     else
     {
         var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "database.db");
-        builder.Services.AddDbContextPool<AppDbContext>(
-            opts => opts.UseSqlite($"Data Source={dbPath}")
+        builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseSqlite($"Data Source={dbPath}")
         );
         Log.Debug("Using SQLite database in development at {DatabasePath}", dbPath);
     }
@@ -59,8 +66,14 @@ try
     app.UseAuthorization();
     app.UseFastEndpoints();
     app.UseSerilogRequestLogging();
+    app.UseSwaggerGen();
 
     app.Run();
+    return 0;
+}
+catch (HostAbortedException)
+{
+    Log.Warning("Host was aborted");
     return 0;
 }
 catch (Exception ex)
