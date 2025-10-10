@@ -8,15 +8,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Clients.Endpoints;
 
+/// <summary>
+/// Обновить существующего клиента
+/// </summary>
+/// <param name="db">БД</param>
 public class
     UpdateClientEndpoint(AppDbContext db)
     : Endpoint<UpdateClientRequest, Results<Ok<CreateEntityResponse>, NotFound, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Put("/api/clients/{id:long}");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, NotFound, ProblemDetails>> ExecuteAsync(
         UpdateClientRequest req, CancellationToken ct)
     {

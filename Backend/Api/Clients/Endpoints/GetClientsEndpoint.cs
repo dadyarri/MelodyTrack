@@ -7,14 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Clients.Endpoints;
 
+/// <summary>
+/// Получить существующих клиентов
+/// </summary>
+/// <param name="db">БД</param>
 public class GetClientsEndpoint(AppDbContext db)
     : Endpoint<PaginationRequest, Results<Ok<PaginatedResponse<ClientWithBalanceResponse>>, NotFound, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/clients");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceResponse>>, NotFound, ProblemDetails>>
         ExecuteAsync(
             PaginationRequest req,

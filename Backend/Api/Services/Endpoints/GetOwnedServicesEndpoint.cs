@@ -7,15 +7,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Services.Endpoints;
 
+/// <summary>
+/// Получить услуги текущего пользователя
+/// </summary>
+/// <param name="db">БД</param>
 public class GetOwnedServicesEndpoint(AppDbContext db)
     : Endpoint<EmptyRequest,
         Results<Ok<List<ServiceDto>>, ForbidHttpResult, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/services");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<List<ServiceDto>>, ForbidHttpResult, ProblemDetails>>
         ExecuteAsync(
             EmptyRequest req,

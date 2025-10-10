@@ -9,15 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Services.Endpoints;
 
+/// <summary>
+/// Обновить цену услуги
+/// </summary>
+/// <param name="db">БД</param>
 public class UpdateServicePriceEndpoint(AppDbContext db)
     : Endpoint<UpdateServicePriceRequest,
         Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Patch("/api/services/{id:long}/price");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, ProblemDetails>>
         ExecuteAsync(
             UpdateServicePriceRequest req,

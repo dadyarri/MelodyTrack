@@ -7,14 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Payments.Endpoints;
 
+/// <summary>
+/// Получить платежи
+/// </summary>
+/// <param name="db">БД</param>
 public class GetPaymentsEndpoint(AppDbContext db)
     : Endpoint<PaginationRequest, Results<Ok<PaginatedResponse<Payment>>, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/payments");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<PaginatedResponse<Payment>>, ProblemDetails>> ExecuteAsync(
         PaginationRequest req, CancellationToken ct)
     {

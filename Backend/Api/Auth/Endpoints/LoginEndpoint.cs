@@ -7,15 +7,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Auth.Endpoints;
 
+/// <summary>
+/// Вход существующего пользователя
+/// </summary>
+/// <param name="db">БД</param>
 public class LoginEndpoint(AppDbContext db)
     : Endpoint<LoginRequest, Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/login");
+        Post("/api/auth/login");
         AllowAnonymous();
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
         LoginRequest req,
         CancellationToken ct)

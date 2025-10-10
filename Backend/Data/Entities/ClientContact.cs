@@ -2,16 +2,34 @@
 
 namespace Backend.Data.Entities;
 
+/// <summary>
+/// Контакт пользователя
+/// </summary>
 public class ClientContact : BaseModel
 {
-    [Url] public string? Vk { get; set; }
+    /// <summary>
+    /// Ссылка на ВК
+    /// </summary>
+    [Url]
+    [MaxLength(100)]
+    public string? Vk { get; set; }
 
-    [Url] public string? Telegram { get; set; }
+    /// <summary>
+    /// Ссылка на телеграм
+    /// </summary>
+    [Url]
+    [MaxLength(100)]
+    public string? Telegram { get; set; }
 
+    /// <summary>
+    /// Номер телефона
+    /// </summary>
     [RegularExpression(@"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$",
         ErrorMessage = "Invalid phone number")]
+    [MaxLength(20)]
     public string? Phone { get; set; }
 
+    /// <inheritdoc />
     public override string ToString()
     {
         string FormatUrl(string? url, string fieldName)

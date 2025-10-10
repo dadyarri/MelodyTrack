@@ -8,14 +8,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Payments.Endpoints;
 
+/// <summary>
+/// Создать платёж
+/// </summary>
+/// <param name="db">БД</param>
 public class CreatePaymentEndpoint(AppDbContext db)
     : Endpoint<CreatePaymentRequest, Results<Ok<CreateEntityResponse>, NotFound, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Post("/api/payments");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, NotFound, ProblemDetails>> ExecuteAsync(
         CreatePaymentRequest req,
         CancellationToken ct)

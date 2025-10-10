@@ -7,14 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Clients.Endpoints;
 
+/// <summary>
+/// Получить существующего клиента
+/// </summary>
+/// <param name="db">БД</param>
 public class GetClientEndpoint(AppDbContext db)
     : Endpoint<GetEntityRequest, Results<Ok<GetClientResponse>, NotFound, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/clients/{id:long}");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<GetClientResponse>, NotFound, ProblemDetails>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)

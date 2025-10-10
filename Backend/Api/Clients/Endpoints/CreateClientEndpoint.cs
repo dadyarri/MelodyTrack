@@ -7,14 +7,20 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Backend.Api.Clients.Endpoints;
 
+/// <summary>
+/// Создание клиента
+/// </summary>
+/// <param name="db">БД</param>
 public class CreateClientEndpoint(AppDbContext db)
     : Endpoint<UpdateClientRequest, Results<Ok<CreateEntityResponse>, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Post("/api/clients");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {

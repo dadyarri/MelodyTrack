@@ -9,15 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Services.Endpoints;
 
+/// <summary>
+/// Создать услугу
+/// </summary>
+/// <param name="db">БД</param>
 public class CreateServiceEndpoint(AppDbContext db)
     : Endpoint<CreateServiceRequest,
         Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Post("/api/services");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ProblemDetails>>
         ExecuteAsync(
             CreateServiceRequest req,

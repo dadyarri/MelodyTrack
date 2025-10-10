@@ -10,15 +10,21 @@ using RegisterRequest = Backend.Api.Auth.Models.RegisterRequest;
 
 namespace Backend.Api.Auth.Endpoints;
 
+/// <summary>
+/// Регистрация нового пользователя
+/// </summary>
+/// <param name="db">БД</param>
 public class RegisterEndpoint(AppDbContext db)
     : Endpoint<RegisterRequest, Results<Ok<LoginResponse>, Conflict, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/register");
+        Post("/api/auth/register");
         AllowAnonymous();
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<LoginResponse>, Conflict, ProblemDetails>> ExecuteAsync(RegisterRequest req,
         CancellationToken ct)
     {

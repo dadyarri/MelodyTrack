@@ -7,14 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Backend.Api.Expenses.Endpoints;
 
+/// <summary>
+/// Получить расходы
+/// </summary>
+/// <param name="db">БД</param>
 public class GetExpensesEndpoint(AppDbContext db)
     : Endpoint<PaginationRequest, Results<Ok<PaginatedResponse<Expense>>, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/expenses");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<PaginatedResponse<Expense>>, ProblemDetails>> ExecuteAsync(
         PaginationRequest req, CancellationToken ct)
     {

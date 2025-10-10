@@ -10,14 +10,20 @@ using ProblemDetails = FastEndpoints.ProblemDetails;
 
 namespace Backend.Api.Schedule.Endpoints;
 
+/// <summary>
+/// Получить расписание
+/// </summary>
+/// <param name="dbContext">БД</param>
 public class GetScheduleEndpoint(AppDbContext dbContext)
     : Endpoint<GetScheduleRequest, Results<Ok<PaginatedResponse<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Get("/api/schedule");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<PaginatedResponse<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
         ExecuteAsync(
             GetScheduleRequest req,

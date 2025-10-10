@@ -7,14 +7,20 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace Backend.Api.Expenses.Endpoints;
 
+/// <summary>
+/// Создать расход
+/// </summary>
+/// <param name="db">БД</param>
 public class CreateExpenseEndpoint(AppDbContext db)
     : Endpoint<CreateExpenseRequest, Results<Ok<CreateEntityResponse>, ProblemDetails>>
 {
+    /// <inheritdoc />
     public override void Configure()
     {
         Post("/api/expenses");
     }
 
+    /// <inheritdoc />
     public override async Task<Results<Ok<CreateEntityResponse>, ProblemDetails>> ExecuteAsync(CreateExpenseRequest req,
         CancellationToken ct)
     {

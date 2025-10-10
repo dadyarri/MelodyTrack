@@ -36,6 +36,7 @@ try
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
     {
+        o.AutoTagPathSegmentIndex = 2;
         o.DocumentSettings = s =>
         {
             s.DocumentName = "Melody Track";
@@ -57,7 +58,7 @@ try
         var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "database.db");
         builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseSqlite($"Data Source={dbPath}")
         );
-        Log.Debug("Using SQLite database in development at {DatabasePath}", dbPath);
+        Log.Information("Using SQLite database in development at {DatabasePath}", dbPath);
     }
 
     var app = builder.Build();
