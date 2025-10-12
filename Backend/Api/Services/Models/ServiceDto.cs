@@ -1,24 +1,27 @@
 ﻿namespace Backend.Api.Services.Models;
 
 /// <summary>
-/// Описание услуги
+///     Описание услуги
 /// </summary>
 public class ServiceDto
 {
     /// <summary>
-    /// Идентификатор
+    ///     Идентификатор
     /// </summary>
     public required long Id { get; set; }
+
     /// <summary>
-    /// Название
+    ///     Название
     /// </summary>
     public required string Name { get; set; }
+
     /// <summary>
-    /// Описание
+    ///     Описание
     /// </summary>
     public string Description { get; set; } = string.Empty;
+
     /// <summary>
-    /// Текущая цена
+    ///     Текущая цена
     /// </summary>
     public decimal CurrentPrice { get; set; }
 }

@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Clients.Endpoints;
 
 /// <summary>
-/// Получить существующего клиента
+///     Получить существующего клиента
 /// </summary>
 /// <param name="db">БД</param>
 public class GetClientEndpoint(AppDbContext db)

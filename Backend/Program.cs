@@ -47,7 +47,6 @@ try
     builder.Services.AddCors(options =>
     {
         if (builder.Environment.IsDevelopment())
-        {
             options.AddPolicy("AllowFrontend", policy =>
             {
                 policy.WithOrigins("http://localhost:5173")
@@ -55,9 +54,7 @@ try
                     .AllowAnyMethod()
                     .AllowCredentials();
             });
-        }
         else
-        {
             options.AddPolicy("AllowFrontend", policy =>
             {
                 policy.WithOrigins("https://mt.dadyarri.ru")
@@ -65,7 +62,6 @@ try
                     .AllowAnyMethod()
                     .AllowCredentials();
             });
-        }
     });
 
     // Database configuration

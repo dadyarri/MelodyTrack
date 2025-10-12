@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Backend.Api.Base.Models;
 using Backend.Api.Schedule.Models;
 using Backend.Data;
 using Backend.Data.Entities;
@@ -12,7 +11,7 @@ using ProblemDetails = FastEndpoints.ProblemDetails;
 namespace Backend.Api.Schedule.Endpoints;
 
 /// <summary>
-/// Получить расписание
+///     Получить расписание
 /// </summary>
 /// <param name="dbContext">БД</param>
 public class GetScheduleEndpoint(AppDbContext dbContext)

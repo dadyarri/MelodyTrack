@@ -11,7 +11,7 @@ using RegisterRequest = Backend.Api.Auth.Models.RegisterRequest;
 namespace Backend.Api.Auth.Endpoints;
 
 /// <summary>
-/// Регистрация нового пользователя
+///     Регистрация нового пользователя
 /// </summary>
 /// <param name="db">БД</param>
 public class RegisterEndpoint(AppDbContext db)

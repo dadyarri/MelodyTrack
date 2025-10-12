@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Schedule.Endpoints;
 
 /// <summary>
-/// Создать запись на ячейку времени
+///     Создать запись на ячейку времени
 /// </summary>
 /// <param name="db">БД</param>
 public class CreateServiceScheduleEndpoint(AppDbContext db)

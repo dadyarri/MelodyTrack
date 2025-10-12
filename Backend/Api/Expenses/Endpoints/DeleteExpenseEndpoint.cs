@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Expenses.Endpoints;
 
 /// <summary>
-/// Удалить расход
+///     Удалить расход
 /// </summary>
 /// <param name="db">БД</param>
 public class DeleteExpenseEndpoint(AppDbContext db)

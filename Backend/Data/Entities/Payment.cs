@@ -3,27 +3,27 @@
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Платёж
+///     Платёж
 /// </summary>
 public class Payment : BaseModel
 {
     /// <summary>
-    /// Клиент
+    ///     Клиент
     /// </summary>
     public required Client Client { get; set; }
 
     /// <summary>
-    /// Сумма
+    ///     Сумма
     /// </summary>
     public required decimal Amount { get; set; }
 
     /// <summary>
-    /// Дата
+    ///     Дата
     /// </summary>
     public required DateTime Date { get; set; } = DateTime.UtcNow;
 
     /// <summary>
-    /// Описание
+    ///     Описание
     /// </summary>
     [MaxLength(200)]
     public required string Description { get; set; } = string.Empty;

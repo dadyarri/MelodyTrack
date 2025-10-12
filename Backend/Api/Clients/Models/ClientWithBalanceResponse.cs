@@ -3,37 +3,37 @@ using Backend.Data.Entities;
 namespace Backend.Api.Clients.Models;
 
 /// <summary>
-/// Тело ответа, описывающего клиента с его балансом
+///     Тело ответа, описывающего клиента с его балансом
 /// </summary>
 public class ClientWithBalanceResponse
 {
     /// <summary>
-    /// Идентификатор
+    ///     Идентификатор
     /// </summary>
     public required long Id { get; set; }
 
     /// <summary>
-    /// Имя
+    ///     Имя
     /// </summary>
     public required string FirstName { get; set; }
 
     /// <summary>
-    /// Фамилия
+    ///     Фамилия
     /// </summary>
     public required string LastName { get; set; }
 
     /// <summary>
-    /// Отчество
+    ///     Отчество
     /// </summary>
     public string? Patronymic { get; set; }
 
     /// <summary>
-    /// Контакты
+    ///     Контакты
     /// </summary>
     public required ClientContact? Contacts { get; set; }
 
     /// <summary>
-    /// Баланс
+    ///     Баланс
     /// </summary>
     public required decimal Balance { get; set; }
 }

@@ -3,22 +3,23 @@
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Расход
+///     Расход
 /// </summary>
 public class Expense : BaseModel
 {
     /// <summary>
-    /// Описание
+    ///     Описание
     /// </summary>
-    [MaxLength(200)] public required string Description { get; set; } = string.Empty;
+    [MaxLength(200)]
+    public required string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Сумма
+    ///     Сумма
     /// </summary>
     public required decimal Amount { get; set; }
 
     /// <summary>
-    /// Дата
+    ///     Дата
     /// </summary>
     public required DateTime Date { get; set; } = DateTime.UtcNow;
 }

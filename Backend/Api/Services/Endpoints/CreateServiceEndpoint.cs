@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Services.Endpoints;
 
 /// <summary>
-/// Создать услугу
+///     Создать услугу
 /// </summary>
 /// <param name="db">БД</param>
 public class CreateServiceEndpoint(AppDbContext db)

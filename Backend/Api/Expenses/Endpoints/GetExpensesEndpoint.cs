@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Expenses.Endpoints;
 
 /// <summary>
-/// Получить расходы
+///     Получить расходы
 /// </summary>
 /// <param name="db">БД</param>
 public class GetExpensesEndpoint(AppDbContext db)

@@ -4,12 +4,12 @@ using System.ComponentModel.DataAnnotations.Schema;
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Базовая модель
+///     Базовая модель
 /// </summary>
 public class BaseModel
 {
     /// <summary>
-    /// Идентификатор
+    ///     Идентификатор
     /// </summary>
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]

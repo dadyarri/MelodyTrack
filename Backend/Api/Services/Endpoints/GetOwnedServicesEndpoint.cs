@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Services.Endpoints;
 
 /// <summary>
-/// Получить услуги текущего пользователя
+///     Получить услуги текущего пользователя
 /// </summary>
 /// <param name="db">БД</param>
 public class GetOwnedServicesEndpoint(AppDbContext db)

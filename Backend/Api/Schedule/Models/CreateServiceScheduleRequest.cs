@@ -1,22 +1,22 @@
 ﻿namespace Backend.Api.Schedule.Models;
 
 /// <summary>
-/// Тело запроса на создание записи услуги
+///     Тело запроса на создание записи услуги
 /// </summary>
 public class CreateServiceScheduleRequest
 {
     /// <summary>
-    /// Идентификатор клиента
+    ///     Идентификатор клиента
     /// </summary>
     public long ClientId { get; set; }
 
     /// <summary>
-    /// Идентификатор услуги
+    ///     Идентификатор услуги
     /// </summary>
     public long ServiceId { get; set; }
-    
+
     /// <summary>
-    /// Слот времени
+    ///     Слот времени
     /// </summary>
     public DateTime Start { get; set; }
 }

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Expenses.Endpoints;
 
 /// <summary>
-/// Получить расходы в текущем месяце
+///     Получить расходы в текущем месяце
 /// </summary>
 /// <param name="dbContext">БД</param>
 public class GetCurrentMonthExpensesEndpoint(AppDbContext dbContext)
@@ -41,22 +41,22 @@ public class GetCurrentMonthExpensesEndpoint(AppDbContext dbContext)
 }
 
 /// <summary>
-/// Ответ на успешный запрос данных о расходах в текущем месяце
+///     Ответ на успешный запрос данных о расходах в текущем месяце
 /// </summary>
 public class CurrentMonthExpensesResponse
 {
     /// <summary>
-    /// Общая сумма
+    ///     Общая сумма
     /// </summary>
     public decimal TotalAmount { get; set; }
 
     /// <summary>
-    /// Количество
+    ///     Количество
     /// </summary>
     public int Count { get; set; }
 
     /// <summary>
-    /// Расходы
+    ///     Расходы
     /// </summary>
     public List<Expense> Expenses { get; set; } = new();
 }

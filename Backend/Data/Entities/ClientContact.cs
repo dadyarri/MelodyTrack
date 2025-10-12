@@ -3,26 +3,26 @@
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Контакт пользователя
+///     Контакт пользователя
 /// </summary>
 public class ClientContact : BaseModel
 {
     /// <summary>
-    /// Ссылка на ВК
+    ///     Ссылка на ВК
     /// </summary>
     [Url]
     [MaxLength(100)]
     public string? Vk { get; set; }
 
     /// <summary>
-    /// Ссылка на телеграм
+    ///     Ссылка на телеграм
     /// </summary>
     [Url]
     [MaxLength(100)]
     public string? Telegram { get; set; }
 
     /// <summary>
-    /// Номер телефона
+    ///     Номер телефона
     /// </summary>
     [RegularExpression(@"^[\+]?[(]?[0-9]{3}[)]?[-\s\.]?[0-9]{3}[-\s\.]?[0-9]{4,6}$",
         ErrorMessage = "Invalid phone number")]

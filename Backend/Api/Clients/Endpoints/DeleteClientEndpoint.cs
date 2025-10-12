@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Clients.Endpoints;
 
 /// <summary>
-/// Удаление клиента
+///     Удаление клиента
 /// </summary>
 /// <param name="db">БД</param>
 public class DeleteClientEndpoint(AppDbContext db)

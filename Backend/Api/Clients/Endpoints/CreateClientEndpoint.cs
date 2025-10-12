@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace Backend.Api.Clients.Endpoints;
 
 /// <summary>
-/// Создание клиента
+///     Создание клиента
 /// </summary>
 /// <param name="db">БД</param>
 public class CreateClientEndpoint(AppDbContext db)

@@ -3,28 +3,32 @@
 namespace Backend.Api.Clients.Models;
 
 /// <summary>
-/// Тело ответа на запрос существующего клиента
+///     Тело ответа на запрос существующего клиента
 /// </summary>
 public class GetClientResponse
 {
     /// <summary>
-    /// Имя
+    ///     Имя
     /// </summary>
     public required string FirstName { get; set; }
+
     /// <summary>
-    /// Фамилия
+    ///     Фамилия
     /// </summary>
     public required string LastName { get; set; }
+
     /// <summary>
-    /// Отчество
+    ///     Отчество
     /// </summary>
     public string? Patronymic { get; set; }
+
     /// <summary>
-    /// Контакты
+    ///     Контакты
     /// </summary>
     public required ClientContact? Contacts { get; set; }
+
     /// <summary>
-    /// Последние платежи
+    ///     Последние платежи
     /// </summary>
     public required List<Payment> LatestPayments { get; set; } = [];
 }

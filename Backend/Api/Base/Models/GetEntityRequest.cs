@@ -1,12 +1,12 @@
 ﻿namespace Backend.Api.Base.Models;
 
 /// <summary>
-/// Запрос сущности
+///     Запрос сущности
 /// </summary>
 public class GetEntityRequest
 {
     /// <summary>
-    /// Идентификатор
+    ///     Идентификатор
     /// </summary>
     public long Id { get; set; }
 }

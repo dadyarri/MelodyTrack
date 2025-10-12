@@ -1,12 +1,12 @@
 namespace Backend.Api.Services.Models;
 
 /// <summary>
-/// Запрос на обновление цены
+///     Запрос на обновление цены
 /// </summary>
 public class UpdateServicePriceRequest
 {
     /// <summary>
-    /// Цена
+    ///     Цена
     /// </summary>
     public required decimal Price { get; set; }
 }

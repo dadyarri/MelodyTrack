@@ -8,7 +8,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace Backend.Api.Expenses.Endpoints;
 
 /// <summary>
-/// Создать расход
+///     Создать расход
 /// </summary>
 /// <param name="db">БД</param>
 public class CreateExpenseEndpoint(AppDbContext db)

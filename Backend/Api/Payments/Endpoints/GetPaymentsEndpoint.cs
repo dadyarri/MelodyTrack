@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Payments.Endpoints;
 
 /// <summary>
-/// Получить платежи
+///     Получить платежи
 /// </summary>
 /// <param name="db">БД</param>
 public class GetPaymentsEndpoint(AppDbContext db)

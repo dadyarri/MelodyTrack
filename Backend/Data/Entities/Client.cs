@@ -3,27 +3,30 @@
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Клиент
+///     Клиент
 /// </summary>
 public class Client : BaseModel
 {
     /// <summary>
-    /// Имя
+    ///     Имя
     /// </summary>
-    [MaxLength(100)] public required string FirstName { get; set; } = string.Empty;
+    [MaxLength(100)]
+    public required string FirstName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Фамилия
+    ///     Фамилия
     /// </summary>
-    [MaxLength(100)] public required string LastName { get; set; } = string.Empty;
+    [MaxLength(100)]
+    public required string LastName { get; set; } = string.Empty;
 
     /// <summary>
-    /// Отчество
+    ///     Отчество
     /// </summary>
-    [MaxLength(100)] public string? Patronymic { get; set; }
+    [MaxLength(100)]
+    public string? Patronymic { get; set; }
 
     /// <summary>
-    /// Контакты
+    ///     Контакты
     /// </summary>
     public required ClientContact? Contacts { get; set; }
 

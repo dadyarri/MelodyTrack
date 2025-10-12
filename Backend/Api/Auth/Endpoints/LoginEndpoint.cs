@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Auth.Endpoints;
 
 /// <summary>
-/// Вход существующего пользователя
+///     Вход существующего пользователя
 /// </summary>
 /// <param name="db">БД</param>
 public class LoginEndpoint(AppDbContext db)

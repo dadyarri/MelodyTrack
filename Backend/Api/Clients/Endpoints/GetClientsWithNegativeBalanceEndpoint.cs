@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Clients.Endpoints;
 
 /// <summary>
-/// Получить список клиентов с долгом
+///     Получить список клиентов с долгом
 /// </summary>
 /// <param name="db">БД</param>
 public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db)

@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Clients.Endpoints;
 
 /// <summary>
-/// Обновить существующего клиента
+///     Обновить существующего клиента
 /// </summary>
 /// <param name="db">БД</param>
 public class

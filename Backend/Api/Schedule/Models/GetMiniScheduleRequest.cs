@@ -1,12 +1,12 @@
 ﻿namespace Backend.Api.Schedule.Models;
 
 /// <summary>
-/// Тело запроса мини расписания
+///     Тело запроса мини расписания
 /// </summary>
 public class GetMiniScheduleRequest
 {
     /// <summary>
-    /// Часовой пояс
+    ///     Часовой пояс
     /// </summary>
     public string Timezone { get; set; }
 }

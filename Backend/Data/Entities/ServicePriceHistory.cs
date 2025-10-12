@@ -1,22 +1,22 @@
 ﻿namespace Backend.Data.Entities;
 
 /// <summary>
-/// История цен на услугу
+///     История цен на услугу
 /// </summary>
 public class ServicePriceHistory : BaseModel
 {
     /// <summary>
-    /// Услуга
+    ///     Услуга
     /// </summary>
     public required Service Service { get; set; }
 
     /// <summary>
-    /// Цена
+    ///     Цена
     /// </summary>
     public required decimal Price { get; set; }
 
     /// <summary>
-    /// Дата вступления цены в силу
+    ///     Дата вступления цены в силу
     /// </summary>
     public required DateTime EffectiveDate { get; set; }
 

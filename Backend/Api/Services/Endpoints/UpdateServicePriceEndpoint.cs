@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Services.Endpoints;
 
 /// <summary>
-/// Обновить цену услуги
+///     Обновить цену услуги
 /// </summary>
 /// <param name="db">БД</param>
 public class UpdateServicePriceEndpoint(AppDbContext db)

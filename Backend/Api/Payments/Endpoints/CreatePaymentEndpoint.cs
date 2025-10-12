@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Payments.Endpoints;
 
 /// <summary>
-/// Создать платёж
+///     Создать платёж
 /// </summary>
 /// <param name="db">БД</param>
 public class CreatePaymentEndpoint(AppDbContext db)

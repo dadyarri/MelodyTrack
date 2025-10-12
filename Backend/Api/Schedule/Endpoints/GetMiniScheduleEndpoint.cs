@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Backend.Api.Schedule.Endpoints;
 
 /// <summary>
-/// Получить мини-расписание
+///     Получить мини-расписание
 /// </summary>
 public class GetMiniScheduleEndpoint(AppDbContext db)
     : Endpoint<GetMiniScheduleRequest, Results<Ok<GetMiniScheduleResponse>, ProblemDetails>>
@@ -37,10 +37,10 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
             {
                 sh.StartDate,
                 Service = sh.Service.Name,
-                Name = $"{sh.Client.FirstName} {sh.Client.LastName}",
+                Name = $"{sh.Client.FirstName} {sh.Client.LastName}"
             })
             .OrderBy(sh => sh.StartDate)
-            .ToListAsync(cancellationToken: ct);
+            .ToListAsync(ct);
 
         var result = new GetMiniScheduleResponse
         {
@@ -53,26 +53,20 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
         var tz = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
 
         foreach (var item in scheduleData)
-        {
             if (item.StartDate.Date == startOfTodayUtc.Date)
-            {
                 result.Items["Сегодня"].Add(new MiniScheduleItem
                 {
                     Name = item.Name,
                     Service = item.Service,
                     Time = DateTimeUtils.ConvertDateToTimezone(item.StartDate, tz)
                 });
-            }
             else if (item.StartDate.Date == startOfTomorrowUtc.Date)
-            {
                 result.Items["Завтра"].Add(new MiniScheduleItem
                 {
                     Name = item.Name,
                     Service = item.Service,
                     Time = DateTimeUtils.ConvertDateToTimezone(item.StartDate, tz)
                 });
-            }
-        }
 
         return TypedResults.Ok(result);
     }

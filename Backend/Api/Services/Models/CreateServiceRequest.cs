@@ -3,22 +3,23 @@
 namespace Backend.Api.Services.Models;
 
 /// <summary>
-/// Запрос на создание услуги
+///     Запрос на создание услуги
 /// </summary>
 public class CreateServiceRequest
 {
     /// <summary>
-    /// Название
+    ///     Название
     /// </summary>
-    [MaxLength(200)] public required string Name { get; set; }
+    [MaxLength(200)]
+    public required string Name { get; set; }
 
     /// <summary>
-    /// Описание
+    ///     Описание
     /// </summary>
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Цена
+    ///     Цена
     /// </summary>
     public decimal Price { get; set; }
 }

@@ -3,23 +3,24 @@
 namespace Backend.Data.Entities;
 
 /// <summary>
-/// Услуга
+///     Услуга
 /// </summary>
 public class Service : BaseModel
 {
     /// <summary>
-    /// Название
+    ///     Название
     /// </summary>
-    [MaxLength(200)] public required string Name { get; set; }
+    [MaxLength(200)]
+    public required string Name { get; set; }
 
     /// <summary>
-    /// Описание
+    ///     Описание
     /// </summary>
     [MaxLength(200)]
     public string Description { get; set; } = string.Empty;
 
     /// <summary>
-    /// Пользователь, оказывающий услугу
+    ///     Пользователь, оказывающий услугу
     /// </summary>
     public required User Provider { get; set; }
 }
