@@ -3,6 +3,7 @@ using Backend.Api.Base.Models;
 using Backend.Api.Schedule.Models;
 using Backend.Data;
 using Backend.Data.Entities;
+using Backend.Utils;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -48,23 +49,10 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
 
         foreach (var item in items)
         {
-            item.StartDate = ConvertDateToTimezone(item.StartDate, tz);
-            item.EndDate = ConvertDateToTimezone(item.EndDate, tz);
+            item.StartDate = DateTimeUtils.ConvertDateToTimezone(item.StartDate, tz);
+            item.EndDate = DateTimeUtils.ConvertDateToTimezone(item.EndDate, tz);
         }
 
         return TypedResults.Ok(items);
-    }
-
-    private DateTime ConvertDateToTimezone(DateTime date, TimeZoneInfo tz)
-    {
-        if (date.Kind == DateTimeKind.Unspecified)
-        {
-            date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
-        }
-        else if (date.Kind == DateTimeKind.Local)
-        {
-            date = date.ToUniversalTime();
-        }
-        return TimeZoneInfo.ConvertTimeFromUtc(date, tz);
     }
 }
