@@ -44,6 +44,29 @@ try
             s.Version = "v1";
         };
     });
+    builder.Services.AddCors(options =>
+    {
+        if (builder.Environment.IsDevelopment())
+        {
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy.WithOrigins("http://localhost:5173")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        }
+        else
+        {
+            options.AddPolicy("AllowFrontend", policy =>
+            {
+                policy.WithOrigins("https://mt.dadyarri.ru")
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        }
+    });
 
     // Database configuration
     if (builder.Environment.IsProduction())
@@ -65,6 +88,7 @@ try
 
     app.UseAuthentication();
     app.UseAuthorization();
+    app.UseCors("AllowFrontend");
     app.UseFastEndpoints();
     app.UseSerilogRequestLogging();
     app.UseSwaggerGen();
