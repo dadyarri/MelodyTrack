@@ -1,5 +1,6 @@
 ﻿using Backend.Api.Schedule.Models;
 using Backend.Data;
+using Backend.Utils;
 using FastEndpoints;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ namespace Backend.Api.Schedule.Endpoints;
 /// Получить мини-расписание
 /// </summary>
 public class GetMiniScheduleEndpoint(AppDbContext db)
-    : Endpoint<EmptyRequest, Results<Ok<GetMiniScheduleResponse>, ProblemDetails>>
+    : Endpoint<GetMiniScheduleRequest, Results<Ok<GetMiniScheduleResponse>, ProblemDetails>>
 {
     /// <inheritdoc />
     public override void Configure()
@@ -19,7 +20,8 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
     }
 
     /// <inheritdoc />
-    public override async Task<Results<Ok<GetMiniScheduleResponse>, ProblemDetails>> ExecuteAsync(EmptyRequest req,
+    public override async Task<Results<Ok<GetMiniScheduleResponse>, ProblemDetails>> ExecuteAsync(
+        GetMiniScheduleRequest req,
         CancellationToken ct)
     {
         var now = DateTime.UtcNow;
@@ -48,6 +50,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
                 { "Завтра", [] }
             }
         };
+        var tz = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
 
         foreach (var item in scheduleData)
         {
@@ -57,7 +60,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
                 {
                     Name = item.Name,
                     Service = item.Service,
-                    Time = item.StartDate,
+                    Time = DateTimeUtils.ConvertDateToTimezone(item.StartDate, tz)
                 });
             }
             else if (item.StartDate.Date == startOfTomorrowUtc.Date)
@@ -66,7 +69,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
                 {
                     Name = item.Name,
                     Service = item.Service,
-                    Time = item.StartDate,
+                    Time = DateTimeUtils.ConvertDateToTimezone(item.StartDate, tz)
                 });
             }
         }
