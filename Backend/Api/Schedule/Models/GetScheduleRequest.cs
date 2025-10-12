@@ -18,4 +18,10 @@ public class GetScheduleRequest
     /// </summary>
     [Required]
     public DateTime EndDate { get; set; }
+
+    /// <summary>
+    /// Часовой пояс
+    /// </summary>
+    [Required]
+    public string Timezone { get; set; }
 }

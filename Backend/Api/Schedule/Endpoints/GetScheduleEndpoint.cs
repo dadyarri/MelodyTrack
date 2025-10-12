@@ -15,7 +15,7 @@ namespace Backend.Api.Schedule.Endpoints;
 /// </summary>
 /// <param name="dbContext">БД</param>
 public class GetScheduleEndpoint(AppDbContext dbContext)
-    : Endpoint<GetScheduleRequest, Results<Ok<PaginatedResponse<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
+    : Endpoint<GetScheduleRequest, Results<Ok<List<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
 {
     /// <inheritdoc />
     public override void Configure()
@@ -24,7 +24,7 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
     }
 
     /// <inheritdoc />
-    public override async Task<Results<Ok<PaginatedResponse<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
+    public override async Task<Results<Ok<List<ServiceHistory>>, ForbidHttpResult, ProblemDetails>>
         ExecuteAsync(
             GetScheduleRequest req,
             CancellationToken ct)
@@ -43,18 +43,28 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
             .Where(sh => sh.StartDate >= req.StartDate && sh.StartDate <= req.EndDate && sh.Service.Provider == user)
             .OrderBy(sh => sh.StartDate);
 
-        var total = await query.CountAsync(ct);
         var items = await query.ToListAsync(ct);
+        var tz = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
 
-        return TypedResults.Ok(new PaginatedResponse<ServiceHistory>
+        foreach (var item in items)
         {
-            Data = items,
-            Info = new PagedInfo
-            {
-                Total = total,
-                Page = 1,
-                PageSize = total
-            }
-        });
+            item.StartDate = ConvertDateToTimezone(item.StartDate, tz);
+            item.EndDate = ConvertDateToTimezone(item.EndDate, tz);
+        }
+
+        return TypedResults.Ok(items);
+    }
+
+    private DateTime ConvertDateToTimezone(DateTime date, TimeZoneInfo tz)
+    {
+        if (date.Kind == DateTimeKind.Unspecified)
+        {
+            date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
+        }
+        else if (date.Kind == DateTimeKind.Local)
+        {
+            date = date.ToUniversalTime();
+        }
+        return TimeZoneInfo.ConvertTimeFromUtc(date, tz);
     }
 }
