@@ -20,7 +20,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Patch("/api/services/{id:long}/price");
+        Patch("/services/{id:long}/price");
     }
 
     /// <inheritdoc />

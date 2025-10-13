@@ -17,7 +17,7 @@ public class GetExpensesEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/expenses");
+        Get("/expenses");
     }
 
     /// <inheritdoc />

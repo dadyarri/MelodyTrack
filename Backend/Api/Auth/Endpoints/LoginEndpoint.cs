@@ -17,7 +17,7 @@ public class LoginEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/auth/login");
+        Post("/auth/login");
         AllowAnonymous();
     }
 

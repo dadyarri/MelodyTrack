@@ -16,7 +16,7 @@ public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/clients/in-debt");
+        Get("/clients/in-debt");
     }
 
     /// <inheritdoc />

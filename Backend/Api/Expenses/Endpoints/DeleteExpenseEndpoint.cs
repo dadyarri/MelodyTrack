@@ -15,7 +15,7 @@ public class DeleteExpenseEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Delete("/api/expenses/{id:long}");
+        Delete("/expenses/{id:long}");
     }
 
     /// <inheritdoc />

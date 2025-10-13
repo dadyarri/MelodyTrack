@@ -16,7 +16,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/schedule/mini");
+        Get("/schedule/mini");
     }
 
     /// <inheritdoc />

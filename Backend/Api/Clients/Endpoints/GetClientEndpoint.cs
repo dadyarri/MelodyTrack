@@ -17,7 +17,7 @@ public class GetClientEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/clients/{id:long}");
+        Get("/clients/{id:long}");
     }
 
     /// <inheritdoc />

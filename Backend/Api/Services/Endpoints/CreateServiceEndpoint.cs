@@ -20,7 +20,7 @@ public class CreateServiceEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/services");
+        Post("/services");
     }
 
     /// <inheritdoc />

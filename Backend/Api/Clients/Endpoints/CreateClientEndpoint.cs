@@ -17,7 +17,7 @@ public class CreateClientEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/clients");
+        Post("/clients");
     }
 
     /// <inheritdoc />

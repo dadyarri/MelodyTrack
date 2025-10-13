@@ -17,7 +17,7 @@ public class CreateExpenseEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/expenses");
+        Post("/expenses");
     }
 
     /// <inheritdoc />

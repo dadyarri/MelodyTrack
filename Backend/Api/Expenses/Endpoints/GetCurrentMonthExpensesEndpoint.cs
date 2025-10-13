@@ -15,7 +15,7 @@ public class GetCurrentMonthExpensesEndpoint(AppDbContext dbContext)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/expenses/current-month");
+        Get("/expenses/current-month");
         AllowAnonymous();
     }
 

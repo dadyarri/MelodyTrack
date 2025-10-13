@@ -20,7 +20,7 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/schedule");
+        Get("/schedule");
     }
 
     /// <inheritdoc />

@@ -14,7 +14,7 @@ public class ToggleServiceScheduleCompletionEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Patch("/api/schedule/{id:long}/completion");
+        Patch("/schedule/{id:long}/completion");
     }
 
     /// <inheritdoc />

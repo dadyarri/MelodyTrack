@@ -19,7 +19,7 @@ public class
     /// <inheritdoc />
     public override void Configure()
     {
-        Put("/api/clients/{id:long}");
+        Put("/clients/{id:long}");
     }
 
     /// <inheritdoc />

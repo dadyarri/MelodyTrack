@@ -20,7 +20,7 @@ public class CreateServiceScheduleEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/schedule");
+        Post("/schedule");
     }
 
     /// <inheritdoc />

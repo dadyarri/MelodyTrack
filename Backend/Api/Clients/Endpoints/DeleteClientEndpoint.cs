@@ -15,7 +15,7 @@ public class DeleteClientEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Delete("/api/clients/{id:long}");
+        Delete("/clients/{id:long}");
     }
 
     /// <inheritdoc />

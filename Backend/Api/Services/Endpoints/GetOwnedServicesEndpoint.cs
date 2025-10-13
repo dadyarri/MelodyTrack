@@ -18,7 +18,7 @@ public class GetOwnedServicesEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/services");
+        Get("/services");
     }
 
     /// <inheritdoc />

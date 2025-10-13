@@ -18,7 +18,7 @@ public class CreatePaymentEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Post("/api/payments");
+        Post("/payments");
     }
 
     /// <inheritdoc />

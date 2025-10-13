@@ -17,7 +17,7 @@ public class GetPaymentsEndpoint(AppDbContext db)
     /// <inheritdoc />
     public override void Configure()
     {
-        Get("/api/payments");
+        Get("/payments");
     }
 
     /// <inheritdoc />
