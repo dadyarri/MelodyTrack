@@ -82,6 +82,13 @@ try
 
     var app = builder.Build();
 
+    if (args.Contains("--update-db"))
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        await db.Database.MigrateAsync();
+    }
+
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseCors("AllowFrontend");
