@@ -1,5 +1,5 @@
 on:
-  push: 
+  push:
     branches:
       - master
 jobs:
@@ -11,8 +11,8 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: '10.0.x'
-          dotnet-quality: 'preview'
+          dotnet-version: "10.0.x"
+          dotnet-quality: "preview"
       - name: Build
         run: |
           dotnet restore
@@ -31,7 +31,7 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/melody-track-backend:latest
             ghcr.io/${{ github.repository_owner }}/melody-track-backend:${{ github.sha }}
-      - name: Execute remote SSH commands using password
+      - name: Update backend on homelab
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.SSH_HOST }}
@@ -41,4 +41,3 @@ jobs:
           script: |
             dcpull melody-track-backend
             dcrec melody-track-backend
-            
