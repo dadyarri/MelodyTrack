@@ -47,8 +47,8 @@ public class CreateServiceScheduleEndpoint(AppDbContext db)
         {
             Client = client,
             Service = service,
-            StartDate = req.Start,
-            EndDate = req.Start.AddHours(1)
+            StartDate = req.Start.ToUniversalTime(),
+            EndDate = req.Start.AddHours(1).ToUniversalTime()
         };
 
         await db.Schedule.AddAsync(entity, ct);

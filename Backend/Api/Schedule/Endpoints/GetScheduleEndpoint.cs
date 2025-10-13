@@ -40,7 +40,8 @@ public class GetScheduleEndpoint(AppDbContext dbContext)
         var query = dbContext.Schedule
             .Include(sh => sh.Service)
             .Include(sh => sh.Client)
-            .Where(sh => sh.StartDate >= req.StartDate && sh.StartDate <= req.EndDate && sh.Service.Provider == user)
+            .Where(sh => sh.StartDate >= DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc) && sh.StartDate <=
+                DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc) && sh.Service.Provider == user)
             .OrderBy(sh => sh.StartDate);
 
         var items = await query.ToListAsync(ct);

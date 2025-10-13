@@ -36,10 +36,8 @@ try
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
     {
-        o.AutoTagPathSegmentIndex = 2;
         o.DocumentSettings = s =>
         {
-            s.DocumentName = "Melody Track";
             s.Title = "Melody Track API";
             s.Version = "v1";
         };
