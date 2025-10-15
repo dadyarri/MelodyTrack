@@ -31,5 +31,5 @@ public class Payment : BaseModel
     /// <summary>
     ///     Услуга
     /// </summary>
-    public Service Service { get; set; }
+    public Service? Service { get; set; }
 }
