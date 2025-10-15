@@ -33,13 +33,15 @@ public class GetMiniScheduleEndpoint(AppDbContext db)
                          (sh.StartDate >= startOfTomorrowUtc && sh.StartDate < startOfDayAfterTomorrowUtc))
             .Include(sh => sh.Client)
             .Include(sh => sh.Service)
+            .OrderBy(sh => sh.StartDate)
+            .ThenBy(sh => sh.Client.LastName)
+            .ThenBy(sh => sh.Client.FirstName)
             .Select(sh => new
             {
                 sh.StartDate,
                 Service = sh.Service.Name,
-                Name = $"{sh.Client.FirstName} {sh.Client.LastName}"
+                Name = $"{sh.Client.LastName} {sh.Client.FirstName}"
             })
-            .OrderBy(sh => sh.StartDate)
             .ToListAsync(ct);
 
         var result = new GetMiniScheduleResponse
