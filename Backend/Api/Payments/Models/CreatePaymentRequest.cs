@@ -23,7 +23,7 @@ public class CreatePaymentRequest
     /// <summary>
     ///     Дата
     /// </summary>
-    public required DateTime Date { get; set; } = DateTime.UtcNow;
+    public DateTime Date { get; set; } = DateTime.UtcNow;
 
     /// <summary>
     ///     Описание
