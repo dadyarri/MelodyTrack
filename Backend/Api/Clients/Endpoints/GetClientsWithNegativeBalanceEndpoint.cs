@@ -24,6 +24,8 @@ public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db)
     {
         var allClients = await db.Clients
             .Include(e => e.Contacts)
+            .OrderBy(e => e.FirstName)
+            .ThenBy(e => e.LastName)
             .ToListAsync(ct);
 
         var clientsWithBalances = new List<ClientWithBalanceResponse>();

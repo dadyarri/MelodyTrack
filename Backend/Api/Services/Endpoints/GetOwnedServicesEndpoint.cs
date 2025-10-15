@@ -37,6 +37,7 @@ public class GetOwnedServicesEndpoint(AppDbContext db)
 
         var services = await db.Services
             .Where(e => e.Provider == user)
+            .OrderBy(e => e.Name)
             .ToListAsync(ct);
 
         List<ServiceDto> serviceDtos = [];

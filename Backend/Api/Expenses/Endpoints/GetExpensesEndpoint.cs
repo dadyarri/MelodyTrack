@@ -28,6 +28,7 @@ public class GetExpensesEndpoint(AppDbContext db)
         var expenses = await db.Expenses
             .Skip(skipped)
             .Take(req.PageSize)
+            .OrderBy(e => e.Date)
             .ToListAsync(ct);
 
         var expensesCount = await db.Expenses.CountAsync(ct);

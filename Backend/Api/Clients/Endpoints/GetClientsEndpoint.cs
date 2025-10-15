@@ -33,6 +33,8 @@ public class GetClientsEndpoint(AppDbContext db)
             .Include(e => e.Contacts)
             .Skip(skipped)
             .Take(req.PageSize)
+            .OrderBy(e => e.LastName)
+            .ThenBy(e => e.FirstName)
             .ToListAsync(ct);
 
         // Get total count

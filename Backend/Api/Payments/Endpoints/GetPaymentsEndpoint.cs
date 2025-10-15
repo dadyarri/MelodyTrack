@@ -30,6 +30,9 @@ public class GetPaymentsEndpoint(AppDbContext db)
             .Take(req.PageSize)
             .Include(e => e.Service)
             .Include(e => e.Client)
+            .OrderBy(e => e.Date)
+            .ThenBy(e => e.Client.LastName)
+            .ThenBy(e => e.Client.FirstName)
             .ToListAsync(ct);
 
         var paymentsCount = await db.Payments.CountAsync(ct);
