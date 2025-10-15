@@ -9,6 +9,11 @@ public class CreatePaymentRequest
     ///     Идентификатор клиента
     /// </summary>
     public required long ClientId { get; set; }
+    
+    /// <summary>
+    /// Идентификатор услуги
+    /// </summary>
+    public long ServiceId { get; set; }
 
     /// <summary>
     ///     Сумма

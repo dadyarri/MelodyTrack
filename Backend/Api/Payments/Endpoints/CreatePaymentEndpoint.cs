@@ -31,10 +31,17 @@ public class CreatePaymentEndpoint(AppDbContext db)
             .FirstOrDefaultAsync(ct);
 
         if (client == null) return TypedResults.NotFound();
+        
+        var service = await db.Services
+            .Where(e => e.Id == req.ServiceId)
+            .FirstOrDefaultAsync(ct);
+        
+        if (service == null) return TypedResults.NotFound();
 
         var payment = new Payment
         {
             Client = client,
+            Service = service,
             Description = req.Description,
             Amount = req.Amount,
             Date = DateTime.UtcNow

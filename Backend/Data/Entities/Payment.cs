@@ -27,4 +27,9 @@ public class Payment : BaseModel
     /// </summary>
     [MaxLength(200)]
     public required string Description { get; set; } = string.Empty;
+
+    /// <summary>
+    ///     Услуга
+    /// </summary>
+    public Service Service { get; set; }
 }
