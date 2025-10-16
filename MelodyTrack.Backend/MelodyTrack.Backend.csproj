@@ -9,6 +9,10 @@
 
     <ItemGroup>
         <PackageReference Include="FastEndpoints" Version="7.1.0-beta.24"/>
+        <PackageReference Include="FastEndpoints.Generator" Version="7.1.0-beta.24">
+          <PrivateAssets>all</PrivateAssets>
+          <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
         <PackageReference Include="FastEndpoints.Security" Version="7.1.0-beta.24"/>
         <PackageReference Include="FastEndpoints.Swagger" Version="7.1.0-beta.24"/>
         <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0" />
@@ -37,9 +41,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Api\Auth\Endpoints\" />
-      <Folder Include="Api\Auth\Requests\" />
-      <Folder Include="Api\Auth\Responses\" />
       <Folder Include="Data\Migrations\" />
     </ItemGroup>
 
