@@ -1,6 +1,7 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using MelodyTrack.Backend;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -36,14 +37,14 @@ try
     });
 
     builder.Services.AddAuthorization();
-    builder.Services.AddFastEndpoints();
+    builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
     {
         o.DocumentSettings = s =>
         {
             s.Title = "Melody Track API";
-            s.Version = "v1";
+            s.Version = "v2";
         };
     });
     builder.Services.AddCors(options =>
@@ -69,17 +70,35 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseCors("AllowFrontend");
-    app.UseFastEndpoints();
+    app.UseFastEndpoints(x =>
+    {
+        x.Errors.UseProblemDetails(pdc =>
+            {
+                pdc.AllowDuplicateErrors = true;
+                pdc.IndicateErrorCode = true;
+                pdc.IndicateErrorSeverity = true;
+                pdc.TypeValue = "https://www.rfc-editor.org/rfc/rfc7231#section-6.5.1";
+                pdc.TitleValue = "Ошибка валидации";
+                pdc.TitleTransformer = pd => pd.Status switch
+                {
+                    400 => "Ошибка валидации",
+                    404 => "Не найдено",
+                    _ => "Произошла неизвестная ошибка!"
+                };
+            }
+        );
+        x.Errors.ProducesMetadataType = typeof(ProblemDetails);
+    });
     app.UseSerilogRequestLogging();
     app.UseSwaggerGen();
 
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.SUPERUSER);
+    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
     if (superuserRole == null)
     {
-        throw new MissingRoleInDatabaseException(UserRoles.SUPERUSER);
+        throw new MissingRoleInDatabaseException(UserRoles.Superuser);
     }
 
     var hasSuperuser = await db.Users
@@ -87,18 +106,32 @@ try
         .Include(e => e.Role)
         .AnyAsync(e => e.Role == superuserRole);
 
+    var inviteCode = await db.InviteCodes
+        .AsNoTracking()
+        .Include(e => e.Role)
+        .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow);
+
     if (!hasSuperuser)
     {
-        var inviteCode = Ulid.NewUlid();
-        var url = $"{appDomain}/invite?code={inviteCode}";
-        await db.InviteCodes.AddAsync(new InviteCode
+        Ulid code;
+        if (inviteCode is null)
         {
-            Id = new Ulid(),
-            Code = inviteCode,
-            Role = superuserRole,
-            ValidUntil = DateTime.UtcNow.AddDays(2)
-        });
-        await db.SaveChangesAsync();
+            code = Ulid.NewUlid();
+            await db.InviteCodes.AddAsync(new InviteCode
+            {
+                Id = Ulid.NewUlid(),
+                Code = code,
+                Role = superuserRole,
+                ValidUntil = DateTime.UtcNow.AddDays(2)
+            });
+            await db.SaveChangesAsync();
+        }
+        else
+        {
+            code = inviteCode.Code;
+        }
+
+        var url = $"{appDomain}/invite?code={code}";
         Log.Warning("Superuser was not created yet. Use this link to create a new superuser: {Link}", url);
     }
 
