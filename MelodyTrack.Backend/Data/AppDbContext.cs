@@ -27,19 +27,19 @@ public class AppDbContext : DbContext
                 new Role
                 {
                     Id = Ulid.Parse("01K7PVV27FAPWXRHE8H93T0DZM"),
-                    RoleName = UserRoles.SUPERUSER,
+                    RoleName = UserRoles.Superuser,
                     DisplayName = "Суперпользователь"
                 },
                 new Role
                 {
                     Id = Ulid.Parse("01K7PVV92WS673S9YRXHYWTHEN"),
-                    RoleName = UserRoles.ADMIN,
+                    RoleName = UserRoles.Admin,
                     DisplayName = "Администратор"
                 },
                 new Role
                 {
                     Id = Ulid.Parse("01K7PVVCR9D4HJ5DH1HEYTQQG9"),
-                    RoleName = UserRoles.USER,
+                    RoleName = UserRoles.User,
                     DisplayName = "Пользователь"
                 }
             ]

@@ -1,8 +1,9 @@
 ﻿namespace MelodyTrack.Backend.Data.Enums;
 
+[Flags]
 public enum UserRoles
 {
-    SUPERUSER,
-    ADMIN,
-    USER
+    Superuser = 1,
+    Admin = 2,
+    User = 4
 }
