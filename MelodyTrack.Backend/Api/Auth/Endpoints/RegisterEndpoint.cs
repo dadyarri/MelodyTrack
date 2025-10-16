@@ -8,6 +8,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using QRCoder;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -49,13 +50,13 @@ public class RegisterEndpoint(AppDbContext db)
 
         inviteCode.WasUsed = true;
 
-        var isTotpRequired = inviteCode.Role.RoleName == (UserRoles.Admin | UserRoles.Superuser);
+        var isTotpRequired = (inviteCode.Role.RoleName & (UserRoles.Admin | UserRoles.Superuser)) != 0;
         RegisterResponse? response;
         if (isTotpRequired)
         {
             var secretBytes = new byte[16];
             RandomNumberGenerator.Fill(secretBytes);
-            var secret = Convert.ToBase64String(secretBytes);
+            var secret = Base64UrlEncoder.Encode(secretBytes).ToUpperInvariant();
 
             var generator = new PayloadGenerator.OneTimePassword
             {
