@@ -33,7 +33,7 @@ try
 
     builder.Services.AddAuthenticationJwtBearer(opts =>
     {
-        opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("JWT_SIGNING_KEY");
+        opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
     });
 
     builder.Services.AddAuthorization();
