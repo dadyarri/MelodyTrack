@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Security.Cryptography;
+using System.Text;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
 
@@ -57,5 +58,28 @@ public class UserUtils
         }
 
         return false;
+    }
+
+    public static IEnumerable<string> GenerateRecoveryCodes()
+    {
+        const int numberOfCodes = 10;
+        const int codeLength = 10;
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var codes = new List<string>();
+        var bytes = new byte[codeLength];
+
+        for (var i = 0; i < numberOfCodes; i++)
+        {
+            RandomNumberGenerator.Fill(bytes);
+            var codeBuilder = new StringBuilder();
+            for (var j = 0; j < codeLength; j++)
+            {
+                codeBuilder.Append(chars[bytes[j] % chars.Length]);
+            }
+
+            codes.Add(codeBuilder.ToString());
+        }
+
+        return codes;
     }
 }
