@@ -2,6 +2,9 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -25,6 +28,7 @@ Log.Information("Starting up");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
+    var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
 
     builder.Services.AddAuthenticationJwtBearer(opts =>
     {
@@ -46,7 +50,7 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN"))
+            policy.WithOrigins(appDomain)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -54,20 +58,11 @@ try
     });
 
     // Database configuration
-    if (builder.Environment.IsProduction())
-    {
-        var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
-        builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
-        );
-        Log.Information("Using PostgreSQL database in production");
-    }
-    else
-    {
-        var dbPath = Path.Combine(builder.Environment.ContentRootPath, "Data", "database.db");
-        builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseSqlite($"Data Source={dbPath}")
-        );
-        Log.Information("Using SQLite database in development at {DatabasePath}", dbPath);
-    }
+
+    var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
+    builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
+    );
+    Log.Information("Using PostgreSQL database");
 
     var app = builder.Build();
 
@@ -77,6 +72,35 @@ try
     app.UseFastEndpoints();
     app.UseSerilogRequestLogging();
     app.UseSwaggerGen();
+
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.SUPERUSER);
+
+    if (superuserRole == null)
+    {
+        throw new MissingRoleInDatabaseException(UserRoles.SUPERUSER);
+    }
+
+    var hasSuperuser = await db.Users
+        .AsNoTracking()
+        .Include(e => e.Role)
+        .AnyAsync(e => e.Role == superuserRole);
+
+    if (!hasSuperuser)
+    {
+        var inviteCode = Ulid.NewUlid();
+        var url = $"{appDomain}/invite?code={inviteCode}";
+        await db.InviteCodes.AddAsync(new InviteCode
+        {
+            Id = new Ulid(),
+            Code = inviteCode,
+            Role = superuserRole,
+            ValidUntil = DateTime.UtcNow.AddDays(2)
+        });
+        await db.SaveChangesAsync();
+        Log.Warning("Superuser was not created yet. Use this link to create a new superuser: {Link}", url);
+    }
 
     app.Run();
     return 0;
