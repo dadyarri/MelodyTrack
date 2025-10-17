@@ -35,7 +35,7 @@ public class RegisterEndpoint(AppDbContext db)
             return TypedResults.Forbid();
         }
 
-        var email = inviteCode.Email ?? req.Email;
+        var email = (inviteCode.Email ?? req.Email).ToLowerInvariant();
 
         var hasUser = await db.Users.AnyAsync(u => u.Email == email, ct);
 
