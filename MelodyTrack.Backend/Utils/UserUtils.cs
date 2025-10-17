@@ -60,24 +60,29 @@ public class UserUtils
         return false;
     }
 
+    public static string GenerateRandomString(int length)
+    {
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        var bytes = new byte[length];
+        RandomNumberGenerator.Fill(bytes);
+        var sb = new StringBuilder();
+        for (var j = 0; j < length; j++)
+        {
+            sb.Append(chars[bytes[j] % chars.Length]);
+        }
+
+        return sb.ToString();
+    }
+
     public static IEnumerable<string> GenerateRecoveryCodes()
     {
         const int numberOfCodes = 10;
         const int codeLength = 10;
-        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
         var codes = new List<string>();
-        var bytes = new byte[codeLength];
 
         for (var i = 0; i < numberOfCodes; i++)
         {
-            RandomNumberGenerator.Fill(bytes);
-            var codeBuilder = new StringBuilder();
-            for (var j = 0; j < codeLength; j++)
-            {
-                codeBuilder.Append(chars[bytes[j] % chars.Length]);
-            }
-
-            codes.Add(codeBuilder.ToString());
+            codes.Add(GenerateRandomString(codeLength));
         }
 
         return codes;
