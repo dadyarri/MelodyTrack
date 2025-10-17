@@ -1,7 +1,10 @@
-﻿using System.Security.Cryptography;
+﻿using System.Security.Claims;
+using System.Security.Cryptography;
 using System.Text;
+using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
+using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Utils;
 
@@ -86,5 +89,17 @@ public class UserUtils
         }
 
         return codes;
+    }
+
+    public static string CreateAccessToken(User user)
+    {
+        var expireAt = DateTime.UtcNow.AddMinutes(10);
+        return JwtBearer.CreateToken(opts =>
+        {
+            opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+            opts.Issuer = "MelodyTrack";
+            opts.ExpireAt = expireAt;
+            opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
+        });
     }
 }
