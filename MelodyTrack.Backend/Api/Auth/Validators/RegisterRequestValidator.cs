@@ -24,7 +24,8 @@ public class RegisterRequestValidator : Validator<RegisterRequest>
             .MinimumLength(8)
             .WithMessage("Минимальная длина пароля — 8 символов")
             .Matches("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$")
-            .WithMessage("Пароль не в валидном формате")
+            .WithMessage(
+                "Пароль слишком простой: включите хотя бы одну заглавную латинскую букву, одну строчную, одну цифру и один спецсимвол")
             .Custom((value, ctx) =>
             {
                 var path = Directory
