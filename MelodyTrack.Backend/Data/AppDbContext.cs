@@ -50,4 +50,5 @@ public class AppDbContext : DbContext
     public DbSet<Role> Roles { get; set; }
     public DbSet<InviteCode> InviteCodes { get; set; }
     public DbSet<RecoveryCode> RecoveryCodes { get; set; }
+    public DbSet<Session> Sessions { get; set; }
 }
