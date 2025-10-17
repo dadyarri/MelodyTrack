@@ -63,17 +63,8 @@ public class RegisterEndpoint(AppDbContext db)
         RegisterResponse? response;
         if (isTotpRequired)
         {
-            var secretBytes = new byte[16];
-            RandomNumberGenerator.Fill(secretBytes);
-            var secret = Base32Encoding.ToString(secretBytes);
-
-            var generator = new PayloadGenerator.OneTimePassword
-            {
-                Secret = secret,
-                Issuer = "MelodyTrack",
-                Label = email,
-                AuthAlgorithm = PayloadGenerator.OneTimePassword.OneTimePasswordAuthAlgorithm.SHA512
-            };
+            
+            var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
             user.TotpSecret = secret;
 
@@ -81,7 +72,7 @@ public class RegisterEndpoint(AppDbContext db)
             {
                 TotpRequired = isTotpRequired,
                 Secret = secret,
-                OtpUrl = generator.ToString()
+                OtpUrl = otpUrl
             };
         }
         else

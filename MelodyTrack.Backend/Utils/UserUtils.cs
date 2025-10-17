@@ -5,6 +5,8 @@ using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
 using MelodyTrack.Backend.Data.Models;
+using OtpNet;
+using QRCoder;
 
 namespace MelodyTrack.Backend.Utils;
 
@@ -101,5 +103,22 @@ public class UserUtils
             opts.ExpireAt = expireAt;
             opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
         });
+    }
+
+    public static (string Secret, string OtpUrl) GenerateTotp(string email)
+    {
+        var secretBytes = new byte[16];
+        RandomNumberGenerator.Fill(secretBytes);
+        var secret = Base32Encoding.ToString(secretBytes);
+
+        var generator = new PayloadGenerator.OneTimePassword
+        {
+            Secret = secret,
+            Issuer = "MelodyTrack",
+            Label = email,
+            AuthAlgorithm = PayloadGenerator.OneTimePassword.OneTimePasswordAuthAlgorithm.SHA512
+        };
+
+        return (secret, generator.ToString());
     }
 }
