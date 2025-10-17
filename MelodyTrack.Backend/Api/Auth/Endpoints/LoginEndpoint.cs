@@ -38,7 +38,6 @@ public class LoginEndpoint(AppDbContext db)
         {
             var secretKey = Base32Encoding.ToBytes(user.TotpSecret);
             var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
-            Log.Logger.Information("{Totp}", totp.ComputeTotp());
             if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
             {
                 return TypedResults.Unauthorized();
