@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Primitives;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -26,6 +27,7 @@ public class RefreshEndpoint(AppDbContext db)
             .Include(e => e.User)
             .FirstOrDefaultAsync(ct);
 
+
         if (session is null)
         {
             return TypedResults.Unauthorized();
@@ -41,7 +43,7 @@ public class RefreshEndpoint(AppDbContext db)
             Id = Ulid.NewUlid(),
             User = session.User,
             RefreshToken = refreshToken,
-            DeviceInfo = req.DeviceInfo,
+            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
             ValidUntil = DateTime.UtcNow.AddDays(7),
         };
 

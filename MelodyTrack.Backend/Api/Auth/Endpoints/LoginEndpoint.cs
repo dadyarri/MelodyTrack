@@ -55,7 +55,7 @@ public class LoginEndpoint(AppDbContext db)
             Id = Ulid.NewUlid(),
             User = user,
             RefreshToken = refreshToken,
-            DeviceInfo = req.DeviceInfo,
+            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
             ValidUntil = DateTime.UtcNow.AddDays(7),
         };
 
