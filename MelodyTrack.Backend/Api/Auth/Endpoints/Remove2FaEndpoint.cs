@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Revome2FaEndpoint(AppDbContext db)
+public class Remove2FaEndpoint(AppDbContext db)
     : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
