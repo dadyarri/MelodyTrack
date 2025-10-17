@@ -2,10 +2,13 @@
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using OtpNet;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -21,11 +24,25 @@ public class LoginEndpoint(AppDbContext db)
     public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
         CancellationToken ct)
     {
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == req.Email, ct);
+        var user = await db.Users
+            .Include(e => e.Role)
+            .FirstOrDefaultAsync(e => e.Email == req.Email, ct);
 
-        if (user is null || UserUtils.IsValidPassword(user.Password, req.Password))
+        if (user is null || UserUtils.IsValidPassword(user.Password, req.Password) ||
+            (user.Role.RoleName.IsAnyAdmin() && req.Otp is null))
         {
             return TypedResults.Unauthorized();
+        }
+
+        if (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null)
+        {
+            var secretKey = Base32Encoding.ToBytes(user.TotpSecret);
+            var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
+            Log.Logger.Information("{Totp}", totp.ComputeTotp());
+            if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
+            {
+                return TypedResults.Unauthorized();
+            }
         }
 
         await db.Sessions.Where(e => e.User == user)
@@ -43,6 +60,7 @@ public class LoginEndpoint(AppDbContext db)
         };
 
         await db.Sessions.AddAsync(session, ct);
+        await db.SaveChangesAsync(ct);
 
         var response = new LoginResponse
         {
