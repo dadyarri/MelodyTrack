@@ -58,7 +58,7 @@ public class RegisterEndpoint(AppDbContext db)
 
         inviteCode.WasUsed = true;
 
-        var isTotpRequired = (inviteCode.Role.RoleName & (UserRoles.Admin | UserRoles.Superuser)) != 0;
+        var isTotpRequired = inviteCode.Role.RoleName.IsAnyAdmin();
         RegisterResponse? response;
         if (isTotpRequired)
         {
