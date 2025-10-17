@@ -3,6 +3,7 @@ using System;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251017192336_AddTableForPasswordRestorationRequests")]
+    partial class AddTableForPasswordRestorationRequests
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -66,9 +69,6 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.Property<DateTime>("ValidUntil")
                         .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("WasUsed")
-                        .HasColumnType("boolean");
 
                     b.HasKey("Id");
 
