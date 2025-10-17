@@ -75,24 +75,9 @@ public class RegisterEndpoint(AppDbContext db)
 
             user.TotpSecret = secret;
 
-            var recoveryCodes = UserUtils.GenerateRecoveryCodes().ToList();
-
-            foreach (var recoveryCode in recoveryCodes)
-            {
-                var code = new RecoveryCode
-                {
-                    Id = Ulid.NewUlid(),
-                    Code = recoveryCode,
-                    User = user
-                };
-
-                await db.RecoveryCodes.AddAsync(code, ct);
-            }
-
             response = new RegisterResponse
             {
                 TotpRequired = isTotpRequired,
-                RecoveryCodes = recoveryCodes,
                 Secret = secret,
                 OtpUrl = generator.ToString()
             };
