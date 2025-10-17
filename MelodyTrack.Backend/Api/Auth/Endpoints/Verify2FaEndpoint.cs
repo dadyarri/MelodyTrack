@@ -9,14 +9,14 @@ using OtpNet;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class Verify2FaEndpoint(AppDbContext db)
-    : Ep.Req<Verify2FaRequest>.Res<Results<Ok<EmptyResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<Verify2FaRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/2fa/verify");
     }
 
-    public override async Task<Results<Ok<EmptyResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(
         Verify2FaRequest req, CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? req.Email;
@@ -43,6 +43,6 @@ public class Verify2FaEndpoint(AppDbContext db)
         user.TotpSecret = req.OtpSecret;
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Ok(new EmptyResponse());
+        return TypedResults.NoContent();
     }
 }
