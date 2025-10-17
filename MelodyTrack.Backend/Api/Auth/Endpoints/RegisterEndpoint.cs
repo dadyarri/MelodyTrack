@@ -36,6 +36,14 @@ public class RegisterEndpoint(AppDbContext db)
         }
 
         var email = inviteCode.Email ?? req.Email;
+
+        var hasUser = await db.Users.AnyAsync(u => u.Email == email, ct);
+
+        if (hasUser)
+        {
+            return TypedResults.Forbid();
+        }
+
         UserUtils.HashPassword(email, req.Password, out var hash);
 
         var user = new User
