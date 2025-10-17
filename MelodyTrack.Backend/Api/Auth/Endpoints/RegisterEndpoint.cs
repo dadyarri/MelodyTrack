@@ -66,8 +66,6 @@ public class RegisterEndpoint(AppDbContext db)
             
             var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
-            user.TotpSecret = secret;
-
             response = new RegisterResponse
             {
                 TotpRequired = isTotpRequired,

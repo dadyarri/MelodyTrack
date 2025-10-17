@@ -35,9 +35,6 @@ public class Setup2FaEndpoint(AppDbContext db)
         }
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
-        user.TotpSecret = secret;
-
-        await db.SaveChangesAsync(ct);
 
         return TypedResults.Ok(new Setup2FaResponse
         {
