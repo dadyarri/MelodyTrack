@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RecoverEndpoint(AppDbContext db)
-    : Ep.Req<RecoverRequest>.Res<Results<Ok<RecoverResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class Recover2FaEndpoint(AppDbContext db)
+    : Ep.Req<Recover2FaRequest>.Res<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
@@ -18,8 +18,8 @@ public class RecoverEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<RecoverResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        RecoverRequest req,
+    public override async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+        Recover2FaRequest req,
         CancellationToken ct)
     {
         var user = await db.Users
@@ -57,7 +57,7 @@ public class RecoverEndpoint(AppDbContext db)
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
-        var response = new RecoverResponse
+        var response = new Recover2FaResponse
         {
             AccessToken = UserUtils.CreateAccessToken(user),
             RefreshToken = refreshToken,

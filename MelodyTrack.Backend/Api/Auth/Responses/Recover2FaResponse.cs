@@ -1,6 +1,6 @@
 ﻿namespace MelodyTrack.Backend.Api.Auth.Responses;
 
-public class RecoverResponse
+public class Recover2FaResponse
 {
     public required string AccessToken { get; set; }
     public required string RefreshToken { get; set; }
