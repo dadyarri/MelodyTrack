@@ -9,27 +9,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RecoveryCodesEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, ForbidHttpResult>>
+public class RecoveryCodesEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/recoveryCodes");
     }
 
-    public override async Task<Results<Ok<RecoveryCodesResponse>, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (email is null)
         {
-            return TypedResults.Forbid();
+            return TypedResults.Unauthorized();
         }
 
         var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email.Value, ct);
 
         if (user is null)
         {
-            return TypedResults.Forbid();
+            return TypedResults.Unauthorized();
         }
 
         await db.RecoveryCodes
