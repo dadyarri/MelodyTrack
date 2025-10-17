@@ -9,6 +9,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using OtpNet;
 using QRCoder;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -64,13 +65,14 @@ public class RegisterEndpoint(AppDbContext db)
         {
             var secretBytes = new byte[16];
             RandomNumberGenerator.Fill(secretBytes);
-            var secret = Base64UrlEncoder.Encode(secretBytes).ToUpperInvariant();
+            var secret = Base32Encoding.ToString(secretBytes);
 
             var generator = new PayloadGenerator.OneTimePassword
             {
                 Secret = secret,
                 Issuer = "MelodyTrack",
                 Label = email,
+                AuthAlgorithm = PayloadGenerator.OneTimePassword.OneTimePasswordAuthAlgorithm.SHA512
             };
 
             user.TotpSecret = secret;
