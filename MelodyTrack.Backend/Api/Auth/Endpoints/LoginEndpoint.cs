@@ -44,9 +44,6 @@ public class LoginEndpoint(AppDbContext db)
             }
         }
 
-        await db.Sessions.Where(e => e.User == user)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
-
         var refreshToken = UserUtils.GenerateRandomString(14);
 
         var session = new Session
