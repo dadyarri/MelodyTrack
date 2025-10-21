@@ -70,6 +70,7 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseCors("AllowFrontend");
+    app.UseDefaultExceptionHandler();
     app.UseFastEndpoints(x =>
     {
         x.Errors.UseProblemDetails(pdc =>
