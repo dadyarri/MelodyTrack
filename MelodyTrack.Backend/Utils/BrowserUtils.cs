@@ -12,11 +12,12 @@ public static class BrowserUtils
         {
             { Windows: true } => "Windows",
             { Android: true } => "Android",
+            { Linux: true } => "Linux",
             { iOS: true } => "iOS",
             { Mac: true } => "Mac",
             _ => "Unknown"
         };
 
-        return $"{browser.Name} {browser.Version} на {os} {browser.OSVersion}";
+        return $"{string.Join(' ', browser.Name, browser.Version)} на {string.Join(' ', os, browser.OSVersion)}";
     }
 }

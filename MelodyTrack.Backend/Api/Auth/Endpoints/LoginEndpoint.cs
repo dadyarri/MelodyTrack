@@ -8,7 +8,6 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
