@@ -1,17 +1,17 @@
 ﻿{
-    "$schema": "https://json.schemastore.org/launchsettings.json",
-    "profiles": {
-        "http": {
-            "commandName": "Project",
-            "dotnetRunMessages": true,
-            "launchBrowser": false,
-            "applicationUrl": "http://localhost:5230",
-            "environmentVariables": {
-                "ASPNETCORE_ENVIRONMENT": "Development",
-                "MELODY_TRACK_APP_DOMAIN": "http://localhost:5173",
-                "MELODY_TRACK_DATABASE_URL": "Server=127.0.0.1;Port=5433;Database=melodytrack;UserId=melodytrack;Password=melodytrack;",
-                "MELODY_TRACK_JWT_SIGNING_KEY": "0e8ee70f8fe36fe8c4f4bec1e5ebbe2745dd0866c15edb63a2ccaef3f86ade80"
-            }
-        }
+  "$schema": "https://json.schemastore.org/launchsettings.json",
+  "profiles": {
+    "http": {
+      "commandName": "Project",
+      "dotnetRunMessages": true,
+      "launchBrowser": false,
+      "applicationUrl": "http://localhost:5230",
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "MELODY_TRACK_APP_DOMAIN": "http://localhost:5173",
+        "MELODY_TRACK_DATABASE_URL": "Server=127.0.0.1;Port=5433;Database=melodytrack;UserId=melodytrack;Password=melodytrack;",
+        "MELODY_TRACK_JWT_SIGNING_KEY": "0e8ee70f8fe36fe8c4f4bec1e5ebbe2745dd0866c15edb63a2ccaef3f86ade80"
+      }
     }
+  }
 }

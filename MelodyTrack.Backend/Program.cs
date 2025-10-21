@@ -8,6 +8,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
+using NSwag;
 using Serilog;
 using Serilog.Events;
 using Serilog.Templates.Themes;
@@ -45,7 +46,25 @@ try
         {
             s.Title = "Melody Track API";
             s.Version = "v2";
+            s.DocumentName = "v2";
+            s.PostProcess = document =>
+            {
+                foreach (var op in document.Operations)
+                {
+                    if (op.Operation.Security is not null && op.Operation.Security.Count > 0)
+                    {
+                        op.Operation.Parameters.Add(new OpenApiHeader
+                        {
+                            Name = "Authorization",
+                            Description = "Bearer token",
+                            IsRequired = true,
+                            Kind = OpenApiParameterKind.Header
+                        });
+                    }
+                }
+            };
         };
+        o.ShortSchemaNames = true;
     });
     builder.Services.AddCors(options =>
     {
@@ -89,6 +108,7 @@ try
             }
         );
         x.Errors.ProducesMetadataType = typeof(ProblemDetails);
+        x.Endpoints.ShortNames = true;
     });
     app.UseSerilogRequestLogging();
     app.UseSwaggerGen();
