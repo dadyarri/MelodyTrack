@@ -152,7 +152,7 @@ try
             code = inviteCode.Code;
         }
 
-        var url = $"{appDomain}/invite?code={code}";
+        var url = UserUtils.GetInviteUrl(code);
         Log.Warning("Superuser was not created yet. Use this link to create a new superuser: {Link}", url);
     }
 

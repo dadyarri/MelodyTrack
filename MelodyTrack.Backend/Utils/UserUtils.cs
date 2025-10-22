@@ -13,7 +13,7 @@ namespace MelodyTrack.Backend.Utils;
 /// <summary>
 /// Utils to work with user's sensitive information
 /// </summary>
-public class UserUtils
+public static class UserUtils
 {
     /// <summary>
     /// Hash password
@@ -120,5 +120,11 @@ public class UserUtils
         };
 
         return (secret, generator.ToString());
+    }
+
+    public static string GetInviteUrl(Ulid code)
+    {
+        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+        return $"{appDomain}/invite?code={code}";
     }
 }
