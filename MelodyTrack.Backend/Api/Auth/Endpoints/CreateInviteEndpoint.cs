@@ -10,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class CreateInviteEndpoint(AppDbContext db)
-    : Ep.Req<CreateInviteRequest>.Res<Results<CreatedAtRoute<CreateInviteResponse>, ForbidHttpResult>>
+    : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/invite");
     }
 
-    public override async Task<Results<CreatedAtRoute<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
         var role = await db.Roles.FirstOrDefaultAsync(e => e.Id == req.Role, cancellationToken: ct);
@@ -47,6 +47,6 @@ public class CreateInviteEndpoint(AppDbContext db)
             Url = inviteUrl
         };
         
-        return TypedResults.CreatedAtRoute(response);
+        return TypedResults.Created("/auth/invite", response);
     }
 }

@@ -12,6 +12,7 @@ public class LogoutEndpoint(AppDbContext db) : Ep.Req<LogoutRequest>.Res<Results
     public override void Configure()
     {
         Post("/auth/logout");
+        AllowAnonymous();
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(LogoutRequest req,

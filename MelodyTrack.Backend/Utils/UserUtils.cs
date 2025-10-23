@@ -125,6 +125,6 @@ public static class UserUtils
     public static string GetInviteUrl(Ulid code)
     {
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/invite?code={code}";
+        return $"{appDomain}/invite/{code}";
     }
 }
