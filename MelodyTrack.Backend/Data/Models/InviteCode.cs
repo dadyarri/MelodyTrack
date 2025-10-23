@@ -23,7 +23,7 @@ public class InviteCode: BaseModel
     public required Role Role { get; set; }
 
     /// <summary>
-    /// Email of potential user, for who the invite code was created
+    /// Email of potential user, for whom the invite code was created
     /// </summary>
     public string? Email { get; set; }
 }
