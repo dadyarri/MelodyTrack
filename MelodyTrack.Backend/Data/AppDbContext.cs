@@ -52,4 +52,5 @@ public class AppDbContext : DbContext
     public DbSet<RecoveryCode> RecoveryCodes { get; set; }
     public DbSet<Session> Sessions { get; set; }
     public DbSet<PasswordRestorationRequest> PasswordRestorationRequests { get; set; }
+    public DbSet<Client> Clients { get; set; }
 }
