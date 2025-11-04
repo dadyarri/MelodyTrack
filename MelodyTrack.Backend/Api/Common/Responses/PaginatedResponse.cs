@@ -3,7 +3,7 @@ namespace MelodyTrack.Backend.Api.Common.Responses;
 public class PaginatedResponse<T>
 {
     public required List<T> Data { get; set; }
-    public PagedInfo Info { get; set; }
+    public required PagedInfo Info { get; set; }
 
     public static PaginatedResponse<T> Create(List<T> data, long count, int page, int pageSize, long skipped)
     {

@@ -2,5 +2,5 @@
 
 public class RecoveryCodesResponse
 {
-    public List<string> Codes { get; set; }
+    public required List<string> Codes { get; set; }
 }

@@ -4,11 +4,11 @@ namespace MelodyTrack.Backend.Api.Auth.Responses;
 
 public class GetSessionsResponse
 {
-    public List<SessionDto> Data { get; set; }
+    public required List<SessionDto> Data { get; set; }
 }
 
 public class SessionDto
 {
     public Ulid Id { get; set; }
-    public string DeviceInfo { get; set; }
+    public required string DeviceInfo { get; set; }
 }
