@@ -1,25 +1,31 @@
+using MelodyTrack.Backend.Api.Common.Requests;
+
 namespace MelodyTrack.Backend.Api.Common.Responses;
 
-public class PaginatedResponse<T>
+public class PaginatedResponse
 {
-    public required List<T> Data { get; set; }
-    public required PagedInfo Info { get; set; }
-
-    public static PaginatedResponse<T> Create(List<T> data, long count, int page, int pageSize, long skipped)
+    public static PaginatedResponse<TData> Create<TData>(List<TData> data, long totalCount, PaginatedRequest request)
     {
-        return new PaginatedResponse<T>
+        var skipped = request.PageSize * (request.Page - 1);
+        return new PaginatedResponse<TData>
         {
             Data = data,
             Info = new PagedInfo
             {
-                Page = page,
-                PageSize = pageSize,
-                Total = count,
-                HasNextPage = skipped + pageSize < count,
-                HasPrevPage = page > 1
+                Page = request.Page,
+                PageSize = request.PageSize,
+                Total = totalCount,
+                HasNextPage = skipped + request.PageSize < totalCount,
+                HasPrevPage = request.PageSize > 1
             }
         };
     }
+}
+
+public class PaginatedResponse<T> : PaginatedResponse
+{
+    public required List<T> Data { get; set; }
+    public required PagedInfo Info { get; set; }
 }
 
 public class PagedInfo
