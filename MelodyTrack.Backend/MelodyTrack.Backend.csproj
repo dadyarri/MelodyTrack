@@ -11,6 +11,7 @@
         <PackageReference Include="Epiforge.Kong" Version="1.0.3" />
         <PackageReference Include="Facet" Version="3.3.0-alpha" />
         <PackageReference Include="Facet.Extensions.EFCore" Version="3.3.0-alpha" />
+        <PackageReference Include="Facet.Mapping" Version="3.3.0-alpha" />
         <PackageReference Include="FastEndpoints" Version="7.1.0-beta.24"/>
         <PackageReference Include="FastEndpoints.Generator" Version="7.1.0-beta.24">
           <PrivateAssets>all</PrivateAssets>
