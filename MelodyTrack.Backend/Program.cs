@@ -2,6 +2,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
+using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -83,6 +84,9 @@ try
     builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
     Log.Information("Using PostgreSQL database");
+
+    // Custom services
+    builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
 
     var app = builder.Build();
 
