@@ -44,6 +44,27 @@ public class AppDbContext : DbContext
                 }
             ]
         );
+
+        modelBuilder.Entity<RecurrenceType>().HasData([
+            new RecurrenceType
+            {
+                Id = Ulid.Parse("01K9BSF5RW3GGMQM1HTQG0QF7D"),
+                DisplayName = "Ежедневно",
+                Type = AppointmentRecurrenceType.Daily
+            },
+            new RecurrenceType
+            {
+                Id = Ulid.Parse("01K9BSFGRN8RHRDHNXHJX7JT93"),
+                DisplayName = "Еженедельно",
+                Type = AppointmentRecurrenceType.Weekly
+            },
+            new RecurrenceType
+            {
+                Id = Ulid.Parse("01K9BSFNNFHYZK6ME71N5Y1M01"),
+                DisplayName = "Ежемесячно",
+                Type = AppointmentRecurrenceType.Monthly
+            },
+        ]);
     }
 
     public DbSet<User> Users { get; set; }
@@ -53,4 +74,9 @@ public class AppDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<PasswordRestorationRequest> PasswordRestorationRequests { get; set; }
     public DbSet<Client> Clients { get; set; }
+    public DbSet<Payment> Payments { get; set; }
+    public DbSet<Service> Services { get; set; }
+    public DbSet<ServicePrice> ServicePriceHistory { get; set; }
+    public DbSet<Appointment> Appointments { get; set; }
+    public DbSet<AppointmentRecurrenceRule> RecurrenceRules { get; set; }
 }
