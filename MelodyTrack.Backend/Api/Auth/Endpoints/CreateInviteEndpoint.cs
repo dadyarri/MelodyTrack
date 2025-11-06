@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -46,7 +47,10 @@ public class CreateInviteEndpoint(AppDbContext db)
         {
             Url = inviteUrl
         };
-        
+
+        Log.Logger.Information("Invite for user {Email} with role {Role} created: {Url}", req.Email, role.RoleName,
+            inviteUrl);
+
         return TypedResults.Created("/auth/invite", response);
     }
 }
