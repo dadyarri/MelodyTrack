@@ -22,6 +22,8 @@ public class AppDbContext : DbContext
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.HasPostgresExtension("fuzzystrmatch");
+        
         modelBuilder.Entity<Role>().HasData(
             [
                 new Role
