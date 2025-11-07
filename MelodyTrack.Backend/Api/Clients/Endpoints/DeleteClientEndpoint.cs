@@ -10,7 +10,7 @@ public class DeleteClientEndpoint(AppDbContext db): Ep.Req<GetEntityRequest>.Res
 {
     public override void Configure()
     {
-        Delete("/client/{id}");
+        Delete("/clients/{id}");
     }
 
     public override async Task<Results<NoContent, NotFound>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)

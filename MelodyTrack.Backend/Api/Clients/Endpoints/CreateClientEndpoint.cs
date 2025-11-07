@@ -33,6 +33,7 @@ public class
             }
         };
         await db.Clients.AddAsync(client, ct);
+        await db.SaveChangesAsync(ct);
 
         return TypedResults.Ok(new CreateEntityResponse
         {
