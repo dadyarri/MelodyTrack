@@ -11,14 +11,22 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
 using Serilog;
+using Serilog.Core;
 using Serilog.Events;
 using Serilog.Templates.Themes;
 using SerilogTracing;
 using SerilogTracing.Expressions;
 
+var logLevelSwitch = new LoggingLevelSwitch();
+
+logLevelSwitch.MinimumLevel = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+    ? LogEventLevel.Debug
+    : LogEventLevel.Information;
+
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+    .MinimumLevel.ControlledBy(logLevelSwitch)
     .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
     .CreateLogger();
 
