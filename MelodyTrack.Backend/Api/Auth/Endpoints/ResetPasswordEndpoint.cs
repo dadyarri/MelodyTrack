@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -27,6 +28,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
 
         if (restoreCode is null)
         {
+            Logger.LogWarning("Password reset attempt with invalid or used token {Token}", req.Token);
             return TypedResults.Forbid();
         }
 
@@ -36,6 +38,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
 
         if (user is null || (user.TotpSecret is not null && req.Otp is null))
         {
+            Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for user {Email}", restoreCode.Email);
             return TypedResults.Forbid();
         }
 
@@ -45,6 +48,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
             var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
             if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
             {
+                Logger.LogWarning("Invalid 2FA code provided during password reset for user {Email}", user.Email);
                 return TypedResults.Unauthorized();
             }
         }
@@ -57,7 +61,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
         await db.Sessions.Where(e => e.User == user)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-
+        Logger.LogInformation("Successfully reset password for user {Email} and revoked all sessions", user.Email);
         return TypedResults.NoContent();
     }
 }

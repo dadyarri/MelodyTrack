@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,16 +25,20 @@ public class RecoveryCodesEndpoint(AppDbContext db)
 
         if (email is null)
         {
+            Logger.LogWarning("Recovery codes generation attempt without valid email claim in token");
             return TypedResults.Unauthorized();
         }
 
+        Logger.LogDebug("Attempting to generate recovery codes for user {Email}", email.Value);
         var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email.Value, ct);
 
         if (user is null)
         {
+            Logger.LogWarning("Recovery codes generation attempt for non-existent user with email {Email}", email.Value);
             return TypedResults.Unauthorized();
         }
 
+        Logger.LogDebug("Invalidating existing unused recovery codes for user {Email}", email.Value);
         await db.RecoveryCodes
             .Where(e => !e.WasUsed && e.User == user)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasUsed, true), ct);
@@ -54,6 +59,7 @@ public class RecoveryCodesEndpoint(AppDbContext db)
 
         await db.SaveChangesAsync(ct);
 
+        Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
             Codes = recoveryCodes,

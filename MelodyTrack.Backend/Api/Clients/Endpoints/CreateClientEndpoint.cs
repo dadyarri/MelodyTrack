@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
@@ -34,6 +35,16 @@ public class
         };
         await db.Clients.AddAsync(client, ct);
         await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation(
+            "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}", 
+            client.FirstName, 
+            client.LastName, 
+            client.Id,
+            client.Contacts.Phone ?? "not provided",
+            client.Contacts.Telegram ?? "not provided",
+            client.Contacts.Vk ?? "not provided"
+        );
 
         return TypedResults.Ok(new CreateEntityResponse
         {

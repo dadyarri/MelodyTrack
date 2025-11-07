@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,6 +25,7 @@ public class Setup2FaEndpoint(AppDbContext db)
 
         if (email is null)
         {
+            Logger.LogWarning("2FA setup attempt without valid email claim in token");
             return TypedResults.Unauthorized();
         }
 
@@ -31,10 +33,13 @@ public class Setup2FaEndpoint(AppDbContext db)
 
         if (user is null || UserUtils.IsValidPassword(user.Password, req.Password))
         {
+            Logger.LogWarning("2FA setup attempt with invalid user or password for email {Email}", email.Value);
             return TypedResults.Unauthorized();
         }
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
+        
+        Logger.LogInformation("Successfully generated 2FA setup information for user {Email}", user.Email);
 
         return TypedResults.Ok(new Setup2FaResponse
         {

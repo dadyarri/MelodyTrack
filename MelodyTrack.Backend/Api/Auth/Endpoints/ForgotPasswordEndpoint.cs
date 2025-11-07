@@ -29,7 +29,7 @@ public class ForgotPasswordEndpoint(AppDbContext db) : Ep.Req<ForgotPasswordRequ
             ValidUntil = DateTime.UtcNow.AddHours(2)
         };
 
-        Log.Logger.Information(
+        Logger.LogInformation(
             "User {Email} forgotten password and requested for its restoration. Here is his link for this: {Url}",
             req.Email, url);
 

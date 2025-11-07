@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -22,6 +23,7 @@ public class Remove2FaEndpoint(AppDbContext db)
 
         if (email is null)
         {
+            Logger.LogWarning("2FA removal attempt without valid email claim in token");
             return TypedResults.Unauthorized();
         }
 
@@ -31,17 +33,20 @@ public class Remove2FaEndpoint(AppDbContext db)
 
         if (user is null)
         {
+            Logger.LogWarning("2FA removal attempt for non-existent user with email {Email}", email.Value);
             return TypedResults.Unauthorized();
         }
 
         if (user.Role.RoleName.IsAnyAdmin())
         {
+            Logger.LogWarning("Attempt to remove 2FA for admin user {Email} - operation not allowed", email.Value);
             return TypedResults.Forbid();
         }
 
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
 
+        Logger.LogInformation("Successfully removed 2FA for user {Email}", email.Value);
         return TypedResults.NoContent();
     }
 }

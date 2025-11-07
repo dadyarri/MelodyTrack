@@ -25,6 +25,7 @@ public class CreateInviteEndpoint(AppDbContext db)
 
         if (role is null)
         {
+            Logger.LogWarning("Attempt to create invite with invalid role ID {RoleId}", req.Role);
             return TypedResults.Forbid();
         }
 
@@ -48,7 +49,7 @@ public class CreateInviteEndpoint(AppDbContext db)
             Url = inviteUrl
         };
 
-        Log.Logger.Information("Invite for user {Email} with role {Role} created: {Url}", req.Email, role.RoleName,
+        Logger.LogInformation("Invite for user {Email} with role {Role} created: {Url}", req.Email, role.RoleName,
             inviteUrl);
 
         return TypedResults.Created("/auth/invite", response);

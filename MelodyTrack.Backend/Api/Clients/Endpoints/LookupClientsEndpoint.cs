@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
@@ -15,11 +16,14 @@ public class LookupClientsEndpoint(AppDbContext db) : Ep.NoReq.Res<LookupClients
 
     public override async Task<LookupClientsResponse> ExecuteAsync(CancellationToken ct)
     {
+        Logger.LogDebug("Fetching lookup list of all clients");
         var clients = await db.Clients
             .SelectFacet<LookupClientDto>()
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
             .ToListAsync(ct);
+        
+        Logger.LogInformation("Retrieved {Count} clients for lookup list", clients.Count);
         
         return new LookupClientsResponse
         {

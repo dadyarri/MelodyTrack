@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -28,6 +29,7 @@ public class Recover2FaEndpoint(AppDbContext db)
 
         if (user is null)
         {
+            Logger.LogWarning("2FA recovery attempt for non-existent user with email {Email}", req.Email);
             return TypedResults.Unauthorized();
         }
 
@@ -37,6 +39,7 @@ public class Recover2FaEndpoint(AppDbContext db)
 
         if (recoveryCode is null)
         {
+            Logger.LogWarning("2FA recovery attempt with invalid or used recovery code for user {Email}", req.Email);
             return TypedResults.Forbid();
         }
 
@@ -70,6 +73,11 @@ public class Recover2FaEndpoint(AppDbContext db)
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
 
+        Logger.LogInformation(
+            "Successfully recovered 2FA for user {Email}. New session created from {DeviceInfo}", 
+            user.Email, 
+            session.DeviceInfo
+        );
         return TypedResults.Ok(response);
     }
 }

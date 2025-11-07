@@ -7,6 +7,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Primitives;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -22,6 +23,8 @@ public class RefreshEndpoint(AppDbContext db)
     public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(RefreshRequest req,
         CancellationToken ct)
     {
+        Logger.LogDebug("Attempting to refresh token");
+        
         var session = await db.Sessions
             .Where(e => e.RefreshToken == req.RefreshToken && !e.WasRevoked)
             .Include(e => e.User)
@@ -30,6 +33,7 @@ public class RefreshEndpoint(AppDbContext db)
 
         if (session is null)
         {
+            Logger.LogWarning("Invalid or revoked refresh token used in refresh attempt");
             return TypedResults.Unauthorized();
         }
 
@@ -49,6 +53,8 @@ public class RefreshEndpoint(AppDbContext db)
 
         await db.Sessions.AddAsync(newSession, ct);
         await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation("Successfully refreshed token for user {Email} from {DeviceInfo}", session.User.Email, newSession.DeviceInfo);
 
         var response = new LoginResponse
         {

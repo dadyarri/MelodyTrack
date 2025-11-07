@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -22,6 +23,7 @@ public class GetSessionsEndpoint(AppDbContext db)
 
         if (email is null)
         {
+            Logger.LogWarning("Session list request without valid email claim in token");
             return TypedResults.Unauthorized();
         }
 
@@ -29,6 +31,7 @@ public class GetSessionsEndpoint(AppDbContext db)
 
         if (user is null)
         {
+            Logger.LogWarning("Session list request for non-existent user with email {Email}", email.Value);
             return TypedResults.Unauthorized();
         }
 
@@ -41,6 +44,7 @@ public class GetSessionsEndpoint(AppDbContext db)
             })
             .ToListAsync(ct);
 
+        Logger.LogInformation("Retrieved {Count} active sessions for user {Email}", sessions.Count, email.Value);
         return TypedResults.Ok(new GetSessionsResponse
         {
             Data = sessions,

@@ -21,12 +21,12 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         GetInviteCodeInformationRequest req,
         CancellationToken ct)
     {
-        Log.Logger.Information("Trying to get information about invite {InviteCode}", req.InviteCode);
+        Logger.LogInformation("Trying to get information about invite {InviteCode}", req.InviteCode);
         var ulidParsed = Ulid.TryParse(req.InviteCode, out var ulid);
 
         if (!ulidParsed)
         {
-            Log.Logger.Warning("Invite code {InviteCode} could not be parsed", req.InviteCode);
+            Logger.LogWarning("Invite code {InviteCode} could not be parsed", req.InviteCode);
             return TypedResults.Forbid();
         }
 
@@ -36,11 +36,11 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
 
         if (invite is null)
         {
-            Log.Logger.Warning("Invite code {InviteCode} is invalid", req.InviteCode);
+            Logger.LogWarning("Invite code {InviteCode} is invalid", req.InviteCode);
             return TypedResults.Forbid();
         }
 
-        Log.Logger.Information("Invite code {InviteCode} found", req.InviteCode);
+        Logger.LogInformation("Invite code {InviteCode} found", req.InviteCode);
         return TypedResults.Ok(new GetInviteCodeInformationResponse
         {
             Email = invite.Email,
