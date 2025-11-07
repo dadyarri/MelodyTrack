@@ -21,9 +21,12 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
     public override async Task<PaginatedResponse<ClientWithBalanceDto>> ExecuteAsync(GetClientsPaginatedRequest req,
         CancellationToken ct)
     {
-        Logger.LogDebug("Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}",
-            req.Page, req.PageSize);
+        Logger.LogDebug(
+            "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName},  LastName: {LastName}",
+            req.Page, req.PageSize,
+            req.FirstName ?? "not specified", req.LastName ?? "not specified");
         var clients = await db.Clients
+            .AsNoTracking()
             .ApplyFilters(req)
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
@@ -36,7 +39,7 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
         var totalCount = await db.Clients.CountAsync(ct);
 
         Logger.LogInformation(
-            "Retrieved {Count} clients (Page {Page} of {TotalPages}, Total: {TotalCount})", 
+            "Retrieved {Count} clients (Page {Page} of {TotalPages}, Total: {TotalCount})",
             clients.Count,
             req.Page,
             (int)Math.Ceiling(totalCount / (double)req.PageSize),
