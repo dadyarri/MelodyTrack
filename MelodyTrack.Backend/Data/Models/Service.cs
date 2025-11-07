@@ -7,6 +7,4 @@ public class Service : BaseModel
     [MaxLength(200)] public required string Name { get; set; }
 
     [MaxLength(200)] public string? Description { get; set; }
-
-    public required User Provider { get; set; }
 }
