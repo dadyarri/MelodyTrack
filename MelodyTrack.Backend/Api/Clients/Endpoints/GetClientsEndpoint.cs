@@ -26,10 +26,12 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .Include(e => e.Contacts)
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
-            .ToFacetsAsync(mapper, ct);
+            .ToListAsync(ct);
+
+        var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
 
         var totalCount = await db.Clients.CountAsync(ct);
 
-        return PaginatedResponse.Create(clients, totalCount, req);
+        return PaginatedResponse.Create(clientsFacets, totalCount, req);
     }
 }
