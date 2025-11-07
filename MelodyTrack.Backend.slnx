@@ -1,4 +1,3 @@
 ﻿<Solution>
   <Project Path="MelodyTrack.Backend\MelodyTrack.Backend.csproj" Type="Classic C#" />
-  <Project Path="MelodyTrack.Codegen\MelodyTrack.Codegen.csproj" Type="Classic C#" />
 </Solution>

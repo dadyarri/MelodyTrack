@@ -50,9 +50,4 @@
         <Folder Include="Data\Migrations\"/>
     </ItemGroup>
 
-    <ItemGroup>
-        <ProjectReference Include="..\MelodyTrack.Codegen\MelodyTrack.Codegen.csproj" OutputItemType="Analyzer"
-                          ReferenceOutputAssembly="false"/>
-    </ItemGroup>
-
 </Project>
