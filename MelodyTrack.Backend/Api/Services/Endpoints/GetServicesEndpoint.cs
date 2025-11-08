@@ -35,7 +35,7 @@ public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPri
 
         var servicesFacets = await services.ToFacetsAsync(mapper, ct);
         var totalCount = await db.Services.CountAsync(ct);
-        
+
         Logger.LogInformation(
             "Retrieved {Count} services (Page {Page} of {TotalPages}, Total: {TotalCount})",
             services.Count,

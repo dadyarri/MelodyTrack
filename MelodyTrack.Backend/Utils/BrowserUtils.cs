@@ -1,4 +1,5 @@
-﻿using Microsoft.Extensions.Primitives;
+﻿using Kong;
+using Microsoft.Extensions.Primitives;
 
 namespace MelodyTrack.Backend.Utils;
 
@@ -6,7 +7,7 @@ public static class BrowserUtils
 {
     public static string GetDeviceInfo(StringValues ua)
     {
-        var browser = new Kong.Browser(ua);
+        var browser = new Browser(ua);
 
         var os = browser switch
         {

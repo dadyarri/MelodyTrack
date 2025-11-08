@@ -6,7 +6,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -21,7 +20,7 @@ public class CreateInviteEndpoint(AppDbContext db)
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
-        var role = await db.Roles.FirstOrDefaultAsync(e => e.Id == req.Role, cancellationToken: ct);
+        var role = await db.Roles.FirstOrDefaultAsync(e => e.Id == req.Role, ct);
 
         if (role is null)
         {

@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -47,7 +46,7 @@ public class GetSessionsEndpoint(AppDbContext db)
         Logger.LogInformation("Retrieved {Count} active sessions for user {Email}", sessions.Count, email.Value);
         return TypedResults.Ok(new GetSessionsResponse
         {
-            Data = sessions,
+            Data = sessions
         });
     }
 }

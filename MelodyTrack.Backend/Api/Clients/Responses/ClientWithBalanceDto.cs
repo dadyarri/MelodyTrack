@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Responses;
 
-[Facet(typeof(Client), exclude: nameof(Client.Contacts))]
+[Facet(typeof(Client), nameof(Client.Contacts))]
 public partial class ClientWithBalanceDto
 {
     public decimal Balance { get; set; }

@@ -4,7 +4,7 @@ using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 
-[Facet(typeof(Client), [nameof(Client.Id), nameof(Client.Patronymic), nameof(Client.Contacts)],
+[Facet(typeof(Client), nameof(Client.Id), nameof(Client.Patronymic), nameof(Client.Contacts),
     NullableProperties = true,
     GenerateBackTo = false)]
 public partial class GetClientsPaginatedRequest : PaginatedRequest;

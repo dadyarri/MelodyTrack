@@ -5,7 +5,6 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -36,7 +35,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
             .Where(e => e.Email == restoreCode.Email)
             .FirstOrDefaultAsync(ct);
 
-        if (user is null || (user.TotpSecret is not null && req.Otp is null))
+        if (user is null || user.TotpSecret is not null && req.Otp is null)
         {
             Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for user {Email}", restoreCode.Email);
             return TypedResults.Forbid();

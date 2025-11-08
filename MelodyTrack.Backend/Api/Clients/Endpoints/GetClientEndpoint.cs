@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
@@ -26,7 +25,7 @@ public class GetClientEndpoint(AppDbContext db) : Ep.Req<GetEntityRequest>.Res<R
             return TypedResults.NotFound();
         }
 
-        Logger.LogDebug("Successfully retrieved client {FirstName} {LastName} (ID: {ClientId})", 
+        Logger.LogDebug("Successfully retrieved client {FirstName} {LastName} (ID: {ClientId})",
             client.FirstName, client.LastName, client.Id);
         return TypedResults.Ok(client);
     }

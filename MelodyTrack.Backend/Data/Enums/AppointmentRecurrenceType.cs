@@ -4,5 +4,5 @@ public enum AppointmentRecurrenceType
 {
     Daily,
     Weekly,
-    Monthly,
+    Monthly
 }

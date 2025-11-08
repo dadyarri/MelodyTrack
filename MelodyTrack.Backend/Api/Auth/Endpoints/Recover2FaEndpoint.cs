@@ -6,7 +6,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -55,7 +54,7 @@ public class Recover2FaEndpoint(AppDbContext db)
             User = user,
             RefreshToken = refreshToken,
             DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
-            ValidUntil = DateTime.UtcNow.AddDays(7),
+            ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
@@ -74,8 +73,8 @@ public class Recover2FaEndpoint(AppDbContext db)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "Successfully recovered 2FA for user {Email}. New session created from {DeviceInfo}", 
-            user.Email, 
+            "Successfully recovered 2FA for user {Email}. New session created from {DeviceInfo}",
+            user.Email,
             session.DeviceInfo
         );
         return TypedResults.Ok(response);

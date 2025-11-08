@@ -11,64 +11,6 @@ public class AppDbContext : DbContext
     {
     }
 
-    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
-    {
-        configurationBuilder
-            .Properties<Ulid>()
-            .HaveConversion<UlidToBytesConverter>();
-    }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-
-        modelBuilder.HasPostgresExtension("fuzzystrmatch");
-        
-        modelBuilder.Entity<Role>().HasData(
-            [
-                new Role
-                {
-                    Id = Ulid.Parse("01K7PVV27FAPWXRHE8H93T0DZM"),
-                    RoleName = UserRoles.Superuser,
-                    DisplayName = "Суперпользователь"
-                },
-                new Role
-                {
-                    Id = Ulid.Parse("01K7PVV92WS673S9YRXHYWTHEN"),
-                    RoleName = UserRoles.Admin,
-                    DisplayName = "Администратор"
-                },
-                new Role
-                {
-                    Id = Ulid.Parse("01K7PVVCR9D4HJ5DH1HEYTQQG9"),
-                    RoleName = UserRoles.User,
-                    DisplayName = "Пользователь"
-                }
-            ]
-        );
-
-        modelBuilder.Entity<RecurrenceType>().HasData([
-            new RecurrenceType
-            {
-                Id = Ulid.Parse("01K9BSF5RW3GGMQM1HTQG0QF7D"),
-                DisplayName = "Ежедневно",
-                Type = AppointmentRecurrenceType.Daily
-            },
-            new RecurrenceType
-            {
-                Id = Ulid.Parse("01K9BSFGRN8RHRDHNXHJX7JT93"),
-                DisplayName = "Еженедельно",
-                Type = AppointmentRecurrenceType.Weekly
-            },
-            new RecurrenceType
-            {
-                Id = Ulid.Parse("01K9BSFNNFHYZK6ME71N5Y1M01"),
-                DisplayName = "Ежемесячно",
-                Type = AppointmentRecurrenceType.Monthly
-            },
-        ]);
-    }
-
     public DbSet<User> Users { get; set; }
     public DbSet<Role> Roles { get; set; }
     public DbSet<InviteCode> InviteCodes { get; set; }
@@ -82,4 +24,52 @@ public class AppDbContext : DbContext
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<AppointmentRecurrenceRule> RecurrenceRules { get; set; }
     public DbSet<RecurrenceType> RecurrenceTypes { get; set; }
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
+    {
+        configurationBuilder
+            .Properties<Ulid>()
+            .HaveConversion<UlidToBytesConverter>();
+    }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.HasPostgresExtension("fuzzystrmatch");
+
+        modelBuilder.Entity<Role>().HasData(new Role
+        {
+            Id = Ulid.Parse("01K7PVV27FAPWXRHE8H93T0DZM"),
+            RoleName = UserRoles.Superuser,
+            DisplayName = "Суперпользователь"
+        }, new Role
+        {
+            Id = Ulid.Parse("01K7PVV92WS673S9YRXHYWTHEN"),
+            RoleName = UserRoles.Admin,
+            DisplayName = "Администратор"
+        }, new Role
+        {
+            Id = Ulid.Parse("01K7PVVCR9D4HJ5DH1HEYTQQG9"),
+            RoleName = UserRoles.User,
+            DisplayName = "Пользователь"
+        });
+
+        modelBuilder.Entity<RecurrenceType>().HasData(new RecurrenceType
+        {
+            Id = Ulid.Parse("01K9BSF5RW3GGMQM1HTQG0QF7D"),
+            DisplayName = "Ежедневно",
+            Type = AppointmentRecurrenceType.Daily
+        }, new RecurrenceType
+        {
+            Id = Ulid.Parse("01K9BSFGRN8RHRDHNXHJX7JT93"),
+            DisplayName = "Еженедельно",
+            Type = AppointmentRecurrenceType.Weekly
+        }, new RecurrenceType
+        {
+            Id = Ulid.Parse("01K9BSFNNFHYZK6ME71N5Y1M01"),
+            DisplayName = "Ежемесячно",
+            Type = AppointmentRecurrenceType.Monthly
+        });
+    }
 }

@@ -22,7 +22,7 @@ public class CreateServiceEndpoint(AppDbContext db)
         {
             Id = Ulid.NewUlid(),
             Name = req.Name,
-            Description = req.Description,
+            Description = req.Description
         };
 
         var price = new ServicePrice
@@ -30,7 +30,7 @@ public class CreateServiceEndpoint(AppDbContext db)
             Id = Ulid.NewUlid(),
             Service = service,
             EffectiveDate = DateTime.UtcNow,
-            Price = req.Price,
+            Price = req.Price
         };
 
         await db.Services.AddAsync(service, ct);

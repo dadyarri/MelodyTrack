@@ -6,7 +6,6 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -38,7 +37,7 @@ public class Setup2FaEndpoint(AppDbContext db)
         }
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
-        
+
         Logger.LogInformation("Successfully generated 2FA setup information for user {Email}", user.Email);
 
         return TypedResults.Ok(new Setup2FaResponse

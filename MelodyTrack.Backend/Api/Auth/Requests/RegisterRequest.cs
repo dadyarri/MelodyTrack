@@ -1,32 +1,32 @@
 ﻿namespace MelodyTrack.Backend.Api.Auth.Requests;
 
 /// <summary>
-/// Request to register new user
+///     Request to register new user
 /// </summary>
 public class RegisterRequest
 {
     /// <summary>
-    /// Invite code
+    ///     Invite code
     /// </summary>
     public required string InviteCode { get; set; }
 
     /// <summary>
-    /// Email of new user
+    ///     Email of new user
     /// </summary>
     public required string Email { get; set; }
 
     /// <summary>
-    /// Password of new user
+    ///     Password of new user
     /// </summary>
     public required string Password { get; set; }
 
     /// <summary>
-    /// First name of new user
+    ///     First name of new user
     /// </summary>
     public required string FirstName { get; set; }
 
     /// <summary>
-    /// Last name of new user
+    ///     Last name of new user
     /// </summary>
     public required string LastName { get; set; }
 }

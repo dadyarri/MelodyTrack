@@ -1,5 +1,4 @@
-﻿using System.Security.Cryptography;
-using FastEndpoints;
+﻿using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -8,10 +7,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using OtpNet;
-using QRCoder;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -28,7 +23,7 @@ public class RegisterEndpoint(AppDbContext db)
         CancellationToken ct)
     {
         Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
-        
+
         var inviteCode = await db.InviteCodes
             .Include(inviteCode => inviteCode.Role)
             .FirstOrDefaultAsync(e =>
@@ -68,7 +63,7 @@ public class RegisterEndpoint(AppDbContext db)
         RegisterResponse? response;
         if (isTotpRequired)
         {
-            
+
             var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
             response = new RegisterResponse

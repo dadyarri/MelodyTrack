@@ -1,6 +1,4 @@
-﻿using MelodyTrack.Backend.Data.Models;
-
-namespace MelodyTrack.Backend.Api.Auth.Responses;
+﻿namespace MelodyTrack.Backend.Api.Auth.Responses;
 
 public class GetSessionsResponse
 {

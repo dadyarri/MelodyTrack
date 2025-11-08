@@ -2,7 +2,6 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -40,8 +39,14 @@ public class UpdateClientEndpoint(AppDbContext db)
             return TypedResults.NotFound();
         }
 
-        if (req.FirstName != null) client.FirstName = req.FirstName;
-        if (req.LastName != null) client.LastName = req.LastName;
+        if (req.FirstName != null)
+        {
+            client.FirstName = req.FirstName;
+        }
+        if (req.LastName != null)
+        {
+            client.LastName = req.LastName;
+        }
 
         client.Patronymic = req.Patronymic;
         client.Contacts.Phone = req.Phone;

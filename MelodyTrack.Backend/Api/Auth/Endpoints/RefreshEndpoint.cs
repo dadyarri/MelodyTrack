@@ -6,8 +6,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Primitives;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,7 +22,7 @@ public class RefreshEndpoint(AppDbContext db)
         CancellationToken ct)
     {
         Logger.LogDebug("Attempting to refresh token");
-        
+
         var session = await db.Sessions
             .Where(e => e.RefreshToken == req.RefreshToken && !e.WasRevoked)
             .Include(e => e.User)
@@ -48,7 +46,7 @@ public class RefreshEndpoint(AppDbContext db)
             User = session.User,
             RefreshToken = refreshToken,
             DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
-            ValidUntil = DateTime.UtcNow.AddDays(7),
+            ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 
         await db.Sessions.AddAsync(newSession, ct);

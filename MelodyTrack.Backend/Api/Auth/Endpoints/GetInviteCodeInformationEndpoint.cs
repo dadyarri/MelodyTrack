@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -43,7 +42,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         Logger.LogInformation("Invite code {InviteCode} found", req.InviteCode);
         return TypedResults.Ok(new GetInviteCodeInformationResponse
         {
-            Email = invite.Email,
+            Email = invite.Email
         });
     }
 }

@@ -3,7 +3,6 @@ using FastEndpoints;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -25,7 +24,7 @@ public class CheckIf2FaEnabledEndpoint(AppDbContext db)
 
         var is2FaEnabled = user?.TotpSecret is not null;
         Logger.LogInformation("2FA status for user {Email}: {Status}", req.Email, is2FaEnabled ? "enabled" : "disabled");
-        
+
         return TypedResults.Ok(new CheckIf2FaEnabledResponse
         {
             Enabled = is2FaEnabled

@@ -1,6 +1,4 @@
-﻿using OtpNet;
-
-namespace MelodyTrack.Backend.Api.Auth.Requests;
+﻿namespace MelodyTrack.Backend.Api.Auth.Requests;
 
 public class Verify2FaRequest
 {

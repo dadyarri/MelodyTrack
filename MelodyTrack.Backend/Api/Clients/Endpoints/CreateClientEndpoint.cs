@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
@@ -48,7 +47,7 @@ public class
 
         return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
         {
-            Id = client.Id,
+            Id = client.Id
         });
     }
 }

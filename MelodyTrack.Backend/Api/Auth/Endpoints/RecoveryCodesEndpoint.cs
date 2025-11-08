@@ -6,7 +6,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -62,7 +61,7 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
-            Codes = recoveryCodes,
+            Codes = recoveryCodes
         });
     }
 }

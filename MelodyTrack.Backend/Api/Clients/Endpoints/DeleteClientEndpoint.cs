@@ -3,11 +3,10 @@ using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class DeleteClientEndpoint(AppDbContext db): Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound>>
+public class DeleteClientEndpoint(AppDbContext db) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound>>
 {
     public override void Configure()
     {
@@ -24,7 +23,7 @@ public class DeleteClientEndpoint(AppDbContext db): Ep.Req<GetEntityRequest>.Res
             Logger.LogWarning("Failed to delete client: ID {ClientId} not found", req.Id);
             return TypedResults.NotFound();
         }
-        
+
         Logger.LogInformation("Successfully deleted client with ID: {ClientId}", req.Id);
         return TypedResults.NoContent();
     }

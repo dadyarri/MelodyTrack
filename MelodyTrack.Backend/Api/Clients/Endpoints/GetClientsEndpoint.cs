@@ -7,7 +7,6 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 

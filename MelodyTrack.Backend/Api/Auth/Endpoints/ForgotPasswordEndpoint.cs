@@ -4,7 +4,6 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

@@ -11,12 +11,12 @@ using QRCoder;
 namespace MelodyTrack.Backend.Utils;
 
 /// <summary>
-/// Utils to work with user's sensitive information
+///     Utils to work with user's sensitive information
 /// </summary>
 public static class UserUtils
 {
     /// <summary>
-    /// Hash password
+    ///     Hash password
     /// </summary>
     /// <param name="email">Email address</param>
     /// <param name="password">Password</param>

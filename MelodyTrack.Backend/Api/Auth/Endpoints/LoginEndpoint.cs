@@ -8,7 +8,6 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
-using Serilog;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -25,13 +24,13 @@ public class LoginEndpoint(AppDbContext db)
         CancellationToken ct)
     {
         Logger.LogDebug("Attempting to authenticate user with email {Email}", req.Email);
-        
+
         var user = await db.Users
             .Include(e => e.Role)
             .FirstOrDefaultAsync(e => e.Email == req.Email, ct);
 
         if (user is null || UserUtils.IsValidPassword(user.Password, req.Password) ||
-            (user.Role.RoleName.IsAnyAdmin() && req.Otp is null))
+            user.Role.RoleName.IsAnyAdmin() && req.Otp is null)
         {
             Logger.LogWarning("Failed login attempt for email {Email}", req.Email);
             return TypedResults.Unauthorized();
@@ -57,12 +56,12 @@ public class LoginEndpoint(AppDbContext db)
             User = user,
             RefreshToken = refreshToken,
             DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
-            ValidUntil = DateTime.UtcNow.AddDays(7),
+            ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
-        
+
         Logger.LogInformation("User {Email} successfully logged in from {DeviceInfo}", user.Email, session.DeviceInfo);
 
         var response = new LoginResponse
