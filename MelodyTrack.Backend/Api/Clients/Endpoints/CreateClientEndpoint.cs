@@ -10,14 +10,14 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
     CreateClientEndpoint(AppDbContext db)
-    : Ep.Req<CreateClientRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Post("/clients");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
         var client = new Client
@@ -37,16 +37,16 @@ public class
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}", 
-            client.FirstName, 
-            client.LastName, 
+            "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+            client.FirstName,
+            client.LastName,
             client.Id,
             client.Contacts.Phone ?? "not provided",
             client.Contacts.Telegram ?? "not provided",
             client.Contacts.Vk ?? "not provided"
         );
 
-        return TypedResults.Ok(new CreateEntityResponse
+        return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
         {
             Id = client.Id,
         });
