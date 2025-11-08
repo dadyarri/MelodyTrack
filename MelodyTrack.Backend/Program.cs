@@ -3,6 +3,7 @@ using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api.Clients.Responses;
+using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -95,6 +96,7 @@ try
 
     // Custom services
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
+    builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
 
     var app = builder.Build();
 
