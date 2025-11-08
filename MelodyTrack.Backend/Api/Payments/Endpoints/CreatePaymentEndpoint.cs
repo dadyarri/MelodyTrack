@@ -49,6 +49,8 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
         await db.Payments.AddAsync(payment, ct);
         await db.SaveChangesAsync(ct);
 
+        Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
+
         return TypedResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
         {
             Id = payment.Id
