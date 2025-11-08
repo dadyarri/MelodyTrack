@@ -5,21 +5,24 @@ using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper)
-    : Ep.Req<GetClientsPaginatedRequest>.Res<PaginatedResponse<ClientWithBalanceDto>>
+    : Ep.Req<GetClientsPaginatedRequest>.Res<
+        Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Get("/clients");
     }
 
-    public override async Task<PaginatedResponse<ClientWithBalanceDto>> ExecuteAsync(GetClientsPaginatedRequest req,
-        CancellationToken ct)
+    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
+        ExecuteAsync(GetClientsPaginatedRequest req,
+            CancellationToken ct)
     {
         Logger.LogDebug(
             "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName},  LastName: {LastName}",
@@ -46,6 +49,6 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             totalCount
         );
 
-        return PaginatedResponse.Create(clientsFacets, totalCount, req);
+        return TypedResults.Ok(PaginatedResponse.Create(clientsFacets, totalCount, req));
     }
 }
