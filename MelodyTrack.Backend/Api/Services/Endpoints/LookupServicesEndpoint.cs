@@ -20,6 +20,7 @@ public class LookupServicesEndpoint(AppDbContext db)
     {
         Logger.LogDebug("Fetching lookup list of all services");
         var services = await db.Services
+            .AsNoTracking()
             .SelectFacet<LookupServicesDto>()
             .OrderBy(e => e.Name)
             .ToListAsync(ct);
