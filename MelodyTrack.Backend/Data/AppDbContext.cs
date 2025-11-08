@@ -81,4 +81,5 @@ public class AppDbContext : DbContext
     public DbSet<ServicePrice> ServicePriceHistory { get; set; }
     public DbSet<Appointment> Appointments { get; set; }
     public DbSet<AppointmentRecurrenceRule> RecurrenceRules { get; set; }
+    public DbSet<RecurrenceType> RecurrenceTypes { get; set; }
 }
