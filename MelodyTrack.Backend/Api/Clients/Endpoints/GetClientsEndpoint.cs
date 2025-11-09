@@ -29,7 +29,7 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             req.FirstName ?? "not specified", req.LastName ?? "not specified");
         var clients = await db.Clients
             .AsNoTracking()
-            .ApplyFilters(req)
+            .ApplyFuzzySearchFilters(req)
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
             .ApplyPagination(req)

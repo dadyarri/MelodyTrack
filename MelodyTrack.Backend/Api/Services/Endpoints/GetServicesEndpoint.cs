@@ -28,7 +28,7 @@ public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPri
             req.Name ?? "not specified");
         var services = await db.Services
             .AsNoTracking()
-            .ApplyFilters(req)
+            .ApplyFuzzySearchFilters(req)
             .OrderBy(e => e.Name)
             .ApplyPagination(req)
             .ToListAsync(ct);

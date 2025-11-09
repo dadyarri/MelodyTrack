@@ -29,7 +29,7 @@ public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedR
             .Include(e => e.Client)
             .OrderBy(e => e.Client.LastName)
             .ThenBy(e => e.Client.FirstName)
-            .ApplyFilters(req)
+            .ApplyFuzzySearchFilters(req)
             .ApplyPagination(req)
             .Include(e => e.Service)
             .ToFacetsAsync<GetPaymentsDto>(ct);

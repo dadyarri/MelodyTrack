@@ -22,7 +22,7 @@ public static class QueryableExtensions
         return queryable.Skip(req.PageSize * (req.Page - 1)).Take(req.PageSize);
     }
 
-    public static IQueryable<TEntity> ApplyFilters<TEntity>(
+    public static IQueryable<TEntity> ApplyFuzzySearchFilters<TEntity>(
         this IQueryable<TEntity> queryable,
         PaginatedRequest req,
         int maxDistance = 3)
