@@ -4,16 +4,6 @@ namespace MelodyTrack.Backend.Attributes;
 public sealed class FuzzyPathAttribute : Attribute
 {
 
-    /// <summary>
-    /// Entity type
-    /// </summary>
-    public Type EntityType { get; set; }
-
-    /// <summary>
-    /// Path on the entity
-    /// </summary>
-    public string Path { get; }
-
     public FuzzyPathAttribute(Type rootEntityType, params string[] pathParts)
     {
         EntityType = rootEntityType ?? throw new ArgumentNullException(nameof(rootEntityType));
@@ -21,4 +11,14 @@ public sealed class FuzzyPathAttribute : Attribute
             ? string.Join('.', pathParts)
             : throw new ArgumentException("At least one path part is required.", nameof(pathParts));
     }
+
+    /// <summary>
+    ///     Entity type
+    /// </summary>
+    public Type EntityType { get; set; }
+
+    /// <summary>
+    ///     Path on the entity
+    /// </summary>
+    public string Path { get; }
 }

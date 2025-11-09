@@ -4,7 +4,7 @@ using MelodyTrack.Backend.Api.Payments.Requests;
 
 namespace MelodyTrack.Backend.Api.Payments.Validators;
 
-public class CreatePaymentRequestValidator: Validator<CreatePaymentRequest>
+public class CreatePaymentRequestValidator : Validator<CreatePaymentRequest>
 {
     public CreatePaymentRequestValidator()
     {

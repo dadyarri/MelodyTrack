@@ -39,7 +39,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServiceP
 
         return TypedResults.Ok(new CreateEntityResponse
         {
-            Id = service.Id,
+            Id = service.Id
         });
     }
 }

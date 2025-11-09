@@ -9,16 +9,16 @@
 
     <ItemGroup>
         <PackageReference Include="Epiforge.Kong" Version="1.0.3"/>
-        <PackageReference Include="Facet" Version="4.3.0" />
-        <PackageReference Include="Facet.Extensions.EFCore" Version="4.3.0" />
-        <PackageReference Include="Facet.Mapping" Version="4.3.0" />
-        <PackageReference Include="FastEndpoints" Version="7.1.0" />
+        <PackageReference Include="Facet" Version="4.3.0"/>
+        <PackageReference Include="Facet.Extensions.EFCore" Version="4.3.0"/>
+        <PackageReference Include="Facet.Mapping" Version="4.3.0"/>
+        <PackageReference Include="FastEndpoints" Version="7.1.0"/>
         <PackageReference Include="FastEndpoints.Generator" Version="7.1.0">
             <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
-        <PackageReference Include="FastEndpoints.Security" Version="7.1.0" />
-        <PackageReference Include="FastEndpoints.Swagger" Version="7.1.0" />
+        <PackageReference Include="FastEndpoints.Security" Version="7.1.0"/>
+        <PackageReference Include="FastEndpoints.Swagger" Version="7.1.0"/>
         <PackageReference Include="Isopoh.Cryptography.Argon2" Version="2.0.0"/>
         <PackageReference Include="JetBrains.Annotations" Version="2025.2.2"/>
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="9.0.10"/>
@@ -33,7 +33,7 @@
         <PackageReference Include="QRCoder" Version="1.7.0"/>
         <PackageReference Include="Serilog" Version="4.3.1-dev-02387"/>
         <PackageReference Include="Serilog.AspNetCore" Version="9.0.0"/>
-        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1" />
+        <PackageReference Include="Serilog.Sinks.Console" Version="6.1.1"/>
         <PackageReference Include="SerilogTimings" Version="3.1.0"/>
         <PackageReference Include="SerilogTracing.Expressions" Version="2.3.1"/>
         <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" Version="2.3.1"/>
