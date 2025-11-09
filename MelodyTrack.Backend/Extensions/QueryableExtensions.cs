@@ -90,6 +90,38 @@ public static class QueryableExtensions
         return queryable;
     }
 
+    public static IQueryable<TEntity> ApplyDateRangeFilter<TEntity>(
+        this IQueryable<TEntity> queryable,
+        Expression<Func<TEntity, DateTime?>> dateSelector,
+        DateTime? from = null,
+        DateTime? to = null)
+    {
+        if (!from.HasValue && !to.HasValue)
+            return queryable;
+
+        var param = dateSelector.Parameters[0];
+        var member = dateSelector.Body;
+
+        Expression? predicate = null;
+
+        if (from.HasValue)
+        {
+            var constFrom = Expression.Constant(from.Value.AddDays(-1).AddTicks(1).ToUniversalTime(), typeof(DateTime?));
+            var ge = Expression.GreaterThanOrEqual(member, constFrom);
+            predicate = ge;
+        }
+
+        if (to.HasValue)
+        {
+            var constTo = Expression.Constant(to.Value.AddDays(1).AddTicks(-1).ToUniversalTime(), typeof(DateTime?));
+            var le = Expression.LessThanOrEqual(member, constTo);
+            predicate = predicate == null ? le : Expression.AndAlso(predicate, le);
+        }
+
+        var lambda = Expression.Lambda<Func<TEntity, bool>>(predicate!, param);
+        return queryable.Where(lambda);
+    }
+
     private static Expression BuildNestedMemberAccess(Expression root, string memberPath)
     {
         if (string.IsNullOrWhiteSpace(memberPath))
