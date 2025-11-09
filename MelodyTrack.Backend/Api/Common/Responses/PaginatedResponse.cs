@@ -16,7 +16,7 @@ public class PaginatedResponse
                 PageSize = request.PageSize,
                 Total = totalCount,
                 HasNextPage = skipped + request.PageSize < totalCount,
-                HasPrevPage = request.PageSize > 1
+                HasPrevPage = request.Page > 1
             }
         };
     }
