@@ -1,83 +1,122 @@
 using System.Linq.Expressions;
 using System.Reflection;
 using MelodyTrack.Backend.Api.Common.Requests;
+using MelodyTrack.Backend.Attributes;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Extensions;
 
 public static class QueryableExtensions
 {
+
+    private static readonly MethodInfo LevenshteinMethod = typeof(NpgsqlFuzzyStringMatchDbFunctionsExtensions)
+                                                               .GetMethod(
+                                                                   nameof(NpgsqlFuzzyStringMatchDbFunctionsExtensions.FuzzyStringMatchLevenshtein),
+                                                                   [typeof(DbFunctions), typeof(string), typeof(string)])
+                                                           ?? throw new InvalidOperationException(
+                                                               "NpgsqlFuzzyStringMatchDbFunctionsExtensions.FuzzyStringMatchLevenshtein not found.");
+
     public static IQueryable<TEntity> ApplyPagination<TEntity>(this IQueryable<TEntity> queryable,
         PaginatedRequest req)
     {
         return queryable.Skip(req.PageSize * (req.Page - 1)).Take(req.PageSize);
     }
 
-    public static IQueryable<TEntity> ApplyFilters<TEntity>(this IQueryable<TEntity> queryable, PaginatedRequest req,
+    public static IQueryable<TEntity> ApplyFilters<TEntity>(
+        this IQueryable<TEntity> queryable,
+        PaginatedRequest req,
         int maxDistance = 3)
     {
         var entityType = typeof(TEntity);
         var parameter = Expression.Parameter(entityType, "e");
 
-        foreach (var reqProperty in req.GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        foreach (var reqProp in req.GetType()
+                     .GetProperties(BindingFlags.Public | BindingFlags.Instance))
         {
-            if (reqProperty.PropertyType != typeof(string))
+            if (reqProp.PropertyType != typeof(string))
             {
                 continue;
             }
 
-            var filterValue = (string?)reqProperty.GetValue(req);
-
+            var filterValue = (string?)reqProp.GetValue(req);
             if (string.IsNullOrWhiteSpace(filterValue))
             {
                 continue;
             }
 
-            var entityProperty = entityType.GetProperty(
-                reqProperty.Name,
-                BindingFlags.Public | BindingFlags.Instance |
-                BindingFlags.IgnoreCase
-            );
+            var directProp = entityType.GetProperty(
+                reqProp.Name,
+                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 
-            if (entityProperty == null)
+            Expression? memberAccess = null;
+
+            if (directProp?.PropertyType == typeof(string))
             {
-                continue;
+                memberAccess = Expression.Property(parameter, directProp);
             }
-
-            if (entityProperty.PropertyType != typeof(string))
+            else
             {
-                continue;
-            }
+                var attr = reqProp.GetCustomAttribute<FuzzyPathAttribute>();
+                if (attr == null)
+                {
+                    continue; // no fuzzy info → ignore
+                }
 
-            // e => EF.Functions.FuzzyStringMatchLevenshtein(e.PropertyName, filterValue) <= maxDistance
-            var entityPropertyAccess = Expression.Property(parameter, entityProperty);
-            var filterValueConstant = Expression.Constant(filterValue, typeof(string));
-            var maxDistanceConstant = Expression.Constant(maxDistance, typeof(int));
+                if (attr.EntityType != entityType)
+                {
+                    throw new InvalidOperationException(
+                        $"[FuzzyPath] on {reqProp.DeclaringType?.Name}.{reqProp.Name} " +
+                        $"references root type {attr.EntityType} but query is on {entityType}.");
+                }
 
-            var levenshteinMethod = typeof(NpgsqlFuzzyStringMatchDbFunctionsExtensions)
-                .GetMethod(nameof(NpgsqlFuzzyStringMatchDbFunctionsExtensions.FuzzyStringMatchLevenshtein),
-                    [typeof(DbFunctions), typeof(string), typeof(string)]);
-
-            if (levenshteinMethod == null)
-            {
-                throw new InvalidOperationException(
-                    "Could not find EF Core's FuzzyStringMatchLevenshtein method. Ensure Npgsql.EntityFrameworkCore.PostgreSQL is installed and the method is accessible.");
+                memberAccess = BuildNestedMemberAccess(parameter, attr.Path);
             }
 
             var callLevenshtein = Expression.Call(
                 null,
-                levenshteinMethod,
+                LevenshteinMethod,
                 Expression.Constant(EF.Functions),
-                entityPropertyAccess,
-                filterValueConstant
-            );
+                memberAccess!,
+                Expression.Constant(filterValue, typeof(string)));
 
-            var predicateBody = Expression.LessThanOrEqual(callLevenshtein, maxDistanceConstant);
+            var predicateBody = Expression.LessThanOrEqual(
+                callLevenshtein,
+                Expression.Constant(maxDistance, typeof(int)));
 
             var lambda = Expression.Lambda<Func<TEntity, bool>>(predicateBody, parameter);
             queryable = queryable.Where(lambda);
         }
 
         return queryable;
+    }
+
+    private static Expression BuildNestedMemberAccess(Expression root, string memberPath)
+    {
+        if (string.IsNullOrWhiteSpace(memberPath))
+        {
+            throw new ArgumentException("Member path cannot be empty.", nameof(memberPath));
+        }
+
+        var parts = memberPath.Split('.');
+        var current = root;
+
+        foreach (var part in parts)
+        {
+            var prop = current.Type.GetProperty(
+                           part,
+                           BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                       ?? throw new InvalidOperationException(
+                           $"Property '{part}' not found on type '{current.Type}' while building path '{memberPath}'.");
+
+            current = Expression.Property(current, prop);
+        }
+
+        if (current.Type != typeof(string))
+        {
+            throw new InvalidOperationException(
+                $"The final member in path '{memberPath}' resolves to type '{current.Type}' – it must be string for fuzzy search.");
+        }
+
+        return current;
     }
 }
