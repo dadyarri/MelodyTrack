@@ -33,6 +33,8 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
 
+        var provider = await db.Users.Where(e => e.Id == req.ProviderId).FirstOrDefaultAsync(ct);
+
         var recurrenceType = await db.RecurrenceTypes.Where(e => e.Id == req.RecurrenceTypeId).FirstOrDefaultAsync(ct);
 
         AppointmentRecurrenceRule? recurrenceRule = null;
@@ -55,6 +57,7 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
             Id = Ulid.NewUlid(),
             Client = client,
             Service = service,
+            Provider = provider,
             StartDate = req.StartDate.ToUniversalTime(),
             EndDate = req.StartDate.AddHours(1).ToUniversalTime(),
             IsCanceled = false,

@@ -4,6 +4,7 @@ public class CreateAppointmentRequest
 {
     public Ulid ClientId { get; set; }
     public Ulid ServiceId { get; set; }
+    public Ulid? ProviderId { get; set; }
     public Ulid? RecurrenceTypeId { get; set; }
     public DateTime StartDate { get; set; }
     public DateTime? PatternEndDate { get; set; }
