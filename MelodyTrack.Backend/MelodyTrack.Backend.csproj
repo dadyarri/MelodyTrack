@@ -50,4 +50,8 @@
         <Folder Include="Data\Migrations\"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <InternalsVisibleTo Include="MelodyTrack.Backend.Tests" />
+    </ItemGroup>
+
 </Project>
