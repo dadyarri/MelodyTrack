@@ -97,7 +97,9 @@ public static class QueryableExtensions
         DateTime? to = null)
     {
         if (!from.HasValue && !to.HasValue)
+        {
             return queryable;
+        }
 
         var param = dateSelector.Parameters[0];
         var member = dateSelector.Body;

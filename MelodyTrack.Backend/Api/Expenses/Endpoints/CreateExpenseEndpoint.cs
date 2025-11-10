@@ -21,7 +21,7 @@ public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseReques
             Id = Ulid.NewUlid(),
             Amount = req.Amount,
             Date = DateTime.UtcNow,
-            Description = req.Description,
+            Description = req.Description
         };
 
         await db.Expenses.AddAsync(expense, ct);
