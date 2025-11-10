@@ -1,7 +1,7 @@
 ﻿namespace MelodyTrack.Backend.Data.Models;
 
 /// <summary>
-///     Database represenation of user, who have access to data
+///     Database representation of user, who have access to data
 /// </summary>
 public class User : BaseModel
 {
