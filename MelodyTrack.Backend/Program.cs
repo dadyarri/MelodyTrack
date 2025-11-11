@@ -20,7 +20,8 @@ using SerilogTracing.Expressions;
 
 var logLevelSwitch = new LoggingLevelSwitch();
 
-logLevelSwitch.MinimumLevel = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development"
+var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
     : LogEventLevel.Information;
 
@@ -129,6 +130,12 @@ try
 
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+    if (environment == "Test")
+    {
+        await db.Database.MigrateAsync();
+    }
+    
     var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
     if (superuserRole == null)
