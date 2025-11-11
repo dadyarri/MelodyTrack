@@ -51,7 +51,7 @@
     </ItemGroup>
 
     <ItemGroup>
-        <InternalsVisibleTo Include="MelodyTrack.Backend.Tests" />
+        <InternalsVisibleTo Include="MelodyTrack.Backend.Tests"/>
     </ItemGroup>
 
 </Project>

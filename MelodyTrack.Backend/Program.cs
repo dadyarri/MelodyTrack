@@ -135,7 +135,7 @@ try
     {
         await db.Database.MigrateAsync();
     }
-    
+
     var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
     if (superuserRole == null)

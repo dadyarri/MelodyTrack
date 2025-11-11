@@ -9,8 +9,8 @@ namespace MelodyTrack.Backend.Tests;
 
 public class MelodyTrackFixture : AppFixture<Program>
 {
-    private PostgreSqlContainer? _dbContainer;
     private string _connectionString = null!;
+    private PostgreSqlContainer? _dbContainer;
 
     protected override async ValueTask PreSetupAsync()
     {

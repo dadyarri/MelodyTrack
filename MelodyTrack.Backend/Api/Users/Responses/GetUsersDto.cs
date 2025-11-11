@@ -1,5 +1,4 @@
 using Facet;
-using Facet.Mapping;
 using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Users.Responses;
