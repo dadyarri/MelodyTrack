@@ -21,13 +21,13 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser)
+        var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
 
         var inviteCodeEntity = await db.InviteCodes
             .AsNoTracking()
             .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow)
+            .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser invite code should be created on startup (or by migrations).");
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
@@ -57,7 +57,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var superuserRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
 
         var inviteCode = new InviteCode
@@ -65,11 +65,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             Id = Ulid.NewUlid(),
             Code = Ulid.NewUlid(),
             Role = superuserRole!,
-            ValidUntil = DateTime.UtcNow.AddDays(1),
+            ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
         {
@@ -111,8 +111,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var superuserRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser)
-            .ShouldNotBeNull("Superuser role should exist in migrations.");
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken).ShouldNotBeNull("Superuser role should exist in migrations.");
 
         var inviteCode = new InviteCode
         {
@@ -123,8 +122,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             WasUsed = true
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
         {
@@ -146,8 +145,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var superuserRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser)
-            .ShouldNotBeNull("Superuser role should exist in migrations.");
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken).ShouldNotBeNull("Superuser role should exist in migrations.");
 
         var inviteCode1 = new InviteCode
         {
@@ -157,7 +155,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode1);
+        await db.InviteCodes.AddAsync(inviteCode1, TestContext.Current.CancellationToken);
 
         var inviteCode2 = new InviteCode
         {
@@ -167,8 +165,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode2);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode2, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var email = Fake.Internet.Email();
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
@@ -206,8 +204,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
-            .ShouldNotBeNull("User role should exist in migrations.");
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken).ShouldNotBeNull("User role should exist in migrations.");
 
         var inviteCode = new InviteCode
         {
@@ -217,8 +214,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
@@ -243,8 +240,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var adminRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin)
-            .ShouldNotBeNull("Admin role should exist in migrations.");
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken).ShouldNotBeNull("Admin role should exist in migrations.");
 
         var inviteCode = new InviteCode
         {
@@ -254,8 +250,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
@@ -280,7 +276,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
         var inviteCode = new InviteCode
@@ -291,8 +287,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddSeconds(-1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
         {
@@ -314,7 +310,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
         var inviteCode = new InviteCode
@@ -325,8 +321,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
@@ -341,7 +337,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.ShouldNotBeNull();
 
         await db.Users
-            .FirstOrDefaultAsync(u => u.Email == "test.user@example.com")
+            .FirstOrDefaultAsync(u => u.Email == "test.user@example.com", TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User should be created with lowercase email");
     }
 
@@ -352,7 +348,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
         var inviteCode1 = new InviteCode
@@ -363,8 +359,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode1);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode1, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var inviteCode2 = new InviteCode
         {
@@ -374,8 +370,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode2);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode2, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
@@ -409,7 +405,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
         var presetEmail = Fake.Internet.Email();
@@ -422,8 +418,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             Email = presetEmail
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
@@ -438,7 +434,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.ShouldNotBeNull();
 
         await db.Users
-            .FirstOrDefaultAsync(u => u.Email == presetEmail)
+            .FirstOrDefaultAsync(u => u.Email == presetEmail, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User should be created with preset email from invite code");
     }
 
@@ -449,7 +445,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var userRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User)
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
         var inviteCode = new InviteCode
@@ -460,14 +456,14 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var firstName = "John";
         var lastName = "Doe";
         var email = Fake.Internet.Email();
         var password = "cOmp1exP@ssw0rd";
-        
+
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
             FirstName = firstName,
@@ -481,7 +477,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         var createdUser = await db.Users
             .Include(u => u.Role)
-            .FirstAsync(u => u.Email == email.ToLowerInvariant())
+            .FirstAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken)
             .ShouldNotBeNull();
 
         createdUser.FirstName.ShouldBe(firstName);
@@ -499,8 +495,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var adminRole = await db.Roles
-            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin)
-            .ShouldNotBeNull("Admin role should exist in migrations.");
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken).ShouldNotBeNull("Admin role should exist in migrations.");
 
         var inviteCode = new InviteCode
         {
@@ -510,8 +505,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             ValidUntil = DateTime.UtcNow.AddDays(1)
         };
 
-        await db.InviteCodes.AddAsync(inviteCode);
-        await db.SaveChangesAsync();
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var email = Fake.Internet.Email();
         var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
@@ -527,8 +522,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         var createdUser = await db.Users
             .Include(u => u.Role)
-            .FirstAsync(u => u.Email == email.ToLowerInvariant())
-            .ShouldNotBeNull();
+            .FirstAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken).ShouldNotBeNull();
 
         createdUser.Email.ShouldBe(email.ToLowerInvariant());
         createdUser.Role.RoleName.ShouldBe(UserRoles.Admin);
