@@ -24,10 +24,16 @@ public class RegisterEndpoint(AppDbContext db)
     {
         Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
 
+        if (!Ulid.TryParse(req.InviteCode, out var code))
+        {
+            Logger.LogWarning("Invalid invite code {InviteCode}", req.InviteCode);
+            return TypedResults.Forbid();
+        }
+
         var inviteCode = await db.InviteCodes
             .Include(inviteCode => inviteCode.Role)
             .FirstOrDefaultAsync(e =>
-                e.Code == Ulid.Parse(req.InviteCode) && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, ct);
+                e.Code == code && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, ct);
 
         if (inviteCode == null)
         {
