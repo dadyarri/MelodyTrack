@@ -56,7 +56,7 @@ public class RegisterEndpoint(AppDbContext db)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = email,
+            Email = email.ToLowerInvariant(),
             FirstName = req.FirstName,
             LastName = req.LastName,
             Role = inviteCode.Role,
