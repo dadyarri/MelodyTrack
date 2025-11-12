@@ -29,7 +29,7 @@ public class LoginEndpoint(AppDbContext db)
             .Include(e => e.Role)
             .FirstOrDefaultAsync(e => e.Email == req.Email, ct);
 
-        if (user is null || UserUtils.IsValidPassword(user.Password, req.Password) ||
+        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password) ||
             user.Role.RoleName.IsAnyAdmin() && req.Otp is null)
         {
             Logger.LogWarning("Failed login attempt for email {Email}", req.Email);
