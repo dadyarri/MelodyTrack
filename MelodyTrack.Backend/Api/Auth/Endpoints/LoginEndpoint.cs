@@ -27,7 +27,7 @@ public class LoginEndpoint(AppDbContext db)
 
         var user = await db.Users
             .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Email == req.Email, ct);
+            .FirstOrDefaultAsync(e => e.Email == req.Email.ToLowerInvariant(), ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password) ||
             user.Role.RoleName.IsAnyAdmin() && req.Otp is null)

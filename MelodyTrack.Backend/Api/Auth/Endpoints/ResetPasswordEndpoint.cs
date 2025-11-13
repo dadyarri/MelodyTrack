@@ -57,7 +57,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
         restoreCode.WasUsed = true;
         await db.SaveChangesAsync(ct);
 
-        await db.Sessions.Where(e => e.User == user)
+        await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         Logger.LogInformation("Successfully reset password for user {Email} and revoked all sessions", user.Email);

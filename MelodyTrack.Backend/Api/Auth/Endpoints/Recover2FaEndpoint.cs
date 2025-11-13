@@ -43,7 +43,7 @@ public class Recover2FaEndpoint(AppDbContext db)
         }
 
         await db.Sessions
-            .Where(e => e.User == user)
+            .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         var refreshToken = UserUtils.GenerateRandomString(14);

@@ -35,7 +35,7 @@ public class GetSessionsEndpoint(AppDbContext db)
         }
 
         var sessions = await db.Sessions
-            .Where(e => e.User == user && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow)
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow)
             .Select(e => new SessionDto
             {
                 Id = e.Id,
