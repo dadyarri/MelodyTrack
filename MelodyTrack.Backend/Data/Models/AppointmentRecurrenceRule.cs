@@ -14,6 +14,11 @@ public class AppointmentRecurrenceRule : BaseModel
     ///     The client for whom this recurrence service is scheduled
     /// </summary>
     public required Client Client { get; set; }
+    
+    /// <summary>
+    ///     The user, who provides this appointment
+    /// </summary>
+    public User? Provider { get; set; }
 
     /// <summary>
     ///     Start date of recurrence
