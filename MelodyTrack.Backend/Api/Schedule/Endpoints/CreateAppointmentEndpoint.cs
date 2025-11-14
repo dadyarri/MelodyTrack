@@ -45,6 +45,7 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
             {
                 Service = service,
                 Client = client,
+                Provider = provider,
                 StartDate = req.StartDate,
                 EndDate = req.PatternEndDate,
                 RecurrenceType = recurrenceType,
