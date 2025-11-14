@@ -7,6 +7,8 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OtpNet;
@@ -156,7 +158,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
         {
-            Email = email.ToLowerInvariant(),
+            Email = email,
             Password = password,
             Otp = otp
         });
@@ -375,6 +377,451 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         rspWrongPassword.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         resWrongEmail.ShouldBeNull();
         resWrongPassword.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CheckIf2FaEnabled_ReturnsTrue_WhenTotpSecretSet()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Two",
+            LastName = "FA",
+            Role = userRole,
+            Password = "hash",
+            TotpSecret = "JBSWY3DPEHPK3PXP" // any base32
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (rsp, res) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
+        {
+            Email = user.Email
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Enabled.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task CreateInvite_WithInvalidRole_Fails()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+
+        // create an admin user to call invite endpoint (endpoint requires auth)
+        var caller = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Inv",
+            LastName = "Caller",
+            Role = role,
+            Password = "hash"
+        };
+        await db.Users.AddAsync(caller, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(caller);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, ProblemDetails>(new CreateInviteRequest
+        {
+            Email = "a@b.com",
+            Role = Ulid.NewUlid()
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        res.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task CreateInvite_WithValidRole_Succeeds()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+
+        // create an admin user to call invite endpoint (endpoint requires auth)
+        var caller = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Inv",
+            LastName = "Caller",
+            Role = role,
+            Password = "hash"
+        };
+        await db.Users.AddAsync(caller, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(caller);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, CreateInviteResponse>(new CreateInviteRequest
+        {
+            Email = "invitee@example.com",
+            Role = role.Id
+        });
+
+        // clear auth header to avoid leaking to other tests
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        res.ShouldNotBeNull();
+        res.Url.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task ForgotPassword_CreatesRestorationRequest()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var email = Fake.Internet.Email();
+
+        var (rsp, _) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, object?>(new ForgotPasswordRequest
+        {
+            Email = email
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var req = await db.PasswordRestorationRequests.FirstOrDefaultAsync(r => r.Email == email, TestContext.Current.CancellationToken);
+        req.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task GetInviteCodeInformation_ReturnsForValidCode()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+
+        var invite = new InviteCode
+        {
+            Id = Ulid.NewUlid(),
+            Code = Ulid.NewUlid(),
+            Role = role,
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            Email = "preset@example.com"
+        };
+
+        await db.InviteCodes.AddAsync(invite, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(new GetInviteCodeInformationRequest
+        {
+            InviteCode = invite.Code.ToString()
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Email.ShouldBe(invite.Email);
+    }
+
+    [Fact]
+    public async Task GetInviteCodeInformation_InvalidCode_Forbids()
+    {
+        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ProblemDetails>(new GetInviteCodeInformationRequest
+        {
+            InviteCode = "invalid"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        res.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Refresh_WithValidRefreshToken_Succeeds()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Ref",
+            LastName = "Resh",
+            Role = role,
+            Password = "hash"
+        };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+
+        var session = new Session
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            RefreshToken = "refresh-token-123",
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            DeviceInfo = ""
+        };
+        await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // include User-Agent header
+        app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
+
+        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
+        {
+            RefreshToken = session.RefreshToken
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.AccessToken.ShouldNotBeNullOrEmpty();
+        res.RefreshToken.ShouldNotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public async Task Refresh_WithInvalidToken_Unauthorized()
+    {
+        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
+        {
+            RefreshToken = "nope"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        res.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task RecoveryCodes_GeneratesCodes_ForAuthenticatedUser()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Rec",
+            LastName = "User",
+            Role = role,
+            Password = "hash"
+        };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        // set auth header using access token
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Codes.ShouldNotBeEmpty();
+
+        var codesInDb = await db.RecoveryCodes.Where(rc => rc.User == user && !rc.WasUsed).ToListAsync(TestContext.Current.CancellationToken);
+        codesInDb.ShouldNotBeNull();
+        codesInDb.Count.ShouldBe(res.Codes.Count);
+    }
+
+    [Fact]
+    public async Task Recover2Fa_WithValidRecoveryCode_Succeeds()
+    {
+        var db = app.Services.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "R2",
+            LastName = "Fa",
+            Role = role,
+            Password = "hash"
+        };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+
+        var recovery = new RecoveryCode { Id = Ulid.NewUlid(), Code = "RECOVERCODE123", User = user };
+        await db.RecoveryCodes.AddAsync(recovery, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
+
+        var (rsp, res) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, Recover2FaResponse>(new Recover2FaRequest
+        {
+            Email = user.Email,
+            RecoveryCode = recovery.Code
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.AccessToken.ShouldNotBeNullOrEmpty();
+        res.RefreshToken.ShouldNotBeNullOrEmpty();
+        res.Secret.ShouldNotBeNull();
+
+        using var scope = app.Services.CreateScope();
+        var assertionDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var used = await assertionDb.RecoveryCodes.FirstOrDefaultAsync(rc => rc.Id == recovery.Id, TestContext.Current.CancellationToken);
+        used.ShouldNotBeNull();
+        used.WasUsed.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task Setup2Fa_WithValidPassword_ReturnsSecret()
+    {
+        var db = app.Services.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var email = Fake.Internet.Email().ToLowerInvariant();
+        var password = "PlainPass1!";
+
+        // create user with hashed password using utils
+        UserUtils.HashPassword(password, out var hash);
+        var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "S2", LastName = "Fa", Role = role, Password = hash };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.POSTAsync<Setup2FaEndpoint, Setup2FaRequest, Setup2FaResponse>(new Setup2FaRequest
+        {
+            Password = password
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Secret.ShouldNotBeNull();
+        res.OtpUrl.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task Remove2Fa_ForRegularUser_RemovesSecret()
+    {
+        var db = app.Services.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var email = Fake.Internet.Email().ToLowerInvariant();
+        var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "Rem", LastName = "Fa", Role = role, Password = "hash", TotpSecret = "secret" };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, _) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        using var scope = app.Services.CreateScope();
+        var assertionDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var updated = await assertionDb.Users.FirstOrDefaultAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
+        updated.ShouldNotBeNull();
+        updated.TotpSecret.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Remove2Fa_ForAdmin_Forbidden()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var adminRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken);
+        var email = Fake.Internet.Email().ToLowerInvariant();
+        var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "Rem", LastName = "Fa", Role = adminRole, Password = "hash", TotpSecret = "secret" };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ProblemDetails>(new EmptyRequest());
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        res.ShouldBeNull();
+    }
+
+    [Fact]
+    public async Task Logout_And_LogoutAll_RevokeSessions()
+    {
+        var dbContextForSetup = app.Services.GetRequiredService<AppDbContext>();
+
+        var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "L", LastName = "O", Role = role, Password = "hash" };
+        await dbContextForSetup.Users.AddAsync(user, TestContext.Current.CancellationToken);
+
+        var session1 = new Session
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            RefreshToken = "r1",
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            DeviceInfo = ""
+        };
+        var session2 = new Session
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            RefreshToken = "r2",
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            DeviceInfo = ""
+        };
+        await dbContextForSetup.Sessions.AddRangeAsync(session1, session2);
+        await dbContextForSetup.SaveChangesAsync(TestContext.Current.CancellationToken); // DB has s1, s2, user, role
+
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        // logout single session r1
+        var (rspLogout, _) = await app.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest { RefreshToken = session1.RefreshToken });
+        rspLogout.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        using (var assertionScope = app.Services.CreateScope())
+        {
+            var dbContextForAssertion = assertionScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var s1 = await dbContextForAssertion.Sessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == session1.Id, TestContext.Current.CancellationToken);
+            s1.ShouldNotBeNull();
+            s1.WasRevoked.ShouldBeTrue();
+        }
+
+        var (rspAll, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+        rspAll.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        using (var assertionScope = app.Services.CreateScope())
+        {
+            var dbContextForAssertion = assertionScope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var s2 = await dbContextForAssertion.Sessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == session2.Id, TestContext.Current.CancellationToken);
+            s2.ShouldNotBeNull();
+            s2.WasRevoked.ShouldBeTrue();
+        }
+    }
+
+    [Fact]
+    public async Task GetSessions_ReturnsActiveSessions_ForAuthenticatedUser()
+    {
+        using var scope = app.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "G", LastName = "S", Role = role, Password = "hash" };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+
+        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = "r-active", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
+        await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var token = UserUtils.CreateAccessToken(user);
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+
+        var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Data.ShouldContain(d => d.Id == session.Id && d.DeviceInfo == session.DeviceInfo);
     }
 
     [Theory]
