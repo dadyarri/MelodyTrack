@@ -1306,4 +1306,308 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         createdUser.Role.RoleName.ShouldBe(UserRoles.Admin);
         createdUser.Password.ShouldNotBeNullOrEmpty("Password should be hashed");
     }
+
+    [Fact]
+    public async Task SuperuserFullWorkflow_CompleteJourney()
+    {
+        // Setup: Create invite code for superuser
+        using var setupScope = app.Services.CreateScope();
+        var setupDb = setupScope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var superuserRole = await setupDb.Roles
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
+            .ShouldNotBeNull("Superuser role should exist in migrations.");
+        
+        var email = Fake.Internet.Email();
+
+        var inviteCode = new InviteCode
+        {
+            Id = Ulid.NewUlid(),
+            Code = Ulid.NewUlid(),
+            Role = superuserRole!,
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            Email = email
+        };
+
+        await setupDb.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await setupDb.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var password = "cOmp1exP@ssw0rd";
+        var newPassword = "N3wP@ssw0rd!Secure";
+
+        // Step 1: Get invite code information
+        var (inviteInfoRsp, inviteInfoRes) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(new GetInviteCodeInformationRequest
+        {
+            InviteCode = inviteCode.Code.ToString()
+        });
+
+        inviteInfoRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        inviteInfoRes.ShouldNotBeNull();
+        inviteInfoRes.Email.ShouldBe(inviteCode.Email);
+
+        // Step 2: Register with invite code
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        {
+            FirstName = "Super",
+            LastName = "User",
+            Email = email,
+            Password = password,
+            InviteCode = inviteCode.Code.ToString()
+        });
+
+        regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        regRes.ShouldNotBeNull();
+        regRes.TotpRequired.ShouldBeTrue("Superusers should require TOTP");
+        regRes.Secret.ShouldNotBeNull();
+        regRes.OtpUrl.ShouldNotBeNull();
+
+        // Verify user was created in database
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var createdUser = await db.Users
+                .Include(u => u.Role)
+                .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+            createdUser.ShouldNotBeNull();
+            createdUser.Role.RoleName.ShouldBe(UserRoles.Superuser);
+            createdUser.TotpSecret.ShouldNotBeNull("Secret should be set already");
+        }
+
+        var totpSecret = regRes.Secret;
+        var secretBytes = Base32Encoding.ToBytes(totpSecret);
+        var totp = new Totp(secretBytes, mode: OtpHashMode.Sha512);
+        var otp = totp.ComputeTotp();
+
+        // Step 3: Verify 2FA
+        var (verify2FaRsp, _) = await app.Client.POSTAsync<Verify2FaEndpoint, Verify2FaRequest, Results<NoContent, UnauthorizedHttpResult>>(new Verify2FaRequest
+        {
+            Email = email.ToLowerInvariant(),
+            Otp = otp,
+            OtpSecret = totpSecret
+        });
+
+        verify2FaRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+            user.ShouldNotBeNull();
+            user.TotpSecret.ShouldBe(totpSecret);
+        }
+
+        // Step 4: Check if 2FA is enabled
+        var (check2FaRsp, check2FaRes) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
+        {
+            Email = email.ToLowerInvariant()
+        });
+
+        check2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        check2FaRes.ShouldNotBeNull();
+        check2FaRes.Enabled.ShouldBeTrue();
+
+        // Step 5: Login with OTP (first login)
+        app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
+
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        {
+            Email = email.ToLowerInvariant(),
+            Password = password,
+            Otp = otp
+        });
+
+        loginRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        loginRes.ShouldNotBeNull();
+        loginRes.AccessToken.ShouldNotBeNullOrEmpty();
+        loginRes.RefreshToken.ShouldNotBeNullOrEmpty();
+
+        var accessToken = loginRes.AccessToken;
+        var refreshToken = loginRes.RefreshToken;
+
+        // Verify session was created
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var session = await db.Sessions.FirstOrDefaultAsync(s => s.RefreshToken == refreshToken, TestContext.Current.CancellationToken);
+            session.ShouldNotBeNull();
+        }
+
+        // Step 6: Generate recovery codes
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+
+        var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+
+        recoveryRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        recoveryRes.ShouldNotBeNull();
+        recoveryRes.Codes.ShouldNotBeEmpty();
+
+        // Verify recovery codes were saved
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var codes = await db.RecoveryCodes
+                .Where(rc => rc.User.Email == email.ToLowerInvariant() && !rc.WasUsed)
+                .ToListAsync(TestContext.Current.CancellationToken);
+            codes.Count.ShouldBe(recoveryRes.Codes.Count);
+        }
+
+        // Step 7: Refresh token
+        var (refreshRsp, refreshRes) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
+        {
+            RefreshToken = refreshToken
+        });
+
+        refreshRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        refreshRes.ShouldNotBeNull();
+        refreshRes.AccessToken.ShouldNotBeNullOrEmpty();
+        refreshRes.RefreshToken.ShouldNotBeNullOrEmpty();
+
+        var newAccessToken = refreshRes.AccessToken;
+
+        // Step 8: Perform second login to create additional session
+        var otp2 = totp.ComputeTotp();
+
+        var (login2Rsp, login2Res) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        {
+            Email = email.ToLowerInvariant(),
+            Password = password,
+            Otp = otp2
+        });
+
+        login2Rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        login2Res.ShouldNotBeNull();
+
+        // Step 9: Get sessions (using refreshed access token)
+        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", newAccessToken);
+
+        var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+
+        sessionsRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        sessionsRes.ShouldNotBeNull();
+        sessionsRes.Data.Count.ShouldBeGreaterThanOrEqualTo(2, "Should have at least 2 sessions");
+
+        // Step 10: Logout from one session
+        var (logoutRsp, _) = await app.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest
+        {
+            RefreshToken = refreshToken
+        });
+
+        logoutRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Verify the session was revoked
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var revokedSession = await db.Sessions.FirstOrDefaultAsync(s => s.RefreshToken == refreshToken, TestContext.Current.CancellationToken);
+            revokedSession.ShouldNotBeNull();
+            revokedSession.WasRevoked.ShouldBeTrue();
+        }
+
+        // Step 11: Logout all sessions
+        var (logoutAllRsp, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+
+        logoutAllRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Verify all sessions were revoked
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var allSessions = await db.Sessions
+                .Where(s => s.User.Email == email.ToLowerInvariant())
+                .ToListAsync(TestContext.Current.CancellationToken);
+            allSessions.ShouldAllBe(s => s.WasRevoked);
+        }
+
+        // Step 12: Forgot password
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        var (forgotRsp, _) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, object?>(new ForgotPasswordRequest
+        {
+            Email = email.ToLowerInvariant()
+        });
+
+        forgotRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Get the password restoration token
+        string restorationToken;
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var passwordRequest = await db.PasswordRestorationRequests
+                .Where(r => r.Email == email.ToLowerInvariant() && !r.WasUsed)
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+            passwordRequest.ShouldNotBeNull();
+            restorationToken = passwordRequest.Token;
+        }
+
+        // Step 13: Reset password (with 2FA verification)
+        var newOtp = totp.ComputeTotp();
+
+        var (resetRsp, _) = await app.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>(new ResetPasswordRequest
+        {
+            Token = restorationToken,
+            NewPassword = newPassword,
+            Otp = newOtp
+        });
+
+        resetRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        // Verify password was changed
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+            user.ShouldNotBeNull();
+            user.Password.ShouldNotBe(password);
+        }
+
+        // Verify all sessions were revoked during password reset
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var sessions = await db.Sessions
+                .Where(s => s.User.Email == email.ToLowerInvariant())
+                .ToListAsync(TestContext.Current.CancellationToken);
+            sessions.ShouldAllBe(s => s.WasRevoked);
+        }
+
+        // Step 14: Login with new password and OTP
+        var loginWithNewPasswordOtp = totp.ComputeTotp();
+
+        var (loginNewPasswordRsp, loginNewPasswordRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        {
+            Email = email.ToLowerInvariant(),
+            Password = newPassword,
+            Otp = loginWithNewPasswordOtp
+        });
+
+        loginNewPasswordRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        loginNewPasswordRes.ShouldNotBeNull();
+        loginNewPasswordRes.AccessToken.ShouldNotBeNullOrEmpty();
+
+        // Step 15: Recover 2FA using recovery code
+        var recoveryCodeToUse = recoveryRes.Codes.First();
+
+        var (recover2FaRsp, recover2FaRes) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, Recover2FaResponse>(new Recover2FaRequest
+        {
+            Email = email.ToLowerInvariant(),
+            RecoveryCode = recoveryCodeToUse
+        });
+
+        recover2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        recover2FaRes.ShouldNotBeNull();
+        recover2FaRes.AccessToken.ShouldNotBeNullOrEmpty();
+        recover2FaRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        recover2FaRes.Secret.ShouldNotBeNull();
+
+        // Verify the recovery code was marked as used
+        {
+            using var scope = app.Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+            var usedCode = await db.RecoveryCodes
+                .FirstOrDefaultAsync(rc => rc.Code == recoveryCodeToUse, TestContext.Current.CancellationToken);
+            usedCode.ShouldNotBeNull();
+            usedCode.WasUsed.ShouldBeTrue();
+        }
+    }
 }
