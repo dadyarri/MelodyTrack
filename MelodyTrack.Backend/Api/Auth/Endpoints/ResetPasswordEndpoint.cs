@@ -52,7 +52,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
             }
         }
 
-        UserUtils.HashPassword(user.Email, req.NewPassword, out var hash);
+        UserUtils.HashPassword(req.NewPassword, out var hash);
         user.Password = hash;
         restoreCode.WasUsed = true;
         await db.SaveChangesAsync(ct);

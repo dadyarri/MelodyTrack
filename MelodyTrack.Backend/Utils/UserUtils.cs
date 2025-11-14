@@ -18,10 +18,9 @@ public static class UserUtils
     /// <summary>
     ///     Hash password
     /// </summary>
-    /// <param name="email">Email address</param>
     /// <param name="password">Password</param>
     /// <param name="hash">Hashed password</param>
-    public static void HashPassword(string email, string password, out string hash)
+    public static void HashPassword(string password, out string hash)
     {
         var salt = new byte[16];
         Random.Shared.NextBytes(salt);
@@ -31,7 +30,6 @@ public static class UserUtils
             Version = Argon2Version.Nineteen,
             TimeCost = 3,
             MemoryCost = 3000,
-            AssociatedData = Encoding.UTF8.GetBytes(email),
             Password = Encoding.UTF8.GetBytes(password),
             Salt = salt,
             Secret = Encoding.UTF8.GetBytes(
@@ -45,7 +43,11 @@ public static class UserUtils
 
     public static bool IsValidPassword(string hash, string password)
     {
-        var config = new Argon2Config { Password = Encoding.UTF8.GetBytes(password), Threads = 2 };
+        var config = new Argon2Config
+        {
+            Password = Encoding.UTF8.GetBytes(password),
+            Secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"))
+        };
 
         SecureArray<byte>? hashA = null;
         try

@@ -30,7 +30,7 @@ public class Setup2FaEndpoint(AppDbContext db)
 
         var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email.Value, ct);
 
-        if (user is null || UserUtils.IsValidPassword(user.Password, req.Password))
+        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
         {
             Logger.LogWarning("2FA setup attempt with invalid user or password for email {Email}", email.Value);
             return TypedResults.Unauthorized();

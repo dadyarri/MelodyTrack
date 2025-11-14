@@ -51,7 +51,7 @@ public class RegisterEndpoint(AppDbContext db)
             return TypedResults.Forbid();
         }
 
-        UserUtils.HashPassword(email, req.Password, out var hash);
+        UserUtils.HashPassword(req.Password, out var hash);
 
         var user = new User
         {
