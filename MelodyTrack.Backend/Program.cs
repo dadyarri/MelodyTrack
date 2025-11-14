@@ -8,9 +8,12 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Exceptions;
+using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
+using Quartz;
+using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
@@ -35,6 +38,8 @@ Log.Logger = new LoggerConfiguration()
 using var listener = new ActivityListenerConfiguration()
     .Instrument.AspNetCoreRequests()
     .TraceToSharedLogger();
+
+// var scheduler = 
 
 Log.Information("Starting up");
 
@@ -98,6 +103,36 @@ try
     // Custom services
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
+
+    builder.Services.Configure<QuartzOptions>(opts =>
+    {
+        opts.Scheduling.IgnoreDuplicates = true;
+        opts.Scheduling.OverWriteExistingData = true;
+    });
+    builder.Services.AddQuartz(q =>
+    {
+        q.UseDefaultThreadPool(x => x.MaxConcurrency = 3);
+        q.UsePersistentStore(x =>
+        {
+            x.UseProperties = true;
+            x.UsePostgres(connectionString);
+            x.UseSystemTextJsonSerializer();
+        });
+        q.AddJob<CreateRecurringAppointments>(opts =>
+        {
+            opts.WithIdentity(CreateRecurringAppointments.Key);
+        });
+        q.AddTrigger(opts =>
+        {
+            opts.ForJob(CreateRecurringAppointments.Key);
+            opts.WithIdentity("CreateRecurringAppointments-trigger");
+            opts.WithCronSchedule("0 0 12 ? * 1");
+        });
+    });
+    builder.Services.AddQuartzServer(q =>
+    {
+        q.WaitForJobsToComplete = true;
+    });
 
     var app = builder.Build();
 
