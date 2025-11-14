@@ -57,7 +57,7 @@ public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHos
         }
 
         await db.Expenses.AddRangeAsync(expenses, cancellationToken);
-        
+
         var oldServices = await oldDb.Services
             .ToListAsync(cancellationToken);
 
@@ -74,7 +74,7 @@ public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHos
         }
 
         await db.Services.AddRangeAsync(services, cancellationToken);
-        
+
         var oldPayments = await oldDb.Payments
             .Include(oldPayment => oldPayment.Service)
             .Include(e => e.Client)
@@ -140,6 +140,70 @@ public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHos
         }
 
         await db.Payments.AddRangeAsync(payments, cancellationToken);
+
+        var oldServiceHistory = await oldDb.Schedule
+            .Include(oldService => oldService.Service)
+            .Include(e => e.Client)
+            .ToListAsync(cancellationToken);
+
+        List<Appointment> appointments = [];
+
+        foreach (var serviceHistory in oldServiceHistory)
+        {
+            var client = await db.Clients
+                .AsNoTracking()
+                .Where(e => e.FirstName == serviceHistory.Client.FirstName && e.LastName == serviceHistory.Client.LastName)
+                .Include(e => e.Contacts)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (client is null)
+            {
+                client = new Client
+                {
+                    Id = Ulid.NewUlid(),
+                    FirstName = serviceHistory.Client.FirstName,
+                    LastName = serviceHistory.Client.LastName,
+                    Patronymic = serviceHistory.Client.Patronymic,
+                    Contacts = new ClientContacts
+                    {
+                        Id = Ulid.NewUlid(),
+                        Phone = serviceHistory.Client.Contacts?.Phone,
+                        Telegram = serviceHistory.Client.Contacts?.Telegram,
+                        Vk = serviceHistory.Client.Contacts?.Vk
+                    }
+                };
+            }
+
+            var service = await db.Services
+                .AsNoTracking()
+                .Where(e => e.Name == serviceHistory.Service.Name)
+                .FirstOrDefaultAsync(cancellationToken);
+
+            if (service is null)
+            {
+                service = new Service
+                {
+                    Id = Ulid.NewUlid(),
+                    Name = serviceHistory.Service.Name,
+                    Description = serviceHistory.Service.Description,
+                };
+            }
+            appointments.Add(new Appointment
+            {
+                Id = Ulid.NewUlid(),
+                StartDate = serviceHistory.StartDate,
+                EndDate = serviceHistory.EndDate,
+                IsCompleted = serviceHistory.Completed,
+                IsCanceled = false,
+                Provider = null,
+                RecurringRule = null,
+                Client = client,
+                Service = service
+            });
+        }
+
+        await db.Appointments.AddRangeAsync(appointments, cancellationToken);
+
         await db.SaveChangesAsync(cancellationToken);
     }
 
