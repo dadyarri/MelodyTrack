@@ -120,7 +120,7 @@ public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHos
                 {
                     Id = Ulid.NewUlid(),
                     Name = payment.Service.Name,
-                    Description = payment.Service.Description,
+                    Description = payment.Service.Description
                 };
             }
             else if (service is null && payment.Service is null)
@@ -185,7 +185,7 @@ public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHos
                 {
                     Id = Ulid.NewUlid(),
                     Name = serviceHistory.Service.Name,
-                    Description = serviceHistory.Service.Description,
+                    Description = serviceHistory.Service.Description
                 };
             }
             appointments.Add(new Appointment

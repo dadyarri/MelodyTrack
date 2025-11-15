@@ -36,15 +36,14 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
             .ToDictionaryAsync(
                 e => e.Key.Humanize(culture: cultureInfo, dateToCompareAgainst: startOfToday),
                 e => e.SelectFacets<Appointment, AppointmentDto>().ToList(),
-                cancellationToken: ct
+                ct
             );
 
         var result = new GetMiniScheduleResponse
         {
             Appointments = appointmentsDays
         };
-        
+
         return TypedResults.Ok(result);
     }
-
 }

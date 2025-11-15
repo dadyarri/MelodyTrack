@@ -7,10 +7,10 @@ namespace MelodyTrack.Backend.Jobs;
 
 /// <summary>
 ///     Quartz job that creates recurring appointments based on recurrence rules.
-///     This job processes all active <see cref="AppointmentRecurrenceRule"/> entries and generates
-///     new <see cref="Appointment"/> instances for the current period according to their
-///     <see cref="AppointmentRecurrenceRule.RecurrenceType"/> and
-///     <see cref="AppointmentRecurrenceRule.RecurrencePattern"/>.
+///     This job processes all active <see cref="AppointmentRecurrenceRule" /> entries and generates
+///     new <see cref="Appointment" /> instances for the current period according to their
+///     <see cref="AppointmentRecurrenceRule.RecurrenceType" /> and
+///     <see cref="AppointmentRecurrenceRule.RecurrencePattern" />.
 /// </summary>
 public class CreateRecurringAppointments(AppDbContext db, IRecurringAppointmentService service) : IJob
 {
@@ -27,7 +27,7 @@ public class CreateRecurringAppointments(AppDbContext db, IRecurringAppointmentS
             .Include(r => r.RecurrenceType)
             .Where(r => r.StartDate <= now && (r.EndDate == null || r.EndDate >= now))
             .ToListAsync(context.CancellationToken);
-        
+
         foreach (var rule in recurrenceRules)
         {
             var appointmentsToCreate = service.GetAppointmentsForRule(rule, now).ToList();

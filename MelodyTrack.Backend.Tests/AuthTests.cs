@@ -1,4 +1,5 @@
 using System.Net;
+using System.Net.Http.Headers;
 using FastEndpoints;
 using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -432,7 +433,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(caller);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, ProblemDetails>(new CreateInviteRequest
         {
@@ -466,7 +467,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(caller);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, CreateInviteResponse>(new CreateInviteRequest
         {
@@ -618,7 +619,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         // set auth header using access token
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
 
@@ -689,7 +690,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.POSTAsync<Setup2FaEndpoint, Setup2FaRequest, Setup2FaResponse>(new Setup2FaRequest
         {
@@ -714,7 +715,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, _) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -739,7 +740,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ProblemDetails>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -775,7 +776,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await dbContextForSetup.SaveChangesAsync(TestContext.Current.CancellationToken); // DB has s1, s2, user, role
 
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // logout single session r1
         var (rspLogout, _) = await app.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest { RefreshToken = session1.RefreshToken });
@@ -816,7 +817,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var token = UserUtils.CreateAccessToken(user);
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -1317,7 +1318,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var superuserRole = await setupDb.Roles
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
-        
+
         var email = Fake.Internet.Email();
 
         var inviteCode = new InviteCode
@@ -1336,10 +1337,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var newPassword = "N3wP@ssw0rd!Secure";
 
         // Step 1: Get invite code information
-        var (inviteInfoRsp, inviteInfoRes) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(new GetInviteCodeInformationRequest
-        {
-            InviteCode = inviteCode.Code.ToString()
-        });
+        var (inviteInfoRsp, inviteInfoRes) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(
+            new GetInviteCodeInformationRequest
+            {
+                InviteCode = inviteCode.Code.ToString()
+            });
 
         inviteInfoRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         inviteInfoRes.ShouldNotBeNull();
@@ -1433,7 +1435,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         }
 
         // Step 6: Generate recovery codes
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
         var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
 
@@ -1478,7 +1480,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         login2Res.ShouldNotBeNull();
 
         // Step 9: Get sessions (using refreshed access token)
-        app.Client.DefaultRequestHeaders.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", newAccessToken);
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newAccessToken);
 
         var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
 

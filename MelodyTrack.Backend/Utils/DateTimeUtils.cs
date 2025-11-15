@@ -15,8 +15,13 @@ public static class DateTimeUtils
     {
         var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
         if (date.Kind == DateTimeKind.Unspecified)
+        {
             date = DateTime.SpecifyKind(date, DateTimeKind.Utc);
-        else if (date.Kind == DateTimeKind.Local) date = date.ToUniversalTime();
+        }
+        else if (date.Kind == DateTimeKind.Local)
+        {
+            date = date.ToUniversalTime();
+        }
 
         return TimeZoneInfo.ConvertTimeFromUtc(date, tz);
     }

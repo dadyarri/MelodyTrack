@@ -15,7 +15,7 @@ public class RecurringAppointmentServiceTests
         DateTime? endDate = null,
         int? pattern = null)
     {
-        var client = new Client { Id = Ulid.NewUlid(), FirstName = "Test", LastName = "Name", Contacts = new ()};
+        var client = new Client { Id = Ulid.NewUlid(), FirstName = "Test", LastName = "Name", Contacts = new ClientContacts() };
         var service = new Service { Id = Ulid.NewUlid(), Name = "Test Service" };
         var recurrenceType = new RecurrenceType { Id = Ulid.NewUlid(), Type = type, DisplayName = type.ToString() };
 
