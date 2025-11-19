@@ -1,7 +1,9 @@
+using MelodyTrack.Common.Utils;
 using MudBlazor.Services;
 using MelodyTrack.Web.Components;
 
 var builder = WebApplication.CreateBuilder(args);
+var backendBaseAddress = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODYTRACK_BACKEND_BASE_ADDRESS");
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
@@ -9,6 +11,11 @@ builder.Services.AddMudServices();
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
+
+builder.Services.AddHttpClient("mt", (_, client) =>
+{
+    client.BaseAddress = new Uri(backendBaseAddress);
+});
 
 builder.WebHost.UseStaticWebAssets();
 
@@ -22,11 +29,7 @@ if (!app.Environment.IsDevelopment())
     app.UseHsts();
 }
 
-app.UseHttpsRedirection();
-
-
 app.UseAntiforgery();
-
 app.UseStaticFiles();
 app.MapStaticAssets();
 app.MapRazorComponents<App>()
