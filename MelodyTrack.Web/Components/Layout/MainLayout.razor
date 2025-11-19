@@ -9,14 +9,14 @@
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
                        OnClick="@(_ => DrawerToggle())"/>
-        <MudText Typo="Typo.h5" Class="ml-3">Application</MudText>
+        <MudText Typo="Typo.h5" Class="ml-3">MelodyTrack</MudText>
         <MudSpacer/>
         <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End"/>
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu/>
     </MudDrawer>
-    <MudMainContent Class="pt-16 pa-4">
+    <MudMainContent Class="pt-16 pa-4 my-8">
         @Body
     </MudMainContent>
 </MudLayout>
@@ -36,10 +36,34 @@
     {
         base.OnInitialized();
 
-        _theme = new()
+        _theme = new MudTheme
         {
-            PaletteLight = _lightPalette,
-            LayoutProperties = new LayoutProperties()
+            Typography = new Typography
+            {
+                Default = new DefaultTypography
+                {
+                    FontFamily = ["EB Garamond", "Georgia", "serif"],
+                    FontSize = "1rem",
+                    LetterSpacing = "normal"
+                },
+                H1 = new H1Typography { FontSize = "3.5rem" },
+                H2 = new H2Typography { FontSize = "2.8rem" },
+                H3 = new H3Typography { FontSize = "2.2rem" },
+                H4 = new H4Typography { FontSize = "1.8rem" },
+                H5 = new H5Typography { FontSize = "1.5rem" },
+                Subtitle1 = new Subtitle1Typography { FontSize = "1.25rem" },
+                Body1 = new Body1Typography { FontSize = "1.1rem", LineHeight = "1.6" },
+                Body2 = new Body2Typography { FontSize = "1rem" },
+                Caption = new CaptionTypography { FontSize = "0.9rem" },
+            },
+            PaletteLight = new VintageParchmentPalette(),
+            LayoutProperties = new LayoutProperties
+            {
+                DrawerWidthLeft = "280px",
+                DrawerWidthRight = "280px",
+                AppbarHeight = "80px",
+            },
+            ZIndex = new ZIndex { Drawer = 1300, Dialog = 1400 }
         };
     }
 
@@ -47,6 +71,4 @@
     {
         _drawerOpen = !_drawerOpen;
     }
-
-    private readonly PaletteLight _lightPalette = new VintageParchmentPalette();
 }
