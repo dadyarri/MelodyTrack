@@ -1,7 +1,7 @@
 using Facet.Extensions;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Clients.Responses;
-using MelodyTrack.Backend.Data;
+using MelodyTrack.Common.Api.Clients.Responses;
+using MelodyTrack.Common.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;

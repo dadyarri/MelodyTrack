@@ -1,7 +1,7 @@
 ﻿using System.Security.Claims;
 using FastEndpoints;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

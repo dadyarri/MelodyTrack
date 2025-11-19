@@ -4,7 +4,8 @@ using System.Text;
 using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
-using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Common.Data.Models;
+using MelodyTrack.Common.Utils;
 using OtpNet;
 using QRCoder;
 

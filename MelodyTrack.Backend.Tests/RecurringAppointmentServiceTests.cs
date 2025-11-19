@@ -1,6 +1,6 @@
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Common.Data.Enums;
+using MelodyTrack.Common.Data.Models;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;

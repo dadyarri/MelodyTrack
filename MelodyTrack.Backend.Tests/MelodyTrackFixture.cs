@@ -1,5 +1,6 @@
 using FastEndpoints.Testing;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

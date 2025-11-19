@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using Facet.Extensions.EFCore;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Users.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Common.Api.Users.Responses;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

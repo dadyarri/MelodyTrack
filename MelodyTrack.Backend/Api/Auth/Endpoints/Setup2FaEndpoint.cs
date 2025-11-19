@@ -1,9 +1,10 @@
 ﻿using System.Security.Claims;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Auth.Requests;
-using MelodyTrack.Backend.Api.Auth.Responses;
-using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Common.Api.Auth.Requests;
+using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

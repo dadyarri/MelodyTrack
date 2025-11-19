@@ -1,5 +1,5 @@
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Common.Data.Enums;
+using MelodyTrack.Common.Data.Models;
 
 namespace MelodyTrack.Backend.Services;
 

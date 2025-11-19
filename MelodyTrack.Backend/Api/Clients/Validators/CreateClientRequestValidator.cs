@@ -1,6 +1,6 @@
 using FastEndpoints;
 using FluentValidation;
-using MelodyTrack.Backend.Api.Clients.Requests;
+using MelodyTrack.Common.Api.Clients.Requests;
 
 namespace MelodyTrack.Backend.Api.Clients.Validators;
 

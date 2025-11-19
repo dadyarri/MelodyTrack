@@ -1,5 +1,6 @@
-using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Quartz;
 

@@ -2,7 +2,7 @@
 using System.Text;
 using FastEndpoints;
 using FluentValidation;
-using MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Common.Api.Auth.Requests;
 
 namespace MelodyTrack.Backend.Api.Auth.Validators;
 

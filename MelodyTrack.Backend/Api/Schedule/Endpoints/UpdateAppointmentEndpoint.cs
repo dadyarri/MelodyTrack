@@ -1,7 +1,7 @@
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Schedule.Requests;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Common.Api.Schedule.Requests;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

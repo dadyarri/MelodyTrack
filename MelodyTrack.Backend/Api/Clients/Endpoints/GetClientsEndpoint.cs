@@ -1,10 +1,10 @@
 using Facet.Mapping;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Clients.Requests;
-using MelodyTrack.Backend.Api.Clients.Responses;
-using MelodyTrack.Backend.Api.Common.Responses;
-using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Common.Api.Clients.Requests;
+using MelodyTrack.Common.Api.Clients.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
+using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

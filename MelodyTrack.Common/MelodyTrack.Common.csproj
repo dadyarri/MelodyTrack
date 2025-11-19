@@ -1,0 +1,32 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>net9.0</TargetFramework>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <Folder Include="Api\Auth\Requests\"/>
+        <Folder Include="Api\Auth\Responses\"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Facet" Version="4.3.0"/>
+        <PackageReference Include="Facet.Extensions.EFCore" Version="4.3.0"/>
+        <PackageReference Include="Facet.Mapping" Version="4.3.0"/>
+        <PackageReference Include="Ulid" Version="1.4.1"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.10"/>
+        <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.10">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.4"/>
+        <PackageReference Include="FastEndpoints" Version="7.1.0"/>
+
+    </ItemGroup>
+
+    <ItemGroup>
+    </ItemGroup>
+
+</Project>

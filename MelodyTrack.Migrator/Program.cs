@@ -1,5 +1,6 @@
 ﻿using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Utils;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Utils;
 using MelodyTrack.Migrator;
 using MelodyTrack.Migrator.OldData;
 using Microsoft.EntityFrameworkCore;

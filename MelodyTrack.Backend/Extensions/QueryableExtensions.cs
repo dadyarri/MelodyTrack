@@ -1,7 +1,7 @@
 using System.Linq.Expressions;
 using System.Reflection;
-using MelodyTrack.Backend.Api.Common.Requests;
-using MelodyTrack.Backend.Attributes;
+using MelodyTrack.Common.Api.Common.Requests;
+using MelodyTrack.Common.Attributes;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Extensions;

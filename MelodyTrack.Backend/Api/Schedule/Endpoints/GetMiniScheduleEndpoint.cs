@@ -2,10 +2,10 @@ using System.Globalization;
 using Facet.Extensions;
 using FastEndpoints;
 using Humanizer;
-using MelodyTrack.Backend.Api.Schedule.Requests;
-using MelodyTrack.Backend.Api.Schedule.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Common.Api.Schedule.Requests;
+using MelodyTrack.Common.Api.Schedule.Responses;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,7 +35,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
             .OrderBy(e => e.Key)
             .ToDictionaryAsync(
                 e => e.Key.Humanize(culture: cultureInfo, dateToCompareAgainst: startOfToday),
-                e => e.SelectFacets<Appointment, AppointmentDto>().ToList(),
+                e => Enumerable.ToList<AppointmentDto>(e.SelectFacets<Appointment, AppointmentDto>()),
                 ct
             );
 

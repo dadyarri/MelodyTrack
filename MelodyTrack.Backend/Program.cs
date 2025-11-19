@@ -2,14 +2,15 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
-using MelodyTrack.Backend.Api.Clients.Responses;
-using MelodyTrack.Backend.Api.Services.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Common.Api.Clients.Responses;
+using MelodyTrack.Common.Api.Services.Responses;
+using MelodyTrack.Common.Data;
+using MelodyTrack.Common.Data.Enums;
+using MelodyTrack.Common.Data.Models;
+using MelodyTrack.Common.Utils;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
 using Quartz;
@@ -230,4 +231,7 @@ finally
     await Log.CloseAndFlushAsync();
 }
 
-public partial class Program;
+namespace MelodyTrack.Backend
+{
+    public class Program;
+}

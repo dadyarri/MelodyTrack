@@ -1,10 +1,10 @@
 using Facet.Extensions.EFCore;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Common.Responses;
-using MelodyTrack.Backend.Api.Payments.Requests;
-using MelodyTrack.Backend.Api.Payments.Responses;
-using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Common.Api.Common.Responses;
+using MelodyTrack.Common.Api.Payments.Requests;
+using MelodyTrack.Common.Api.Payments.Responses;
+using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
