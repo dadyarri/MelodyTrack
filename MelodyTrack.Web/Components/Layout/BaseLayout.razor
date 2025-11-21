@@ -1,0 +1,19 @@
+@using MelodyTrack.Web.Components.Themes
+@inherits LayoutComponentBase
+
+<MudThemeProvider Theme="@MainTheme.Theme"/>
+<MudPopoverProvider/>
+<MudDialogProvider/>
+<MudSnackbarProvider/>
+<MudLayout>
+    <MudMainContent Class="pt-16 pa-4 my-8">
+        @Body
+    </MudMainContent>
+</MudLayout>
+
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
