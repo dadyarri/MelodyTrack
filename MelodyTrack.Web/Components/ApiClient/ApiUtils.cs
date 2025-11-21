@@ -22,6 +22,7 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
         var response = await call(client);
         return (await response.Content.ReadFromJsonAsync<TResponse>(), response);
     }
+
     public async Task<HttpResponseMessage> CallApiAsync(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
     {
         using var client = factory.CreateClient("mt");
@@ -37,15 +38,21 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
         return response;
     }
 
-    private async Task RefreshAccessTokenAsync(HttpClient client, NavigationManager nav)
+    public async Task<bool> IsAuthenticatedAsync()
     {
+        using var client = factory.CreateClient("mt");
         var accessToken = (await localStorage.GetAsync<string>("accessToken")).Value;
-        var refreshToken = (await localStorage.GetAsync<string>("refreshToken")).Value;
-
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         var sessionsResponse = await client.GetAsync("/auth/sessions");
 
-        if (sessionsResponse.StatusCode == HttpStatusCode.Unauthorized)
+        return sessionsResponse.StatusCode != HttpStatusCode.Unauthorized;
+    }
+
+    private async Task RefreshAccessTokenAsync(HttpClient client, NavigationManager nav)
+    {
+        var refreshToken = (await localStorage.GetAsync<string>("refreshToken")).Value;
+
+        if (!await IsAuthenticatedAsync())
         {
             if (refreshToken is null)
             {
