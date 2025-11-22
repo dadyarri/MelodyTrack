@@ -1,16 +1,19 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
+using FluentValidation.Results;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Clients.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Services.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Enums;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
 using Quartz;
@@ -140,25 +143,32 @@ try
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseCors("AllowFrontend");
-    app.UseDefaultExceptionHandler();
+    app.UseExceptionHandler(errApp =>
+    {
+        errApp.Run(async ctx =>
+        {
+            var exHandlerFeature = ctx.Features.Get<IExceptionHandlerFeature>();
+
+            if (exHandlerFeature is not null)
+            {
+                var route = exHandlerFeature.Endpoint?.DisplayName?.Split(" => ")[0].Replace("HTTP: ", string.Empty);
+                var exceptionType = exHandlerFeature.Error.GetType().Name;
+                var reason = exHandlerFeature.Error.Message;
+
+                Log.Logger.Error(exHandlerFeature.Error, "Произошла ошибка {Exception} во время выполнения {Route}: {Reason}{StackTrace}", exceptionType, route, reason,
+                    exHandlerFeature.Error.StackTrace);
+
+                ctx.Response.StatusCode = 500;
+                await ctx.Response.WriteAsJsonAsync(
+                    ApiResponse.Failure([new ValidationFailure(string.Empty, $"Произошла ошибка {exceptionType} во время выполнения {route}: {reason}")], "Непредвиденная ошибка!"),
+                    ctx.RequestAborted);
+            }
+        });
+    });
     app.UseFastEndpoints(x =>
     {
-        x.Errors.UseProblemDetails(pdc =>
-            {
-                pdc.AllowDuplicateErrors = true;
-                pdc.IndicateErrorCode = true;
-                pdc.IndicateErrorSeverity = true;
-                pdc.TypeValue = "https://www.rfc-editor.org/rfc/rfc7231#section-6.5.1";
-                pdc.TitleValue = "Ошибка валидации";
-                pdc.TitleTransformer = pd => pd.Status switch
-                {
-                    400 => "Ошибка валидации",
-                    404 => "Не найдено",
-                    _ => "Произошла неизвестная ошибка!"
-                };
-            }
-        );
-        x.Errors.ProducesMetadataType = typeof(ProblemDetails);
+        x.Errors.ResponseBuilder = (failures, httpContext, statusCode) => ApiResponse.Failure(failures, "Ошибка валидации");
+        x.Errors.ProducesMetadataType = typeof(ApiResponse<>);
         x.Endpoints.ShortNames = true;
     });
     app.UseSerilogRequestLogging();
