@@ -9,8 +9,9 @@ public class Api
     public ScheduleApi Schedule { get; set; }
     public ServicesApi Services { get; set; }
     public UsersApi Users { get; set; }
+    public ApiUtils Utils { get; set; }
 
-    public Api(AuthApi auth, ClientsApi clients, ExpensesApi expenses, PaymentsApi payments, ScheduleApi schedule, ServicesApi services, UsersApi users)
+    public Api(AuthApi auth, ClientsApi clients, ExpensesApi expenses, PaymentsApi payments, ScheduleApi schedule, ServicesApi services, UsersApi users, ApiUtils utils)
     {
         Auth = auth;
         Clients = clients;
@@ -19,5 +20,6 @@ public class Api
         Schedule = schedule;
         Services = services;
         Users = users;
+        Utils = utils;
     }
 }

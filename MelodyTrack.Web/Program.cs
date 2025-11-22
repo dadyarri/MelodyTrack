@@ -1,7 +1,9 @@
 using MelodyTrack.Common.Utils;
+using MelodyTrack.Web.Auth;
 using MudBlazor.Services;
 using MelodyTrack.Web.Components;
 using MelodyTrack.Web.Components.ApiClient;
+using Microsoft.AspNetCore.Components.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 var backendBaseAddress = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODYTRACK_BACKEND_BASE_ADDRESS");
@@ -25,6 +27,12 @@ builder.Services.AddScoped<PaymentsApi>();
 builder.Services.AddScoped<ScheduleApi>();
 builder.Services.AddScoped<ServicesApi>();
 builder.Services.AddScoped<Api>();
+
+builder.Services.AddAuthentication("bearer")
+    .AddBearerToken("bearer");
+builder.Services.AddAuthorization();
+builder.Services.AddCascadingAuthenticationState();
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 builder.WebHost.UseStaticWebAssets();
 
