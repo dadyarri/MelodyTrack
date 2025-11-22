@@ -1,11 +1,11 @@
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
-using FluentValidation.Results;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Common.Api;
 using MelodyTrack.Common.Api.Clients.Responses;
 using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Services.Responses;
@@ -160,14 +160,20 @@ try
 
                 ctx.Response.StatusCode = 500;
                 await ctx.Response.WriteAsJsonAsync(
-                    ApiResponse.Failure([new ValidationFailure(string.Empty, $"Произошла ошибка {exceptionType} во время выполнения {route}: {reason}")], "Непредвиденная ошибка!"),
+                    ApiResponse.Failure([
+                        new ApiError
+                        {
+                            Message = $"Произошла ошибка {exceptionType} во время выполнения {route}: {reason}",
+                            Code = "UNEXPECTED_SHIT"
+                        }
+                    ], "Непредвиденная ошибка!"),
                     ctx.RequestAborted);
             }
         });
     });
     app.UseFastEndpoints(x =>
     {
-        x.Errors.ResponseBuilder = (failures, httpContext, statusCode) => ApiResponse.Failure(failures, "Ошибка валидации");
+        x.Errors.ResponseBuilder = (failures, httpContext, statusCode) => ApiResponse.Failure(failures.ToApiErrors(), "Ошибка валидации");
         x.Errors.ProducesMetadataType = typeof(ApiResponse<>);
         x.Endpoints.ShortNames = true;
     });

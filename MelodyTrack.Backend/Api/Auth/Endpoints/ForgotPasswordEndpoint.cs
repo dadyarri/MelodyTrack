@@ -1,6 +1,7 @@
 ﻿using FastEndpoints;
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Auth.Requests;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
@@ -8,7 +9,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ForgotPasswordEndpoint(AppDbContext db) : Ep.Req<ForgotPasswordRequest>.Res<NoContent>
+public class ForgotPasswordEndpoint(AppDbContext db) : Ep.Req<ForgotPasswordRequest>.Res<IResult>
 {
     public override void Configure()
     {
@@ -16,7 +17,7 @@ public class ForgotPasswordEndpoint(AppDbContext db) : Ep.Req<ForgotPasswordRequ
         AllowAnonymous();
     }
 
-    public override async Task<NoContent> ExecuteAsync(ForgotPasswordRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(ForgotPasswordRequest req, CancellationToken ct)
     {
         var token = UserUtils.GenerateRandomString(14);
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
@@ -36,6 +37,6 @@ public class ForgotPasswordEndpoint(AppDbContext db) : Ep.Req<ForgotPasswordRequ
         await db.PasswordRestorationRequests.AddAsync(restorationRequest, ct);
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.NoContent();
+        return ApiResults.NoContent();
     }
 }

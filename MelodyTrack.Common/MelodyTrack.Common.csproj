@@ -9,6 +9,7 @@
     <ItemGroup>
         <Folder Include="Api\Auth\Requests\"/>
         <Folder Include="Api\Auth\Responses\"/>
+        <Folder Include="Extensions\" />
     </ItemGroup>
 
     <ItemGroup>

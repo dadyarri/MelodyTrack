@@ -6,10 +6,11 @@ using MelodyTrack.Backend.Api.Auth.Endpoints;
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Enums;
 using MelodyTrack.Common.Data.Models;
-using MelodyTrack.Common.Utils;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -35,7 +36,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser invite code should be created on startup (or by migrations).");
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -46,9 +47,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.TotpRequired.ShouldBeTrue();
-        res.OtpUrl.ShouldNotBeNull();
-        res.Secret.ShouldNotBeNull();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.TotpRequired.ShouldBeTrue();
+        res.Data.OtpUrl.ShouldNotBeNull();
+        res.Data.Secret.ShouldNotBeNull();
     }
 
     [Fact]
@@ -75,7 +78,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "super",
             LastName = "user",
@@ -86,19 +89,21 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeTrue();
-        regRes.Secret.ShouldNotBeNull();
+        regRes.Succeeded.ShouldBeTrue();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeTrue();
+        regRes.Data.Secret.ShouldNotBeNull();
 
         var createdUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
         createdUser.ShouldNotBeNull();
 
-        var secretBytes = Base32Encoding.ToBytes(regRes.Secret);
+        var secretBytes = Base32Encoding.ToBytes(regRes.Data.Secret);
         var totp = new Totp(secretBytes, mode: OtpHashMode.Sha512);
         var otp = totp.ComputeTotp();
 
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password,
@@ -107,8 +112,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         loginRes.ShouldNotBeNull();
-        loginRes.AccessToken.ShouldNotBeNullOrEmpty();
-        loginRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        loginRes.Succeeded.ShouldBeTrue();
+        loginRes.Data.ShouldNotBeNull();
+        loginRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        loginRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -135,7 +142,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "admin",
             LastName = "user",
@@ -146,19 +153,21 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeTrue();
-        regRes.Secret.ShouldNotBeNull();
+        regRes.Succeeded.ShouldBeTrue();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeTrue();
+        regRes.Data.Secret.ShouldNotBeNull();
 
         var createdUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
         createdUser.ShouldNotBeNull();
 
-        var secretBytes = Base32Encoding.ToBytes(regRes.Secret);
+        var secretBytes = Base32Encoding.ToBytes(regRes.Data.Secret);
         var totp = new Totp(secretBytes, mode: OtpHashMode.Sha512);
         var otp = totp.ComputeTotp();
 
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email,
             Password = password,
@@ -167,8 +176,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         loginRes.ShouldNotBeNull();
-        loginRes.AccessToken.ShouldNotBeNullOrEmpty();
-        loginRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        loginRes.Succeeded.ShouldBeTrue();
+        loginRes.Data.ShouldNotBeNull();
+        loginRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        loginRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -195,7 +206,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "regular",
             LastName = "user",
@@ -206,12 +217,14 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeFalse();
+        regRes.Succeeded.ShouldBeTrue();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeFalse();
 
         // set valid User-Agent header required by LoginEndpoint for device info
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
@@ -219,8 +232,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         loginRes.ShouldNotBeNull();
-        loginRes.AccessToken.ShouldNotBeNullOrEmpty();
-        loginRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        loginRes.Succeeded.ShouldBeTrue();
+        loginRes.Data.ShouldNotBeNull();
+        loginRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        loginRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -247,7 +262,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "admin",
             LastName = "nootp",
@@ -258,19 +273,21 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeTrue();
+        regRes.Succeeded.ShouldBeTrue();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeTrue();
 
         // set valid User-Agent header required by LoginEndpoint for device info
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.IntegrationTests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
         });
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        loginRes.ShouldBeNull();
+        loginRes.ShouldNotBeNull();
     }
 
     [Fact]
@@ -297,7 +314,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "super",
             LastName = "nootp",
@@ -308,18 +325,22 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeTrue();
+        regRes.Succeeded.ShouldBeTrue();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeTrue();
 
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
         });
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        loginRes.ShouldBeNull();
+        loginRes.ShouldNotBeNull();
+        loginRes.Succeeded.ShouldBeFalse();
+        loginRes.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -346,7 +367,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var email = Fake.Internet.Email();
         var password = "cOmp1exP@ssw0rd";
 
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "user",
@@ -357,19 +378,20 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
+        regRes.Succeeded.ShouldBeTrue();
 
         // set valid User-Agent header required by LoginEndpoint for device info
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.IntegrationTests/1.0 (CI)");
 
         var wrongEmail = $"no-user-{Ulid.NewUlid()}@example.com";
 
-        var (rspWrongEmail, resWrongEmail) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (rspWrongEmail, resWrongEmail) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse>(new LoginRequest
         {
             Email = wrongEmail,
             Password = password
         });
 
-        var (rspWrongPassword, resWrongPassword) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (rspWrongPassword, resWrongPassword) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = "incorrect-password"
@@ -377,8 +399,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rspWrongEmail.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         rspWrongPassword.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        resWrongEmail.ShouldBeNull();
-        resWrongPassword.ShouldBeNull();
+        resWrongEmail.ShouldNotBeNull();
+        resWrongEmail.Succeeded.ShouldBeFalse();
+        resWrongPassword.ShouldNotBeNull();
+        resWrongPassword.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -402,14 +426,16 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
+        var (rsp, res) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, ApiResponse<CheckIf2FaEnabledResponse>>(new CheckIf2FaEnabledRequest
         {
             Email = user.Email
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Enabled.ShouldBeTrue();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.Enabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -436,14 +462,16 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(caller);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, ProblemDetails>(new CreateInviteRequest
+        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, ApiResponse>(new CreateInviteRequest
         {
             Email = "a@b.com",
             Role = Ulid.NewUlid()
         });
 
-        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        res.Succeeded.ShouldBeFalse();
+        res.ShouldNotBeNull();
+        res.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -470,7 +498,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(caller);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, CreateInviteResponse>(new CreateInviteRequest
+        var (rsp, res) = await app.Client.POSTAsync<CreateInviteEndpoint, CreateInviteRequest, ApiResponse<CreateInviteResponse>>(new CreateInviteRequest
         {
             Email = "invitee@example.com",
             Role = role.Id
@@ -481,7 +509,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.Url.ShouldNotBeNullOrEmpty();
+        res.Data.ShouldNotBeNull();
+        res.Data.Url.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
@@ -522,26 +551,29 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(invite, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(new GetInviteCodeInformationRequest
+        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ApiResponse<GetInviteCodeInformationResponse>>(new GetInviteCodeInformationRequest
         {
             InviteCode = invite.Code.ToString()
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Email.ShouldBe(invite.Email);
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.Email.ShouldBe(invite.Email);
     }
 
     [Fact]
     public async Task GetInviteCodeInformation_InvalidCode_Forbids()
     {
-        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ProblemDetails>(new GetInviteCodeInformationRequest
+        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ApiResponse>(new GetInviteCodeInformationRequest
         {
             InviteCode = "invalid"
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -576,27 +608,30 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // include User-Agent header
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
+        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiResponse<LoginResponse>>(new RefreshRequest
         {
             RefreshToken = session.RefreshToken
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.AccessToken.ShouldNotBeNullOrEmpty();
-        res.RefreshToken.ShouldNotBeNullOrEmpty();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        res.Data.RefreshToken.ShouldNotBeNullOrEmpty();
     }
 
     [Fact]
     public async Task Refresh_WithInvalidToken_Unauthorized()
     {
-        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
+        var (rsp, res) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiResponse>(new RefreshRequest
         {
             RefreshToken = "nope"
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -622,15 +657,17 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+        var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, ApiResponse<RecoveryCodesResponse>>(new EmptyRequest());
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Codes.ShouldNotBeEmpty();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.Codes.ShouldNotBeEmpty();
 
         var codesInDb = await db.RecoveryCodes.Where(rc => rc.User == user && !rc.WasUsed).ToListAsync(TestContext.Current.CancellationToken);
         codesInDb.ShouldNotBeNull();
-        codesInDb.Count.ShouldBe(res.Codes.Count);
+        codesInDb.Count.ShouldBe(res.Data.Codes.Count);
     }
 
     [Fact]
@@ -656,7 +693,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (rsp, res) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, Recover2FaResponse>(new Recover2FaRequest
+        var (rsp, res) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, ApiResponse<Recover2FaResponse>>(new Recover2FaRequest
         {
             Email = user.Email,
             RecoveryCode = recovery.Code
@@ -664,9 +701,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.AccessToken.ShouldNotBeNullOrEmpty();
-        res.RefreshToken.ShouldNotBeNullOrEmpty();
-        res.Secret.ShouldNotBeNull();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        res.Data.RefreshToken.ShouldNotBeNullOrEmpty();
+        res.Data.Secret.ShouldNotBeNull();
 
         using var scope = app.Services.CreateScope();
         var assertionDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -693,15 +732,17 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.POSTAsync<Setup2FaEndpoint, Setup2FaRequest, Setup2FaResponse>(new Setup2FaRequest
+        var (rsp, res) = await app.Client.POSTAsync<Setup2FaEndpoint, Setup2FaRequest, ApiResponse<Setup2FaResponse>>(new Setup2FaRequest
         {
             Password = password
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Secret.ShouldNotBeNull();
-        res.OtpUrl.ShouldNotBeNull();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.Secret.ShouldNotBeNull();
+        res.Data.OtpUrl.ShouldNotBeNull();
     }
 
     [Fact]
@@ -743,9 +784,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ProblemDetails>(new EmptyRequest());
+        var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ApiResponse>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
+        res.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -820,10 +863,12 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+        var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, ApiResponse<GetSessionsResponse>>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Data.ShouldContain(d => d.Id == session.Id && d.DeviceInfo == session.DeviceInfo);
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.Sessions.ShouldContain(d => d.Id == session.Id && d.DeviceInfo == session.DeviceInfo);
     }
 
     [Theory]
@@ -851,7 +896,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -862,8 +907,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
         res.ShouldNotBeNull();
-        res.Errors.Count().ShouldBe(expectedAmountOfErrors);
-        res.Errors.ShouldAllBe(e => e.Name == "password");
+        res.Succeeded.ShouldBeFalse();
+        res.Errors.Count.ShouldBe(expectedAmountOfErrors);
+        res.Errors.ShouldAllBe(e => (e.Field ?? string.Empty).Equals("password", StringComparison.CurrentCultureIgnoreCase));
     }
 
     [Theory]
@@ -871,7 +917,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
     [InlineData("")]
     public async Task RegisterNewSuperUser_WithInvalidInviteCode_Fails(string inviteCode)
     {
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -881,7 +927,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -905,7 +952,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -915,7 +962,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
+        res.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -949,7 +998,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var email = Fake.Internet.Email();
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -960,11 +1009,13 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.TotpRequired.ShouldBeTrue();
-        res.OtpUrl.ShouldNotBeNull();
-        res.Secret.ShouldNotBeNull();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.TotpRequired.ShouldBeTrue();
+        res.Data.OtpUrl.ShouldNotBeNull();
+        res.Data.Secret.ShouldNotBeNull();
 
-        var (rsp2, res2) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp2, res2) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -974,7 +1025,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp2.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res2.ShouldBeNull();
+        res2.ShouldNotBeNull();
+        res2.Succeeded.ShouldBeFalse();
+        res2.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -997,7 +1050,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "john",
             LastName = "doe",
@@ -1008,9 +1061,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.TotpRequired.ShouldBeFalse("Regular users should not require TOTP");
-        res.Secret.ShouldBeNull();
-        res.OtpUrl.ShouldBeNull();
+        res.Data.ShouldNotBeNull();
+        res.Data.TotpRequired.ShouldBeFalse("Regular users should not require TOTP");
+        res.Data.Secret.ShouldBeNull();
+        res.Data.OtpUrl.ShouldBeNull();
     }
 
     [Fact]
@@ -1033,7 +1087,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "admin",
             LastName = "user",
@@ -1044,9 +1098,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.TotpRequired.ShouldBeTrue("Admin users should require TOTP");
-        res.OtpUrl.ShouldNotBeNull();
-        res.Secret.ShouldNotBeNull();
+        res.Succeeded.ShouldBeTrue();
+        res.Data.ShouldNotBeNull();
+        res.Data.TotpRequired.ShouldBeTrue("Admin users should require TOTP");
+        res.Data.OtpUrl.ShouldNotBeNull();
+        res.Data.Secret.ShouldNotBeNull();
     }
 
     [Fact]
@@ -1070,7 +1126,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1080,7 +1136,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
+        res.Data.ShouldBeNull();
     }
 
     [Fact]
@@ -1104,7 +1162,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1153,7 +1211,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode2, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1165,7 +1223,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
 
-        var (rsp2, res2) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ProblemDetails>(new RegisterRequest
+        var (rsp2, res2) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1175,7 +1233,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp2.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res2.ShouldBeNull();
+        res2.ShouldNotBeNull();
     }
 
     [Fact]
@@ -1201,7 +1259,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, res) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1244,7 +1302,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var email = Fake.Internet.Email();
         var password = "cOmp1exP@ssw0rd";
 
-        var (rsp, _) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, _) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = firstName,
             LastName = lastName,
@@ -1289,7 +1347,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var email = Fake.Internet.Email();
-        var (rsp, _) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (rsp, _) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "test",
             LastName = "test",
@@ -1338,7 +1396,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var newPassword = "N3wP@ssw0rd!Secure";
 
         // Step 1: Get invite code information
-        var (inviteInfoRsp, inviteInfoRes) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, GetInviteCodeInformationResponse>(
+        var (inviteInfoRsp, inviteInfoRes) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ApiResponse<GetInviteCodeInformationResponse>>(
             new GetInviteCodeInformationRequest
             {
                 InviteCode = inviteCode.Code.ToString()
@@ -1346,10 +1404,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         inviteInfoRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         inviteInfoRes.ShouldNotBeNull();
-        inviteInfoRes.Email.ShouldBe(inviteCode.Email);
+        inviteInfoRes.Data.ShouldNotBeNull();
+        inviteInfoRes.Data.Email.ShouldBe(inviteCode.Email);
 
         // Step 2: Register with invite code
-        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        var (regRsp, regRes) = await app.Client.POSTAsync<RegisterEndpoint, RegisterRequest, ApiResponse<RegisterResponse>>(new RegisterRequest
         {
             FirstName = "Super",
             LastName = "User",
@@ -1360,9 +1419,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         regRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         regRes.ShouldNotBeNull();
-        regRes.TotpRequired.ShouldBeTrue("Superusers should require TOTP");
-        regRes.Secret.ShouldNotBeNull();
-        regRes.OtpUrl.ShouldNotBeNull();
+        regRes.Data.ShouldNotBeNull();
+        regRes.Data.TotpRequired.ShouldBeTrue("Superusers should require TOTP");
+        regRes.Data.Secret.ShouldNotBeNull();
+        regRes.Data.OtpUrl.ShouldNotBeNull();
 
         // Verify user was created in database
         {
@@ -1376,13 +1436,13 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             createdUser.TotpSecret.ShouldNotBeNull("Secret should be set already");
         }
 
-        var totpSecret = regRes.Secret;
+        var totpSecret = regRes.Data.Secret;
         var secretBytes = Base32Encoding.ToBytes(totpSecret);
         var totp = new Totp(secretBytes, mode: OtpHashMode.Sha512);
         var otp = totp.ComputeTotp();
 
         // Step 3: Verify 2FA
-        var (verify2FaRsp, _) = await app.Client.POSTAsync<Verify2FaEndpoint, Verify2FaRequest, Results<NoContent, UnauthorizedHttpResult>>(new Verify2FaRequest
+        var (verify2FaRsp, _) = await app.Client.POSTAsync<Verify2FaEndpoint, Verify2FaRequest, IResult>(new Verify2FaRequest
         {
             Email = email.ToLowerInvariant(),
             Otp = otp,
@@ -1400,19 +1460,20 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         }
 
         // Step 4: Check if 2FA is enabled
-        var (check2FaRsp, check2FaRes) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
+        var (check2FaRsp, check2FaRes) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, ApiResponse<CheckIf2FaEnabledResponse>>(new CheckIf2FaEnabledRequest
         {
             Email = email.ToLowerInvariant()
         });
 
         check2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         check2FaRes.ShouldNotBeNull();
-        check2FaRes.Enabled.ShouldBeTrue();
+        check2FaRes.Data.ShouldNotBeNull();
+        check2FaRes.Data.Enabled.ShouldBeTrue();
 
         // Step 5: Login with OTP (first login)
         app.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password,
@@ -1421,11 +1482,12 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         loginRes.ShouldNotBeNull();
-        loginRes.AccessToken.ShouldNotBeNullOrEmpty();
-        loginRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        loginRes.Data.ShouldNotBeNull();
+        loginRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        loginRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
 
-        var accessToken = loginRes.AccessToken;
-        var refreshToken = loginRes.RefreshToken;
+        var accessToken = loginRes.Data.AccessToken;
+        var refreshToken = loginRes.Data.RefreshToken;
 
         // Verify session was created
         {
@@ -1438,11 +1500,12 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 6: Generate recovery codes
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+        var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, ApiResponse<RecoveryCodesResponse>>(new EmptyRequest());
 
         recoveryRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         recoveryRes.ShouldNotBeNull();
-        recoveryRes.Codes.ShouldNotBeEmpty();
+        recoveryRes.Data.ShouldNotBeNull();
+        recoveryRes.Data.Codes.ShouldNotBeEmpty();
 
         // Verify recovery codes were saved
         {
@@ -1451,26 +1514,27 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             var codes = await db.RecoveryCodes
                 .Where(rc => rc.User.Email == email.ToLowerInvariant() && !rc.WasUsed)
                 .ToListAsync(TestContext.Current.CancellationToken);
-            codes.Count.ShouldBe(recoveryRes.Codes.Count);
+            codes.Count.ShouldBe(recoveryRes.Data.Codes.Count);
         }
 
         // Step 7: Refresh token
-        var (refreshRsp, refreshRes) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
+        var (refreshRsp, refreshRes) = await app.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiResponse<LoginResponse>>(new RefreshRequest
         {
             RefreshToken = refreshToken
         });
 
         refreshRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         refreshRes.ShouldNotBeNull();
-        refreshRes.AccessToken.ShouldNotBeNullOrEmpty();
-        refreshRes.RefreshToken.ShouldNotBeNullOrEmpty();
+        refreshRes.Data.ShouldNotBeNull();
+        refreshRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        refreshRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
 
-        var newAccessToken = refreshRes.AccessToken;
+        var newAccessToken = refreshRes.Data.AccessToken;
 
         // Step 8: Perform second login to create additional session
         var otp2 = totp.ComputeTotp();
 
-        var (login2Rsp, login2Res) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (login2Rsp, login2Res) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password,
@@ -1483,11 +1547,12 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 9: Get sessions (using refreshed access token)
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newAccessToken);
 
-        var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+        var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, ApiResponse<GetSessionsResponse>>(new EmptyRequest());
 
         sessionsRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         sessionsRes.ShouldNotBeNull();
-        sessionsRes.Data.Count.ShouldBeGreaterThanOrEqualTo(2, "Should have at least 2 sessions");
+        sessionsRes.Data.ShouldNotBeNull();
+        sessionsRes.Data.Sessions.Count.ShouldBeGreaterThanOrEqualTo(2, "Should have at least 2 sessions");
 
         // Step 10: Logout from one session
         var (logoutRsp, _) = await app.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest
@@ -1546,7 +1611,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 13: Reset password (with 2FA verification)
         var newOtp = totp.ComputeTotp();
 
-        var (resetRsp, _) = await app.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>(new ResetPasswordRequest
+        var (resetRsp, _) = await app.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, IResult>(new ResetPasswordRequest
         {
             Token = restorationToken,
             NewPassword = newPassword,
@@ -1577,7 +1642,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 14: Login with new password and OTP
         var loginWithNewPasswordOtp = totp.ComputeTotp();
 
-        var (loginNewPasswordRsp, loginNewPasswordRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest
+        var (loginNewPasswordRsp, loginNewPasswordRes) = await app.Client.POSTAsync<LoginEndpoint, LoginRequest, ApiResponse<LoginResponse>>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = newPassword,
@@ -1586,12 +1651,13 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         loginNewPasswordRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         loginNewPasswordRes.ShouldNotBeNull();
-        loginNewPasswordRes.AccessToken.ShouldNotBeNullOrEmpty();
+        loginNewPasswordRes.Data.ShouldNotBeNull();
+        loginNewPasswordRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
 
         // Step 15: Recover 2FA using recovery code
-        var recoveryCodeToUse = recoveryRes.Codes.First();
+        var recoveryCodeToUse = recoveryRes.Data.Codes.First();
 
-        var (recover2FaRsp, recover2FaRes) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, Recover2FaResponse>(new Recover2FaRequest
+        var (recover2FaRsp, recover2FaRes) = await app.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, ApiResponse<Recover2FaResponse>>(new Recover2FaRequest
         {
             Email = email.ToLowerInvariant(),
             RecoveryCode = recoveryCodeToUse
@@ -1599,9 +1665,10 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         recover2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         recover2FaRes.ShouldNotBeNull();
-        recover2FaRes.AccessToken.ShouldNotBeNullOrEmpty();
-        recover2FaRes.RefreshToken.ShouldNotBeNullOrEmpty();
-        recover2FaRes.Secret.ShouldNotBeNull();
+        recover2FaRes.Data.ShouldNotBeNull();
+        recover2FaRes.Data.AccessToken.ShouldNotBeNullOrEmpty();
+        recover2FaRes.Data.RefreshToken.ShouldNotBeNullOrEmpty();
+        recover2FaRes.Data.Secret.ShouldNotBeNull();
 
         // Verify the recovery code was marked as used
         {

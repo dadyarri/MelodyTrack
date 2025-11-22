@@ -8,14 +8,14 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
 public class CreateServiceEndpoint(AppDbContext db)
-    : Ep.Req<CreateServiceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateServiceRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Post("/services");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<IResult> ExecuteAsync(
         CreateServiceRequest req, CancellationToken ct)
     {
         var service = new Service
@@ -37,7 +37,7 @@ public class CreateServiceEndpoint(AppDbContext db)
         await db.ServicePriceHistory.AddAsync(price, ct);
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Created($"/services/{service.Id}", new CreateEntityResponse
+        return ApiResults.Created($"/services/{service.Id}", new CreateEntityResponse
         {
             Id = service.Id
         });

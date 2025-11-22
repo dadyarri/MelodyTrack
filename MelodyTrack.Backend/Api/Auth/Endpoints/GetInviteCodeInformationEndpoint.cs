@@ -1,14 +1,14 @@
 using FastEndpoints;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class GetInviteCodeInformationEndpoint(AppDbContext db)
-    : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ForbidHttpResult>>
+    : Ep.Req<GetInviteCodeInformationRequest>.Res<IResult>
 {
     public override void Configure()
     {
@@ -16,7 +16,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<IResult> ExecuteAsync(
         GetInviteCodeInformationRequest req,
         CancellationToken ct)
     {
@@ -26,7 +26,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         if (!ulidParsed)
         {
             Logger.LogWarning("Invite code {InviteCode} could not be parsed", req.InviteCode);
-            return TypedResults.Forbid();
+            return ApiResults.Forbid("Невалидный код приглашения", "INVALID_INVITE_CODE");
         }
 
         var invite = await db.InviteCodes
@@ -36,11 +36,11 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         if (invite is null)
         {
             Logger.LogWarning("Invite code {InviteCode} is invalid", req.InviteCode);
-            return TypedResults.Forbid();
+            return ApiResults.Forbid("Невалидный код приглашения", "INVALID_INVITE_CODE");
         }
 
         Logger.LogInformation("Invite code {InviteCode} found", req.InviteCode);
-        return TypedResults.Ok(new GetInviteCodeInformationResponse
+        return ApiResults.Ok(new GetInviteCodeInformationResponse
         {
             Email = invite.Email
         });

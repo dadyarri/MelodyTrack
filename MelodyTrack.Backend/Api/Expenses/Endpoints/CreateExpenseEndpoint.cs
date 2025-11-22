@@ -7,14 +7,14 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Post("/expenses");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(CreateExpenseRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(CreateExpenseRequest req, CancellationToken ct)
     {
         var expense = new Expense
         {
@@ -29,7 +29,7 @@ public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseReques
 
         Logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
 
-        return TypedResults.Created($"/expenses/{expense.Id}", new CreateEntityResponse
+        return ApiResults.Created($"/expenses/{expense.Id}", new CreateEntityResponse
         {
             Id = expense.Id
         });

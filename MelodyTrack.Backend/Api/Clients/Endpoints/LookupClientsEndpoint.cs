@@ -1,19 +1,20 @@
 using Facet.Extensions;
 using FastEndpoints;
 using MelodyTrack.Common.Api.Clients.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class LookupClientsEndpoint(AppDbContext db) : Ep.NoReq.Res<LookupClientsResponse>
+public class LookupClientsEndpoint(AppDbContext db) : Ep.NoReq.Res<IResult>
 {
     public override void Configure()
     {
         Get("/clients/lookup");
     }
 
-    public override async Task<LookupClientsResponse> ExecuteAsync(CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(CancellationToken ct)
     {
         Logger.LogDebug("Fetching lookup list of all clients");
         var clients = await db.Clients
@@ -24,9 +25,9 @@ public class LookupClientsEndpoint(AppDbContext db) : Ep.NoReq.Res<LookupClients
 
         Logger.LogInformation("Retrieved {Count} clients for lookup list", clients.Count);
 
-        return new LookupClientsResponse
+        return ApiResults.Ok(new LookupClientsResponse
         {
             Clients = clients
-        };
+        });
     }
 }

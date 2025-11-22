@@ -8,14 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Post("/payments");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(CreatePaymentRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(CreatePaymentRequest req, CancellationToken ct)
     {
 
         var service = await db.Services.Where(e => e.Id == req.ServiceId)
@@ -24,7 +24,7 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
         if (service is null)
         {
             AddError(r => r.ServiceId, "Сервис не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return ApiResults.NotFound(ValidationFailures);
         }
 
         var client = await db.Clients.Where(e => e.Id == req.ClientId)
@@ -33,7 +33,7 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
         if (client is null)
         {
             AddError(r => r.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return ApiResults.NotFound(ValidationFailures);
         }
 
         var payment = new Payment
@@ -51,7 +51,7 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
 
         Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
 
-        return TypedResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
+        return ApiResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
         {
             Id = payment.Id
         });

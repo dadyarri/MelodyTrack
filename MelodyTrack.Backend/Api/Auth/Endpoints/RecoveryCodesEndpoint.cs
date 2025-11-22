@@ -2,6 +2,7 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
@@ -11,14 +12,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class RecoveryCodesEndpoint(AppDbContext db)
-    : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
+    : Ep.NoReq.Res<IResult>
 {
     public override void Configure()
     {
         Post("/auth/recoveryCodes");
     }
 
-    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<IResult> ExecuteAsync(
         CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
@@ -26,7 +27,7 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         if (email is null)
         {
             Logger.LogWarning("Recovery codes generation attempt without valid email claim in token");
-            return TypedResults.Unauthorized();
+            return ApiResults.Unauthorized();
         }
 
         Logger.LogDebug("Attempting to generate recovery codes for user {Email}", email.Value);
@@ -35,7 +36,7 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         if (user is null)
         {
             Logger.LogWarning("Recovery codes generation attempt for non-existent user with email {Email}", email.Value);
-            return TypedResults.Unauthorized();
+            return ApiResults.Unauthorized();
         }
 
         Logger.LogDebug("Invalidating existing unused recovery codes for user {Email}", email.Value);
@@ -60,7 +61,7 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
-        return TypedResults.Ok(new RecoveryCodesResponse
+        return ApiResults.Ok(new RecoveryCodesResponse
         {
             Codes = recoveryCodes
         });

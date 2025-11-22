@@ -2,6 +2,7 @@
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class RefreshEndpoint(AppDbContext db)
-    : Ep.Req<RefreshRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<RefreshRequest>.Res<IResult>
 {
     public override void Configure()
     {
@@ -19,7 +20,7 @@ public class RefreshEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(RefreshRequest req,
+    public override async Task<IResult> ExecuteAsync(RefreshRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Attempting to refresh token");
@@ -33,7 +34,7 @@ public class RefreshEndpoint(AppDbContext db)
         if (session is null)
         {
             Logger.LogWarning("Invalid or revoked refresh token used in refresh attempt");
-            return TypedResults.Unauthorized();
+            return ApiResults.Unauthorized();
         }
 
         await db.Sessions.Where(e => e.RefreshToken == req.RefreshToken)
@@ -63,6 +64,6 @@ public class RefreshEndpoint(AppDbContext db)
             LastName = session.User.LastName
         };
 
-        return TypedResults.Ok(response);
+        return ApiResults.Ok(response);
     }
 }

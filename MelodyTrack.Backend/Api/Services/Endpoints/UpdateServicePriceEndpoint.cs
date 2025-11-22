@@ -8,14 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>>
+public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServicePriceRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Patch("/services/{id}/price");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
     {
         var service = await db.Services
             .Where(e => e.Id == req.Id)
@@ -23,7 +23,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServiceP
 
         if (service is null)
         {
-            return TypedResults.NotFound();
+            return ApiResults.NotFound();
         }
 
         var price = new ServicePrice
@@ -37,7 +37,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServiceP
         await db.ServicePriceHistory.AddAsync(price, ct);
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Ok(new CreateEntityResponse
+        return ApiResults.Ok(new CreateEntityResponse
         {
             Id = service.Id
         });

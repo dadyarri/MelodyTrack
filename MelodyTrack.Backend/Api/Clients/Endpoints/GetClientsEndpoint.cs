@@ -12,14 +12,14 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper)
     : Ep.Req<GetClientsPaginatedRequest>.Res<
-        Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
+        IResult>
 {
     public override void Configure()
     {
         Get("/clients");
     }
 
-    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
+    public override async Task<IResult>
         ExecuteAsync(GetClientsPaginatedRequest req,
             CancellationToken ct)
     {
@@ -48,6 +48,6 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             totalCount
         );
 
-        return TypedResults.Ok(PaginatedResponse.Create(clientsFacets, totalCount, req));
+        return ApiResults.Ok(PaginatedResponse.Create(clientsFacets, totalCount, req));
     }
 }

@@ -10,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<PaginatedResponse<GetPaymentsDto>>, UnauthorizedHttpResult>>
+public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Get("/payments");
     }
 
-    public override async Task<Results<Ok<PaginatedResponse<GetPaymentsDto>>, UnauthorizedHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
     {
         Logger.LogDebug(
             "Fetching paginated list of payments with filters - Page: {Page}, PageSize: {PageSize}, Client's first name: {FirstName}, Client's last name: {LastName}",
@@ -44,7 +44,7 @@ public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedR
             totalCount
         );
 
-        return TypedResults.Ok(PaginatedResponse.Create(payments, totalCount, req));
+        return ApiResults.Ok(PaginatedResponse.Create(payments, totalCount, req));
 
     }
 }

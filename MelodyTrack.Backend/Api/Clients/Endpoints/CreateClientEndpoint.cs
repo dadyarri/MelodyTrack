@@ -9,14 +9,14 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
     CreateClientEndpoint(AppDbContext db)
-    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateClientRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Post("/clients");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<IResult> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
         var client = new Client
@@ -45,7 +45,7 @@ public class
             client.Contacts.Vk ?? "not provided"
         );
 
-        return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
+        return ApiResults.Created($"/clients/{client.Id}", new CreateEntityResponse
         {
             Id = client.Id
         });

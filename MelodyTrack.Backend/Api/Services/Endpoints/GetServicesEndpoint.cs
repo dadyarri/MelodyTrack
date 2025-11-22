@@ -12,14 +12,14 @@ namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
 public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPriceDtoMapConfig mapper)
     : Ep.Req<GetServicesPaginatedRequest>.Res<
-        Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult>>
+        IResult>
 {
     public override void Configure()
     {
         Get("/services");
     }
 
-    public override async Task<Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult>>
+    public override async Task<IResult>
         ExecuteAsync(GetServicesPaginatedRequest req, CancellationToken ct)
     {
         Logger.LogDebug(
@@ -44,6 +44,6 @@ public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPri
             totalCount
         );
 
-        return TypedResults.Ok(PaginatedResponse.Create(servicesFacets, totalCount, req));
+        return ApiResults.Ok(PaginatedResponse.Create(servicesFacets, totalCount, req));
     }
 }

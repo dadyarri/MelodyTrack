@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Schedule.Requests;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
@@ -7,14 +8,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
+public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointmentRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Patch("/appointments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
     {
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id)
@@ -26,7 +27,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
         if (appointment is null)
         {
             AddError(r => r.Id, "Встреча не найдена");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return ApiResults.NotFound(ValidationFailures);
         }
 
         if (req.ClientId is not null)
@@ -35,7 +36,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             if (client is null)
             {
                 AddError(r => r.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             appointment.Client = client;
@@ -47,7 +48,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             if (service is null)
             {
                 AddError(r => r.ServiceId, "Услуга не найдена");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             appointment.Service = service;
@@ -59,7 +60,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             if (provider is null)
             {
                 AddError(r => r.ProviderId, "Пользователь не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             appointment.Provider = provider;
@@ -86,20 +87,20 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             if (req.RecurrencePattern is null)
             {
                 AddError(r => r.RecurrencePattern, "Паттерн повторения не указан");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             if (req.StartDate is null)
             {
                 AddError(r => r.StartDate, "Дата начала не задана");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             var recurrenceType = await db.RecurrenceTypes.FirstOrDefaultAsync(e => e.Id == req.RecurrenceTypeId.Value, ct);
             if (recurrenceType is null)
             {
                 AddError(r => r.ProviderId, "Тип повторения не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return ApiResults.NotFound(ValidationFailures);
             }
 
             appointment.RecurringRule = new AppointmentRecurrenceRule
@@ -115,6 +116,6 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
 
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.NoContent();
+        return ApiResults.NoContent();
     }
 }

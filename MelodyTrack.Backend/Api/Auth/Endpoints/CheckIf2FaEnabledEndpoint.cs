@@ -1,6 +1,7 @@
 using FastEndpoints;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -8,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class CheckIf2FaEnabledEndpoint(AppDbContext db)
-    : Ep.Req<CheckIf2FaEnabledRequest>.Res<Ok<CheckIf2FaEnabledResponse>>
+    : Ep.Req<CheckIf2FaEnabledRequest>.Res<IResult>
 {
     public override void Configure()
     {
@@ -16,7 +17,7 @@ public class CheckIf2FaEnabledEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Ok<CheckIf2FaEnabledResponse>> ExecuteAsync(CheckIf2FaEnabledRequest req,
+    public override async Task<IResult> ExecuteAsync(CheckIf2FaEnabledRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Checking 2FA status for user {Email}", req.Email);
@@ -25,7 +26,7 @@ public class CheckIf2FaEnabledEndpoint(AppDbContext db)
         var is2FaEnabled = user?.TotpSecret is not null;
         Logger.LogInformation("2FA status for user {Email}: {Status}", req.Email, is2FaEnabled ? "enabled" : "disabled");
 
-        return TypedResults.Ok(new CheckIf2FaEnabledResponse
+        return ApiResults.Ok(new CheckIf2FaEnabledResponse
         {
             Enabled = is2FaEnabled
         });

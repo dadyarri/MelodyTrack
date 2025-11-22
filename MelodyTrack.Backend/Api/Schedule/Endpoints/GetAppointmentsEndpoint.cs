@@ -1,5 +1,6 @@
 using Facet.Extensions.EFCore;
 using FastEndpoints;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Schedule.Requests;
 using MelodyTrack.Common.Api.Schedule.Responses;
 using MelodyTrack.Common.Data;
@@ -9,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetAppointmentsEndpoint(AppDbContext db) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetAppointmentsEndpoint(AppDbContext db) : Ep.Req<GetAppointmentsRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Get("/appointments");
     }
 
-    public override async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
     {
         var appointments = await db.Appointments
             .Include(e => e.Service)
@@ -31,6 +32,6 @@ public class GetAppointmentsEndpoint(AppDbContext db) : Ep.Req<GetAppointmentsRe
             appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
         }
 
-        return TypedResults.Ok(new GetAppointmentsResponse { Appointments = appointments });
+        return ApiResults.Ok(new GetAppointmentsResponse { Appointments = appointments });
     }
 }

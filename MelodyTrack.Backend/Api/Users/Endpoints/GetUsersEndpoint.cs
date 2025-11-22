@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Facet.Extensions.EFCore;
 using FastEndpoints;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Users.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Enums;
@@ -9,21 +10,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUsersResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<IResult>
 {
     public override void Configure()
     {
         Get("/users");
     }
 
-    public override async Task<Results<Ok<GetUsersResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(CancellationToken ct)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
         {
             AddError(_ => login, "Пользователь не авторизован");
-            return TypedResults.Unauthorized();
+            return ApiResults.Unauthorized();
         }
 
         var user = await db.Users
@@ -34,7 +35,7 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
         if (user is null || !user.Role.RoleName.IsAnyAdmin())
         {
             AddError(_ => login, "Нет доступа");
-            return TypedResults.Forbid();
+            return ApiResults.Forbid();
         }
 
         var users = await db.Users
@@ -43,6 +44,6 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
             .ThenBy(e => e.FirstName)
             .ToFacetsAsync<GetUsersDto>(ct);
 
-        return TypedResults.Ok(new GetUsersResponse { Users = users });
+        return ApiResults.Ok(new GetUsersResponse { Users = users });
     }
 }

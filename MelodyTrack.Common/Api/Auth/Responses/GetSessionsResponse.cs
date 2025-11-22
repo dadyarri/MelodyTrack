@@ -2,7 +2,7 @@
 
 public class GetSessionsResponse
 {
-    public required List<SessionDto> Data { get; set; }
+    public required List<SessionDto> Sessions { get; set; }
 }
 
 public class SessionDto

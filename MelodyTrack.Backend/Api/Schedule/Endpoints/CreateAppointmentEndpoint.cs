@@ -8,21 +8,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointmentRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Post("/appointments");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(CreateAppointmentRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(CreateAppointmentRequest req, CancellationToken ct)
     {
         var client = await db.Clients.Where(e => e.Id == req.ClientId).FirstOrDefaultAsync(ct);
 
         if (client is null)
         {
             AddError(e => e.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return ApiResults.NotFound(ValidationFailures);
         }
 
         var service = await db.Services.Where(e => e.Id == req.ServiceId).FirstOrDefaultAsync(ct);
@@ -30,7 +30,7 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
         if (service is null)
         {
             AddError(e => e.ServiceId, "Сервис не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return ApiResults.NotFound(ValidationFailures);
         }
 
         var provider = await db.Users.Where(e => e.Id == req.ProviderId).FirstOrDefaultAsync(ct);
@@ -69,6 +69,6 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
         await db.AddAsync(appointment, ct);
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Created($"/appointments/{appointment.Id}", new CreateEntityResponse { Id = appointment.Id });
+        return ApiResults.Created($"/appointments/{appointment.Id}", new CreateEntityResponse { Id = appointment.Id });
     }
 }

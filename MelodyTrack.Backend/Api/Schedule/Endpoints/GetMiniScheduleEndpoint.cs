@@ -2,6 +2,7 @@ using System.Globalization;
 using Facet.Extensions;
 using FastEndpoints;
 using Humanizer;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Schedule.Requests;
 using MelodyTrack.Common.Api.Schedule.Responses;
 using MelodyTrack.Common.Data;
@@ -11,14 +12,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmentsRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Get("/appointments/mini");
     }
 
-    public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<IResult> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
         var startOfToday = DateTime.Today;
         var endOfTomorrow = startOfToday.AddDays(2).AddTicks(-1);
@@ -35,7 +36,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
             .OrderBy(e => e.Key)
             .ToDictionaryAsync(
                 e => e.Key.Humanize(culture: cultureInfo, dateToCompareAgainst: startOfToday),
-                e => Enumerable.ToList<AppointmentDto>(e.SelectFacets<Appointment, AppointmentDto>()),
+                e => e.SelectFacets<Appointment, AppointmentDto>().ToList<AppointmentDto>(),
                 ct
             );
 
@@ -44,6 +45,6 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
             Appointments = appointmentsDays
         };
 
-        return TypedResults.Ok(result);
+        return ApiResults.Ok(result);
     }
 }

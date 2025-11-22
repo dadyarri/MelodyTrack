@@ -2,6 +2,7 @@
 using MelodyTrack.Backend.Utils;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class Recover2FaEndpoint(AppDbContext db)
-    : Ep.Req<Recover2FaRequest>.Res<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+    : Ep.Req<Recover2FaRequest>.Res<IResult>
 {
     public override void Configure()
     {
@@ -19,7 +20,7 @@ public class Recover2FaEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<IResult> ExecuteAsync(
         Recover2FaRequest req,
         CancellationToken ct)
     {
@@ -30,7 +31,7 @@ public class Recover2FaEndpoint(AppDbContext db)
         if (user is null)
         {
             Logger.LogWarning("2FA recovery attempt for non-existent user with email {Email}", req.Email);
-            return TypedResults.Unauthorized();
+            return ApiResults.Unauthorized();
         }
 
         var recoveryCode = await db.RecoveryCodes
@@ -40,7 +41,7 @@ public class Recover2FaEndpoint(AppDbContext db)
         if (recoveryCode is null)
         {
             Logger.LogWarning("2FA recovery attempt with invalid or used recovery code for user {Email}", req.Email);
-            return TypedResults.Forbid();
+            return ApiResults.Forbid();
         }
 
         await db.Sessions
@@ -78,6 +79,6 @@ public class Recover2FaEndpoint(AppDbContext db)
             user.Email,
             session.DeviceInfo
         );
-        return TypedResults.Ok(response);
+        return ApiResults.Ok(response);
     }
 }

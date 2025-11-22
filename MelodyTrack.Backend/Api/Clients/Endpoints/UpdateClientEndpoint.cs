@@ -1,6 +1,7 @@
 using FastEndpoints;
 using MelodyTrack.Common.Api.Clients.Requests;
 using MelodyTrack.Common.Api.Common.Requests;
+using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -8,14 +9,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class UpdateClientEndpoint(AppDbContext db)
-    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<GetEntityRequest>, NotFound>>
+    : Ep.Req<UpdateClientRequest>.Res<IResult>
 {
     public override void Configure()
     {
         Put("/clients/{id}");
     }
 
-    public override async Task<Results<Ok<GetEntityRequest>, NotFound>> ExecuteAsync(UpdateClientRequest req,
+    public override async Task<IResult> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {
         Logger.LogInformation(
@@ -36,7 +37,7 @@ public class UpdateClientEndpoint(AppDbContext db)
 
         if (client is null)
         {
-            return TypedResults.NotFound();
+            return ApiResults.NotFound();
         }
 
         if (req.FirstName != null)
@@ -55,6 +56,6 @@ public class UpdateClientEndpoint(AppDbContext db)
 
         await db.SaveChangesAsync(ct);
 
-        return TypedResults.Ok(new GetEntityRequest { Id = req.Id });
+        return ApiResults.Ok(new GetEntityRequest { Id = req.Id });
     }
 }
