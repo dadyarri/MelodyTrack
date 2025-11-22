@@ -20,8 +20,18 @@ public class ApiResponse<T>
     }
 }
 
-public class ApiResponse: ApiResponse<object>
+public class ApiResponse : ApiResponse<object>
 {
+    public static ApiResponse<T> Success<T>(T data, string message = "")
+    {
+        return new ApiResponse<T>
+        {
+            Succeeded = true,
+            Data = data,
+            Message = message
+        };
+    }
+
     public static ApiResponse<object> Failure(List<ValidationFailure> errors, string message = "")
     {
         return new ApiResponse<object>
