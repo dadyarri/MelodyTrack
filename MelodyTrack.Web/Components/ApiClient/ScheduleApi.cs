@@ -10,7 +10,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ScheduleApi(ApiUtils apiUtils)
 {
 
-    public async Task<(CreateEntityResponse?, HttpResponseMessage)> CreateAppointmentAsync(CreateAppointmentRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateAppointmentAsync(CreateAppointmentRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -21,7 +21,7 @@ public class ScheduleApi(ApiUtils apiUtils)
         );
     }
     
-    public async Task<HttpResponseMessage> DeleteAppointmentAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteAppointmentAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/appointments/{request.Id}"),
@@ -30,7 +30,7 @@ public class ScheduleApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(GetAppointmentsResponse?, HttpResponseMessage)> GetAppointmentsAsync(GetAppointmentsRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetAppointmentsResponse>> GetAppointmentsAsync(GetAppointmentsRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetAppointmentsResponse>(
             async client => await client.GetAsync($"/appointments?{request.ToQueryString()}"),
@@ -39,7 +39,7 @@ public class ScheduleApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(GetMiniScheduleResponse?, HttpResponseMessage)> GetMiniScheduleAsync(BaseGetAppointmentsRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetMiniScheduleResponse>> GetMiniScheduleAsync(BaseGetAppointmentsRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetMiniScheduleResponse>(
             async client => await client.GetAsync($"/appointments/mini?{request.ToQueryString()}"),
@@ -48,7 +48,7 @@ public class ScheduleApi(ApiUtils apiUtils)
         );
     }
     
-    public async Task<(GetEntityRequest?, HttpResponseMessage)> UpdateAppointmentAsync(UpdateAppointmentRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetEntityRequest>> UpdateAppointmentAsync(UpdateAppointmentRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<GetEntityRequest>(

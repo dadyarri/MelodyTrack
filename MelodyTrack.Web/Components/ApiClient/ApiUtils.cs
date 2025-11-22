@@ -1,6 +1,7 @@
 using System.Net;
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
@@ -8,7 +9,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 
 public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localStorage)
 {
-    public async Task<(TResponse?, HttpResponseMessage)> CallApiAsync<TResponse>(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
+    public async Task<ApiResponse<TResponse>> CallApiAsync<TResponse>(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
     {
         using var client = factory.CreateClient("mt");
         var accessToken = (await localStorage.GetAsync<string>("accessToken")).Value;
@@ -20,10 +21,11 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
 
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         var response = await call(client);
-        return (await response.Content.ReadFromJsonAsync<TResponse>(), response);
+        var responseBody = await response.Content.ReadFromJsonAsync<ApiResponse<TResponse>>();
+        return responseBody ?? ApiResponse<TResponse>.Failure("Ошибка разбора ответа");
     }
 
-    public async Task<HttpResponseMessage> CallApiAsync(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
+    public async Task<ApiResponse<object>> CallApiAsync(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
     {
         using var client = factory.CreateClient("mt");
         var accessToken = (await localStorage.GetAsync<string>("accessToken")).Value;
@@ -35,7 +37,8 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
 
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
         var response = await call(client);
-        return response;
+        var responseBody = await response.Content.ReadFromJsonAsync<ApiResponse>();
+        return responseBody ?? ApiResponse.Failure("Ошибка разбора ответа");
     }
 
     public async Task<bool> IsAuthenticatedAsync()

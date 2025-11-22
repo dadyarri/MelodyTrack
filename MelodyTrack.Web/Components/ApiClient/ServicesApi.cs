@@ -10,7 +10,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ServicesApi(ApiUtils apiUtils)
 {
 
-    public async Task<(CreateEntityResponse?, HttpResponseMessage)> CreateServiceAsync(CreateServiceRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateServiceAsync(CreateServiceRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -21,7 +21,7 @@ public class ServicesApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(PaginatedResponse<ServiceWithCurrentPriceDto>?, HttpResponseMessage)> GetServicesAsync(GetServicesPaginatedRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<PaginatedResponse<ServiceWithCurrentPriceDto>>> GetServicesAsync(GetServicesPaginatedRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<ServiceWithCurrentPriceDto>>(
             async client => await client.GetAsync($"/services?{request.ToQueryString()}"),
@@ -30,7 +30,7 @@ public class ServicesApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(LookupServicesResponse?, HttpResponseMessage)> LookupServicesAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<LookupServicesResponse>> LookupServicesAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<LookupServicesResponse>(
             async client => await client.GetAsync("/services/lookup"),
@@ -39,7 +39,7 @@ public class ServicesApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> DeleteServiceAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteServiceAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/services/{request.Id}"),

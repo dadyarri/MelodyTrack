@@ -18,9 +18,19 @@ public class ApiResponse<T>
             Message = message
         };
     }
+    
+    public static ApiResponse<T> Failure(string message = "")
+    {
+        return new ApiResponse<T>
+        {
+            Succeeded = false,
+            Errors = [],
+            Message = message
+        };
+    }
 }
 
-public class ApiResponse : ApiResponse<object>
+public abstract class ApiResponse : ApiResponse<object>
 {
     public static ApiResponse<T> Success<T>(T data, string message = "")
     {
@@ -42,7 +52,7 @@ public class ApiResponse : ApiResponse<object>
         };
     }
 
-    public static ApiResponse<object> Failure(string message = "")
+    public new static ApiResponse<object> Failure(string message = "")
     {
         return new ApiResponse<object>
         {

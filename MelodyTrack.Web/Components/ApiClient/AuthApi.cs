@@ -1,12 +1,13 @@
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
+using MelodyTrack.Common.Api.Common.Responses;
 using Microsoft.AspNetCore.Components;
 
 namespace MelodyTrack.Web.Components.ApiClient;
 
 public class AuthApi(ApiUtils apiUtils)
 {
-    public async Task<(CheckIf2FaEnabledResponse?, HttpResponseMessage)> CheckIf2FaEnabledAsync(CheckIf2FaEnabledRequest request, NavigationManager nav)
+    public async Task<ApiResponse<CheckIf2FaEnabledResponse>> CheckIf2FaEnabledAsync(CheckIf2FaEnabledRequest request, NavigationManager nav)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<CheckIf2FaEnabledResponse>(
@@ -16,7 +17,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(CreateInviteResponse?, HttpResponseMessage)> CreateInviteAsync(CreateInviteRequest request, NavigationManager nav)
+    public async Task<ApiResponse<CreateInviteResponse>> CreateInviteAsync(CreateInviteRequest request, NavigationManager nav)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<CreateInviteResponse>(
@@ -35,7 +36,7 @@ public class AuthApi(ApiUtils apiUtils)
     }
 
 
-    public async Task<(GetInviteCodeInformationResponse?, HttpResponseMessage)> GetInviteCodeInformationAsync(GetInviteCodeInformationRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetInviteCodeInformationResponse>> GetInviteCodeInformationAsync(GetInviteCodeInformationRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetInviteCodeInformationResponse>(
             async client => await client.GetAsync($"/auth/invite?inviteCode={request.InviteCode}"),
@@ -44,7 +45,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(GetSessionsResponse?, HttpResponseMessage)> GetSessionsAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<GetSessionsResponse>> GetSessionsAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetSessionsResponse>(
             async client => await client.GetAsync("/auth/sessions"),
@@ -53,7 +54,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(LoginResponse?, HttpResponseMessage)> LoginAsync(LoginRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -83,7 +84,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(Recover2FaResponse?, HttpResponseMessage)> Recover2FaAsync(Recover2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<Recover2FaResponse>> Recover2FaAsync(Recover2FaRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -94,7 +95,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(RecoveryCodesResponse?, HttpResponseMessage)> RecoveryCodesAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<RecoveryCodesResponse>> RecoveryCodesAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<RecoveryCodesResponse>(
             async client => await client.PostAsync("/auth/recoveryCodes", null),
@@ -103,7 +104,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(LoginResponse?, HttpResponseMessage)> RefreshAsync(RefreshRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<LoginResponse>> RefreshAsync(RefreshRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -114,7 +115,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(RegisterResponse?, HttpResponseMessage)> RegisterAsync(RegisterRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<RegisterResponse>> RegisterAsync(RegisterRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<RegisterResponse>(
@@ -124,7 +125,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> Remove2FaAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> Remove2FaAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync("/auth/2fa/delete"),
@@ -133,7 +134,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> ResetPasswordAsync(ResetPasswordRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> ResetPasswordAsync(ResetPasswordRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -144,7 +145,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(Setup2FaResponse?, HttpResponseMessage)> Setup2FaAsync(Setup2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<Setup2FaResponse>> Setup2FaAsync(Setup2FaRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -155,7 +156,7 @@ public class AuthApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> Verify2FaAsync(Verify2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> Verify2FaAsync(Verify2FaRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 

@@ -10,7 +10,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ExpensesApi(ApiUtils apiUtils)
 {
 
-    public async Task<(CreateEntityResponse?, HttpResponseMessage)> CreateExpenseAsync(CreateExpenseRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateExpenseAsync(CreateExpenseRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -21,7 +21,7 @@ public class ExpensesApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> DeleteExpenseAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteExpenseAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/expenses/{request.Id}"),
@@ -30,7 +30,7 @@ public class ExpensesApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(PaginatedResponse<Expense>?, HttpResponseMessage)> GetExpensesAsync(GetExpensesPaginatedRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<PaginatedResponse<Expense>>> GetExpensesAsync(GetExpensesPaginatedRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<Expense>>(
             async client => await client.GetAsync($"/expenses?{request.ToQueryString()}"),

@@ -11,7 +11,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ClientsApi(ApiUtils apiUtils)
 {
 
-    public async Task<(CreateEntityResponse?, HttpResponseMessage)> CreateClientAsync(CreateClientRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateClientAsync(CreateClientRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
 
@@ -22,7 +22,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<HttpResponseMessage> DeleteClientAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteClientAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/clients/{request.Id}"),
@@ -31,7 +31,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(Client?, HttpResponseMessage)> GetClientAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<Client>> GetClientAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<Client>(
             async client => await client.GetAsync($"/clients/{request.Id}"),
@@ -40,7 +40,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(PaginatedResponse<ClientWithBalanceDto>?, HttpResponseMessage)> GetClientsAsync(GetClientsPaginatedRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<PaginatedResponse<ClientWithBalanceDto>>> GetClientsAsync(GetClientsPaginatedRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<ClientWithBalanceDto>>(
             async client => await client.GetAsync($"/clients?{request.ToQueryString()}"),
@@ -49,7 +49,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(GetClientsWithNegativeBalanceResponse?, HttpResponseMessage)> GetClientsWithNegativeBalanceAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<GetClientsWithNegativeBalanceResponse>> GetClientsWithNegativeBalanceAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetClientsWithNegativeBalanceResponse>(
             async client => await client.GetAsync("/clients/inDebt"),
@@ -58,7 +58,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(LookupClientsResponse?, HttpResponseMessage)> LookupClientsAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<LookupClientsResponse>> LookupClientsAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<LookupClientsResponse>(
             async client => await client.GetAsync("/clients/lookup"),
@@ -67,7 +67,7 @@ public class ClientsApi(ApiUtils apiUtils)
         );
     }
 
-    public async Task<(GetEntityRequest?, HttpResponseMessage)> UpdateClientAsync(UpdateClientRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetEntityRequest>> UpdateClientAsync(UpdateClientRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<GetEntityRequest>(

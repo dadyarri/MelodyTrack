@@ -9,7 +9,7 @@ namespace MelodyTrack.Web.Components.ApiClient;
 
 public class PaymentsApi(ApiUtils apiUtils)
 {
-    public async Task<(CreateEntityResponse?, HttpResponseMessage)> CreatePaymentAsync(CreatePaymentRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreatePaymentAsync(CreatePaymentRequest request, NavigationManager navigationManager)
     {
                 var content = JsonContent.Create(request);
         
@@ -20,7 +20,7 @@ public class PaymentsApi(ApiUtils apiUtils)
         );
     }
     
-    public async Task<HttpResponseMessage> DeletePaymentAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeletePaymentAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/payments/{request.Id}"),
@@ -29,7 +29,7 @@ public class PaymentsApi(ApiUtils apiUtils)
         );
     }
     
-    public async Task<(PaginatedResponse<GetPaymentsDto>?, HttpResponseMessage)> GetPaymentsAsync(GetPaymentsPaginatedRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<PaginatedResponse<GetPaymentsDto>>> GetPaymentsAsync(GetPaymentsPaginatedRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<GetPaymentsDto>>(
             async client => await client.GetAsync($"/payments?{request.ToQueryString()}"),
