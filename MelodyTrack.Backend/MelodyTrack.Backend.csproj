@@ -8,7 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-        <PackageReference Include="Epiforge.Kong" Version="1.0.3"/>
         <PackageReference Include="Facet" Version="4.4.3" />
         <PackageReference Include="Facet.Extensions.EFCore" Version="4.4.3" />
         <PackageReference Include="Facet.Mapping" Version="4.4.3" />
