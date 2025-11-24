@@ -1,6 +1,7 @@
 ﻿@using MelodyTrack.Web.Components.Palettes
 @using MelodyTrack.Web.Components.Themes
 @inherits LayoutComponentBase
+@inject ProtectedLocalStorage LocalStorage
 
 <MudThemeProvider Theme="@MainTheme.Theme"/>
 <MudPopoverProvider/>
@@ -12,7 +13,7 @@
                        OnClick="@(_ => DrawerToggle())"/>
         <MudText Typo="Typo.h5" Class="ml-3">MelodyTrack</MudText>
         <MudSpacer/>
-        <MudIconButton Icon="@Icons.Material.Filled.MoreVert" Color="Color.Inherit" Edge="Edge.End"/>
+        <MudText></MudText>
     </MudAppBar>
     <MudDrawer id="nav-drawer" @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="2">
         <NavMenu/>
@@ -31,6 +32,15 @@
 
 @code {
     private bool _drawerOpen = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _firstName = (await LocalStorage.GetAsync<string>("first_name")).Value;
+        _lastName = (await LocalStorage.GetAsync<string>("last_name")).Value;
+    }
+
+    private string? _firstName;
+    private string? _lastName;
 
     private void DrawerToggle()
     {
