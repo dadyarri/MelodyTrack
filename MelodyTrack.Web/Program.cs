@@ -18,6 +18,7 @@ builder.Services.AddRazorComponents()
 builder.Services.AddHttpClient("mt", (_, client) =>
 {
     client.BaseAddress = new Uri(backendBaseAddress);
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrackWeb/2.0");
 });
 builder.Services.AddScoped<ApiUtils>();
 builder.Services.AddScoped<AuthApi>();
@@ -26,6 +27,7 @@ builder.Services.AddScoped<ExpensesApi>();
 builder.Services.AddScoped<PaymentsApi>();
 builder.Services.AddScoped<ScheduleApi>();
 builder.Services.AddScoped<ServicesApi>();
+builder.Services.AddScoped<UsersApi>();
 builder.Services.AddScoped<Api>();
 
 builder.Services.AddAuthentication("bearer")
