@@ -16,112 +16,110 @@ public static class QueryableExtensions
                                                            ?? throw new InvalidOperationException(
                                                                "NpgsqlFuzzyStringMatchDbFunctionsExtensions.FuzzyStringMatchLevenshtein not found.");
 
-    public static IQueryable<TEntity> ApplyPagination<TEntity>(this IQueryable<TEntity> queryable,
-        PaginatedRequest req)
+    extension<TEntity>(IQueryable<TEntity> queryable)
     {
-        return queryable.Skip(req.PageSize * (req.Page - 1)).Take(req.PageSize);
-    }
-
-    public static IQueryable<TEntity> ApplyFuzzySearchFilters<TEntity>(
-        this IQueryable<TEntity> queryable,
-        PaginatedRequest req,
-        int maxDistance = 3)
-    {
-        var entityType = typeof(TEntity);
-        var parameter = Expression.Parameter(entityType, "e");
-
-        foreach (var reqProp in req.GetType()
-                     .GetProperties(BindingFlags.Public | BindingFlags.Instance))
+        public IQueryable<TEntity> ApplyPagination(PaginatedRequest req)
         {
-            if (reqProp.PropertyType != typeof(string))
-            {
-                continue;
-            }
-
-            var filterValue = (string?)reqProp.GetValue(req);
-            if (string.IsNullOrWhiteSpace(filterValue))
-            {
-                continue;
-            }
-
-            var directProp = entityType.GetProperty(
-                reqProp.Name,
-                BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
-
-            Expression? memberAccess = null;
-
-            if (directProp?.PropertyType == typeof(string))
-            {
-                memberAccess = Expression.Property(parameter, directProp);
-            }
-            else
-            {
-                var attr = reqProp.GetCustomAttribute<FuzzyPathAttribute>();
-                if (attr == null)
-                {
-                    continue; // no fuzzy info → ignore
-                }
-
-                if (attr.EntityType != entityType)
-                {
-                    throw new InvalidOperationException(
-                        $"[FuzzyPath] on {reqProp.DeclaringType?.Name}.{reqProp.Name} " +
-                        $"references root type {attr.EntityType} but query is on {entityType}.");
-                }
-
-                memberAccess = BuildNestedMemberAccess(parameter, attr.Path);
-            }
-
-            var callLevenshtein = Expression.Call(
-                null,
-                LevenshteinMethod,
-                Expression.Constant(EF.Functions),
-                memberAccess!,
-                Expression.Constant(filterValue, typeof(string)));
-
-            var predicateBody = Expression.LessThanOrEqual(
-                callLevenshtein,
-                Expression.Constant(maxDistance, typeof(int)));
-
-            var lambda = Expression.Lambda<Func<TEntity, bool>>(predicateBody, parameter);
-            queryable = queryable.Where(lambda);
+            return queryable.Skip(req.PageSize * (req.Page - 1)).Take(req.PageSize);
         }
 
-        return queryable;
-    }
-
-    public static IQueryable<TEntity> ApplyDateRangeFilter<TEntity>(
-        this IQueryable<TEntity> queryable,
-        Expression<Func<TEntity, DateTime?>> dateSelector,
-        DateTime? from = null,
-        DateTime? to = null)
-    {
-        if (!from.HasValue && !to.HasValue)
+        public IQueryable<TEntity> ApplyFuzzySearchFilters(PaginatedRequest req,
+            int maxDistance = 3)
         {
+            var entityType = typeof(TEntity);
+            var parameter = Expression.Parameter(entityType, "e");
+
+            foreach (var reqProp in req.GetType()
+                         .GetProperties(BindingFlags.Public | BindingFlags.Instance))
+            {
+                if (reqProp.PropertyType != typeof(string))
+                {
+                    continue;
+                }
+
+                var filterValue = (string?)reqProp.GetValue(req);
+                if (string.IsNullOrWhiteSpace(filterValue))
+                {
+                    continue;
+                }
+
+                var directProp = entityType.GetProperty(
+                    reqProp.Name,
+                    BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
+
+                Expression? memberAccess = null;
+
+                if (directProp?.PropertyType == typeof(string))
+                {
+                    memberAccess = Expression.Property(parameter, directProp);
+                }
+                else
+                {
+                    var attr = reqProp.GetCustomAttribute<FuzzyPathAttribute>();
+                    if (attr == null)
+                    {
+                        continue; // no fuzzy info → ignore
+                    }
+
+                    if (attr.EntityType != entityType)
+                    {
+                        throw new InvalidOperationException(
+                            $"[FuzzyPath] on {reqProp.DeclaringType?.Name}.{reqProp.Name} " +
+                            $"references root type {attr.EntityType} but query is on {entityType}.");
+                    }
+
+                    memberAccess = BuildNestedMemberAccess(parameter, attr.Path);
+                }
+
+                var callLevenshtein = Expression.Call(
+                    null,
+                    LevenshteinMethod,
+                    Expression.Constant(EF.Functions),
+                    memberAccess!,
+                    Expression.Constant(filterValue, typeof(string)));
+
+                var predicateBody = Expression.LessThanOrEqual(
+                    callLevenshtein,
+                    Expression.Constant(maxDistance, typeof(int)));
+
+                var lambda = Expression.Lambda<Func<TEntity, bool>>(predicateBody, parameter);
+                queryable = queryable.Where(lambda);
+            }
+
             return queryable;
         }
 
-        var param = dateSelector.Parameters[0];
-        var member = dateSelector.Body;
-
-        Expression? predicate = null;
-
-        if (from.HasValue)
+        public IQueryable<TEntity> ApplyDateRangeFilter(Expression<Func<TEntity, DateTime?>> dateSelector,
+            DateTime? from = null,
+            DateTime? to = null)
         {
-            var constFrom = Expression.Constant(from.Value.AddDays(-1).AddTicks(1).ToUniversalTime(), typeof(DateTime?));
-            var ge = Expression.GreaterThanOrEqual(member, constFrom);
-            predicate = ge;
-        }
+            if (!from.HasValue && !to.HasValue)
+            {
+                return queryable;
+            }
 
-        if (to.HasValue)
-        {
-            var constTo = Expression.Constant(to.Value.AddDays(1).AddTicks(-1).ToUniversalTime(), typeof(DateTime?));
-            var le = Expression.LessThanOrEqual(member, constTo);
-            predicate = predicate == null ? le : Expression.AndAlso(predicate, le);
-        }
+            var param = dateSelector.Parameters[0];
+            var member = dateSelector.Body;
 
-        var lambda = Expression.Lambda<Func<TEntity, bool>>(predicate!, param);
-        return queryable.Where(lambda);
+            Expression? predicate = null;
+
+            if (from.HasValue)
+            {
+                var constFrom = Expression.Constant(from.Value.AddDays(-1).AddTicks(1).ToUniversalTime(), typeof(DateTime?));
+                var ge = Expression.GreaterThanOrEqual(member, constFrom);
+                predicate = ge;
+            }
+
+            if (to.HasValue)
+            {
+                var constTo = Expression.Constant(to.Value.AddDays(1).AddTicks(-1).ToUniversalTime(), typeof(DateTime?));
+                var le = Expression.LessThanOrEqual(member, constTo);
+                predicate = predicate == null ? le : Expression.AndAlso(predicate, le);
+            }
+
+            var lambda = Expression.Lambda<Func<TEntity, bool>>(predicate!, param);
+            return queryable.Where(lambda);
+        }
     }
 
     private static Expression BuildNestedMemberAccess(Expression root, string memberPath)
