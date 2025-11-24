@@ -549,10 +549,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         await db.InviteCodes.AddAsync(invite, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ApiResponse<GetInviteCodeInformationResponse>>(new GetInviteCodeInformationRequest
-        {
-            InviteCode = invite.Code.ToString()
-        });
+        var (rsp, res) = await app.Client.GETAsync<GetInviteCodeInformationEndpoint, GetInviteCodeInformationRequest, ApiResponse<GetInviteCodeInformationResponse>>(
+            new GetInviteCodeInformationRequest
+            {
+                InviteCode = invite.Code.ToString()
+            });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
@@ -1455,10 +1456,11 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         }
 
         // Step 4: Check if 2FA is enabled
-        var (check2FaRsp, check2FaRes) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, ApiResponse<CheckIf2FaEnabledResponse>>(new CheckIf2FaEnabledRequest
-        {
-            Email = email.ToLowerInvariant()
-        });
+        var (check2FaRsp, check2FaRes) = await app.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, ApiResponse<CheckIf2FaEnabledResponse>>(
+            new CheckIf2FaEnabledRequest
+            {
+                Email = email.ToLowerInvariant()
+            });
 
         check2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         check2FaRes.ShouldNotBeNull();

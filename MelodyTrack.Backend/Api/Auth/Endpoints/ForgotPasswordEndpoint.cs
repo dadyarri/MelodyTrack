@@ -5,7 +5,6 @@ using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
 using MelodyTrack.Common.Utils;
-using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

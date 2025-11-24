@@ -48,7 +48,7 @@
     string? _email;
     string? _password;
     string? _otp;
-    bool _otpFieldVisible = false;
+    bool _otpFieldVisible;
 
     readonly FluentValueValidator<string> _emailValidator = new(x => x
         .NotEmpty()
@@ -76,7 +76,7 @@
 
         var result = await Api.Auth.CheckIf2FaEnabledAsync(new CheckIf2FaEnabledRequest
         {
-            Email = _email,
+            Email = _email
         }, Nav);
 
         if (!result.Succeeded)

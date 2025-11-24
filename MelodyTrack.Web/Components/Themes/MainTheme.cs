@@ -23,14 +23,14 @@ public static class MainTheme
             Subtitle1 = new Subtitle1Typography { FontSize = "1.25rem" },
             Body1 = new Body1Typography { FontSize = "1.1rem", LineHeight = "1.6" },
             Body2 = new Body2Typography { FontSize = "1rem" },
-            Caption = new CaptionTypography { FontSize = "0.9rem" },
+            Caption = new CaptionTypography { FontSize = "0.9rem" }
         },
         PaletteLight = new VintageParchmentPalette(),
         LayoutProperties = new LayoutProperties
         {
             DrawerWidthLeft = "280px",
             DrawerWidthRight = "280px",
-            AppbarHeight = "80px",
+            AppbarHeight = "80px"
         },
         ZIndex = new ZIndex { Drawer = 1300, Dialog = 1400 }
     };

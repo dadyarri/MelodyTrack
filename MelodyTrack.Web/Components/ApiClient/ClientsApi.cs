@@ -18,7 +18,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
             async client => await client.PostAsync("/clients", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -27,7 +27,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/clients/{request.Id}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -36,7 +36,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<Client>(
             async client => await client.GetAsync($"/clients/{request.Id}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -45,7 +45,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<PaginatedResponse<ClientWithBalanceDto>>(
             async client => await client.GetAsync($"/clients?{request.ToQueryString()}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -54,7 +54,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetClientsWithNegativeBalanceResponse>(
             async client => await client.GetAsync("/clients/inDebt"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -63,7 +63,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<LookupClientsResponse>(
             async client => await client.GetAsync("/clients/lookup"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -73,7 +73,7 @@ public class ClientsApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetEntityRequest>(
             async client => await client.PutAsync($"/clients/{request.Id}", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 }

@@ -12,7 +12,7 @@ public class UsersApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetUsersResponse>(
             async client => await client.GetAsync("/users"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 }

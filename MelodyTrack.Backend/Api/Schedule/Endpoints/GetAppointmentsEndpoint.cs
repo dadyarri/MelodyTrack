@@ -5,7 +5,6 @@ using MelodyTrack.Common.Api.Schedule.Requests;
 using MelodyTrack.Common.Api.Schedule.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Utils;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;

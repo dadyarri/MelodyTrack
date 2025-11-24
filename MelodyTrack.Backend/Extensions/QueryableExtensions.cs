@@ -16,6 +16,36 @@ public static class QueryableExtensions
                                                            ?? throw new InvalidOperationException(
                                                                "NpgsqlFuzzyStringMatchDbFunctionsExtensions.FuzzyStringMatchLevenshtein not found.");
 
+    private static Expression BuildNestedMemberAccess(Expression root, string memberPath)
+    {
+        if (string.IsNullOrWhiteSpace(memberPath))
+        {
+            throw new ArgumentException("Member path cannot be empty.", nameof(memberPath));
+        }
+
+        var parts = memberPath.Split('.');
+        var current = root;
+
+        foreach (var part in parts)
+        {
+            var prop = current.Type.GetProperty(
+                           part,
+                           BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
+                       ?? throw new InvalidOperationException(
+                           $"Property '{part}' not found on type '{current.Type}' while building path '{memberPath}'.");
+
+            current = Expression.Property(current, prop);
+        }
+
+        if (current.Type != typeof(string))
+        {
+            throw new InvalidOperationException(
+                $"The final member in path '{memberPath}' resolves to type '{current.Type}' – it must be string for fuzzy search.");
+        }
+
+        return current;
+    }
+
     extension<TEntity>(IQueryable<TEntity> queryable)
     {
         public IQueryable<TEntity> ApplyPagination(PaginatedRequest req)
@@ -120,35 +150,5 @@ public static class QueryableExtensions
             var lambda = Expression.Lambda<Func<TEntity, bool>>(predicate!, param);
             return queryable.Where(lambda);
         }
-    }
-
-    private static Expression BuildNestedMemberAccess(Expression root, string memberPath)
-    {
-        if (string.IsNullOrWhiteSpace(memberPath))
-        {
-            throw new ArgumentException("Member path cannot be empty.", nameof(memberPath));
-        }
-
-        var parts = memberPath.Split('.');
-        var current = root;
-
-        foreach (var part in parts)
-        {
-            var prop = current.Type.GetProperty(
-                           part,
-                           BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase)
-                       ?? throw new InvalidOperationException(
-                           $"Property '{part}' not found on type '{current.Type}' while building path '{memberPath}'.");
-
-            current = Expression.Property(current, prop);
-        }
-
-        if (current.Type != typeof(string))
-        {
-            throw new InvalidOperationException(
-                $"The final member in path '{memberPath}' resolves to type '{current.Type}' – it must be string for fuzzy search.");
-        }
-
-        return current;
     }
 }

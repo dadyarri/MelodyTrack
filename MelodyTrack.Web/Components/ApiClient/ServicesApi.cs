@@ -17,7 +17,7 @@ public class ServicesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
             async client => await client.PostAsync("/services", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -26,7 +26,7 @@ public class ServicesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<PaginatedResponse<ServiceWithCurrentPriceDto>>(
             async client => await client.GetAsync($"/services?{request.ToQueryString()}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -35,7 +35,7 @@ public class ServicesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<LookupServicesResponse>(
             async client => await client.GetAsync("/services/lookup"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -44,7 +44,7 @@ public class ServicesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/services/{request.Id}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 }

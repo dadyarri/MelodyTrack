@@ -1,32 +1,32 @@
-namespace MelodyTrack.Web.Components.Palettes;
-
 using MudBlazor;
 using MudBlazor.Utilities;
+
+namespace MelodyTrack.Web.Components.Palettes;
 
 public sealed class VintageParchmentPalette : PaletteLight
 {
     public VintageParchmentPalette()
     {
         // Core palette – directly from your MUI theme
-        Primary = "#7D5A4B";                    // primary.main
-        PrimaryContrastText = "#F7E7C6";        // primary.contrastText
+        Primary = "#7D5A4B"; // primary.main
+        PrimaryContrastText = "#F7E7C6"; // primary.contrastText
 
-        Secondary = "#B18E6F";                  // secondary.main
-        SecondaryContrastText = "#3E2F29";      // secondary.contrastText
+        Secondary = "#B18E6F"; // secondary.main
+        SecondaryContrastText = "#3E2F29"; // secondary.contrastText
 
-        Tertiary = "#6D8F6C";                   // success.main (used as tertiary for earthy green)
+        Tertiary = "#6D8F6C"; // success.main (used as tertiary for earthy green)
         TertiaryContrastText = "#F7E7C6";
 
-        Info = "#6C8C9C";                       // info.main
+        Info = "#6C8C9C"; // info.main
         InfoContrastText = "#F7E7C6";
 
-        Success = "#6D8F6C";                    // success.main
+        Success = "#6D8F6C"; // success.main
         SuccessContrastText = "#F7E7C6";
 
-        Warning = "#B58D5D";                    // warning.main
+        Warning = "#B58D5D"; // warning.main
         WarningContrastText = "#3E2F29";
 
-        Error = "#9C5858";                      // error.main
+        Error = "#9C5858"; // error.main
         ErrorContrastText = "#F7E7C6";
 
         // Text colors
@@ -35,16 +35,16 @@ public sealed class VintageParchmentPalette : PaletteLight
         TextDisabled = "#A59B8C";
 
         // Backgrounds
-        Background = "#F7E7C6";                 // background.default
+        Background = "#F7E7C6"; // background.default
         BackgroundGray = "#EDE0C8";
-        Surface = "#EDE0C8";                    // background.paper equivalent
+        Surface = "#EDE0C8"; // background.paper equivalent
         DrawerBackground = "#EDE0C8";
-        AppbarBackground = "#F7E7C6";           // Matches page background
+        AppbarBackground = "#F7E7C6"; // Matches page background
         AppbarText = "#3E2F29";
 
         // Borders & Lines
-        LinesDefault = "#D3B89E";               // secondary.light – soft border
-        LinesInputs = "#8C6F5A";                // secondary.dark – input borders
+        LinesDefault = "#D3B89E"; // secondary.light – soft border
+        LinesInputs = "#8C6F5A"; // secondary.dark – input borders
         Divider = "#8C6F5A";
         DividerLight = new MudColor("#8C6F5A").SetAlpha(0.5);
 

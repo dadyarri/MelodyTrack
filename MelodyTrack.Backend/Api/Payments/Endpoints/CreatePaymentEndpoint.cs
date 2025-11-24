@@ -3,7 +3,6 @@ using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Payments.Requests;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;

@@ -17,16 +17,16 @@ public class ScheduleApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
             client => client.PostAsync("/appointments", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
-    
+
     public async Task<ApiResponse<object>> DeleteAppointmentAsync(GetEntityRequest request, NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/appointments/{request.Id}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -35,7 +35,7 @@ public class ScheduleApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetAppointmentsResponse>(
             async client => await client.GetAsync($"/appointments?{request.ToQueryString()}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -44,17 +44,17 @@ public class ScheduleApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetMiniScheduleResponse>(
             async client => await client.GetAsync($"/appointments/mini?{request.ToQueryString()}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
-    
+
     public async Task<ApiResponse<GetEntityRequest>> UpdateAppointmentAsync(UpdateAppointmentRequest request, NavigationManager navigationManager)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<GetEntityRequest>(
             async client => await client.PutAsync($"/appointments/{request.Id}", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 }

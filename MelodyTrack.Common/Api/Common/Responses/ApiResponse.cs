@@ -1,5 +1,3 @@
-using FluentValidation.Results;
-
 namespace MelodyTrack.Common.Api.Common.Responses;
 
 public class ApiResponse<T>
@@ -18,7 +16,7 @@ public class ApiResponse<T>
             Message = message
         };
     }
-    
+
     public static ApiResponse<T> Failure(string message = "")
     {
         return new ApiResponse<T>

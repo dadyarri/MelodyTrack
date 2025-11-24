@@ -9,13 +9,15 @@ public class FluentValueValidator<T> : AbstractValidator<T>
         rule(RuleFor(x => x));
     }
 
+    public Func<T, IEnumerable<string>> Validation => ValidateValue;
+
     private IEnumerable<string> ValidateValue(T arg)
     {
         var result = Validate(arg);
         if (result.IsValid)
+        {
             return [];
+        }
         return result.Errors.Select(e => e.ErrorMessage);
     }
-
-    public Func<T, IEnumerable<string>> Validation => ValidateValue;
 }

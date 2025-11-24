@@ -17,7 +17,7 @@ public class ExpensesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
             async client => await client.PostAsync("/expenses", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -26,7 +26,7 @@ public class ExpensesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync($"/expenses/{request.Id}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -35,7 +35,7 @@ public class ExpensesApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<PaginatedResponse<Expense>>(
             async client => await client.GetAsync($"/expenses?{request.ToQueryString()}"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 }

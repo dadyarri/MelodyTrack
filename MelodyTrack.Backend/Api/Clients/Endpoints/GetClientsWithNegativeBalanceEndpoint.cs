@@ -3,7 +3,6 @@ using FastEndpoints;
 using MelodyTrack.Common.Api.Clients.Responses;
 using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Data;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;

@@ -41,7 +41,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetInviteCodeInformationResponse>(
             async client => await client.GetAsync($"/auth/invite?inviteCode={request.InviteCode}"),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -50,7 +50,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<GetSessionsResponse>(
             async client => await client.GetAsync("/auth/sessions"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -61,7 +61,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<LoginResponse>(
             async client => await client.PostAsync("/auth/login", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -70,7 +70,7 @@ public class AuthApi(ApiUtils apiUtils)
         await apiUtils.CallApiAsync(
             async client => await client.PostAsync("/auth/logoutAll", null),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -91,7 +91,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<Recover2FaResponse>(
             async client => await client.PostAsync("/auth/2fa/recover", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -100,7 +100,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<RecoveryCodesResponse>(
             async client => await client.PostAsync("/auth/recoveryCodes", null),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -111,7 +111,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<LoginResponse>(
             async client => await client.PostAsync("/auth/refresh", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -121,7 +121,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<RegisterResponse>(
             async client => await client.PostAsync("/auth/register", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -130,7 +130,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.DeleteAsync("/auth/2fa/delete"),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -141,7 +141,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.PostAsync("/auth/resetPassword", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 
@@ -152,7 +152,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync<Setup2FaResponse>(
             async client => await client.PostAsync("/auth/2fa/setup", content),
             navigationManager,
-            anonymous: false
+            false
         );
     }
 
@@ -163,7 +163,7 @@ public class AuthApi(ApiUtils apiUtils)
         return await apiUtils.CallApiAsync(
             async client => await client.PostAsync("/auth/2fa/verify", content),
             navigationManager,
-            anonymous: true
+            true
         );
     }
 }

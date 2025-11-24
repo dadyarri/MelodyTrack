@@ -5,7 +5,6 @@ using MelodyTrack.Common.Api.Common.Responses;
 using MelodyTrack.Common.Api.Users.Responses;
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Enums;
-using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
