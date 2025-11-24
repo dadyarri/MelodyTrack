@@ -30,11 +30,11 @@ builder.Services.AddScoped<ServicesApi>();
 builder.Services.AddScoped<UsersApi>();
 builder.Services.AddScoped<Api>();
 
+builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 builder.Services.AddAuthentication("bearer")
     .AddBearerToken("bearer");
 builder.Services.AddAuthorization();
 builder.Services.AddCascadingAuthenticationState();
-builder.Services.AddScoped<AuthenticationStateProvider, CustomAuthenticationStateProvider>();
 
 builder.WebHost.UseStaticWebAssets();
 

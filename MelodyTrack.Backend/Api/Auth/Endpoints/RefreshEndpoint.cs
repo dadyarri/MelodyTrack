@@ -59,7 +59,8 @@ public class RefreshEndpoint(AppDbContext db)
             AccessToken = UserUtils.CreateAccessToken(session.User),
             RefreshToken = refreshToken,
             FirstName = session.User.FirstName,
-            LastName = session.User.LastName
+            LastName = session.User.LastName,
+            Role = session.User.Role.RoleName
         };
 
         return ApiResults.Ok(response);

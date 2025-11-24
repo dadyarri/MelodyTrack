@@ -9,6 +9,8 @@ namespace MelodyTrack.Web.Auth;
 
 public class CustomAuthenticationStateProvider(Api api, ProtectedLocalStorage localStorage) : AuthenticationStateProvider
 {
+    
+    private readonly ClaimsIdentity _anonymous = new();
 
     public override async Task<AuthenticationState> GetAuthenticationStateAsync()
     {
@@ -19,9 +21,10 @@ public class CustomAuthenticationStateProvider(Api api, ProtectedLocalStorage lo
             var accessToken = (await localStorage.GetAsync<string>("access_token")).Value!;
             identity = GetClaimsFromJwt(accessToken);
         }
-        else if (refreshToken.Value is not null)
+        else if (refreshToken.Success)
         {
-            await api.Auth.RefreshAsync(new RefreshRequest { RefreshToken = refreshToken.Value }, null);
+            await api.Auth.RefreshAsync(new RefreshRequest { RefreshToken = refreshToken.Value! });
+            identity = _anonymous;
         }
 
         var user = new ClaimsPrincipal(identity);

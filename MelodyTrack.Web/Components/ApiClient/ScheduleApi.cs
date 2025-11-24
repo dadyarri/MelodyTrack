@@ -10,51 +10,41 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ScheduleApi(ApiUtils apiUtils)
 {
 
-    public async Task<ApiResponse<CreateEntityResponse>> CreateAppointmentAsync(CreateAppointmentRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateAppointmentAsync(CreateAppointmentRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
-            client => client.PostAsync("/appointments", content),
-            navigationManager,
-            false
+            client => client.PostAsync("/appointments", content)
         );
     }
 
-    public async Task<ApiResponse<object>> DeleteAppointmentAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteAppointmentAsync(GetEntityRequest request)
     {
         return await apiUtils.CallApiAsync(
-            async client => await client.DeleteAsync($"/appointments/{request.Id}"),
-            navigationManager,
-            false
+            async client => await client.DeleteAsync($"/appointments/{request.Id}")
         );
     }
 
-    public async Task<ApiResponse<GetAppointmentsResponse>> GetAppointmentsAsync(GetAppointmentsRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetAppointmentsResponse>> GetAppointmentsAsync(GetAppointmentsRequest request)
     {
         return await apiUtils.CallApiAsync<GetAppointmentsResponse>(
-            async client => await client.GetAsync($"/appointments?{request.ToQueryString()}"),
-            navigationManager,
-            false
+            async client => await client.GetAsync($"/appointments?{request.ToQueryString()}")
         );
     }
 
-    public async Task<ApiResponse<GetMiniScheduleResponse>> GetMiniScheduleAsync(BaseGetAppointmentsRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetMiniScheduleResponse>> GetMiniScheduleAsync(BaseGetAppointmentsRequest request)
     {
         return await apiUtils.CallApiAsync<GetMiniScheduleResponse>(
-            async client => await client.GetAsync($"/appointments/mini?{request.ToQueryString()}"),
-            navigationManager,
-            false
+            async client => await client.GetAsync($"/appointments/mini?{request.ToQueryString()}")
         );
     }
 
-    public async Task<ApiResponse<GetEntityRequest>> UpdateAppointmentAsync(UpdateAppointmentRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetEntityRequest>> UpdateAppointmentAsync(UpdateAppointmentRequest request)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<GetEntityRequest>(
-            async client => await client.PutAsync($"/appointments/{request.Id}", content),
-            navigationManager,
-            false
+            async client => await client.PutAsync($"/appointments/{request.Id}", content)
         );
     }
 }

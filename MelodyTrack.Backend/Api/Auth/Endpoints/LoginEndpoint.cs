@@ -69,7 +69,8 @@ public class LoginEndpoint(AppDbContext db)
             AccessToken = UserUtils.CreateAccessToken(user),
             RefreshToken = refreshToken,
             FirstName = user.FirstName,
-            LastName = user.LastName
+            LastName = user.LastName,
+            Role = user.Role.RoleName
         };
 
         return ApiResults.Ok(response, "Успешный вход");

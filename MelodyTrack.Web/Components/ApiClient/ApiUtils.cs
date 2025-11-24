@@ -1,22 +1,18 @@
 using System.Net;
-using MelodyTrack.Common.Api.Auth.Requests;
-using MelodyTrack.Common.Api.Auth.Responses;
 using MelodyTrack.Common.Api.Common.Responses;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 
 namespace MelodyTrack.Web.Components.ApiClient;
 
 public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localStorage)
 {
-    public async Task<ApiResponse<TResponse>> CallApiAsync<TResponse>(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
+    public async Task<ApiResponse<TResponse>> CallApiAsync<TResponse>(Func<HttpClient, Task<HttpResponseMessage>> call, bool anonymous = false)
     {
         using var client = factory.CreateClient("mt");
         var accessToken = (await localStorage.GetAsync<string>("accessToken")).Value;
 
         if (!anonymous && (await call(client)).StatusCode == HttpStatusCode.Unauthorized)
         {
-            await RefreshAccessTokenAsync(client, nav);
         }
 
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
@@ -25,14 +21,13 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
         return responseBody ?? ApiResponse<TResponse>.Failure("Ошибка разбора ответа");
     }
 
-    public async Task<ApiResponse<object>> CallApiAsync(Func<HttpClient, Task<HttpResponseMessage>> call, NavigationManager nav, bool anonymous = false)
+    public async Task<ApiResponse<object>> CallApiAsync(Func<HttpClient, Task<HttpResponseMessage>> call, bool anonymous = false)
     {
         using var client = factory.CreateClient("mt");
         var accessToken = (await localStorage.GetAsync<string>("accessToken")).Value;
 
         if (!anonymous && (await call(client)).StatusCode == HttpStatusCode.Unauthorized)
         {
-            await RefreshAccessTokenAsync(client, nav);
         }
 
         client.DefaultRequestHeaders.Add("Authorization", $"Bearer {accessToken}");
@@ -49,38 +44,5 @@ public class ApiUtils(IHttpClientFactory factory, ProtectedLocalStorage localSto
         var sessionsResponse = await client.GetAsync("/auth/sessions");
 
         return sessionsResponse.StatusCode != HttpStatusCode.Unauthorized;
-    }
-
-    private async Task RefreshAccessTokenAsync(HttpClient client, NavigationManager nav)
-    {
-        var refreshToken = (await localStorage.GetAsync<string>("refreshToken")).Value;
-
-        if (!await IsAuthenticatedAsync())
-        {
-            if (refreshToken is null)
-            {
-                nav.NavigateTo("/login");
-                return;
-            }
-
-            client.DefaultRequestHeaders.Remove("Authorization");
-            var request = JsonContent.Create(new RefreshRequest
-            {
-                RefreshToken = refreshToken!
-            });
-
-            var refreshResponse = await client.PostAsync("/auth/refresh", request);
-
-            if (refreshResponse.StatusCode == HttpStatusCode.Unauthorized)
-            {
-                nav.NavigateTo("/login");
-                return;
-            }
-
-            var refreshBody = await refreshResponse.Content.ReadFromJsonAsync<LoginResponse>();
-            await localStorage.SetAsync("accessToken", refreshBody!.AccessToken);
-            await localStorage.SetAsync("refreshToken", refreshBody.RefreshToken);
-        }
-
     }
 }

@@ -10,9 +10,7 @@ public class UsersApi(ApiUtils apiUtils)
     public async Task<ApiResponse<GetUsersResponse>> GetUsersAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetUsersResponse>(
-            async client => await client.GetAsync("/users"),
-            navigationManager,
-            false
+            async client => await client.GetAsync("/users")
         );
     }
 }

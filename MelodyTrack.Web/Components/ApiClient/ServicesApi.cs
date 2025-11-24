@@ -10,41 +10,33 @@ namespace MelodyTrack.Web.Components.ApiClient;
 public class ServicesApi(ApiUtils apiUtils)
 {
 
-    public async Task<ApiResponse<CreateEntityResponse>> CreateServiceAsync(CreateServiceRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<CreateEntityResponse>> CreateServiceAsync(CreateServiceRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
-            async client => await client.PostAsync("/services", content),
-            navigationManager,
-            false
+            async client => await client.PostAsync("/services", content)
         );
     }
 
-    public async Task<ApiResponse<PaginatedResponse<ServiceWithCurrentPriceDto>>> GetServicesAsync(GetServicesPaginatedRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<PaginatedResponse<ServiceWithCurrentPriceDto>>> GetServicesAsync(GetServicesPaginatedRequest request)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<ServiceWithCurrentPriceDto>>(
-            async client => await client.GetAsync($"/services?{request.ToQueryString()}"),
-            navigationManager,
-            false
+            async client => await client.GetAsync($"/services?{request.ToQueryString()}")
         );
     }
 
     public async Task<ApiResponse<LookupServicesResponse>> LookupServicesAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<LookupServicesResponse>(
-            async client => await client.GetAsync("/services/lookup"),
-            navigationManager,
-            false
+            async client => await client.GetAsync("/services/lookup")
         );
     }
 
-    public async Task<ApiResponse<object>> DeleteServiceAsync(GetEntityRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> DeleteServiceAsync(GetEntityRequest request)
     {
         return await apiUtils.CallApiAsync(
-            async client => await client.DeleteAsync($"/services/{request.Id}"),
-            navigationManager,
-            false
+            async client => await client.DeleteAsync($"/services/{request.Id}")
         );
     }
 }

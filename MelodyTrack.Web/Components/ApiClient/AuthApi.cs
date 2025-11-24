@@ -12,7 +12,6 @@ public class AuthApi(ApiUtils apiUtils)
     {
         return await apiUtils.CallApiAsync<CheckIf2FaEnabledResponse>(
             async client => await client.GetAsync($"auth/2fa/enabled?{request.ToQueryString()}"),
-            nav,
             true
         );
     }
@@ -21,8 +20,7 @@ public class AuthApi(ApiUtils apiUtils)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<CreateInviteResponse>(
-            async client => await client.PostAsync("auth/invite", content),
-            nav
+            async client => await client.PostAsync("auth/invite", content)
         );
     }
 
@@ -30,17 +28,15 @@ public class AuthApi(ApiUtils apiUtils)
     {
         var content = JsonContent.Create(request);
         await apiUtils.CallApiAsync(async client => await client.PostAsync("auth/forgotPassword", content),
-            nav,
             true
         );
     }
 
 
-    public async Task<ApiResponse<GetInviteCodeInformationResponse>> GetInviteCodeInformationAsync(GetInviteCodeInformationRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<GetInviteCodeInformationResponse>> GetInviteCodeInformationAsync(GetInviteCodeInformationRequest request)
     {
         return await apiUtils.CallApiAsync<GetInviteCodeInformationResponse>(
             async client => await client.GetAsync($"/auth/invite?inviteCode={request.InviteCode}"),
-            navigationManager,
             true
         );
     }
@@ -48,19 +44,16 @@ public class AuthApi(ApiUtils apiUtils)
     public async Task<ApiResponse<GetSessionsResponse>> GetSessionsAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<GetSessionsResponse>(
-            async client => await client.GetAsync("/auth/sessions"),
-            navigationManager,
-            false
+            async client => await client.GetAsync("/auth/sessions")
         );
     }
 
-    public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<LoginResponse>> LoginAsync(LoginRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<LoginResponse>(
             async client => await client.PostAsync("/auth/login", content),
-            navigationManager,
             true
         );
     }
@@ -68,101 +61,87 @@ public class AuthApi(ApiUtils apiUtils)
     public async Task LogoutAllAsync(NavigationManager navigationManager)
     {
         await apiUtils.CallApiAsync(
-            async client => await client.PostAsync("/auth/logoutAll", null),
-            navigationManager,
-            false
+            async client => await client.PostAsync("/auth/logoutAll", null)
         );
     }
 
-    public async Task LogoutAsync(LogoutRequest request, NavigationManager navigationManager)
+    public async Task LogoutAsync(LogoutRequest request)
     {
         var content = JsonContent.Create(request);
 
         await apiUtils.CallApiAsync(
-            async client => await client.PostAsync("/auth/logout", content),
-            navigationManager
+            async client => await client.PostAsync("/auth/logout", content)
         );
     }
 
-    public async Task<ApiResponse<Recover2FaResponse>> Recover2FaAsync(Recover2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<Recover2FaResponse>> Recover2FaAsync(Recover2FaRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<Recover2FaResponse>(
             async client => await client.PostAsync("/auth/2fa/recover", content),
-            navigationManager,
             true
         );
     }
 
-    public async Task<ApiResponse<RecoveryCodesResponse>> RecoveryCodesAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<RecoveryCodesResponse>> RecoveryCodesAsync()
     {
         return await apiUtils.CallApiAsync<RecoveryCodesResponse>(
-            async client => await client.PostAsync("/auth/recoveryCodes", null),
-            navigationManager,
-            false
+            async client => await client.PostAsync("/auth/recoveryCodes", null)
         );
     }
 
-    public async Task<ApiResponse<LoginResponse>> RefreshAsync(RefreshRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<LoginResponse>> RefreshAsync(RefreshRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<LoginResponse>(
             async client => await client.PostAsync("/auth/refresh", content),
-            navigationManager,
             true
         );
     }
 
-    public async Task<ApiResponse<RegisterResponse>> RegisterAsync(RegisterRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<RegisterResponse>> RegisterAsync(RegisterRequest request)
     {
         var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<RegisterResponse>(
             async client => await client.PostAsync("/auth/register", content),
-            navigationManager,
             true
         );
     }
 
-    public async Task<ApiResponse<object>> Remove2FaAsync(NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> Remove2FaAsync()
     {
         return await apiUtils.CallApiAsync(
-            async client => await client.DeleteAsync("/auth/2fa/delete"),
-            navigationManager,
-            false
+            async client => await client.DeleteAsync("/auth/2fa/delete")
         );
     }
 
-    public async Task<ApiResponse<object>> ResetPasswordAsync(ResetPasswordRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> ResetPasswordAsync(ResetPasswordRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync(
             async client => await client.PostAsync("/auth/resetPassword", content),
-            navigationManager,
             true
         );
     }
 
-    public async Task<ApiResponse<Setup2FaResponse>> Setup2FaAsync(Setup2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<Setup2FaResponse>> Setup2FaAsync(Setup2FaRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<Setup2FaResponse>(
-            async client => await client.PostAsync("/auth/2fa/setup", content),
-            navigationManager,
-            false
+            async client => await client.PostAsync("/auth/2fa/setup", content)
         );
     }
 
-    public async Task<ApiResponse<object>> Verify2FaAsync(Verify2FaRequest request, NavigationManager navigationManager)
+    public async Task<ApiResponse<object>> Verify2FaAsync(Verify2FaRequest request)
     {
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync(
             async client => await client.PostAsync("/auth/2fa/verify", content),
-            navigationManager,
             true
         );
     }
