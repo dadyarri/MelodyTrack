@@ -1,6 +1,7 @@
 using MelodyTrack.Common.Api.Auth.Requests;
 using MelodyTrack.Common.Api.Auth.Responses;
 using MelodyTrack.Common.Api.Common.Responses;
+using MelodyTrack.Common.Utils;
 using Microsoft.AspNetCore.Components;
 
 namespace MelodyTrack.Web.Components.ApiClient;
@@ -9,9 +10,8 @@ public class AuthApi(ApiUtils apiUtils)
 {
     public async Task<ApiResponse<CheckIf2FaEnabledResponse>> CheckIf2FaEnabledAsync(CheckIf2FaEnabledRequest request, NavigationManager nav)
     {
-        var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<CheckIf2FaEnabledResponse>(
-            async client => await client.PostAsync("auth/2fa/enabled", content),
+            async client => await client.GetAsync($"auth/2fa/enabled?{request.ToQueryString()}"),
             nav,
             true
         );
