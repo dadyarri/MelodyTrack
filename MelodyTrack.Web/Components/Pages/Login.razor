@@ -1,0 +1,114 @@
+@page "/login"
+@using FluentValidation
+@using MelodyTrack.Common.Api.Auth.Requests
+@using MelodyTrack.Web.Components.ApiClient
+@using MelodyTrack.Web.Components.Layout
+@using MelodyTrack.Web.Utils
+@using Severity = MudBlazor.Severity
+@inject Api Api
+@inject NavigationManager Nav
+@inject ISnackbar Snackbar
+@inject ProtectedLocalStorage LocalStorage
+
+@layout BaseLayout
+<PageTitle>Вход в аккаунт</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small">
+    <MudPaper Class="pa-16 ma-2" Elevation="3" Width="100%">
+        <MudText Typo="Typo.h4" Align="Align.Center">Вход в аккаунт</MudText>
+        <MudForm @bind-IsValid="@_success" @bind-Errors="@_errors" Class="my-2" Spacing="2">
+            <MudTextField T="string" @bind-Value="_email" Label="Адрес почты"
+                          Validation="@_emailValidator.Validation" OnBlur="@(() => CheckIf2FaIsEnabled())"/>
+            <MudTextField T="string"
+                          Label="Пароль"
+                          @bind-Value="_password"
+                          InputType="InputType.Password"
+                          Validation="@_passwordValidator.Validation"/>
+            @if (_otpFieldVisible)
+            {
+                <MudTextField T="string"
+                              Label="Одноразовый код"
+                              @bind-Value="_otp"
+                              Validation="@_otpValidator.Validation"/>
+            }
+            <div class="d-flex align-center justify-space-between my-2">
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" Disabled="@(!_success)" Class="ml-auto"
+                           OnClick="@(() => SubmitLoginForm())">Войти
+                </MudButton>
+            </div>
+        </MudForm>
+        <MudText Typo="Typo.subtitle2" Align="Align.Center">Нет аккаунта? Идите нахер!</MudText>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    bool _success;
+    string[] _errors = [];
+
+    string? _email;
+    string? _password;
+    string? _otp;
+    bool _otpFieldVisible = false;
+
+    readonly FluentValueValidator<string> _emailValidator = new(x => x
+        .NotEmpty()
+        .WithMessage("Адрес почты не должен быть пустым")
+        .EmailAddress()
+        .WithMessage("Должен быть указан валидный адрес почты"));
+
+    readonly FluentValueValidator<string> _passwordValidator = new(x => x
+        .NotEmpty()
+        .WithMessage("Пароль не должен быть пустым")
+        .MinimumLength(8)
+        .WithMessage("Минимальная длина пароля — 8 символов")
+        .Matches("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$")
+        .WithMessage(
+            "Пароль слишком простой: включите хотя бы одну заглавную латинскую букву, одну строчную, одну цифру и один спецсимвол"));
+
+    readonly FluentValueValidator<string> _otpValidator = new(x => x.Length(6));
+
+    async Task CheckIf2FaIsEnabled()
+    {
+        if (_email is null || _emailValidator.Validation(_email).Any())
+        {
+            return;
+        }
+
+        var result = await Api.Auth.CheckIf2FaEnabledAsync(new CheckIf2FaEnabledRequest
+        {
+            Email = _email,
+        }, Nav);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+            return;
+        }
+
+        _otpFieldVisible = result.Data!.Enabled;
+    }
+
+    async Task SubmitLoginForm()
+    {
+        var result = await Api.Auth.LoginAsync(new LoginRequest
+        {
+            Email = _email!,
+            Password = _password!,
+            Otp = _otp
+        }, Nav);
+
+        if (!result.Succeeded)
+        {
+            Snackbar.Add(result.Message, Severity.Error);
+            return;
+        }
+
+        Snackbar.Add(result.Message, Severity.Success);
+        await LocalStorage.SetAsync("access_token", result.Data!.AccessToken);
+        await LocalStorage.SetAsync("refresh_token", result.Data!.RefreshToken);
+        await LocalStorage.SetAsync("first_name", result.Data!.FirstName);
+        await LocalStorage.SetAsync("last_name", result.Data!.LastName);
+        Nav.NavigateTo("/");
+    }
+
+}
