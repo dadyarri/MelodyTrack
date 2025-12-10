@@ -77,7 +77,7 @@
         var result = await Api.Auth.CheckIf2FaEnabledAsync(new CheckIf2FaEnabledRequest
         {
             Email = _email
-        }, Nav);
+        });
 
         if (!result.Succeeded)
         {
@@ -85,7 +85,7 @@
             return;
         }
 
-        _otpFieldVisible = result.Data!.Enabled;
+        _otpFieldVisible = result.Data.Enabled;
     }
 
     async Task SubmitLoginForm()
@@ -104,10 +104,10 @@
         }
 
         Snackbar.Add(result.Message, Severity.Success);
-        await LocalStorage.SetAsync("access_token", result.Data!.AccessToken);
-        await LocalStorage.SetAsync("refresh_token", result.Data!.RefreshToken);
-        await LocalStorage.SetAsync("first_name", result.Data!.FirstName);
-        await LocalStorage.SetAsync("last_name", result.Data!.LastName);
+        await LocalStorage.SetAsync("access_token", result.Data.AccessToken);
+        await LocalStorage.SetAsync("refresh_token", result.Data.RefreshToken);
+        await LocalStorage.SetAsync("first_name", result.Data.FirstName);
+        await LocalStorage.SetAsync("last_name", result.Data.LastName);
         Nav.NavigateTo("/");
     }
 

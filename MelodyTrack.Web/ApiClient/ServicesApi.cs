@@ -15,28 +15,31 @@ public class ServicesApi(ApiUtils apiUtils)
         var content = JsonContent.Create(request);
 
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
-            async client => await client.PostAsync("/services", content)
+            new HttpRequestMessage(HttpMethod.Post, "/services")
+            {
+                Content = content
+            }
         );
     }
 
     public async Task<ApiResponse<PaginatedResponse<ServiceWithCurrentPriceDto>>> GetServicesAsync(GetServicesPaginatedRequest request)
     {
         return await apiUtils.CallApiAsync<PaginatedResponse<ServiceWithCurrentPriceDto>>(
-            async client => await client.GetAsync($"/services?{request.ToQueryString()}")
+            new HttpRequestMessage(HttpMethod.Get, $"/services?{request.ToQueryString()}")
         );
     }
 
     public async Task<ApiResponse<LookupServicesResponse>> LookupServicesAsync(NavigationManager navigationManager)
     {
         return await apiUtils.CallApiAsync<LookupServicesResponse>(
-            async client => await client.GetAsync("/services/lookup")
+            new HttpRequestMessage(HttpMethod.Get, "/services/lookup")
         );
     }
 
-    public async Task<ApiResponse<object>> DeleteServiceAsync(GetEntityRequest request)
+    public async Task<ApiResponse> DeleteServiceAsync(GetEntityRequest request)
     {
         return await apiUtils.CallApiAsync(
-            async client => await client.DeleteAsync($"/services/{request.Id}")
+            new HttpRequestMessage(HttpMethod.Delete, $"/services/{request.Id}")
         );
     }
 }

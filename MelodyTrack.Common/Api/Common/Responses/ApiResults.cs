@@ -11,7 +11,7 @@ public static class ApiResults
         return TypedResults.Json(response, statusCode: StatusCodes.Status200OK);
     }
 
-    public static IResult Ok(string? message = "Успех")
+    public static IResult Ok(string message = "Успех")
     {
         var response = ApiResponse.Success(message);
         return TypedResults.Json(response, statusCode: StatusCodes.Status200OK);

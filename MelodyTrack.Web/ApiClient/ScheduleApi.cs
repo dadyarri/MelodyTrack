@@ -12,39 +12,42 @@ public class ScheduleApi(ApiUtils apiUtils)
 
     public async Task<ApiResponse<CreateEntityResponse>> CreateAppointmentAsync(CreateAppointmentRequest request)
     {
-        var content = JsonContent.Create(request);
-
         return await apiUtils.CallApiAsync<CreateEntityResponse>(
-            client => client.PostAsync("/appointments", content)
+            new HttpRequestMessage(HttpMethod.Post, "/appointments")
+            {
+                Content = JsonContent.Create(request)
+            }
         );
     }
 
-    public async Task<ApiResponse<object>> DeleteAppointmentAsync(GetEntityRequest request)
+    public async Task<ApiResponse> DeleteAppointmentAsync(GetEntityRequest request)
     {
         return await apiUtils.CallApiAsync(
-            async client => await client.DeleteAsync($"/appointments/{request.Id}")
+            new HttpRequestMessage(HttpMethod.Delete, $"/appointments/{request.Id}")
         );
     }
 
     public async Task<ApiResponse<GetAppointmentsResponse>> GetAppointmentsAsync(GetAppointmentsRequest request)
     {
         return await apiUtils.CallApiAsync<GetAppointmentsResponse>(
-            async client => await client.GetAsync($"/appointments?{request.ToQueryString()}")
+            new HttpRequestMessage(HttpMethod.Get, $"/appointments?{request.ToQueryString()}")
         );
     }
 
     public async Task<ApiResponse<GetMiniScheduleResponse>> GetMiniScheduleAsync(BaseGetAppointmentsRequest request)
     {
         return await apiUtils.CallApiAsync<GetMiniScheduleResponse>(
-            async client => await client.GetAsync($"/appointments/mini?{request.ToQueryString()}")
+            new HttpRequestMessage(HttpMethod.Get, $"/appointments/mini?{request.ToQueryString()}")
         );
     }
 
     public async Task<ApiResponse<GetEntityRequest>> UpdateAppointmentAsync(UpdateAppointmentRequest request)
     {
-        var content = JsonContent.Create(request);
         return await apiUtils.CallApiAsync<GetEntityRequest>(
-            async client => await client.PutAsync($"/appointments/{request.Id}", content)
+            new HttpRequestMessage(HttpMethod.Put, $"/appointments/{request.Id}")
+            {
+                Content = JsonContent.Create(request)
+            }
         );
     }
 }
