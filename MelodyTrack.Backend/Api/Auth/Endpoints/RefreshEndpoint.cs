@@ -54,15 +54,13 @@ public class RefreshEndpoint(AppDbContext db)
 
         Logger.LogInformation("Successfully refreshed token for user {Email} from {DeviceInfo}", session.User.Email, newSession.DeviceInfo);
 
-        var response = new LoginResponse
+        return ApiResults.Ok(new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(session.User),
             RefreshToken = refreshToken,
             FirstName = session.User.FirstName,
             LastName = session.User.LastName,
             Role = session.User.Role.RoleName
-        };
-
-        return ApiResults.Ok(response);
+        });
     }
 }

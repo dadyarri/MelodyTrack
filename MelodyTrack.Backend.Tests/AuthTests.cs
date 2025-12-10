@@ -469,7 +469,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.NotFound);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -571,7 +572,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
@@ -784,7 +786,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ApiResponse>(new EmptyRequest());
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Succeeded.ShouldBeFalse();
     }
 
     [Fact]
