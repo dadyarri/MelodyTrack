@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+        <PackageReference Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="13.0.2" />
         <PackageReference Include="Facet" Version="4.4.3"/>
         <PackageReference Include="Facet.Extensions.EFCore" Version="4.4.3"/>
         <PackageReference Include="Facet.Mapping" Version="4.4.3"/>
@@ -55,6 +56,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MelodyTrack.Common\MelodyTrack.Common.csproj"/>
+        <ProjectReference Include="..\MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj"/>
     </ItemGroup>
 
 </Project>

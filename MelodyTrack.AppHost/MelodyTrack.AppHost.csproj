@@ -1,0 +1,20 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.0.2">
+
+  <ItemGroup>
+    <ProjectReference Include="..\MelodyTrack.Backend\MelodyTrack.Backend.csproj" />
+    <ProjectReference Include="..\MelodyTrack.Web\MelodyTrack.Web.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" Version="13.0.2" />
+  </ItemGroup>
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <UserSecretsId>b905d1a7-21bd-4d95-b374-ece37a1e7db2</UserSecretsId>
+  </PropertyGroup>
+
+</Project>

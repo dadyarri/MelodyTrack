@@ -35,6 +35,7 @@ logLevelSwitch.MinimumLevel = environment == "Development"
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
+    .MinimumLevel.Override("Microsoft.EntityFrameworkCore", LogEventLevel.Warning)
     .MinimumLevel.ControlledBy(logLevelSwitch)
     .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
     .CreateLogger();
@@ -50,8 +51,9 @@ Log.Information("Starting up");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+    const string appDomain = "https+http://web";
 
+    builder.AddServiceDefaults();
     builder.Services.AddAuthenticationJwtBearer(opts =>
     {
         opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
@@ -102,6 +104,7 @@ try
     var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
     builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
+    builder.EnrichNpgsqlDbContext<AppDbContext>();
     Log.Information("Using PostgreSQL database");
 
     // Custom services
@@ -140,6 +143,7 @@ try
 
     var app = builder.Build();
 
+    app.MapDefaultEndpoints();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseCors("AllowFrontend");
