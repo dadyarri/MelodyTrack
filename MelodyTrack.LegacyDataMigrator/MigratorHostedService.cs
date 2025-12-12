@@ -1,10 +1,10 @@
 using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Data.Models;
-using MelodyTrack.Migrator.OldData;
+using MelodyTrack.LegacyDataMigrator.OldData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Hosting;
 
-namespace MelodyTrack.Migrator;
+namespace MelodyTrack.LegacyDataMigrator;
 
 public class MigratorHostedService(AppV1DbContext oldDb, AppDbContext db) : IHostedService
 {

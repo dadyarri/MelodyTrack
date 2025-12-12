@@ -1,7 +1,7 @@
-using MelodyTrack.Migrator.OldData.Entities;
+using MelodyTrack.LegacyDataMigrator.OldData.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace MelodyTrack.Migrator.OldData;
+namespace MelodyTrack.LegacyDataMigrator.OldData;
 
 /// <summary>
 ///     Контекст базы данных

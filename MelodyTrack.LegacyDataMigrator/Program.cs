@@ -1,7 +1,7 @@
 ﻿using MelodyTrack.Common.Data;
 using MelodyTrack.Common.Utils;
-using MelodyTrack.Migrator;
-using MelodyTrack.Migrator.OldData;
+using MelodyTrack.LegacyDataMigrator;
+using MelodyTrack.LegacyDataMigrator.OldData;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;

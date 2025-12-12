@@ -1,4 +1,4 @@
-namespace MelodyTrack.Migrator.OldData.Entities;
+namespace MelodyTrack.LegacyDataMigrator.OldData.Entities;
 
 public class OldServiceHistory : OldBaseModel
 {

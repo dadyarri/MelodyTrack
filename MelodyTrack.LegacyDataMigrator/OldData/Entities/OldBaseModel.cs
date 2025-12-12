@@ -1,7 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace MelodyTrack.Migrator.OldData.Entities;
+namespace MelodyTrack.LegacyDataMigrator.OldData.Entities;
 
 public class OldBaseModel
 {
