@@ -101,7 +101,7 @@ try
 
     // Database configuration
 
-    var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
+    var connectionString = builder.Configuration.GetConnectionString("melodytrack");
     builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
     builder.EnrichNpgsqlDbContext<AppDbContext>();
