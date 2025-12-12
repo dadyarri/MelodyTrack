@@ -6,7 +6,7 @@ using Microsoft.AspNetCore.Components.Authorization;
 using MudBlazor.Services;
 
 var builder = WebApplication.CreateBuilder(args);
-var backendBaseAddress = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODYTRACK_BACKEND_BASE_ADDRESS");
+var backendBaseAddress = EnvironmentUtils.GetRequiredEnvironmentVariable("BACKEND_HTTP");
 
 // Add MudBlazor services
 builder.Services.AddMudServices();
