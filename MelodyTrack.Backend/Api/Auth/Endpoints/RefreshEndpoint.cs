@@ -26,6 +26,7 @@ public class RefreshEndpoint(AppDbContext db)
         var session = await db.Sessions
             .Where(e => e.RefreshToken == req.RefreshToken && !e.WasRevoked)
             .Include(e => e.User)
+            .ThenInclude(e => e.Role)
             .FirstOrDefaultAsync(ct);
 
 
@@ -54,13 +55,15 @@ public class RefreshEndpoint(AppDbContext db)
 
         Logger.LogInformation("Successfully refreshed token for user {Email} from {DeviceInfo}", session.User.Email, newSession.DeviceInfo);
 
-        return ApiResults.Ok(new LoginResponse
+        var response = new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(session.User),
             RefreshToken = refreshToken,
             FirstName = session.User.FirstName,
             LastName = session.User.LastName,
             Role = session.User.Role.RoleName
-        });
+        };
+        
+        return ApiResults.Ok(response);
     }
 }
