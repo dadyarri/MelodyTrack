@@ -3,7 +3,6 @@
     <Project Path="MelodyTrack.AppHost/MelodyTrack.AppHost.csproj" />
     <Project Path="MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj" />
     <Project Path="MelodyTrack.Common/MelodyTrack.Common.csproj" />
-    <Project Path="MelodyTrack.LegacyDataMigrator\MelodyTrack.LegacyDataMigrator.csproj" />
     <Project Path="MelodyTrack.MigratorService/MelodyTrack.MigratorService.csproj" />
     <Project Path="MelodyTrack.ServiceDefaults/MelodyTrack.ServiceDefaults.csproj" />
     <Project Path="MelodyTrack.Web/MelodyTrack.Web.csproj" />

@@ -8,8 +8,13 @@ var builder = Host.CreateApplicationBuilder(args);
 
 builder.AddServiceDefaults();
 
-builder.Services.AddDbContext<AppV1DbContext>(options =>
-    options.UseNpgsql(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODYTRACK_V1_DATABASE_URL")));
+var v1ConnectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODYTRACK_V1_DATABASE_URL");
+
+if (!string.IsNullOrEmpty(v1ConnectionString))
+{
+    builder.Services.AddDbContext<AppV1DbContext>(options =>
+        options.UseNpgsql());
+}
 
 builder.AddNpgsqlDbContext<AppDbContext>(connectionName: "melodytrack");
 
