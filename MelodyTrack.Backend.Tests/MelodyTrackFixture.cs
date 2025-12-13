@@ -2,6 +2,7 @@ using FastEndpoints.Testing;
 using MelodyTrack.Common.Data;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Quartz;
 using Testcontainers.PostgreSql;
@@ -18,7 +19,7 @@ public class MelodyTrackFixture : AppFixture<Program>
     {
 
         var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
-        var quartzScriptPath = new FileInfo(Path.Combine(projectDir, "MelodyTrack.Backend", "quartz.sql")).FullName;
+        var quartzScriptPath = new FileInfo(Path.Combine(projectDir, "MelodyTrack.MigratorService", "quartz.sql")).FullName;
 
         _dbContainer = new PostgreSqlBuilder()
             .WithImage("postgres:latest")
@@ -36,8 +37,16 @@ public class MelodyTrackFixture : AppFixture<Program>
     {
         base.ConfigureApp(a);
 
+        var builder = new ConfigurationBuilder();
+        var connectionStrings = new Dictionary<string, string?>
+        {
+            { "ConnectionStrings:melodytrack", _connectionString }
+        };
+        builder.AddInMemoryCollection(connectionStrings);
+        
+        a.UseConfiguration(builder.Build());
+
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
-        Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", _connectionString);
         Environment.SetEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY", "super-secret-jwt-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
     }

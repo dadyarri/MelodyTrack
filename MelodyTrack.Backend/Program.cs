@@ -122,7 +122,7 @@ try
         q.UsePersistentStore(x =>
         {
             x.UseProperties = true;
-            x.UsePostgres(connectionString);
+            x.UsePostgres(connectionString!);
             x.UseSystemTextJsonSerializer();
         });
         q.AddJob<CreateRecurringAppointments>(opts =>
