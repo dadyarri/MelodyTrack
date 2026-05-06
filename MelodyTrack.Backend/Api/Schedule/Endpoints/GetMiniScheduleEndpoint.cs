@@ -1,11 +1,11 @@
 using System.Globalization;
 using Facet.Extensions;
 using FastEndpoints;
-using Humanizer;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,23 +20,33 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
 
     public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
-        var startOfToday = DateTime.Today;
-        var endOfTomorrow = startOfToday.AddDays(2).AddTicks(-1);
-        var cultureInfo = CultureInfo.GetCultureInfo("ru");
+        var timezone = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var startUtc = TimeZoneInfo.ConvertTimeToUtc(today, timezone);
+        var endUtc = TimeZoneInfo.ConvertTimeToUtc(today.AddDays(2), timezone);
 
-        var appointmentsDays = await db.Appointments
-            .Where(e => e.StartDate >= startOfToday && e.StartDate <= endOfTomorrow)
+        var appointments = await db.Appointments
+            .AsNoTracking()
+            .Where(e => e.StartDate >= startUtc && e.StartDate < endUtc)
             .Include(e => e.Client)
             .Include(e => e.Service)
             .OrderBy(e => e.StartDate)
             .ThenBy(e => e.Client.LastName)
             .ThenBy(e => e.Client.FirstName)
-            .GroupBy(e => e.StartDate)
+            .ToListAsync(ct);
+
+        foreach (var appointment in appointments)
+        {
+            appointment.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, req.Timezone);
+            appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
+        }
+
+        var appointmentsDays = appointments
+            .GroupBy(e => e.StartDate.Date)
             .OrderBy(e => e.Key)
-            .ToDictionaryAsync(
-                e => e.Key.Humanize(culture: cultureInfo, dateToCompareAgainst: startOfToday),
-                e => e.SelectFacets<Appointment, AppointmentDto>().ToList(),
-                ct
+            .ToDictionary(
+                e => e.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
+                e => e.SelectFacets<Appointment, AppointmentDto>().ToList()
             );
 
         var result = new GetMiniScheduleResponse
