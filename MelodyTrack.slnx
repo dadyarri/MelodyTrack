@@ -1,5 +1,4 @@
 ﻿<Solution>
     <Project Path="MelodyTrack.Backend/MelodyTrack.Backend.csproj" />
     <Project Path="MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj" />
-    <Project Path="MelodyTrack.Migrator/MelodyTrack.Migrator.csproj" />
 </Solution>
