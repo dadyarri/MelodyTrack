@@ -74,11 +74,19 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
         if (req.IsCompleted is not null)
         {
             appointment.IsCompleted = req.IsCompleted.Value;
+            if (req.IsCompleted.Value)
+            {
+                appointment.IsCanceled = false;
+            }
         }
 
         if (req.IsCanceled is not null)
         {
             appointment.IsCanceled = req.IsCanceled.Value;
+            if (req.IsCanceled.Value)
+            {
+                appointment.IsCompleted = false;
+            }
         }
 
         if (req.RecurrenceTypeId is not null)
