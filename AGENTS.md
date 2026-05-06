@@ -6,7 +6,7 @@ These instructions apply to the whole repository.
 
 ## Project Overview
 
-MelodyTrack is a custom CRM backend written in C# on .NET 9. The active solution is `MelodyTrack.slnx` and currently includes:
+MelodyTrack is a custom CRM backend written in C# on .NET 10. The active solution is `MelodyTrack.slnx` and currently includes:
 
 - `MelodyTrack.Backend`: ASP.NET Core API using FastEndpoints, EF Core, PostgreSQL, Quartz, Serilog, JWT auth, TOTP 2FA, and Facet DTO mapping.
 - `MelodyTrack.Backend.Tests`: xUnit v3 integration tests using FastEndpoints.Testing, Shouldly, and Testcontainers PostgreSQL.
@@ -16,7 +16,7 @@ Other directories may exist in the repository, but do not assume they are part o
 
 ## Required Tooling
 
-- Use the .NET SDK from `global.json` (`9.0.0`, rolling forward to latest major is allowed).
+- Use the .NET SDK from `global.json` (`10.0.100`, rolling forward to the latest installed 10.x feature band is allowed).
 - PostgreSQL is the production database provider.
 - Docker is required for the integration test suite because tests start a PostgreSQL container.
 

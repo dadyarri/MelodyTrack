@@ -621,7 +621,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+        var (rsp, res) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
@@ -717,7 +717,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, _) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+        var (rsp, _) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, NoContent>(EmptyRequest.Instance);
         rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         using var scope = app.Services.CreateScope();
@@ -742,7 +742,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ProblemDetails>(new EmptyRequest());
+        var (rsp, res) = await app.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, ProblemDetails>(EmptyRequest.Instance);
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
         res.ShouldBeNull();
     }
@@ -790,7 +790,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
             s1.WasRevoked.ShouldBeTrue();
         }
 
-        var (rspAll, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+        var (rspAll, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(EmptyRequest.Instance);
         rspAll.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         using (var assertionScope = app.Services.CreateScope())
@@ -819,7 +819,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var token = UserUtils.CreateAccessToken(user);
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
-        var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+        var (rsp, res) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(EmptyRequest.Instance);
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
         res.Data.ShouldContain(d => d.Id == session.Id && d.DeviceInfo == session.DeviceInfo);
@@ -1437,7 +1437,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 6: Generate recovery codes
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
 
-        var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(new EmptyRequest());
+        var (recoveryRsp, recoveryRes) = await app.Client.POSTAsync<RecoveryCodesEndpoint, EmptyRequest, RecoveryCodesResponse>(EmptyRequest.Instance);
 
         recoveryRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         recoveryRes.ShouldNotBeNull();
@@ -1482,7 +1482,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 9: Get sessions (using refreshed access token)
         app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newAccessToken);
 
-        var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(new EmptyRequest());
+        var (sessionsRsp, sessionsRes) = await app.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(EmptyRequest.Instance);
 
         sessionsRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         sessionsRes.ShouldNotBeNull();
@@ -1506,7 +1506,7 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         }
 
         // Step 11: Logout all sessions
-        var (logoutAllRsp, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(new EmptyRequest());
+        var (logoutAllRsp, _) = await app.Client.POSTAsync<LogoutAllEndpoint, EmptyRequest, NoContent>(EmptyRequest.Instance);
 
         logoutAllRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 

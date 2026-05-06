@@ -20,8 +20,7 @@ public class MelodyTrackFixture : AppFixture<Program>
         var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
         var quartzScriptPath = new FileInfo(Path.Combine(projectDir, "MelodyTrack.Backend", "quartz.sql")).FullName;
 
-        _dbContainer = new PostgreSqlBuilder()
-            .WithImage("postgres:latest")
+        _dbContainer = new PostgreSqlBuilder("postgres:latest")
             .WithDatabase(database: "testdb")
             .WithPortBinding(5432, true)
             .WithResourceMapping(quartzScriptPath, "/docker-entrypoint-initdb.d")

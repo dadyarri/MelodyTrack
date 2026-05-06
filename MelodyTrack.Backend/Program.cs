@@ -20,6 +20,7 @@ using Serilog.Events;
 using Serilog.Templates.Themes;
 using SerilogTracing;
 using SerilogTracing.Expressions;
+using UaDetector;
 
 var logLevelSwitch = new LoggingLevelSwitch();
 
@@ -101,6 +102,7 @@ try
     Log.Information("Using PostgreSQL database");
 
     // Custom services
+    builder.Services.AddUaDetector();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
 

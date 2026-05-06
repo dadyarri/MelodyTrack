@@ -6,10 +6,11 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Recover2FaEndpoint(AppDbContext db)
+public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
     : Ep.Req<Recover2FaRequest>.Res<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -53,7 +54,7 @@ public class Recover2FaEndpoint(AppDbContext db)
             Id = Ulid.NewUlid(),
             User = user,
             RefreshToken = refreshToken,
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
+            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 

@@ -8,10 +8,11 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using OtpNet;
+using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(AppDbContext db)
+public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
     : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -55,7 +56,7 @@ public class LoginEndpoint(AppDbContext db)
             Id = Ulid.NewUlid(),
             User = user,
             RefreshToken = refreshToken,
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers.UserAgent),
+            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 
