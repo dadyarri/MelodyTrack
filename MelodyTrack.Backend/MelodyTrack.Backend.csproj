@@ -52,7 +52,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="Data\Migrations\"/>
+        <None Update="quartz.sql">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        </None>
     </ItemGroup>
 
     <ItemGroup>
