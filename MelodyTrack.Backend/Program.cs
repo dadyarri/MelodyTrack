@@ -169,9 +169,13 @@ try
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     await db.Database.MigrateAsync();
-    var sqlFilePath = Path.Combine(Directory.GetCurrentDirectory(), "quartz.sql");
-    var sql = await File.ReadAllTextAsync(sqlFilePath);
-    await db.Database.ExecuteSqlRawAsync(sql);
+    
+    if (environment != "Test")
+    {
+        var sqlFilePath = Path.Combine(Directory.GetCurrentDirectory(), "quartz.sql");
+        var sql = await File.ReadAllTextAsync(sqlFilePath);
+        await db.Database.ExecuteSqlRawAsync(sql);
+    }
 
     var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
