@@ -168,10 +168,10 @@ try
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-    if (environment == "Test")
-    {
-        await db.Database.MigrateAsync();
-    }
+    await db.Database.MigrateAsync();
+    var sqlFilePath = Path.Combine(Directory.GetCurrentDirectory(), "quartz.sql");
+    var sql = await File.ReadAllTextAsync(sqlFilePath);
+    await db.Database.ExecuteSqlRawAsync(sql);
 
     var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
