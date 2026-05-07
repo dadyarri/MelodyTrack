@@ -24,6 +24,7 @@ public class
             Id = Ulid.NewUlid(),
             FirstName = req.FirstName,
             LastName = req.LastName,
+            Patronymic = req.Patronymic,
             Contacts = new ClientContacts
             {
                 Id = Ulid.NewUlid(),

@@ -2,6 +2,7 @@ using System.Linq.Expressions;
 using System.Reflection;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Attributes;
+using MelodyTrack.Backend.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Extensions;
@@ -88,6 +89,27 @@ public static class QueryableExtensions
         }
 
         return queryable;
+    }
+
+    public static IQueryable<Client> ApplyClientFullNameSearch(this IQueryable<Client> queryable,
+        string? search,
+        int maxDistance = 3)
+    {
+        var normalizedSearch = search?.Trim().ToLower();
+        if (string.IsNullOrWhiteSpace(normalizedSearch))
+        {
+            return queryable;
+        }
+
+        var containsPattern = $"%{normalizedSearch}%";
+        var fuzzyDistance = Math.Max(maxDistance, normalizedSearch.Length / 4);
+
+        return queryable.Where(e =>
+            EF.Functions.ILike((e.LastName + " " + e.FirstName + " " + (e.Patronymic ?? "")).Trim(), containsPattern)
+            || EF.Functions.ILike((e.FirstName + " " + e.LastName + " " + (e.Patronymic ?? "")).Trim(), containsPattern)
+            || EF.Functions.FuzzyStringMatchLevenshtein((e.LastName + " " + e.FirstName + " " + (e.Patronymic ?? "")).Trim().ToLower(), normalizedSearch) <= fuzzyDistance
+            || EF.Functions.FuzzyStringMatchLevenshtein((e.LastName + " " + e.FirstName).ToLower(), normalizedSearch) <= fuzzyDistance
+            || EF.Functions.FuzzyStringMatchLevenshtein((e.FirstName + " " + e.LastName).ToLower(), normalizedSearch) <= fuzzyDistance);
     }
 
     public static IQueryable<TEntity> ApplyDateRangeFilter<TEntity>(

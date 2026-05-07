@@ -12,8 +12,5 @@ public class CreatePaymentRequestValidator : Validator<CreatePaymentRequest>
             .GreaterThan(0)
             .WithMessage("Сумма платежа должна быть больше нуля");
 
-        RuleFor(e => e.Description)
-            .NotEmpty()
-            .WithMessage("Описание платежа не должно быть пустым");
     }
 }

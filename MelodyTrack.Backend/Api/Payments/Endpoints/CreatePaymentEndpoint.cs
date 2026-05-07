@@ -42,7 +42,7 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
             Amount = req.Amount,
             Client = client,
             Date = req.Date,
-            Description = req.Description,
+            Description = req.Description ?? string.Empty,
             Service = service
         };
 

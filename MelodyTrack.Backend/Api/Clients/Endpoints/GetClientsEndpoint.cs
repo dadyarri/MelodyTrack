@@ -24,12 +24,18 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             CancellationToken ct)
     {
         Logger.LogDebug(
-            "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName},  LastName: {LastName}",
+            "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName}, LastName: {LastName}, Search: {Search}",
             req.Page, req.PageSize,
-            req.FirstName ?? "not specified", req.LastName ?? "not specified");
-        var clients = await db.Clients
+            req.FirstName ?? "not specified", req.LastName ?? "not specified", req.Search ?? "not specified");
+
+        var clientsQuery = db.Clients
             .AsNoTracking()
             .ApplyFuzzySearchFilters(req)
+            .ApplyClientFullNameSearch(req.Search);
+
+        var totalCount = await clientsQuery.CountAsync(ct);
+
+        var clients = await clientsQuery
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
             .ApplyPagination(req)
@@ -37,8 +43,6 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .ToListAsync(ct);
 
         var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
-
-        var totalCount = await db.Clients.CountAsync(ct);
 
         Logger.LogInformation(
             "Retrieved {Count} clients (Page {Page} of {TotalPages}, Total: {TotalCount})",
