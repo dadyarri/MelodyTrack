@@ -21,6 +21,7 @@ public class GetAppointmentsEndpoint(AppDbContext db) : Ep.Req<GetAppointmentsRe
         var appointments = await db.Appointments
             .Include(e => e.Service)
             .Include(e => e.Client)
+            .ThenInclude(e => e.Contacts)
             .Where(e => e.StartDate >= DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc) && e.StartDate <= DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc))
             .OrderBy(e => e.StartDate)
             .ToFacetsAsync<AppointmentDto>(cancellationToken: ct);
