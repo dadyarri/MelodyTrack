@@ -34,7 +34,7 @@ public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedR
             .Include(e => e.Service)
             .ToFacetsAsync<GetPaymentsDto>(ct);
 
-        var totalCount = await db.Clients.CountAsync(ct);
+        var totalCount = await db.Payments.CountAsync(ct);
 
         Logger.LogInformation(
             "Retrieved {Count} payments (Page {Page} of {TotalPages}, Total: {TotalCount})",
