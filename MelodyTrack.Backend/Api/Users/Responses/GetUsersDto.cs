@@ -1,7 +1,9 @@
-using Facet;
-using MelodyTrack.Backend.Data.Models;
-
 namespace MelodyTrack.Backend.Api.Users.Responses;
 
-[Facet(typeof(User), Include = [nameof(User.Id), nameof(User.LastName), nameof(User.FirstName)])]
-public partial class GetUsersDto;
+public class GetUsersDto
+{
+    public required Ulid Id { get; set; }
+    public required string LastName { get; set; }
+    public required string FirstName { get; set; }
+    public required string RoleDisplayName { get; set; }
+}

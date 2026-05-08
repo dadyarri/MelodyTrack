@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using Facet.Extensions.EFCore;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
@@ -39,9 +38,17 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
 
         var users = await db.Users
             .AsNoTracking()
+            .Include(e => e.Role)
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
-            .ToFacetsAsync<GetUsersDto>(ct);
+            .Select(e => new GetUsersDto
+            {
+                Id = e.Id,
+                LastName = e.LastName,
+                FirstName = e.FirstName,
+                RoleDisplayName = e.Role.DisplayName
+            })
+            .ToListAsync(ct);
 
         return TypedResults.Ok(new GetUsersResponse { Users = users });
     }
