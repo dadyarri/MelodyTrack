@@ -24,7 +24,7 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
         CancellationToken ct)
     {
         var user = await db.Users
-            .Where(e => e.Email == req.Email)
+            .Where(e => e.Email == req.Email.ToLowerInvariant())
             .FirstOrDefaultAsync(ct);
 
         if (user is null)
@@ -34,7 +34,7 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
         }
 
         var recoveryCode = await db.RecoveryCodes
-            .Where(e => e.Code == req.RecoveryCode && !e.WasUsed)
+            .Where(e => e.User.Id == user.Id && e.Code == req.RecoveryCode && !e.WasUsed)
             .FirstOrDefaultAsync(ct);
 
         if (recoveryCode is null)

@@ -118,10 +118,30 @@ public static class UserUtils
             Secret = secret,
             Issuer = "MelodyTrack",
             Label = email,
-            AuthAlgorithm = PayloadGenerator.OneTimePassword.OneTimePasswordAuthAlgorithm.SHA512
+            AuthAlgorithm = PayloadGenerator.OneTimePassword.OneTimePasswordAuthAlgorithm.SHA1
         };
 
         return (secret, generator.ToString());
+    }
+
+    public static bool VerifyTotpCode(string secret, string? otp)
+    {
+        if (string.IsNullOrWhiteSpace(otp))
+        {
+            return false;
+        }
+
+        var secretKey = Base32Encoding.ToBytes(secret.Trim().Replace(" ", string.Empty));
+        var window = new VerificationWindow(1, 1);
+
+        var sha1Totp = new Totp(secretKey, mode: OtpHashMode.Sha1);
+        if (sha1Totp.VerifyTotp(otp, out _, window))
+        {
+            return true;
+        }
+
+        var sha512Totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
+        return sha512Totp.VerifyTotp(otp, out _, window);
     }
 
     public static string GetInviteUrl(Ulid code)

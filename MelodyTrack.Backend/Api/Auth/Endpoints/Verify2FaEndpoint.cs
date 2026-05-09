@@ -1,15 +1,17 @@
 ﻿using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using OtpNet;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class Verify2FaEndpoint(AppDbContext db)
-    : Ep.Req<Verify2FaRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
+    : Ep.Req<Verify2FaRequest>.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
@@ -17,7 +19,7 @@ public class Verify2FaEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         Verify2FaRequest req, CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? req.Email;
@@ -36,18 +38,36 @@ public class Verify2FaEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var secretKey = Base32Encoding.ToBytes(req.OtpSecret);
-        var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
-        if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
+        if (!UserUtils.VerifyTotpCode(req.OtpSecret, req.Otp))
         {
             Logger.LogWarning("Invalid 2FA code provided for user {Email}", email);
             return TypedResults.Unauthorized();
         }
 
+        await db.RecoveryCodes
+            .Where(e => e.User.Id == user.Id && !e.WasUsed)
+            .ExecuteDeleteAsync(ct);
+
+        var recoveryCodes = UserUtils.GenerateRecoveryCodes().ToList();
+        await db.RecoveryCodes.AddRangeAsync(recoveryCodes.Select(code => new RecoveryCode
+        {
+            Id = Ulid.NewUlid(),
+            Code = code,
+            User = user
+        }), ct);
+
         user.TotpSecret = req.OtpSecret;
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Successfully verified and set up 2FA for user {Email}", email);
-        return TypedResults.NoContent();
+        return TypedResults.Ok(new RecoveryCodesResponse
+        {
+            Codes = recoveryCodes,
+            AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
+            {
+                Code = code,
+                WasUsed = false
+            }).ToList()
+        });
     }
 }

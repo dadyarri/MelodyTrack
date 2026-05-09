@@ -7,7 +7,6 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using OtpNet;
 using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -31,7 +30,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
             .FirstOrDefaultAsync(e => e.Email == req.Email.ToLowerInvariant(), ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password) ||
-            user.Role.RoleName.IsAnyAdmin() && req.Otp is null)
+            user.Role.RoleName.IsAnyAdmin() && req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
             Logger.LogWarning("Failed login attempt for email {Email}", req.Email);
             return TypedResults.Unauthorized();
@@ -39,13 +38,25 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
 
         if (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null)
         {
-            var secretKey = Base32Encoding.ToBytes(user.TotpSecret);
-            var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
-            if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
+            if (!string.IsNullOrWhiteSpace(req.RecoveryCode))
+            {
+                var recoveryCode = await db.RecoveryCodes
+                    .FirstOrDefaultAsync(e => e.User.Id == user.Id && e.Code == req.RecoveryCode && !e.WasUsed, ct);
+
+                if (recoveryCode is null)
+                {
+                    Logger.LogWarning("Invalid recovery code provided for user {Email}", req.Email);
+                    return TypedResults.Unauthorized();
+                }
+
+                recoveryCode.WasUsed = true;
+            }
+            else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
                 Logger.LogWarning("Invalid 2FA code provided for user {Email}", req.Email);
                 return TypedResults.Unauthorized();
             }
+
             Logger.LogDebug("2FA verification successful for user {Email}", req.Email);
         }
 

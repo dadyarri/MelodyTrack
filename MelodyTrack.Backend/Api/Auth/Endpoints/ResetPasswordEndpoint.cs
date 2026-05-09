@@ -1,10 +1,10 @@
 ﻿using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using OtpNet;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -33,19 +33,32 @@ public class ResetPasswordEndpoint(AppDbContext db)
 
         var user = await db.Users
             .Where(e => e.Email == restoreCode.Email)
+            .Include(e => e.Role)
             .FirstOrDefaultAsync(ct);
 
-        if (user is null || user.TotpSecret is not null && req.Otp is null)
+        if (user is null || (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null) &&
+            req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
             Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for user {Email}", restoreCode.Email);
             return TypedResults.Forbid();
         }
 
-        if (user.TotpSecret is not null)
+        if (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null)
         {
-            var secretKey = Base32Encoding.ToBytes(user.TotpSecret);
-            var totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
-            if (!totp.VerifyTotp(req.Otp, out _, new VerificationWindow(1, 1)))
+            if (!string.IsNullOrWhiteSpace(req.RecoveryCode))
+            {
+                var recoveryCode = await db.RecoveryCodes
+                    .FirstOrDefaultAsync(e => e.User.Id == user.Id && e.Code == req.RecoveryCode && !e.WasUsed, ct);
+
+                if (recoveryCode is null)
+                {
+                    Logger.LogWarning("Invalid recovery code provided during password reset for user {Email}", user.Email);
+                    return TypedResults.Unauthorized();
+                }
+
+                recoveryCode.WasUsed = true;
+            }
+            else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
                 Logger.LogWarning("Invalid 2FA code provided during password reset for user {Email}", user.Email);
                 return TypedResults.Unauthorized();

@@ -489,14 +489,16 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         using var scope = app.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var email = Fake.Internet.Email();
+        var email = Fake.Internet.Email().ToLowerInvariant();
 
-        var (rsp, _) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, object?>(new ForgotPasswordRequest
+        var (rsp, res) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, ForgotPasswordResponse>(new ForgotPasswordRequest
         {
             Email = email
         });
 
-        rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Url.ShouldNotBeNullOrEmpty();
 
         var req = await db.PasswordRestorationRequests.FirstOrDefaultAsync(r => r.Email == email, TestContext.Current.CancellationToken);
         req.ShouldNotBeNull();
@@ -1381,14 +1383,16 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         var otp = totp.ComputeTotp();
 
         // Step 3: Verify 2FA
-        var (verify2FaRsp, _) = await app.Client.POSTAsync<Verify2FaEndpoint, Verify2FaRequest, Results<NoContent, UnauthorizedHttpResult>>(new Verify2FaRequest
+        var (verify2FaRsp, verify2FaRes) = await app.Client.POSTAsync<Verify2FaEndpoint, Verify2FaRequest, RecoveryCodesResponse>(new Verify2FaRequest
         {
             Email = email.ToLowerInvariant(),
             Otp = otp,
             OtpSecret = totpSecret
         });
 
-        verify2FaRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        verify2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        verify2FaRes.ShouldNotBeNull();
+        verify2FaRes.Codes.Count.ShouldBeGreaterThan(0);
 
         {
             using var scope = app.Services.CreateScope();
@@ -1523,12 +1527,13 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         // Step 12: Forgot password
         app.Client.DefaultRequestHeaders.Authorization = null;
 
-        var (forgotRsp, _) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, object?>(new ForgotPasswordRequest
+        var (forgotRsp, forgotRes) = await app.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, ForgotPasswordResponse>(new ForgotPasswordRequest
         {
             Email = email.ToLowerInvariant()
         });
 
-        forgotRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        forgotRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        forgotRes.ShouldNotBeNull();
 
         // Get the password restoration token
         string restorationToken;

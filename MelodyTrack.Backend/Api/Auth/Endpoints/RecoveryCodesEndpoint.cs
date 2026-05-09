@@ -61,7 +61,12 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
-            Codes = recoveryCodes
+            Codes = recoveryCodes,
+            AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
+            {
+                Code = code,
+                WasUsed = false
+            }).ToList()
         });
     }
 }
