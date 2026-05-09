@@ -3,7 +3,7 @@
   "shadowCopy": false,
   "appDomain": "denied",
   "diagnosticMessages": false,
-  "parallelizeAssembly": true,
-  "parallelizeTestCollections": true,
+  "parallelizeAssembly": false,
+  "parallelizeTestCollections": false,
   "maxParallelThreads": -1
 }

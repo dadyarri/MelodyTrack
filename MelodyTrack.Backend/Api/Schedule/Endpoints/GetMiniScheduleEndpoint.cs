@@ -5,13 +5,14 @@ using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer) : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -24,6 +25,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db) : Ep.Req<BaseGetAppointmen
         var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
         var startUtc = TimeZoneInfo.ConvertTimeToUtc(today, timezone);
         var endUtc = TimeZoneInfo.ConvertTimeToUtc(today.AddDays(2), timezone);
+        await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, ct);
 
         var appointments = await db.Appointments
             .AsNoTracking()

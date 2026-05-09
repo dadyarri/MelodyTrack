@@ -9,6 +9,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
@@ -105,6 +106,8 @@ try
     builder.Services.AddUaDetector();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
+    builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
+    builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
 
     builder.Services.Configure<QuartzOptions>(opts =>
     {

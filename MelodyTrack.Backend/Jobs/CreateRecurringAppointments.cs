@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
-using Microsoft.EntityFrameworkCore;
 using Quartz;
 
 namespace MelodyTrack.Backend.Jobs;
@@ -12,29 +11,13 @@ namespace MelodyTrack.Backend.Jobs;
 ///     <see cref="AppointmentRecurrenceRule.RecurrenceType" /> and
 ///     <see cref="AppointmentRecurrenceRule.RecurrencePattern" />.
 /// </summary>
-public class CreateRecurringAppointments(AppDbContext db, IRecurringAppointmentService service) : IJob
+public class CreateRecurringAppointments(IRecurringAppointmentMaterializer materializer) : IJob
 {
     public static readonly JobKey Key = new("CreateRecurringAppointments");
 
     public async Task Execute(IJobExecutionContext context)
     {
-        // Get all recurrence rules that are still valid
         var now = DateTime.UtcNow;
-        var recurrenceRules = await db.RecurrenceRules
-            .Include(r => r.Service)
-            .Include(r => r.Client)
-            .Include(r => r.Provider)
-            .Include(r => r.RecurrenceType)
-            .Where(r => r.StartDate <= now && (r.EndDate == null || r.EndDate >= now))
-            .ToListAsync(context.CancellationToken);
-
-        foreach (var rule in recurrenceRules)
-        {
-            var appointmentsToCreate = service.GetAppointmentsForRule(rule, now).ToList();
-
-            await db.Appointments.AddRangeAsync(appointmentsToCreate, context.CancellationToken);
-        }
-
-        await db.SaveChangesAsync(context.CancellationToken);
+        await materializer.EnsureAppointmentsGeneratedAsync(now, now.AddDays(7), context.CancellationToken);
     }
 }
