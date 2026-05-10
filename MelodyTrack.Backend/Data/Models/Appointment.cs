@@ -9,5 +9,6 @@ public class Appointment : BaseModel
     public required DateTime EndDate { get; set; }
     public required bool IsCompleted { get; set; }
     public required bool IsCanceled { get; set; }
+    public required bool IsDeleted { get; set; }
     public AppointmentRecurrenceRule? RecurringRule { get; set; }
 }

@@ -43,6 +43,7 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
         {
             recurrenceRule = new AppointmentRecurrenceRule
             {
+                Id = Ulid.NewUlid(),
                 Service = service,
                 Client = client,
                 Provider = provider,
@@ -63,6 +64,7 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
             EndDate = req.StartDate.AddHours(1).ToUniversalTime(),
             IsCanceled = false,
             IsCompleted = false,
+            IsDeleted = false,
             RecurringRule = recurrenceRule
         };
 

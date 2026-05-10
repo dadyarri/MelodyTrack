@@ -141,6 +141,7 @@ public class RecurringAppointmentMaterializerFixture : IAsyncLifetime
 
         var services = new ServiceCollection();
         services.AddDbContext<AppDbContext>(options => options.UseNpgsql(_dbContainer.GetConnectionString()));
+        services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
         services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
         services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
         Services = services.BuildServiceProvider();

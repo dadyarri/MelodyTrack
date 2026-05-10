@@ -106,6 +106,7 @@ try
     builder.Services.AddUaDetector();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
+    builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
 

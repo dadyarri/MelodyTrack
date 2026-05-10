@@ -1,5 +1,4 @@
 using System.Globalization;
-using Facet.Extensions;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
@@ -29,26 +28,42 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
 
         var appointments = await db.Appointments
             .AsNoTracking()
-            .Where(e => e.StartDate >= startUtc && e.StartDate < endUtc)
+            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate < endUtc)
             .Include(e => e.Client)
+            .ThenInclude(e => e.Contacts)
             .Include(e => e.Service)
+            .Include(e => e.Provider)
+            .ThenInclude(e => e!.Role)
+            .Include(e => e.RecurringRule)
+            .ThenInclude(e => e!.RecurrenceType)
             .OrderBy(e => e.StartDate)
             .ThenBy(e => e.Client.LastName)
             .ThenBy(e => e.Client.FirstName)
             .ToListAsync(ct);
 
-        foreach (var appointment in appointments)
+        var responseAppointments = appointments
+            .Select(AppointmentDto.FromModel)
+            .ToList();
+
+        foreach (var appointment in responseAppointments)
         {
             appointment.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, req.Timezone);
             appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
+            if (appointment.RecurringRule is not null)
+            {
+                appointment.RecurringRule.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.RecurringRule.StartDate, req.Timezone);
+                appointment.RecurringRule.EndDate = appointment.RecurringRule.EndDate is { } endDate
+                    ? DateTimeUtils.ConvertDateToTimezone(endDate, req.Timezone)
+                    : null;
+            }
         }
 
-        var appointmentsDays = appointments
+        var appointmentsDays = responseAppointments
             .GroupBy(e => e.StartDate.Date)
             .OrderBy(e => e.Key)
             .ToDictionary(
                 e => e.Key.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
-                e => e.SelectFacets<Appointment, AppointmentDto>().ToList()
+                e => e.ToList()
             );
 
         var result = new GetMiniScheduleResponse

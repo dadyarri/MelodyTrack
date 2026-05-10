@@ -17,7 +17,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
     public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
     {
         var appointment = await db.Appointments
-            .Where(e => e.Id == req.Id)
+            .Where(e => e.Id == req.Id && !e.IsDeleted)
             .Include(e => e.Service)
             .Include(e => e.Client)
             .Include(e => e.RecurringRule)
@@ -110,15 +110,25 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
                 return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
             }
 
-            appointment.RecurringRule = new AppointmentRecurrenceRule
+            var recurrenceRule = appointment.RecurringRule ?? new AppointmentRecurrenceRule
             {
                 Id = Ulid.NewUlid(),
                 RecurrenceType = recurrenceType,
                 RecurrencePattern = req.RecurrencePattern,
                 Client = appointment.Client,
                 Service = appointment.Service,
-                StartDate = appointment.RecurringRule?.StartDate ?? req.StartDate.Value
+                Provider = appointment.Provider,
+                StartDate = req.StartDate.Value
             };
+
+            recurrenceRule.RecurrenceType = recurrenceType;
+            recurrenceRule.RecurrencePattern = req.RecurrencePattern;
+            recurrenceRule.Client = appointment.Client;
+            recurrenceRule.Service = appointment.Service;
+            recurrenceRule.Provider = appointment.Provider;
+            recurrenceRule.StartDate = appointment.RecurringRule?.StartDate ?? req.StartDate.Value;
+
+            appointment.RecurringRule = recurrenceRule;
         }
 
         await db.SaveChangesAsync(ct);

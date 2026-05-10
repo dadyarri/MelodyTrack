@@ -1,4 +1,3 @@
-using Facet.Extensions.EFCore;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
@@ -24,19 +23,35 @@ public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMater
         await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, ct);
 
         var appointments = await db.Appointments
+            .AsNoTracking()
             .Include(e => e.Service)
             .Include(e => e.Client)
             .ThenInclude(e => e.Contacts)
-            .Where(e => e.StartDate >= startUtc && e.StartDate <= endUtc)
+            .Include(e => e.Provider)
+            .ThenInclude(e => e!.Role)
+            .Include(e => e.RecurringRule)
+            .ThenInclude(e => e!.RecurrenceType)
+            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc)
             .OrderBy(e => e.StartDate)
-            .ToFacetsAsync<AppointmentDto>(cancellationToken: ct);
+            .ToListAsync(ct);
 
-        foreach (var appointment in appointments)
+        var responseAppointments = appointments
+            .Select(AppointmentDto.FromModel)
+            .ToList();
+
+        foreach (var appointment in responseAppointments)
         {
             appointment.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, req.Timezone);
             appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
+            if (appointment.RecurringRule is not null)
+            {
+                appointment.RecurringRule.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.RecurringRule.StartDate, req.Timezone);
+                appointment.RecurringRule.EndDate = appointment.RecurringRule.EndDate is { } endDate
+                    ? DateTimeUtils.ConvertDateToTimezone(endDate, req.Timezone)
+                    : null;
+            }
         }
 
-        return TypedResults.Ok(new GetAppointmentsResponse { Appointments = appointments });
+        return TypedResults.Ok(new GetAppointmentsResponse { Appointments = responseAppointments });
     }
 }

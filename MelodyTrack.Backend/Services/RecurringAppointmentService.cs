@@ -183,6 +183,7 @@ public class RecurringAppointmentService : IRecurringAppointmentService
             EndDate = appointmentStartTime.AddHours(1),
             IsCompleted = false,
             IsCanceled = false,
+            IsDeleted = false,
             RecurringRule = rule
         };
     }
