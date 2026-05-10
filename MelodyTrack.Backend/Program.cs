@@ -7,10 +7,12 @@ using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
 using Quartz;
@@ -145,7 +147,43 @@ try
     app.UseCors("AllowFrontend");
     app.UseAuthentication();
     app.UseAuthorization();
-    app.UseDefaultExceptionHandler();
+    app.UseExceptionHandler(exceptionHandlerApp =>
+    {
+        exceptionHandlerApp.Run(async context =>
+        {
+            var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+            if (exception is not null)
+            {
+                Log.Error(exception, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
+            }
+
+            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            context.Response.ContentType = "application/problem+json";
+
+            var detail = environment is "Development" or "Test"
+                ? exception?.Message
+                : null;
+
+            var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
+                context,
+                StatusCodes.Status500InternalServerError,
+                detail);
+
+            await context.Response.WriteAsJsonAsync(problemDetails);
+        });
+    });
+    app.UseStatusCodePages(async statusCodeContext =>
+    {
+        var response = statusCodeContext.HttpContext.Response;
+        response.ContentType = "application/problem+json";
+
+        var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
+            statusCodeContext.HttpContext,
+            response.StatusCode);
+
+        await response.WriteAsJsonAsync(problemDetails);
+    });
     app.UseFastEndpoints(x =>
     {
         x.Errors.UseProblemDetails(pdc =>
@@ -154,13 +192,9 @@ try
                 pdc.IndicateErrorCode = true;
                 pdc.IndicateErrorSeverity = true;
                 pdc.TypeValue = "https://www.rfc-editor.org/rfc/rfc7231#section-6.5.1";
-                pdc.TitleValue = "Ошибка валидации";
-                pdc.TitleTransformer = pd => pd.Status switch
-                {
-                    400 => "Ошибка валидации",
-                    404 => "Не найдено",
-                    _ => "Произошла неизвестная ошибка!"
-                };
+                pdc.TitleValue = ApiErrorResponseFactory.GetTitle(StatusCodes.Status400BadRequest);
+                pdc.TitleTransformer = pd => ApiErrorResponseFactory.GetTitle(pd.Status);
+                pdc.ResponseBuilder = ApiErrorResponseFactory.CreateValidationProblemDetails;
             }
         );
         x.Errors.ProducesMetadataType = typeof(ProblemDetails);

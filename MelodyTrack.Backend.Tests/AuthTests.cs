@@ -380,8 +380,12 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
 
         rspWrongEmail.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         rspWrongPassword.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        resWrongEmail.ShouldBeNull();
-        resWrongPassword.ShouldBeNull();
+        resWrongEmail.ShouldNotBeNull();
+        resWrongPassword.ShouldNotBeNull();
+        resWrongEmail.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
+        resWrongPassword.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
+        resWrongEmail.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
+        resWrongPassword.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
     }
 
     [Fact]
@@ -446,7 +450,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.Forbidden);
+        res.Detail.ShouldBe("У вас нет прав для выполнения этого действия.");
     }
 
     [Fact]
@@ -546,7 +552,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.Forbidden);
+        res.Detail.ShouldBe("У вас нет прав для выполнения этого действия.");
     }
 
     [Fact]
@@ -886,7 +894,9 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        res.ShouldBeNull();
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.Forbidden);
+        res.Detail.ShouldBe("У вас нет прав для выполнения этого действия.");
     }
 
     [Fact]
