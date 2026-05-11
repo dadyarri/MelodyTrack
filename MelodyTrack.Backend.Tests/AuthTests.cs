@@ -9,6 +9,12 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.Clients.Endpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
+using MelodyTrack.Backend.Api.Expenses.Endpoints;
+using MelodyTrack.Backend.Api.Expenses.Requests;
+using MelodyTrack.Backend.Api.Expenses.Responses;
+using MelodyTrack.Backend.Api.Payments.Endpoints;
+using MelodyTrack.Backend.Api.Payments.Requests;
+using MelodyTrack.Backend.Api.Payments.Responses;
 using MelodyTrack.Backend.Api.Roles.Endpoints;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Api.Schedule.Endpoints;
@@ -2630,6 +2636,115 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.ShouldNotBeNull();
         res.Status.ShouldBe((int)HttpStatusCode.NotFound);
         res.Detail.ShouldBe("Клиент не найден");
+    }
+
+    [Fact]
+    public async Task GetPayments_AppliesFiltersAndReturnsSummary()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var clientA = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
+        var clientB = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
+        clientB.LastName = "Sidorova";
+        var service = await CreateScheduleServiceAsync(db, TestContext.Current.CancellationToken);
+
+        var paymentA = new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = clientA,
+            Service = service,
+            Amount = 1200m,
+            Date = new DateTime(2026, 05, 02, 10, 0, 0, DateTimeKind.Utc),
+            Description = "Оплата курса"
+        };
+
+        var paymentB = new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = clientB,
+            Amount = 700m,
+            Date = new DateTime(2026, 04, 28, 10, 0, 0, DateTimeKind.Utc),
+            Description = "Предоплата"
+        };
+
+        await db.Payments.AddRangeAsync([paymentA, paymentB], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await app.Client.GETAsync<GetPaymentsEndpoint, GetPaymentsPaginatedRequest, GetPaymentsResponse>(
+            new GetPaymentsPaginatedRequest
+            {
+                Page = 1,
+                PageSize = 10,
+                Search = "курс",
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 03, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.Data.Count.ShouldBe(1);
+        res.Data[0].Id.ShouldBe(paymentA.Id);
+        res.Info.Total.ShouldBe(1);
+        res.Summary.ItemsCount.ShouldBe(1);
+        res.Summary.TotalAmount.ShouldBe(1200m);
+        res.Summary.FirstPaymentAtUtc.ShouldBe(paymentA.Date);
+        res.Summary.LastPaymentAtUtc.ShouldBe(paymentA.Date);
+    }
+
+    [Fact]
+    public async Task GetExpenses_AppliesFiltersAndReturnsSummary()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+
+        var expenseA = new Expense
+        {
+            Id = Ulid.NewUlid(),
+            Description = "Аренда кабинета",
+            Amount = 5000m,
+            Date = new DateTime(2026, 05, 05, 8, 0, 0, DateTimeKind.Utc)
+        };
+
+        var expenseB = new Expense
+        {
+            Id = Ulid.NewUlid(),
+            Description = "Материалы",
+            Amount = 1300m,
+            Date = new DateTime(2026, 04, 25, 8, 0, 0, DateTimeKind.Utc)
+        };
+
+        await db.Expenses.AddRangeAsync([expenseA, expenseB], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await app.Client.GETAsync<GetExpensesEndpoint, GetExpensesPaginatedRequest, GetExpensesResponse>(
+            new GetExpensesPaginatedRequest
+            {
+                Page = 1,
+                PageSize = 10,
+                Search = "аренда",
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 10, 0, 0, 0, DateTimeKind.Utc)
+            });
+
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.Data.Count.ShouldBe(1);
+        res.Data[0].Id.ShouldBe(expenseA.Id);
+        res.Info.Total.ShouldBe(1);
+        res.Summary.ItemsCount.ShouldBe(1);
+        res.Summary.TotalAmount.ShouldBe(5000m);
+        res.Summary.FirstExpenseAtUtc.ShouldBe(expenseA.Date);
+        res.Summary.LastExpenseAtUtc.ShouldBe(expenseA.Date);
     }
 
     private static async Task<User> CreateAuthorizedScheduleUserAsync(AppDbContext db, CancellationToken ct)
