@@ -7,6 +7,8 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Auth.Endpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
+using MelodyTrack.Backend.Api.Clients.Endpoints;
+using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Roles.Endpoints;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Api.Schedule.Endpoints;
@@ -2473,6 +2475,161 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.Appointments[0].RecurringRule.ShouldNotBeNull();
         res.Appointments[0].RecurringRule!.Id.ShouldBe(recurrenceRuleId);
         res.Appointments[0].RecurringRule!.Key.ShouldBe("weekly");
+    }
+
+    [Fact]
+    public async Task GetClientHistory_ReturnsSummaryAndRecentActivity()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "History",
+            LastName = "Viewer",
+            Role = userRole,
+            Password = "hash"
+        };
+
+        var client = new Client
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Анна",
+            LastName = "Иванова",
+            Patronymic = "Сергеевна",
+            Contacts = new ClientContacts
+            {
+                Id = Ulid.NewUlid(),
+                Phone = "+79991234567",
+                Telegram = "https://t.me/annai",
+                Vk = "https://vk.com/annai"
+            }
+        };
+
+        var service = new Service
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Маникюр"
+        };
+
+        var servicePrice = new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1500m,
+            EffectiveDate = DateTime.UtcNow.AddMonths(-2)
+        };
+
+        var oldPayment = new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Amount = 900m,
+            Date = DateTime.UtcNow.AddDays(-10),
+            Description = "Предоплата"
+        };
+
+        var newPayment = new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Amount = 1200m,
+            Date = DateTime.UtcNow.AddDays(-2),
+            Description = "Доплата"
+        };
+
+        var completedAppointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = new DateTime(2024, 01, 10, 9, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2024, 01, 10, 10, 0, 0, DateTimeKind.Utc),
+            IsCompleted = true,
+            IsCanceled = false,
+            IsDeleted = false
+        };
+
+        var upcomingAppointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = new DateTime(2030, 01, 15, 11, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2030, 01, 15, 12, 0, 0, DateTimeKind.Utc),
+            IsCompleted = false,
+            IsCanceled = false,
+            IsDeleted = false
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.Clients.AddAsync(client, TestContext.Current.CancellationToken);
+        await db.Services.AddAsync(service, TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(servicePrice, TestContext.Current.CancellationToken);
+        await db.Payments.AddRangeAsync([oldPayment, newPayment], TestContext.Current.CancellationToken);
+        await db.Appointments.AddRangeAsync([completedAppointment, upcomingAppointment], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await app.Client.GETAsync<GetClientHistoryEndpoint, GetEntityRequest, ClientHistoryResponse>(
+            new GetEntityRequest { Id = client.Id });
+
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Client.Id.ShouldBe(client.Id);
+        res.Client.Balance.ShouldBe(600m);
+        res.Summary.TotalPayments.ShouldBe(2100m);
+        res.Summary.PaymentsCount.ShouldBe(2);
+        res.Summary.CompletedAppointmentsCount.ShouldBe(1);
+        res.Summary.UpcomingAppointmentsCount.ShouldBe(1);
+        res.Summary.LastPaymentAtUtc.ShouldNotBeNull();
+        res.Summary.LastVisitAtUtc.ShouldNotBeNull();
+        res.Summary.NextAppointmentAtUtc.ShouldNotBeNull();
+        res.Summary.LastPaymentAtUtc.Value.ShouldBe(newPayment.Date, TimeSpan.FromSeconds(1));
+        res.Summary.LastVisitAtUtc.Value.ShouldBe(completedAppointment.StartDate, TimeSpan.FromSeconds(1));
+        res.Summary.NextAppointmentAtUtc.Value.ShouldBe(upcomingAppointment.StartDate, TimeSpan.FromSeconds(1));
+        res.RecentPayments.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
+        res.RecentAppointments.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, completedAppointment.Id]);
+    }
+
+    [Fact]
+    public async Task GetClientHistory_WithUnknownId_ReturnsNotFound()
+    {
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "History",
+            LastName = "Viewer",
+            Role = userRole,
+            Password = "hash"
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        app.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await app.Client.GETAsync<GetClientHistoryEndpoint, GetEntityRequest, ProblemDetails>(
+            new GetEntityRequest { Id = Ulid.NewUlid() });
+
+        app.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NotFound);
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.NotFound);
+        res.Detail.ShouldBe("Клиент не найден");
     }
 
     private static async Task<User> CreateAuthorizedScheduleUserAsync(AppDbContext db, CancellationToken ct)
