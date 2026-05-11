@@ -19,11 +19,25 @@ public class GetMeEndpoint(AppDbContext db)
     public override async Task<Results<Ok<MeResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+        var currentSessionIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Sid)?.Value;
 
         if (email is null)
         {
             Logger.LogWarning("Profile request without valid email claim in token");
             return TypedResults.Unauthorized();
+        }
+
+        if (Ulid.TryParse(currentSessionIdClaim, out var currentSessionId))
+        {
+            var isSessionActive = await db.Sessions
+                .AsNoTracking()
+                .AnyAsync(e => e.Id == currentSessionId && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow, ct);
+
+            if (!isSessionActive)
+            {
+                Logger.LogWarning("Profile request with inactive session {SessionId}", currentSessionId);
+                return TypedResults.Unauthorized();
+            }
         }
 
         var user = await db.Users
@@ -43,6 +57,8 @@ public class GetMeEndpoint(AppDbContext db)
             FirstName = user.FirstName,
             LastName = user.LastName,
             RoleDisplayName = user.Role.DisplayName,
+            IsAdmin = user.Role.RoleName.IsAnyAdmin(),
+            IsSuperuser = user.Role.RoleName.IsSuperuser(),
             IsTwoFactorEnabled = user.TotpSecret is not null,
             IsTwoFactorRequired = user.Role.RoleName.IsAnyAdmin()
         });

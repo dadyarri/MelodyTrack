@@ -2,13 +2,14 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.ErrorHandling;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class GetInviteCodeInformationEndpoint(AppDbContext db)
-    : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ForbidHttpResult>>
+    : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -16,7 +17,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>> ExecuteAsync(
         GetInviteCodeInformationRequest req,
         CancellationToken ct)
     {
@@ -26,7 +27,11 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         if (!ulidParsed)
         {
             Logger.LogWarning("Invite code {InviteCode} could not be parsed", req.InviteCode);
-            return TypedResults.Forbid();
+            AddError(r => r.InviteCode, "Ссылка приглашения недействительна. Попросите администратора создать новую.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         var invite = await db.InviteCodes
@@ -36,7 +41,11 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
         if (invite is null)
         {
             Logger.LogWarning("Invite code {InviteCode} is invalid", req.InviteCode);
-            return TypedResults.Forbid();
+            AddError(r => r.InviteCode, "Ссылка приглашения недействительна или уже просрочена. Попросите администратора создать новую.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         Logger.LogInformation("Invite code {InviteCode} found", req.InviteCode);

@@ -22,7 +22,7 @@ public class ForgotPasswordEndpoint(AppDbContext db)
         var email = req.Email.ToLowerInvariant();
         var token = UserUtils.GenerateRandomString(14);
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        var url = $"{appDomain}/restore?code={token}";
+        var resetPageUrl = $"{appDomain}/restore?code={token}";
         var restorationRequest = new PasswordRestorationRequest
         {
             Id = Ulid.NewUlid(),
@@ -31,17 +31,13 @@ public class ForgotPasswordEndpoint(AppDbContext db)
             ValidUntil = DateTime.UtcNow.AddHours(2)
         };
 
-        Logger.LogInformation(
-            "User {Email} forgotten password and requested for its restoration. Here is his link for this: {Url}",
-            email, url);
-
+        Logger.LogInformation("auth.password_reset.requested email {Email} resetUrl {Url}", email, resetPageUrl);
         await db.PasswordRestorationRequests.AddAsync(restorationRequest, ct);
         await db.SaveChangesAsync(ct);
 
         return TypedResults.Ok(new ForgotPasswordResponse
         {
-            Token = token,
-            Url = url
+            Message = "Если аккаунт найден, новая ссылка для восстановления уже готова. Обратитесь к администратору."
         });
     }
 }

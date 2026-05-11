@@ -22,11 +22,21 @@ public class Verify2FaEndpoint(AppDbContext db)
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         Verify2FaRequest req, CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value ?? req.Email;
+        var authenticatedEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+        var email = authenticatedEmail ?? req.Email;
 
         if (email is null)
         {
             Logger.LogWarning("2FA verification attempt without email");
+            return TypedResults.Unauthorized();
+        }
+
+        if (authenticatedEmail is not null && !string.Equals(authenticatedEmail, req.Email, StringComparison.OrdinalIgnoreCase))
+        {
+            Logger.LogWarning(
+                "Authenticated 2FA verification attempt with mismatched email claim {AuthenticatedEmail} and payload {PayloadEmail}",
+                authenticatedEmail,
+                req.Email);
             return TypedResults.Unauthorized();
         }
 
@@ -35,6 +45,12 @@ public class Verify2FaEndpoint(AppDbContext db)
         if (user is null)
         {
             Logger.LogWarning("2FA verification attempt for non-existent user with email {Email}", email);
+            return TypedResults.Unauthorized();
+        }
+
+        if (authenticatedEmail is null && user.TotpSecret != req.OtpSecret)
+        {
+            Logger.LogWarning("Anonymous 2FA verification attempt with mismatched secret for user {Email}", email);
             return TypedResults.Unauthorized();
         }
 
@@ -59,7 +75,7 @@ public class Verify2FaEndpoint(AppDbContext db)
         user.TotpSecret = req.OtpSecret;
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully verified and set up 2FA for user {Email}", email);
+        Logger.LogInformation("auth.2fa.enrolled user {Email}", email);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
             Codes = recoveryCodes,

@@ -14,4 +14,9 @@ public static class UserRolesExtensions
     {
         return (role & (UserRoles.Admin | UserRoles.Superuser)) != 0;
     }
+
+    public static bool IsSuperuser(this UserRoles role)
+    {
+        return (role & UserRoles.Superuser) != 0;
+    }
 }

@@ -90,11 +90,22 @@ The backend Dockerfile targets .NET 10 images:
 
 1. Harden authentication/session flows.
 
-   Add focused tests for session revocation edge cases, refresh-token replay, device-info parsing fallbacks, and 2FA recovery-code reuse.
+   - ✅ Add focused tests for refresh-token replay, device-info parsing fallbacks, expired reset flows, and 2FA recovery-code reuse.
+   - ✅ Tighten refresh-token handling for expiry, replay detection, and session revocation.
+   - ✅ Reject expired password-reset tokens.
+   - ✅ Stop returning reset tokens/links to the client and log the full reset URL for developer-mediated recovery.
+   - ✅ Prevent anonymous 2FA verification from binding a new secret to an existing user.
+   - ✅ Return explicit human-readable problem details for invalid invite links, used/expired invite codes, duplicate registration, and expired reset links.
+   - ✅ Expose fresh recovery codes immediately after 2FA recovery/reset flows.
+   - ✅ Standardize auth event logs for login, logout, invite acceptance, password resets, and 2FA changes without introducing duplicate audit channels.
 
-2. Review API authorization boundaries.
+2. ✅ Review API authorization boundaries.
 
-   Audit each endpoint for explicit authorization and role expectations. Confirm that admin/superuser-only operations are enforced consistently.
+   - ✅ Restrict invite creation to admin/superuser callers.
+   - ✅ Keep superuser invite creation superuser-only.
+   - ✅ Restrict role lookup to admin/superuser callers and hide superuser role from non-superusers.
+   - ✅ Confirm `/users` remains admin-only.
+   - ✅ Confirm payments, expenses, and schedule endpoints remain authenticated staff-facing operations after review; no extra role gate added.
 
 3. Improve recurring appointment coverage.
 

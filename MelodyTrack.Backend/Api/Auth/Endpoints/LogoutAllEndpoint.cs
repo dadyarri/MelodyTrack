@@ -35,7 +35,7 @@ public class LogoutAllEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Unauthori
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("User {Email} successfully logged out from all sessions", email.Value);
+        Logger.LogInformation("auth.logout_all.succeeded user {Email}", email.Value);
         return TypedResults.NoContent();
     }
 }

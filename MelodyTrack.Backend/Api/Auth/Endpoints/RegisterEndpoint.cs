@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class RegisterEndpoint(AppDbContext db)
-    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ForbidHttpResult>>
+    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -19,7 +20,7 @@ public class RegisterEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<Created<RegisterResponse>, ForbidHttpResult>> ExecuteAsync(RegisterRequest req,
+    public override async Task<Results<Created<RegisterResponse>, ProblemDetails>> ExecuteAsync(RegisterRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
@@ -27,7 +28,11 @@ public class RegisterEndpoint(AppDbContext db)
         if (!Ulid.TryParse(req.InviteCode, out var code))
         {
             Logger.LogWarning("Invalid invite code {InviteCode}", req.InviteCode);
-            return TypedResults.Forbid();
+            AddError(r => r.InviteCode, "Ссылка приглашения недействительна. Используйте новую ссылку от администратора.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         var inviteCode = await db.InviteCodes
@@ -38,7 +43,11 @@ public class RegisterEndpoint(AppDbContext db)
         if (inviteCode == null)
         {
             Logger.LogWarning("Invalid, used or expired invite code {InviteCode} provided", req.InviteCode);
-            return TypedResults.Forbid();
+            AddError(r => r.InviteCode, "Ссылка приглашения уже использована или просрочена. Попросите администратора создать новую.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         var email = (string.IsNullOrEmpty(inviteCode.Email) ? req.Email : inviteCode.Email).ToLowerInvariant();
@@ -48,7 +57,11 @@ public class RegisterEndpoint(AppDbContext db)
         if (hasUser)
         {
             Logger.LogWarning("Attempt to register with existing email {Email}", email);
-            return TypedResults.Forbid();
+            AddError(r => r.Email, "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт или попросите новую ссылку.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         UserUtils.HashPassword(req.Password, out var hash);
@@ -91,12 +104,11 @@ public class RegisterEndpoint(AppDbContext db)
         await db.Users.AddAsync(user, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully registered new user {Email} with role {Role}", email, inviteCode.Role.RoleName);
-        if (isTotpRequired)
-        {
-            Logger.LogInformation("2FA setup required for user {Email} due to admin role", email);
-        }
-
+        Logger.LogInformation(
+            "auth.invite_accepted user {Email} role {Role} twoFactorRequired {TwoFactorRequired}",
+            email,
+            inviteCode.Role.RoleName,
+            isTotpRequired);
         return TypedResults.Created("/auth/register", response);
     }
 }

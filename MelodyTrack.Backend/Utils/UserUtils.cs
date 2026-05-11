@@ -95,7 +95,7 @@ public static class UserUtils
         return codes;
     }
 
-    public static string CreateAccessToken(User user)
+    public static string CreateAccessToken(User user, Ulid? sessionId = null)
     {
         var expireAt = DateTime.UtcNow.AddMinutes(10);
         return JwtBearer.CreateToken(opts =>
@@ -104,6 +104,11 @@ public static class UserUtils
             opts.Issuer = "MelodyTrack";
             opts.ExpireAt = expireAt;
             opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
+
+            if (sessionId.HasValue)
+            {
+                opts.User.Claims.Add(new Claim(ClaimTypes.Sid, sessionId.Value.ToString()));
+            }
         });
     }
 

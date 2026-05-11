@@ -2,10 +2,12 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -20,11 +22,38 @@ public class CreateInviteEndpoint(AppDbContext db)
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
+        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+
+        if (login is null)
+        {
+            Logger.LogWarning("Invite creation attempt without valid email claim");
+            return TypedResults.Forbid();
+        }
+
+        var caller = await db.Users
+            .AsNoTracking()
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == login.Value, ct);
+
+        if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
+        {
+            Logger.LogWarning("Invite creation attempt without admin access by {Email}", login.Value);
+            return TypedResults.Forbid();
+        }
+
         var role = await db.Roles.FirstOrDefaultAsync(e => e.Id == req.Role, ct);
 
         if (role is null)
         {
             Logger.LogWarning("Attempt to create invite with invalid role ID {RoleId}", req.Role);
+            return TypedResults.Forbid();
+        }
+
+        if (role.RoleName.IsSuperuser() && !caller.Role.RoleName.IsSuperuser())
+        {
+            Logger.LogWarning(
+                "Admin {Email} attempted to create superuser invite without sufficient privileges",
+                caller.Email);
             return TypedResults.Forbid();
         }
 
@@ -48,9 +77,12 @@ public class CreateInviteEndpoint(AppDbContext db)
             Url = inviteUrl
         };
 
-        Logger.LogInformation("Invite for user {Email} with role {Role} created: {Url}", req.Email, role.RoleName,
+        Logger.LogInformation(
+            "auth.invite_created actor {ActorEmail} target {Email} role {Role} url {Url}",
+            caller.Email,
+            req.Email,
+            role.RoleName,
             inviteUrl);
-
         return TypedResults.Created("/auth/invite", response);
     }
 }

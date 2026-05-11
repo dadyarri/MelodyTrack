@@ -47,6 +47,10 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
+        await db.RecoveryCodes
+            .Where(e => e.User.Id == user.Id && !e.WasUsed && e.Id != recoveryCode.Id)
+            .ExecuteDeleteAsync(ct);
+
         var refreshToken = UserUtils.GenerateRandomString(14);
 
         var session = new Session
@@ -59,17 +63,30 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
         };
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
+        var recoveryCodes = UserUtils.GenerateRecoveryCodes().ToList();
 
         var response = new Recover2FaResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user),
+            AccessToken = UserUtils.CreateAccessToken(user, session.Id),
             RefreshToken = refreshToken,
             Secret = secret,
-            OtpUrl = otpUrl
+            OtpUrl = otpUrl,
+            Codes = recoveryCodes,
+            AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
+            {
+                Code = code,
+                WasUsed = false
+            }).ToList()
         };
 
         recoveryCode.WasUsed = true;
         user.TotpSecret = secret;
+        await db.RecoveryCodes.AddRangeAsync(recoveryCodes.Select(code => new RecoveryCode
+        {
+            Id = Ulid.NewUlid(),
+            Code = code,
+            User = user
+        }), ct);
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
 

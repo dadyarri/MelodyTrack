@@ -25,14 +25,35 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         Logger.LogDebug("Attempting to refresh token");
 
         var session = await db.Sessions
-            .Where(e => e.RefreshToken == req.RefreshToken && !e.WasRevoked)
+            .Where(e => e.RefreshToken == req.RefreshToken)
             .Include(e => e.User)
             .FirstOrDefaultAsync(ct);
 
 
         if (session is null)
         {
-            Logger.LogWarning("Invalid or revoked refresh token used in refresh attempt");
+            Logger.LogWarning("Unknown refresh token used in refresh attempt");
+            return TypedResults.Unauthorized();
+        }
+
+        if (session.WasRevoked)
+        {
+            Logger.LogWarning(
+                "Revoked refresh token replay detected for user {Email}. Revoking all sessions.",
+                session.User.Email);
+            await db.Sessions
+                .Where(e => e.User.Id == session.User.Id && !e.WasRevoked)
+                .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+
+            return TypedResults.Unauthorized();
+        }
+
+        if (session.ValidUntil < DateTime.UtcNow)
+        {
+            Logger.LogWarning("Expired refresh token used in refresh attempt for user {Email}", session.User.Email);
+            session.WasRevoked = true;
+            await db.SaveChangesAsync(ct);
+
             return TypedResults.Unauthorized();
         }
 
@@ -54,10 +75,9 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Successfully refreshed token for user {Email} from {DeviceInfo}", session.User.Email, newSession.DeviceInfo);
-
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(session.User),
+            AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id),
             RefreshToken = refreshToken,
             FirstName = session.User.FirstName,
             LastName = session.User.LastName

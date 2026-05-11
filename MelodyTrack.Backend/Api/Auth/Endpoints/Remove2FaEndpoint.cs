@@ -45,7 +45,7 @@ public class Remove2FaEndpoint(AppDbContext db)
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully removed 2FA for user {Email}", email.Value);
+        Logger.LogInformation("auth.2fa.removed user {Email}", email.Value);
         return TypedResults.NoContent();
     }
 }

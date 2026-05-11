@@ -38,8 +38,7 @@ public class Setup2FaEndpoint(AppDbContext db)
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
-        Logger.LogInformation("Successfully generated 2FA setup information for user {Email}", user.Email);
-
+        Logger.LogInformation("auth.2fa.setup_started user {Email}", user.Email);
         return TypedResults.Ok(new Setup2FaResponse
         {
             Secret = secret,

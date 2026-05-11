@@ -2,6 +2,7 @@
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class ResetPasswordEndpoint(AppDbContext db)
-    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
+    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -17,7 +18,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
         AllowAnonymous();
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(
         ResetPasswordRequest req,
         CancellationToken ct)
     {
@@ -25,10 +26,14 @@ public class ResetPasswordEndpoint(AppDbContext db)
             .Where(e => !e.WasUsed && e.Token == req.Token)
             .FirstOrDefaultAsync(ct);
 
-        if (restoreCode is null)
+        if (restoreCode is null || restoreCode.ValidUntil < DateTime.UtcNow)
         {
-            Logger.LogWarning("Password reset attempt with invalid or used token {Token}", req.Token);
-            return TypedResults.Forbid();
+            Logger.LogWarning("Password reset attempt with invalid, used or expired token {Token}", req.Token);
+            AddError(r => r.Token, "Ссылка восстановления больше не действует. Запросите новую ссылку.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         var user = await db.Users
@@ -40,7 +45,11 @@ public class ResetPasswordEndpoint(AppDbContext db)
             req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
             Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for user {Email}", restoreCode.Email);
-            return TypedResults.Forbid();
+            AddError(r => r.Otp, "Для этого аккаунта нужен код 2FA или код восстановления.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                ValidationFailures,
+                HttpContext,
+                StatusCodes.Status403Forbidden);
         }
 
         if (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null)
@@ -53,7 +62,11 @@ public class ResetPasswordEndpoint(AppDbContext db)
                 if (recoveryCode is null)
                 {
                     Logger.LogWarning("Invalid recovery code provided during password reset for user {Email}", user.Email);
-                    return TypedResults.Unauthorized();
+                    AddError(r => r.RecoveryCode, "Код восстановления неверный или уже использован.");
+                    return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                        ValidationFailures,
+                        HttpContext,
+                        StatusCodes.Status401Unauthorized);
                 }
 
                 recoveryCode.WasUsed = true;
@@ -61,7 +74,11 @@ public class ResetPasswordEndpoint(AppDbContext db)
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
                 Logger.LogWarning("Invalid 2FA code provided during password reset for user {Email}", user.Email);
-                return TypedResults.Unauthorized();
+                AddError(r => r.Otp, "Код 2FA неверный. Проверьте код из приложения-аутентификатора и попробуйте снова.");
+                return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                    ValidationFailures,
+                    HttpContext,
+                    StatusCodes.Status401Unauthorized);
             }
         }
 
@@ -73,7 +90,7 @@ public class ResetPasswordEndpoint(AppDbContext db)
         await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("Successfully reset password for user {Email} and revoked all sessions", user.Email);
+        Logger.LogInformation("auth.password_reset.completed user {Email}", user.Email);
         return TypedResults.NoContent();
     }
 }

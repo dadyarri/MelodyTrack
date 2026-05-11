@@ -32,7 +32,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password) ||
             user.Role.RoleName.IsAnyAdmin() && req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
-            Logger.LogWarning("Failed login attempt for email {Email}", req.Email);
+            Logger.LogWarning("auth.login.failed email {Email}", req.Email);
             return TypedResults.Unauthorized();
         }
 
@@ -45,7 +45,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
 
                 if (recoveryCode is null)
                 {
-                    Logger.LogWarning("Invalid recovery code provided for user {Email}", req.Email);
+                    Logger.LogWarning("auth.login.failed_recovery_code email {Email}", req.Email);
                     return TypedResults.Unauthorized();
                 }
 
@@ -53,11 +53,9 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
             }
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
-                Logger.LogWarning("Invalid 2FA code provided for user {Email}", req.Email);
+                Logger.LogWarning("auth.login.failed_otp email {Email}", req.Email);
                 return TypedResults.Unauthorized();
             }
-
-            Logger.LogDebug("2FA verification successful for user {Email}", req.Email);
         }
 
         var refreshToken = UserUtils.GenerateRandomString(14);
@@ -74,11 +72,10 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("User {Email} successfully logged in from {DeviceInfo}", user.Email, session.DeviceInfo);
-
+        Logger.LogInformation("auth.login.succeeded user {Email} device {DeviceInfo}", user.Email, session.DeviceInfo);
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user),
+            AccessToken = UserUtils.CreateAccessToken(user, session.Id),
             RefreshToken = refreshToken,
             FirstName = user.FirstName,
             LastName = user.LastName

@@ -42,7 +42,7 @@ public class ChangePasswordEndpoint(AppDbContext db)
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("Password changed for user {Email}; all sessions were revoked", email);
+        Logger.LogInformation("auth.password_changed user {Email}", email);
         return TypedResults.NoContent();
     }
 }

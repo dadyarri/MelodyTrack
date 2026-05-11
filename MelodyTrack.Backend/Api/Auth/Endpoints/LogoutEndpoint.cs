@@ -12,7 +12,6 @@ public class LogoutEndpoint(AppDbContext db) : Ep.Req<LogoutRequest>.Res<Results
     public override void Configure()
     {
         Post("/auth/logout");
-        AllowAnonymous();
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(LogoutRequest req,
@@ -34,9 +33,15 @@ public class LogoutEndpoint(AppDbContext db) : Ep.Req<LogoutRequest>.Res<Results
             return TypedResults.Unauthorized();
         }
 
-        await db.Sessions
-            .Where(e => e.RefreshToken == req.RefreshToken)
+        var revokedCount = await db.Sessions
+            .Where(e => e.RefreshToken == req.RefreshToken && e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+
+        if (revokedCount == 0)
+        {
+            Logger.LogWarning("Logout attempt by {Email} for non-owned or unknown refresh token", email.Value);
+            return TypedResults.Unauthorized();
+        }
 
         Logger.LogInformation("User {Email} successfully logged out", email.Value);
         return TypedResults.NoContent();

@@ -19,6 +19,8 @@ public class GetSessionsEndpoint(AppDbContext db)
         CancellationToken ct)
     {
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+        var currentSessionIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Sid)?.Value;
+        var hasCurrentSessionId = Ulid.TryParse(currentSessionIdClaim, out var currentSessionId);
 
         if (email is null)
         {
@@ -35,18 +37,25 @@ public class GetSessionsEndpoint(AppDbContext db)
         }
 
         var sessions = await db.Sessions
+            .AsNoTracking()
             .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow)
+            .OrderByDescending(e => e.Id)
+            .ToListAsync(ct);
+
+        var data = sessions
             .Select(e => new SessionDto
             {
                 Id = e.Id,
-                DeviceInfo = e.DeviceInfo
+                DeviceInfo = e.DeviceInfo,
+                IsCurrent = hasCurrentSessionId && e.Id == currentSessionId,
+                LastSeenAtUtc = e.Id.Time.UtcDateTime
             })
-            .ToListAsync(ct);
+            .ToList();
 
         Logger.LogInformation("Retrieved {Count} active sessions for user {Email}", sessions.Count, email.Value);
         return TypedResults.Ok(new GetSessionsResponse
         {
-            Data = sessions
+            Data = data
         });
     }
 }
