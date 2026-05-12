@@ -53,6 +53,7 @@ public class GetMeEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new MeResponse
         {
+            Id = user.Id,
             Email = user.Email,
             FirstName = user.FirstName,
             LastName = user.LastName,

@@ -2,6 +2,7 @@ namespace MelodyTrack.Backend.Api.Auth.Responses;
 
 public class MeResponse
 {
+    public required Ulid Id { get; set; }
     public required string Email { get; set; }
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
