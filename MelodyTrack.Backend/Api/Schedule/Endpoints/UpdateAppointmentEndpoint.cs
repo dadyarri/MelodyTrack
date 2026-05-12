@@ -2,12 +2,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
+public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -101,6 +102,14 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             db.Appointments.Add(updatedAppointment);
 
             await db.SaveChangesAsync(ct);
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "schedule",
+                Action = "recurring_appointment_detached_and_updated",
+                EntityType = "appointment",
+                EntityId = updatedAppointment.Id.ToString(),
+                Details = $"{updatedAppointment.Client.LastName} {updatedAppointment.Client.FirstName}, {updatedAppointment.Service.Name}, {updatedAppointment.StartDate:O}"
+            }, ct);
 
             return TypedResults.NoContent();
         }
@@ -172,6 +181,14 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
         }
 
         await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "schedule",
+            Action = "appointment_updated",
+            EntityType = "appointment",
+            EntityId = appointment.Id.ToString(),
+            Details = $"{appointment.Client.LastName} {appointment.Client.FirstName}, {appointment.Service.Name}, {appointment.StartDate:O}"
+        }, ct);
 
         return TypedResults.NoContent();
     }

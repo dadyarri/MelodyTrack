@@ -1,15 +1,16 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RecoveryCodesEndpoint(AppDbContext db)
+public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -59,6 +60,17 @@ public class RecoveryCodesEndpoint(AppDbContext db)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "recovery_codes_regenerated",
+            EntityType = "user",
+            EntityId = user.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = $"Сгенерировано кодов восстановления: {recoveryCodes.Count}"
+        }, ct);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
             Codes = recoveryCodes,

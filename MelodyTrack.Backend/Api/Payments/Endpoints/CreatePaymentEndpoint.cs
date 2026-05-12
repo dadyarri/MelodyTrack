@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class CreatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
     {
@@ -50,6 +51,14 @@ public class CreatePaymentEndpoint(AppDbContext db) : Ep.Req<CreatePaymentReques
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "payments",
+            Action = "payment_created",
+            EntityType = "payment",
+            EntityId = payment.Id.ToString(),
+            Details = $"{client.LastName} {client.FirstName}, сумма {payment.Amount}"
+        }, ct);
 
         return TypedResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
         {

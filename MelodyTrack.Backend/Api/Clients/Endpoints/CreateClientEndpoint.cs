@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
-    CreateClientEndpoint(AppDbContext db)
+    CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -45,6 +46,14 @@ public class
             client.Contacts.Telegram ?? "not provided",
             client.Contacts.Vk ?? "not provided"
         );
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "clients",
+            Action = "client_created",
+            EntityType = "client",
+            EntityId = client.Id.ToString(),
+            Details = $"{client.LastName} {client.FirstName}".Trim()
+        }, ct);
 
         return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
         {

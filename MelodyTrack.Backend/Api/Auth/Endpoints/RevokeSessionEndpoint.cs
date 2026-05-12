@@ -3,12 +3,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RevokeSessionEndpoint(AppDbContext db)
+public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -52,6 +53,17 @@ public class RevokeSessionEndpoint(AppDbContext db)
         }
 
         Logger.LogInformation("User {Email} revoked session {SessionId}", email, req.Id);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "session_revoked",
+            EntityType = "session",
+            EntityId = req.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = "Принудительное завершение одной сессии"
+        }, ct);
         return TypedResults.NoContent();
     }
 }

@@ -2,12 +2,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class UpdateClientEndpoint(AppDbContext db)
+public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<UpdateClientRequest>.Res<Results<Ok<GetEntityRequest>, NotFound>>
 {
     public override void Configure()
@@ -54,6 +55,14 @@ public class UpdateClientEndpoint(AppDbContext db)
         client.Contacts.Vk = req.Vk;
 
         await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "clients",
+            Action = "client_updated",
+            EntityType = "client",
+            EntityId = client.Id.ToString(),
+            Details = $"{client.LastName} {client.FirstName}".Trim()
+        }, ct);
 
         return TypedResults.Ok(new GetEntityRequest { Id = req.Id });
     }

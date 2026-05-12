@@ -58,6 +58,7 @@ try
     });
 
     builder.Services.AddAuthorization();
+    builder.Services.AddHttpContextAccessor();
     builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
@@ -109,6 +110,7 @@ try
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
+    builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
 

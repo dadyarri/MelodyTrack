@@ -3,10 +3,11 @@ using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService)
+public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService, AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<DeleteAppointmentRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -23,9 +24,21 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
             return new ProblemDetails(ValidationFailures);
         }
 
+        var appointment = await db.Appointments
+            .AsNoTracking()
+            .Where(e => e.Id == req.Id && !e.IsDeleted)
+            .Select(e => new
+            {
+                e.Id,
+                e.StartDate,
+                ClientName = e.Client.LastName + " " + e.Client.FirstName,
+                ServiceName = e.Service.Name
+            })
+            .FirstOrDefaultAsync(ct);
+
         var result = await appointmentDeletionService.DeleteAsync(req.Id, scope, ct);
 
-        if (result == DeleteAppointmentResult.NotFound)
+        if (result == DeleteAppointmentResult.NotFound || appointment is null)
         {
             Logger.LogWarning("Failed to delete appointment: ID {AppointmentId} not found", req.Id);
             AddError(r => r.Id, "Встреча не найдена");
@@ -33,6 +46,19 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
         }
 
         Logger.LogInformation("Successfully deleted appointment with ID: {AppointmentId}", req.Id);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "schedule",
+            Action = scope switch
+            {
+                AppointmentDeleteScope.ThisAndFollowing => "appointments_deleted_this_and_following",
+                AppointmentDeleteScope.All => "appointments_deleted_all",
+                _ => "appointment_deleted"
+            },
+            EntityType = "appointment",
+            EntityId = appointment.Id.ToString(),
+            Details = $"{appointment.ClientName}, {appointment.ServiceName}, {appointment.StartDate:O}"
+        }, ct);
         return TypedResults.NoContent();
     }
 

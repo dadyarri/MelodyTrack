@@ -2,13 +2,14 @@ using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ChangePasswordEndpoint(AppDbContext db)
+public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<ChangePasswordRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -43,6 +44,17 @@ public class ChangePasswordEndpoint(AppDbContext db)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         Logger.LogInformation("auth.password_changed user {Email}", email);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "password_changed",
+            EntityType = "user",
+            EntityId = user.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = "Пароль изменен из профиля"
+        }, ct);
         return TypedResults.NoContent();
     }
 }

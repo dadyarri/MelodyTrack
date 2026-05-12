@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class CreateInviteEndpoint(AppDbContext db)
+public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
 {
     public override void Configure()
@@ -83,6 +84,14 @@ public class CreateInviteEndpoint(AppDbContext db)
             req.Email,
             role.RoleName,
             inviteUrl);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "invite_created",
+            EntityType = "invite",
+            EntityId = invite.Id.ToString(),
+            Details = $"Приглашение для {req.Email} с ролью {role.DisplayName}"
+        }, ct);
         return TypedResults.Created("/auth/invite", response);
     }
 }

@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<AppointmentRecurrenceRule> RecurrenceRules { get; set; }
     public DbSet<RecurrenceType> RecurrenceTypes { get; set; }
     public DbSet<Expense> Expenses { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {

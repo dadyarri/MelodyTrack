@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>>
+public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>>
 {
     public override void Configure()
     {
@@ -36,6 +37,14 @@ public class UpdateServicePriceEndpoint(AppDbContext db) : Ep.Req<UpdateServiceP
 
         await db.ServicePriceHistory.AddAsync(price, ct);
         await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "services",
+            Action = "service_price_updated",
+            EntityType = "service",
+            EntityId = service.Id.ToString(),
+            Details = $"{service.Name}, новая цена {req.Price}"
+        }, ct);
 
         return TypedResults.Ok(new CreateEntityResponse
         {

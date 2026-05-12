@@ -1,13 +1,14 @@
-﻿using System.Security.Claims;
+using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Remove2FaEndpoint(AppDbContext db)
+public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -46,6 +47,17 @@ public class Remove2FaEndpoint(AppDbContext db)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("auth.2fa.removed user {Email}", email.Value);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "two_factor_removed",
+            EntityType = "user",
+            EntityId = user.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = "2FA отключена"
+        }, ct);
         return TypedResults.NoContent();
     }
 }

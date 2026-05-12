@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +12,7 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
+public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService)
     : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -73,6 +74,17 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("auth.login.succeeded user {Email} device {DeviceInfo}", user.Email, session.DeviceInfo);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "login_succeeded",
+            EntityType = "session",
+            EntityId = session.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = $"Устройство: {session.DeviceInfo}"
+        }, ct);
         var response = new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(user, session.Id),

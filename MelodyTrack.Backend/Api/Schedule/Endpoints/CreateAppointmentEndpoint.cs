@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
     {
@@ -70,6 +71,14 @@ public class CreateAppointmentEndpoint(AppDbContext db) : Ep.Req<CreateAppointme
 
         await db.AddAsync(appointment, ct);
         await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "schedule",
+            Action = recurrenceRule is null ? "appointment_created" : "recurring_appointment_created",
+            EntityType = "appointment",
+            EntityId = appointment.Id.ToString(),
+            Details = $"{client.LastName} {client.FirstName}, {service.Name}, {appointment.StartDate:O}"
+        }, ct);
 
         return TypedResults.Created($"/appointments/{appointment.Id}", new CreateEntityResponse { Id = appointment.Id });
     }

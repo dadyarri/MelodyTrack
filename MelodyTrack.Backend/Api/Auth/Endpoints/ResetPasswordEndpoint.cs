@@ -1,15 +1,16 @@
-﻿using FastEndpoints;
+using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ResetPasswordEndpoint(AppDbContext db)
+public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ProblemDetails>>
 {
     public override void Configure()
@@ -91,6 +92,17 @@ public class ResetPasswordEndpoint(AppDbContext db)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         Logger.LogInformation("auth.password_reset.completed user {Email}", user.Email);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "password_reset_completed",
+            EntityType = "user",
+            EntityId = user.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = "Пароль восстановлен по ссылке"
+        }, ct);
         return TypedResults.NoContent();
     }
 }

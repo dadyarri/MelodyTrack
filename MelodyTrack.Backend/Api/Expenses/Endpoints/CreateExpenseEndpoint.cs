@@ -3,11 +3,12 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
@@ -28,6 +29,14 @@ public class CreateExpenseEndpoint(AppDbContext db) : Ep.Req<CreateExpenseReques
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "expenses",
+            Action = "expense_created",
+            EntityType = "expense",
+            EntityId = expense.Id.ToString(),
+            Details = $"{expense.Description}, сумма {expense.Amount}"
+        }, ct);
 
         return TypedResults.Created($"/expenses/{expense.Id}", new CreateEntityResponse
         {

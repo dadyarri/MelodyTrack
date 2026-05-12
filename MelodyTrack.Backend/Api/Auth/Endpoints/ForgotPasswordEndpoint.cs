@@ -1,14 +1,15 @@
-﻿using FastEndpoints;
+using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ForgotPasswordEndpoint(AppDbContext db)
+public class ForgotPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<ForgotPasswordRequest>.Res<Ok<ForgotPasswordResponse>>
 {
     public override void Configure()
@@ -34,6 +35,15 @@ public class ForgotPasswordEndpoint(AppDbContext db)
         Logger.LogInformation("auth.password_reset.requested email {Email} resetUrl {Url}", email, resetPageUrl);
         await db.PasswordRestorationRequests.AddAsync(restorationRequest, ct);
         await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "password_reset_requested",
+            EntityType = "password_reset",
+            EntityId = restorationRequest.Id.ToString(),
+            ActorEmail = email,
+            Details = "Создан запрос на восстановление пароля"
+        }, ct);
 
         return TypedResults.Ok(new ForgotPasswordResponse
         {

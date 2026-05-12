@@ -5,13 +5,14 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RegisterEndpoint(AppDbContext db)
+public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
     : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ProblemDetails>>
 {
     public override void Configure()
@@ -109,6 +110,17 @@ public class RegisterEndpoint(AppDbContext db)
             email,
             inviteCode.Role.RoleName,
             isTotpRequired);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "auth",
+            Action = "user_registered",
+            EntityType = "user",
+            EntityId = user.Id.ToString(),
+            ActorUserId = user.Id,
+            ActorEmail = user.Email,
+            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            Details = $"Регистрация по приглашению, роль {inviteCode.Role.DisplayName}"
+        }, ct);
         return TypedResults.Created("/auth/register", response);
     }
 }
