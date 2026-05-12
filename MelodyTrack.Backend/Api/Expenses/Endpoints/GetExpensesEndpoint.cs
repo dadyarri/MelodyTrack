@@ -51,12 +51,12 @@ public class GetExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedR
         {
             Data = response.Data,
             Info = response.Info,
-            Summary = new ExpensesSummaryDto
+            Summary = new MoneyListSummaryDto
             {
                 TotalAmount = totalAmount,
                 ItemsCount = (int)totalCount,
-                FirstExpenseAtUtc = firstExpenseAtUtc,
-                LastExpenseAtUtc = lastExpenseAtUtc
+                FirstItemAtUtc = firstExpenseAtUtc,
+                LastItemAtUtc = lastExpenseAtUtc
             }
         });
     }

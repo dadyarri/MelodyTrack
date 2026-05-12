@@ -83,12 +83,12 @@ public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedR
         {
             Data = response.Data,
             Info = response.Info,
-            Summary = new PaymentsSummaryDto
+            Summary = new MoneyListSummaryDto
             {
                 TotalAmount = totalAmount,
                 ItemsCount = (int)totalCount,
-                FirstPaymentAtUtc = firstPaymentAtUtc,
-                LastPaymentAtUtc = lastPaymentAtUtc
+                FirstItemAtUtc = firstPaymentAtUtc,
+                LastItemAtUtc = lastPaymentAtUtc
             }
         });
 
