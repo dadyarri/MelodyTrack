@@ -141,10 +141,13 @@ try
             opts.WithCronSchedule("0 0 12 ? * 1");
         });
     });
-    builder.Services.AddQuartzServer(q =>
+    if (environment != "Test")
     {
-        q.WaitForJobsToComplete = true;
-    });
+        builder.Services.AddQuartzServer(q =>
+        {
+            q.WaitForJobsToComplete = true;
+        });
+    }
 
     var app = builder.Build();
 

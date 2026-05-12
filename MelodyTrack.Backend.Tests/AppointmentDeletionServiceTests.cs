@@ -1,25 +1,32 @@
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;
 
-public class AppointmentDeletionServiceTests(RecurringAppointmentMaterializerFixture fixture)
-    : IClassFixture<RecurringAppointmentMaterializerFixture>
+[Collection(IntegrationTestCollection.Name)]
+public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
+    : IntegrationTestBase(fixture)
 {
     [Fact]
     public async Task DeleteAsync_SingleRecurringOccurrence_KeepsOccurrenceDeletedAfterRematerialization()
     {
-        await using var scope = fixture.Services.CreateAsyncScope();
+        await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
         var deletionService = scope.ServiceProvider.GetRequiredService<IAppointmentDeletionService>();
 
-        var rule = await CreateDailyRuleAsync(db, TestContext.Current.CancellationToken);
+        var rule = await TestDataFactory.CreateDailyRuleAsync(
+            db,
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
+            "Sofia",
+            "Ivanova",
+            "Piano",
+            TestContext.Current.CancellationToken);
         var startUtc = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc);
         var endUtc = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc);
 
@@ -59,12 +66,19 @@ public class AppointmentDeletionServiceTests(RecurringAppointmentMaterializerFix
     [Fact]
     public async Task DeleteAsync_ThisAndFollowing_TrimsRuleAndDeletesFollowingOccurrences()
     {
-        await using var scope = fixture.Services.CreateAsyncScope();
+        await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
         var deletionService = scope.ServiceProvider.GetRequiredService<IAppointmentDeletionService>();
 
-        var rule = await CreateDailyRuleAsync(db, TestContext.Current.CancellationToken);
+        var rule = await TestDataFactory.CreateDailyRuleAsync(
+            db,
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
+            "Sofia",
+            "Ivanova",
+            "Piano",
+            TestContext.Current.CancellationToken);
         var startUtc = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc);
         var endUtc = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc);
 
@@ -102,12 +116,20 @@ public class AppointmentDeletionServiceTests(RecurringAppointmentMaterializerFix
     [Fact]
     public async Task DeleteAsync_All_RemovesRuleAndDeletesAllOccurrences()
     {
-        await using var scope = fixture.Services.CreateAsyncScope();
+        await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
         var deletionService = scope.ServiceProvider.GetRequiredService<IAppointmentDeletionService>();
 
-        var rule = await CreateWeeklyRuleAsync(db, TestContext.Current.CancellationToken);
+        var rule = await TestDataFactory.CreateWeeklyRuleAsync(
+            db,
+            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            1 + 4,
+            "Artem",
+            "Volkov",
+            "Drums",
+            TestContext.Current.CancellationToken);
         var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
         var endUtc = new DateTime(2025, 11, 23, 23, 59, 59, DateTimeKind.Utc);
 
@@ -137,69 +159,5 @@ public class AppointmentDeletionServiceTests(RecurringAppointmentMaterializerFix
 
         ruleExists.ShouldBeFalse();
         activeOccurrences.ShouldBe(0);
-    }
-
-    private static async Task<AppointmentRecurrenceRule> CreateDailyRuleAsync(AppDbContext db, CancellationToken cancellationToken)
-    {
-        var recurrenceType = await db.RecurrenceTypes.FirstAsync(type => type.Type == AppointmentRecurrenceType.Daily, cancellationToken);
-        var client = new Client
-        {
-            Id = Ulid.NewUlid(),
-            FirstName = "Sofia",
-            LastName = "Ivanova",
-            Contacts = new ClientContacts { Id = Ulid.NewUlid() }
-        };
-        var service = new Service
-        {
-            Id = Ulid.NewUlid(),
-            Name = "Piano"
-        };
-
-        var rule = new AppointmentRecurrenceRule
-        {
-            Id = Ulid.NewUlid(),
-            Client = client,
-            Service = service,
-            StartDate = new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
-            RecurrenceType = recurrenceType,
-            RecurrencePattern = 1
-        };
-
-        await db.RecurrenceRules.AddAsync(rule, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
-        return rule;
-    }
-
-    private static async Task<AppointmentRecurrenceRule> CreateWeeklyRuleAsync(AppDbContext db, CancellationToken cancellationToken)
-    {
-        var recurrenceType = await db.RecurrenceTypes.FirstAsync(type => type.Type == AppointmentRecurrenceType.Weekly, cancellationToken);
-        var client = new Client
-        {
-            Id = Ulid.NewUlid(),
-            FirstName = "Artem",
-            LastName = "Volkov",
-            Contacts = new ClientContacts { Id = Ulid.NewUlid() }
-        };
-        var service = new Service
-        {
-            Id = Ulid.NewUlid(),
-            Name = "Drums"
-        };
-
-        var rule = new AppointmentRecurrenceRule
-        {
-            Id = Ulid.NewUlid(),
-            Client = client,
-            Service = service,
-            StartDate = new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc),
-            RecurrenceType = recurrenceType,
-            RecurrencePattern = 1 + 4
-        };
-
-        await db.RecurrenceRules.AddAsync(rule, cancellationToken);
-        await db.SaveChangesAsync(cancellationToken);
-        return rule;
     }
 }
