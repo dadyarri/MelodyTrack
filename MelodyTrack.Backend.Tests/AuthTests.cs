@@ -2692,8 +2692,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.Info.Total.ShouldBe(1);
         res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.TotalAmount.ShouldBe(1200m);
-        res.Summary.FirstPaymentAtUtc.ShouldBe(paymentA.Date);
-        res.Summary.LastPaymentAtUtc.ShouldBe(paymentA.Date);
+        res.Summary.FirstItemAtUtc.ShouldBe(paymentA.Date);
+        res.Summary.LastItemAtUtc.ShouldBe(paymentA.Date);
     }
 
     [Fact]
@@ -2743,8 +2743,8 @@ public class AuthTests(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>
         res.Info.Total.ShouldBe(1);
         res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.TotalAmount.ShouldBe(5000m);
-        res.Summary.FirstExpenseAtUtc.ShouldBe(expenseA.Date);
-        res.Summary.LastExpenseAtUtc.ShouldBe(expenseA.Date);
+        res.Summary.FirstItemAtUtc.ShouldBe(expenseA.Date);
+        res.Summary.LastItemAtUtc.ShouldBe(expenseA.Date);
     }
 
     private static async Task<User> CreateAuthorizedScheduleUserAsync(AppDbContext db, CancellationToken ct)
