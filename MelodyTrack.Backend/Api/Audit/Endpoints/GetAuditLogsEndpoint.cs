@@ -33,7 +33,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
             .Include(u => u.Role)
             .FirstOrDefaultAsync(ct);
 
-        if (user is null || !user.Role.RoleName.IsAnyAdmin())
+        if (user is null || !user.Role.RoleName.IsSuperuser())
         {
             AddError(_ => login, "Нет доступа");
             return TypedResults.Forbid();
