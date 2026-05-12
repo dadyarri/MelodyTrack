@@ -25,9 +25,8 @@ public class DeleteClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
 
         if (client is null)
         {
-            Logger.LogWarning("Failed to delete client: ID {ClientId} not found", req.Id);
-            AddError(r => r.Id, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            Logger.LogInformation("Client with ID {ClientId} was already deleted or not found", req.Id);
+            return TypedResults.NoContent();
         }
 
         await db.Clients.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);

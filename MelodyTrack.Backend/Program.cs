@@ -112,6 +112,7 @@ try
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
+    builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
 

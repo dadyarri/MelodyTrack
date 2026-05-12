@@ -5,13 +5,17 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
-    CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService)
+    CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
     : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
 {
+    private const string ReplayEndpoint = "clients:create";
+
     public override void Configure()
     {
         Post("/clients");
@@ -20,44 +24,103 @@ public class
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
-        var client = new Client
+        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        if (replayKey is not null)
         {
-            Id = Ulid.NewUlid(),
-            FirstName = req.FirstName,
-            LastName = req.LastName,
-            Patronymic = req.Patronymic,
-            Contacts = new ClientContacts
+            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
+            if (existingId is not null)
+            {
+                return TypedResults.Created($"/clients/{existingId}", new CreateEntityResponse
+                {
+                    Id = existingId.Value
+                });
+            }
+        }
+
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+        RequestReplay? replay = null;
+
+        try
+        {
+            if (replayKey is not null)
+            {
+                transaction = await db.Database.BeginTransactionAsync(ct);
+                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
+            }
+
+            var client = new Client
             {
                 Id = Ulid.NewUlid(),
-                Telegram = req.Telegram,
-                Phone = req.Phone,
-                Vk = req.Vk
+                FirstName = req.FirstName,
+                LastName = req.LastName,
+                Patronymic = req.Patronymic,
+                Contacts = new ClientContacts
+                {
+                    Id = Ulid.NewUlid(),
+                    Telegram = req.Telegram,
+                    Phone = req.Phone,
+                    Vk = req.Vk
+                }
+            };
+
+            await db.Clients.AddAsync(client, ct);
+            await db.SaveChangesAsync(ct);
+
+            Logger.LogInformation(
+                "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+                client.FirstName,
+                client.LastName,
+                client.Id,
+                client.Contacts.Phone ?? "not provided",
+                client.Contacts.Telegram ?? "not provided",
+                client.Contacts.Vk ?? "not provided"
+            );
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "clients",
+                Action = "client_created",
+                EntityType = "client",
+                EntityId = client.Id.ToString(),
+                Details = $"{client.LastName} {client.FirstName}".Trim()
+            }, ct);
+
+            if (replay is not null)
+            {
+                await requestReplayService.CompleteAsync(replay, client.Id, ct);
             }
-        };
-        await db.Clients.AddAsync(client, ct);
-        await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation(
-            "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
-            client.FirstName,
-            client.LastName,
-            client.Id,
-            client.Contacts.Phone ?? "not provided",
-            client.Contacts.Telegram ?? "not provided",
-            client.Contacts.Vk ?? "not provided"
-        );
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "clients",
-            Action = "client_created",
-            EntityType = "client",
-            EntityId = client.Id.ToString(),
-            Details = $"{client.LastName} {client.FirstName}".Trim()
-        }, ct);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(ct);
+            }
 
-        return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
+            return TypedResults.Created($"/clients/{client.Id}", new CreateEntityResponse
+            {
+                Id = client.Id
+            });
+        }
+        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
         {
-            Id = client.Id
-        });
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(ct);
+            }
+
+            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
+            if (completedId is not null)
+            {
+                return TypedResults.Created($"/clients/{completedId}", new CreateEntityResponse
+                {
+                    Id = completedId.Value
+                });
+            }
+
+            throw;
+        }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }

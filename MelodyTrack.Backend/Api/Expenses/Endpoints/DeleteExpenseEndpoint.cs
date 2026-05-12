@@ -25,9 +25,8 @@ public class DeleteExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         if (expense is null)
         {
-            Logger.LogWarning("Failed to delete expense: ID {ExpenseId} not found", req.Id);
-            AddError(r => r.Id, "Расход не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            Logger.LogInformation("Expense with ID {ExpenseId} was already deleted or not found", req.Id);
+            return TypedResults.NoContent();
         }
 
         await db.Expenses.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);

@@ -25,9 +25,8 @@ public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         if (payment is null)
         {
-            Logger.LogWarning("Failed to delete payment: ID {PaymentId} not found", req.Id);
-            AddError(r => r.Id, "Платёж не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            Logger.LogInformation("Payment with ID {PaymentId} was already deleted or not found", req.Id);
+            return TypedResults.NoContent();
         }
 
         await db.Payments.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);

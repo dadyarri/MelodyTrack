@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<RecurrenceType> RecurrenceTypes { get; set; }
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<RequestReplay> RequestReplays { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -73,5 +74,9 @@ public class AppDbContext : DbContext
             DisplayName = "Ежемесячно",
             Type = AppointmentRecurrenceType.Monthly
         });
+
+        modelBuilder.Entity<RequestReplay>()
+            .HasIndex(e => new { e.Endpoint, e.ReplayKey })
+            .IsUnique();
     }
 }

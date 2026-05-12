@@ -236,6 +236,35 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("Expenses");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.RequestReplay", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("ReplayKey")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<byte[]>("ResponseEntityId")
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Endpoint", "ReplayKey")
+                        .IsUnique();
+
+                    b.ToTable("RequestReplays");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.InviteCode", b =>
                 {
                     b.Property<byte[]>("Id")

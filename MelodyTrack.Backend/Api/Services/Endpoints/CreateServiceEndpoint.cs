@@ -5,12 +5,16 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
     : Ep.Req<CreateServiceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
 {
+    private const string ReplayEndpoint = "services:create";
+
     public override void Configure()
     {
         Post("/services");
@@ -19,36 +23,94 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         CreateServiceRequest req, CancellationToken ct)
     {
-        var service = new Service
+        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        if (replayKey is not null)
         {
-            Id = Ulid.NewUlid(),
-            Name = req.Name,
-            Description = req.Description
-        };
+            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
+            if (existingId is not null)
+            {
+                return TypedResults.Created($"/services/{existingId}", new CreateEntityResponse
+                {
+                    Id = existingId.Value
+                });
+            }
+        }
 
-        var price = new ServicePrice
-        {
-            Id = Ulid.NewUlid(),
-            Service = service,
-            EffectiveDate = DateTime.UtcNow,
-            Price = req.Price
-        };
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+        RequestReplay? replay = null;
 
-        await db.Services.AddAsync(service, ct);
-        await db.ServicePriceHistory.AddAsync(price, ct);
-        await db.SaveChangesAsync(ct);
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        try
         {
-            Category = "services",
-            Action = "service_created",
-            EntityType = "service",
-            EntityId = service.Id.ToString(),
-            Details = $"{service.Name}, цена {req.Price}"
-        }, ct);
+            if (replayKey is not null)
+            {
+                transaction = await db.Database.BeginTransactionAsync(ct);
+                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
+            }
 
-        return TypedResults.Created($"/services/{service.Id}", new CreateEntityResponse
+            var service = new Service
+            {
+                Id = Ulid.NewUlid(),
+                Name = req.Name,
+                Description = req.Description
+            };
+
+            var price = new ServicePrice
+            {
+                Id = Ulid.NewUlid(),
+                Service = service,
+                EffectiveDate = DateTime.UtcNow,
+                Price = req.Price
+            };
+
+            await db.Services.AddAsync(service, ct);
+            await db.ServicePriceHistory.AddAsync(price, ct);
+            await db.SaveChangesAsync(ct);
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "services",
+                Action = "service_created",
+                EntityType = "service",
+                EntityId = service.Id.ToString(),
+                Details = $"{service.Name}, цена {req.Price}"
+            }, ct);
+
+            if (replay is not null)
+            {
+                await requestReplayService.CompleteAsync(replay, service.Id, ct);
+            }
+
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(ct);
+            }
+
+            return TypedResults.Created($"/services/{service.Id}", new CreateEntityResponse
+            {
+                Id = service.Id
+            });
+        }
+        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
         {
-            Id = service.Id
-        });
+            if (transaction is not null)
+            {
+                await transaction.RollbackAsync(ct);
+            }
+
+            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
+            if (completedId is not null)
+            {
+                return TypedResults.Created($"/services/{completedId}", new CreateEntityResponse
+                {
+                    Id = completedId.Value
+                });
+            }
+
+            throw;
+        }
+    }
+
+    private static bool IsUniqueViolation(DbUpdateException exception)
+    {
+        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
     }
 }

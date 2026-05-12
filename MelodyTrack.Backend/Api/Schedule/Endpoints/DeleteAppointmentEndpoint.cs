@@ -40,9 +40,8 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
 
         if (result == DeleteAppointmentResult.NotFound || appointment is null)
         {
-            Logger.LogWarning("Failed to delete appointment: ID {AppointmentId} not found", req.Id);
-            AddError(r => r.Id, "Встреча не найдена");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            Logger.LogInformation("Appointment with ID {AppointmentId} was already deleted or not found", req.Id);
+            return TypedResults.NoContent();
         }
 
         Logger.LogInformation("Successfully deleted appointment with ID: {AppointmentId}", req.Id);
