@@ -133,6 +133,10 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("ActorUserId")
                         .HasColumnType("bytea");
 
+                    b.Property<string>("SourceIpAddress")
+                        .HasMaxLength(45)
+                        .HasColumnType("character varying(45)");
+
                     b.Property<string>("Category")
                         .IsRequired()
                         .HasMaxLength(50)

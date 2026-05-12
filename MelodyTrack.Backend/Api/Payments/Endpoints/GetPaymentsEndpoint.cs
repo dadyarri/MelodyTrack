@@ -5,12 +5,13 @@ using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Api.Payments.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult>>
+public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
@@ -68,6 +69,19 @@ public class GetPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedR
             .ThenBy(e => e.Client.FirstName)
             .ApplyPagination(req)
             .ToFacetsAsync<GetPaymentsDto>(ct);
+
+        var paymentActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "payment",
+            payments.Select(payment => payment.Id.ToString()).ToList(),
+            ct);
+
+        foreach (var payment in payments)
+        {
+            if (paymentActivities.TryGetValue(payment.Id.ToString(), out var activity))
+            {
+                payment.LastActivity = activity;
+            }
+        }
 
         Logger.LogInformation(
             "Retrieved {Count} payments (Page {Page} of {TotalPages}, Total: {TotalCount})",

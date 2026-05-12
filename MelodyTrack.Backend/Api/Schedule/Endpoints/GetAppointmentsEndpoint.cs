@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
@@ -39,8 +39,18 @@ public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMater
             .Select(AppointmentDto.FromModel)
             .ToList();
 
+        var appointmentActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "appointment",
+            responseAppointments.Select(appointment => appointment.Id.ToString()).ToList(),
+            ct);
+
         foreach (var appointment in responseAppointments)
         {
+            if (appointmentActivities.TryGetValue(appointment.Id.ToString(), out var activity))
+            {
+                appointment.LastActivity = activity;
+            }
+
             appointment.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, req.Timezone);
             appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
             if (appointment.RecurringRule is not null)

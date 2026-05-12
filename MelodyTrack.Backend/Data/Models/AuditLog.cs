@@ -26,6 +26,9 @@ public class AuditLog : BaseModel
     [MaxLength(200)]
     public string? ActorDisplayName { get; set; }
 
+    [MaxLength(45)]
+    public string? SourceIpAddress { get; set; }
+
     [MaxLength(1000)]
     public string? Details { get; set; }
 }

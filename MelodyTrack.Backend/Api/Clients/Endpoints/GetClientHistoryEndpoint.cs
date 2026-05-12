@@ -4,12 +4,13 @@ using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper)
+public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -38,6 +39,12 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
         }
 
         var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
+        var recentActivity = await recordActivityService.GetRecentClientActivityAsync(
+            client.Id,
+            client.FirstName,
+            client.LastName,
+            client.Patronymic,
+            ct);
 
         var recentPayments = await db.Payments
             .AsNoTracking()
@@ -127,6 +134,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 LastVisitAtUtc = lastVisitAtUtc,
                 NextAppointmentAtUtc = nextAppointmentAtUtc
             },
+            RecentActivity = recentActivity,
             RecentPayments = recentPayments,
             RecentAppointments = recentAppointments
         });

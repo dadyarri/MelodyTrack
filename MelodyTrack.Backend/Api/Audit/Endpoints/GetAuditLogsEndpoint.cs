@@ -56,6 +56,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
                 (item.EntityId != null && EF.Functions.ILike(item.EntityId, pattern)) ||
                 (item.ActorEmail != null && EF.Functions.ILike(item.ActorEmail, pattern)) ||
                 (item.ActorDisplayName != null && EF.Functions.ILike(item.ActorDisplayName, pattern)) ||
+                (item.SourceIpAddress != null && EF.Functions.ILike(item.SourceIpAddress, pattern)) ||
                 (item.Details != null && EF.Functions.ILike(item.Details, pattern)));
         }
 
@@ -72,6 +73,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
                 EntityId = item.EntityId,
                 ActorEmail = item.ActorEmail,
                 ActorDisplayName = item.ActorDisplayName,
+                SourceIpAddress = item.SourceIpAddress,
                 Details = item.Details
             })
             .ToListAsync(ct);

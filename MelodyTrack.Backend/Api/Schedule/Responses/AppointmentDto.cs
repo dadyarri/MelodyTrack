@@ -1,9 +1,10 @@
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.Enums;
 
 namespace MelodyTrack.Backend.Api.Schedule.Responses;
 
-public class AppointmentDto
+public partial class AppointmentDto
 {
     public required Ulid Id { get; set; }
     public required AppointmentClientDto Client { get; set; }
@@ -14,6 +15,7 @@ public class AppointmentDto
     public required bool IsCompleted { get; set; }
     public required bool IsCanceled { get; set; }
     public AppointmentRecurrenceRuleDto? RecurringRule { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 
     public static AppointmentDto FromModel(Appointment appointment)
     {

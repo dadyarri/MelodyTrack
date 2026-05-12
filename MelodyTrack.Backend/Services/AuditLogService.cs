@@ -29,6 +29,7 @@ public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAc
         var actorUserId = request.ActorUserId;
         var actorEmail = request.ActorEmail;
         var actorDisplayName = request.ActorDisplayName;
+        var sourceIpAddress = httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
         if (actorUserId is null && string.IsNullOrWhiteSpace(actorEmail))
         {
@@ -74,6 +75,7 @@ public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAc
             ActorUserId = actorUserId,
             ActorEmail = actorEmail,
             ActorDisplayName = actorDisplayName,
+            SourceIpAddress = sourceIpAddress,
             Details = request.Details
         };
 

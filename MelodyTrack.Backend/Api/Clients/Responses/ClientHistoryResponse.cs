@@ -1,4 +1,5 @@
 using Facet;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Clients.Responses;
@@ -10,6 +11,7 @@ public class ClientHistoryResponse
 {
     public required ClientWithBalanceDto Client { get; set; }
     public required ClientHistorySummaryDto Summary { get; set; }
+    public required List<RecordActivityDto> RecentActivity { get; set; }
     public required List<ClientHistoryPaymentDto> RecentPayments { get; set; }
     public required List<ClientHistoryAppointmentDto> RecentAppointments { get; set; }
 }
