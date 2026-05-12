@@ -20,6 +20,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             .Where(e => e.Id == req.Id && !e.IsDeleted)
             .Include(e => e.Service)
             .Include(e => e.Client)
+            .Include(e => e.Provider)
             .Include(e => e.RecurringRule)
             .FirstOrDefaultAsync(ct);
 
@@ -28,6 +29,11 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             AddError(r => r.Id, "Встреча не найдена");
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
+
+        var clientChanged = req.ClientId is not null && req.ClientId.Value != appointment.Client.Id;
+        var serviceChanged = req.ServiceId is not null && req.ServiceId.Value != appointment.Service.Id;
+        var providerChanged = req.ProviderId is not null && req.ProviderId.Value != appointment.Provider?.Id;
+        var startDateChanged = req.StartDate is not null && req.StartDate.Value != appointment.StartDate;
 
         if (req.ClientId is not null)
         {
@@ -63,6 +69,40 @@ public class UpdateAppointmentEndpoint(AppDbContext db) : Ep.Req<UpdateAppointme
             }
 
             appointment.Provider = provider;
+        }
+
+        if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged))
+        {
+            var duration = appointment.EndDate - appointment.StartDate;
+            var updatedAppointment = new Appointment
+            {
+                Id = Ulid.NewUlid(),
+                Client = appointment.Client,
+                Service = appointment.Service,
+                Provider = appointment.Provider,
+                StartDate = req.StartDate ?? appointment.StartDate,
+                EndDate = (req.StartDate ?? appointment.StartDate).Add(duration),
+                IsCompleted = req.IsCompleted ?? appointment.IsCompleted,
+                IsCanceled = req.IsCanceled ?? appointment.IsCanceled,
+                IsDeleted = false
+            };
+
+            if (updatedAppointment.IsCompleted)
+            {
+                updatedAppointment.IsCanceled = false;
+            }
+
+            if (updatedAppointment.IsCanceled)
+            {
+                updatedAppointment.IsCompleted = false;
+            }
+
+            appointment.IsDeleted = true;
+            db.Appointments.Add(updatedAppointment);
+
+            await db.SaveChangesAsync(ct);
+
+            return TypedResults.NoContent();
         }
 
         if (req.StartDate is not null)
