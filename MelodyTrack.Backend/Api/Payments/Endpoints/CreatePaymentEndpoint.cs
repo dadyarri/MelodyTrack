@@ -45,13 +45,18 @@ public class CreatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
             }
 
-            var service = await db.Services.Where(e => e.Id == req.ServiceId)
-                .FirstOrDefaultAsync(ct);
-
-            if (service is null)
+            Service? service = null;
+            if (req.ServiceId.HasValue)
             {
-                AddError(r => r.ServiceId, "Сервис не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                service = await db.Services
+                    .Where(e => e.Id == req.ServiceId.Value)
+                    .FirstOrDefaultAsync(ct);
+
+                if (service is null)
+                {
+                    AddError(r => r.ServiceId, "Сервис не найден");
+                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                }
             }
 
             var client = await db.Clients.Where(e => e.Id == req.ClientId)

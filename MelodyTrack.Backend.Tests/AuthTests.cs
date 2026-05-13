@@ -2711,6 +2711,43 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task CreatePayment_WithoutService_Succeeds()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var request = new CreatePaymentRequest
+        {
+            ClientId = client.Id,
+            Amount = 500m,
+            Date = new DateTime(2026, 05, 03, 10, 0, 0, DateTimeKind.Utc),
+            Description = "Платеж без услуги"
+        };
+
+        var (rsp, res) = await App.Client.POSTAsync<CreatePaymentEndpoint, CreatePaymentRequest, CreateEntityResponse>(request);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        res.ShouldNotBeNull();
+
+        db.ChangeTracker.Clear();
+
+        var payment = await db.Payments
+            .Include(e => e.Service)
+            .FirstAsync(e => e.Id == res.Id, TestContext.Current.CancellationToken);
+
+        payment.Client.Id.ShouldBe(client.Id);
+        payment.Amount.ShouldBe(500m);
+        payment.Service.ShouldBeNull();
+    }
+
+    [Fact]
     public async Task GetExpenses_AppliesFiltersAndReturnsSummary()
     {
         await using var scope = App.Services.CreateAsyncScope();
