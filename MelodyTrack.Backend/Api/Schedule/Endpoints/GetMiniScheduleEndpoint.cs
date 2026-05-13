@@ -1,9 +1,9 @@
 using System.Globalization;
+using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -20,7 +20,24 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
 
     public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
+        var email = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+
+        if (email is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var currentUser = await db.Users
+            .AsNoTracking()
+            .FirstOrDefaultAsync(user => user.Email == email, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
         var timezone = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
+        var nowUtc = DateTime.UtcNow;
         var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
         var startUtc = TimeZoneInfo.ConvertTimeToUtc(today, timezone);
         var endUtc = TimeZoneInfo.ConvertTimeToUtc(today.AddDays(2), timezone);
@@ -28,7 +45,13 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
 
         var appointments = await db.Appointments
             .AsNoTracking()
-            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate < endUtc)
+            .Where(e =>
+                !e.IsDeleted &&
+                e.Provider != null &&
+                e.Provider.Id == currentUser.Id &&
+                e.StartDate >= startUtc &&
+                e.StartDate < endUtc &&
+                e.EndDate > nowUtc)
             .Include(e => e.Client)
             .ThenInclude(e => e.Contacts)
             .Include(e => e.Service)
