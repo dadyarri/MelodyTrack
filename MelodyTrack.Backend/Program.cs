@@ -111,6 +111,7 @@ try
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+    builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();

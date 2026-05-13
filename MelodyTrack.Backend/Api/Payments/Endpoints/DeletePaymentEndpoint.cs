@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
@@ -31,30 +31,16 @@ public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
             return TypedResults.NoContent();
         }
 
-        var latestActivity = await db.AuditLogs
-            .AsNoTracking()
-            .Where(item => item.EntityType == "payment" && item.EntityId == payment.Id.ToString())
-            .OrderByDescending(item => item.CreatedAtUtc)
-            .Select(item => new RecordActivityDto
-            {
-                Id = item.Id,
-                CreatedAtUtc = item.CreatedAtUtc,
-                Category = item.Category,
-                Action = item.Action,
-                ActorEmail = item.ActorEmail,
-                ActorDisplayName = item.ActorDisplayName,
-                SourceIpAddress = item.SourceIpAddress,
-                Details = item.Details
-            })
-            .FirstOrDefaultAsync(ct);
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "payment",
+            payment.Id,
+            req.ExpectedActivityId,
+            "Платеж был изменен другим пользователем. Проверьте последние изменения перед удалением.",
+            ct);
 
-        if (EntityFreshnessUtils.IsStale(req.ExpectedActivityId, latestActivity))
+        if (conflict is not null)
         {
-            return TypedResults.Conflict(EntityFreshnessUtils.CreateConflict(
-                "payment",
-                payment.Id,
-                "Платеж был изменен другим пользователем. Проверьте последние изменения перед удалением.",
-                latestActivity));
+            return TypedResults.Conflict(conflict);
         }
 
         await db.Payments.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);

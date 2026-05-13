@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IRecordActivityService recordActivityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
+public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
@@ -33,14 +33,16 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
 
-        var latestActivity = await recordActivityService.GetLatestActivityAsync("appointment", appointment.Id.ToString(), ct);
-        if (EntityFreshnessUtils.IsStale(req.ExpectedActivityId, latestActivity) && !IsNoOp(appointment, req))
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "appointment",
+            appointment.Id,
+            req.ExpectedActivityId,
+            "Запись была изменена другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
+            ct);
+
+        if (conflict is not null && !IsNoOp(appointment, req))
         {
-            return TypedResults.Conflict(EntityFreshnessUtils.CreateConflict(
-                "appointment",
-                appointment.Id,
-                "Запись была изменена другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
-                latestActivity));
+            return TypedResults.Conflict(conflict);
         }
 
         var clientChanged = req.ClientId is not null && req.ClientId.Value != appointment.Client.Id;

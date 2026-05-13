@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
     : Ep.Req<UpdateClientRequest>.Res<Results<Ok<GetEntityRequest>, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -42,30 +42,16 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             return TypedResults.NotFound();
         }
 
-        var latestActivity = await db.AuditLogs
-            .AsNoTracking()
-            .Where(item => item.EntityType == "client" && item.EntityId == client.Id.ToString())
-            .OrderByDescending(item => item.CreatedAtUtc)
-            .Select(item => new RecordActivityDto
-            {
-                Id = item.Id,
-                CreatedAtUtc = item.CreatedAtUtc,
-                Category = item.Category,
-                Action = item.Action,
-                ActorEmail = item.ActorEmail,
-                ActorDisplayName = item.ActorDisplayName,
-                SourceIpAddress = item.SourceIpAddress,
-                Details = item.Details
-            })
-            .FirstOrDefaultAsync(ct);
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "client",
+            client.Id,
+            req.ExpectedActivityId,
+            "Клиент был изменен другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
+            ct);
 
-        if (EntityFreshnessUtils.IsStale(req.ExpectedActivityId, latestActivity) && !IsNoOp(client, req))
+        if (conflict is not null && !IsNoOp(client, req))
         {
-            return TypedResults.Conflict(EntityFreshnessUtils.CreateConflict(
-                "client",
-                client.Id,
-                "Клиент был изменен другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
-                latestActivity));
+            return TypedResults.Conflict(conflict);
         }
 
         if (req.FirstName != null)

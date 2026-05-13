@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService, AppDbContext db, IAuditLogService auditLogService)
+public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService, AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
     : Ep.Req<DeleteAppointmentRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -44,30 +44,16 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
             return TypedResults.NoContent();
         }
 
-        var latestActivity = await db.AuditLogs
-            .AsNoTracking()
-            .Where(item => item.EntityType == "appointment" && item.EntityId == appointment.Id.ToString())
-            .OrderByDescending(item => item.CreatedAtUtc)
-            .Select(item => new RecordActivityDto
-            {
-                Id = item.Id,
-                CreatedAtUtc = item.CreatedAtUtc,
-                Category = item.Category,
-                Action = item.Action,
-                ActorEmail = item.ActorEmail,
-                ActorDisplayName = item.ActorDisplayName,
-                SourceIpAddress = item.SourceIpAddress,
-                Details = item.Details
-            })
-            .FirstOrDefaultAsync(ct);
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "appointment",
+            appointment.Id,
+            req.ExpectedActivityId,
+            "Запись была изменена другим пользователем. Проверьте последние изменения перед удалением.",
+            ct);
 
-        if (EntityFreshnessUtils.IsStale(req.ExpectedActivityId, latestActivity))
+        if (conflict is not null)
         {
-            return TypedResults.Conflict(EntityFreshnessUtils.CreateConflict(
-                "appointment",
-                appointment.Id,
-                "Запись была изменена другим пользователем. Проверьте последние изменения перед удалением.",
-                latestActivity));
+            return TypedResults.Conflict(conflict);
         }
 
         var result = await appointmentDeletionService.DeleteAsync(req.Id, scope, ct);
