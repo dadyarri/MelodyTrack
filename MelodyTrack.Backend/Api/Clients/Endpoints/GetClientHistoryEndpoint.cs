@@ -96,7 +96,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
 
         var completedAppointmentsQuery = db.Appointments
             .AsNoTracking()
-            .Where(e => e.Client.Id == client.Id && e.IsCompleted && !e.IsCanceled && !e.IsDeleted);
+            .Where(e => e.Client.Id == client.Id && (e.IsCompleted || e.IsCanceled) && !e.IsDeleted);
 
         var completedAppointmentsCount = await completedAppointmentsQuery.CountAsync(ct);
         var lastVisitAtUtc = await completedAppointmentsQuery

@@ -37,7 +37,7 @@ public class ExportClientsInDebtEndpoint(AppDbContext db)
 
         var totalServiceCostByClient = await db.Appointments
             .AsNoTracking()
-            .Where(e => e.IsCompleted && !e.IsCanceled && !e.IsDeleted)
+            .Where(e => (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
             .Join(db.ServicePriceHistory,
                 appointment => appointment.Service.Id,
                 price => price.Service.Id,

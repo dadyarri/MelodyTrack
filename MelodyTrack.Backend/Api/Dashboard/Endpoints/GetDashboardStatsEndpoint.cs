@@ -65,12 +65,11 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
                              && !e.IsCanceled
                              && !e.IsDeleted, ct);
 
-        var completedAppointmentsThisMonth = await db.Appointments
+        var incomeAppointmentsThisMonth = await db.Appointments
             .AsNoTracking()
             .Where(e => e.StartDate >= monthStartUtc
                         && e.StartDate < nextMonthStartUtc
-                        && e.IsCompleted
-                        && !e.IsCanceled
+                        && (e.IsCompleted || e.IsCanceled)
                         && !e.IsDeleted)
             .Select(e => new
             {
@@ -89,7 +88,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
             })
             .ToListAsync(ct);
 
-        var monthIncome = completedAppointmentsThisMonth.Sum(appointment =>
+        var monthIncome = incomeAppointmentsThisMonth.Sum(appointment =>
             servicePrices
                 .Where(price => price.ServiceId == appointment.ServiceId
                                 && price.EffectiveDate <= appointment.StartDate)
@@ -114,7 +113,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
 
         var serviceCostsByClient = await db.Appointments
             .AsNoTracking()
-            .Where(e => e.IsCompleted && !e.IsCanceled && !e.IsDeleted)
+            .Where(e => (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
             .Join(db.ServicePriceHistory,
                 appointment => appointment.Service.Id,
                 price => price.Service.Id,

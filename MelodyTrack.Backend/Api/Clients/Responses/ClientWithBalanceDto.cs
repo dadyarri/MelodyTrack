@@ -26,7 +26,7 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
             .SumAsync(e => e.Amount, cancellationToken);
 
         var totalServiceCost = await db.Appointments
-            .Where(e => e.Client.Id == source.Id && e.IsCompleted && !e.IsCanceled && !e.IsDeleted)
+            .Where(e => e.Client.Id == source.Id && (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
             .Join(db.ServicePriceHistory, s => s.Service.Id, p => p.Service.Id, (s, p) => p.Price)
             .SumAsync(cancellationToken);
 
