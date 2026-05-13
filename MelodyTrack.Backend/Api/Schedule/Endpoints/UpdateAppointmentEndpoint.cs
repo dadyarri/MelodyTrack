@@ -1,21 +1,23 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
+public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IRecordActivityService recordActivityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Patch("/appointments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
     {
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id && !e.IsDeleted)
@@ -29,6 +31,16 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         {
             AddError(r => r.Id, "Встреча не найдена");
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
+
+        var latestActivity = await recordActivityService.GetLatestActivityAsync("appointment", appointment.Id.ToString(), ct);
+        if (EntityFreshnessUtils.IsStale(req.ExpectedActivityId, latestActivity) && !IsNoOp(appointment, req))
+        {
+            return TypedResults.Conflict(EntityFreshnessUtils.CreateConflict(
+                "appointment",
+                appointment.Id,
+                "Запись была изменена другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
+                latestActivity));
         }
 
         var clientChanged = req.ClientId is not null && req.ClientId.Value != appointment.Client.Id;
@@ -191,5 +203,22 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         }, ct);
 
         return TypedResults.NoContent();
+    }
+
+    private static bool IsNoOp(Appointment appointment, UpdateAppointmentRequest req)
+    {
+        var recurrenceTypeChanged = req.RecurrenceTypeId is not null
+                                    && req.RecurrenceTypeId != appointment.RecurringRule?.RecurrenceType.Id;
+        var recurrencePatternChanged = req.RecurrencePattern is not null
+                                       && req.RecurrencePattern != appointment.RecurringRule?.RecurrencePattern;
+
+        return (req.ClientId is null || req.ClientId == appointment.Client.Id)
+               && (req.ServiceId is null || req.ServiceId == appointment.Service.Id)
+               && (req.ProviderId is null || req.ProviderId == appointment.Provider?.Id)
+               && (req.StartDate is null || req.StartDate == appointment.StartDate)
+               && (req.IsCompleted is null || req.IsCompleted == appointment.IsCompleted)
+               && (req.IsCanceled is null || req.IsCanceled == appointment.IsCanceled)
+               && !recurrenceTypeChanged
+               && !recurrencePatternChanged;
     }
 }

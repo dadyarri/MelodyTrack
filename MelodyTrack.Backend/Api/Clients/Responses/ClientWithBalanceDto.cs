@@ -1,5 +1,6 @@
 using Facet;
 using Facet.Mapping;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -13,6 +14,7 @@ public partial class ClientWithBalanceDto
     public string? Telegram { get; set; }
     public string? Vk { get; set; }
     public string? Phone { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 }
 
 public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)

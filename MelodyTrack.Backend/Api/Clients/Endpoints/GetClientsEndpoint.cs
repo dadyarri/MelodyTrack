@@ -5,12 +5,13 @@ using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper)
+public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
     : Ep.Req<GetClientsPaginatedRequest>.Res<
         Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
 {
@@ -43,6 +44,18 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .ToListAsync(ct);
 
         var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
+        var clientActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "client",
+            clientsFacets.Select(client => client.Id.ToString()).ToList(),
+            ct);
+
+        foreach (var client in clientsFacets)
+        {
+            if (clientActivities.TryGetValue(client.Id.ToString(), out var activity))
+            {
+                client.LastActivity = activity;
+            }
+        }
 
         Logger.LogInformation(
             "Retrieved {Count} clients (Page {Page} of {TotalPages}, Total: {TotalCount})",

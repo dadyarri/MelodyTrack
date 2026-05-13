@@ -8,6 +8,7 @@ public interface IRecordActivityService
 {
     Task<List<RecordActivityDto>> GetRecentClientActivityAsync(Ulid clientId, string firstName, string lastName, string? patronymic, CancellationToken ct);
     Task<Dictionary<string, RecordActivityDto>> GetLatestActivitiesAsync(string entityType, IReadOnlyCollection<string> entityIds, CancellationToken ct);
+    Task<RecordActivityDto?> GetLatestActivityAsync(string entityType, string entityId, CancellationToken ct);
 }
 
 public class RecordActivityService(AppDbContext db) : IRecordActivityService
@@ -46,6 +47,7 @@ public class RecordActivityService(AppDbContext db) : IRecordActivityService
             .Take(8)
             .Select(item => new RecordActivityDto
             {
+                Id = item.Id,
                 CreatedAtUtc = item.CreatedAtUtc,
                 Category = item.Category,
                 Action = item.Action,
@@ -77,10 +79,22 @@ public class RecordActivityService(AppDbContext db) : IRecordActivityService
                 group => ToDto(group.First()));
     }
 
+    public async Task<RecordActivityDto?> GetLatestActivityAsync(string entityType, string entityId, CancellationToken ct)
+    {
+        var item = await db.AuditLogs
+            .AsNoTracking()
+            .Where(log => log.EntityType == entityType && log.EntityId == entityId)
+            .OrderByDescending(log => log.CreatedAtUtc)
+            .FirstOrDefaultAsync(ct);
+
+        return item is null ? null : ToDto(item);
+    }
+
     private static RecordActivityDto ToDto(Data.Models.AuditLog item)
     {
         return new RecordActivityDto
         {
+            Id = item.Id,
             CreatedAtUtc = item.CreatedAtUtc,
             Category = item.Category,
             Action = item.Action,

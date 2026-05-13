@@ -45,6 +45,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
             client.LastName,
             client.Patronymic,
             ct);
+        clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
         var recentPayments = await db.Payments
             .AsNoTracking()

@@ -9,4 +9,7 @@ public class DeleteAppointmentRequest
 
     [BindFrom("scope")]
     public string? Scope { get; set; }
+
+    [BindFrom("expectedActivityId")]
+    public Ulid? ExpectedActivityId { get; set; }
 }

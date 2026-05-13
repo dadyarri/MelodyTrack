@@ -2739,6 +2739,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         db.ChangeTracker.Clear();
 
         var payment = await db.Payments
+            .Include(e => e.Client)
             .Include(e => e.Service)
             .FirstAsync(e => e.Id == res.Id, TestContext.Current.CancellationToken);
 

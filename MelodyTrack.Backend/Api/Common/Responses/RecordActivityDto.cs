@@ -2,6 +2,7 @@ namespace MelodyTrack.Backend.Api.Common.Responses;
 
 public class RecordActivityDto
 {
+    public required Ulid Id { get; set; }
     public required DateTime CreatedAtUtc { get; set; }
     public required string Category { get; set; }
     public required string Action { get; set; }

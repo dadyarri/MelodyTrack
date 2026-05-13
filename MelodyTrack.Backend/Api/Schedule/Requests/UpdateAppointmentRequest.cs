@@ -14,4 +14,5 @@ public class UpdateAppointmentRequest
     public bool? IsCompleted { get; set; }
     public bool? IsCanceled { get; set; }
     public int? RecurrencePattern { get; set; }
+    public Ulid? ExpectedActivityId { get; set; }
 }
