@@ -105,3 +105,62 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Do not introduce another database provider for app code; SQLite appears only as a referenced package and PostgreSQL is the configured runtime provider.
 - Avoid broad refactors in endpoint signatures, auth utilities, model relationships, or Quartz setup without tests.
 - Preserve Russian user-facing API messages unless the task explicitly asks to change localization.
+
+## Safe Migration Process
+
+This document defines the expected migration flow for MelodyTrack environments.
+
+Scope:
+
+- EF Core schema migrations for `MelodyTrack.Backend`
+- Quartz schema bootstrap through `quartz.sql`
+- startup validation and post-deploy smoke checks
+
+This is intentionally separate from the backup/restore verification work. Production changes must still have an approved backup available before any schema change is applied.
+
+### General Rules
+
+1. Apply migrations from the active backend solution only: `MelodyTrack.slnx`.
+2. Never hand-edit generated migration designer files.
+3. Create new migrations from code changes first, then review the generated SQL shape before applying them anywhere shared.
+4. Do not combine unrelated schema changes into one migration.
+5. Treat production migrations as a gated deployment step, not as something to discover during app startup.
+6. If a migration contains destructive operations such as `DropColumn`, `DropTable`, or data rewrites, require explicit review before applying it outside local development.
+
+### Local Development
+
+Use local startup-driven migrations when working alone on a feature.
+
+1. Make the model changes in `MelodyTrack.Backend`.
+2. Generate a migration:
+
+```bash
+dotnet ef migrations add <Name> --project MelodyTrack.Backend/MelodyTrack.Backend.csproj
+```
+
+3. Review the generated migration for unintended destructive changes.
+4. Build the backend:
+
+```bash
+dotnet build MelodyTrack.slnx
+```
+
+5. Start the API with local environment variables configured.
+6. Let startup apply migrations automatically.
+7. Confirm startup succeeds without:
+    - missing environment variable failures
+    - missing seed/reference data failures
+    - Quartz bootstrap failures
+
+If startup fails after a migration was generated but before it was committed, fix the model or migration immediately before continuing.
+
+### Creating New Migrations
+
+When adding a migration:
+
+1. Name it after the user-facing or domain change, not a temporary implementation detail.
+2. Keep the migration focused on one concern.
+3. Check both `Up` and `Down` methods for correctness.
+4. Avoid mixing seed-data fixes with unrelated schema changes unless they are required together.
+
+When a change introduces new required startup data, update startup validation in the same branch so bad deployments fail fast.
