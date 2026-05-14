@@ -27,7 +27,8 @@ using UaDetector;
 
 var logLevelSwitch = new LoggingLevelSwitch();
 
-var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
+var startupConfiguration = StartupConfigurationValidator.LoadAndValidate(Directory.GetCurrentDirectory());
+var environment = startupConfiguration.Environment;
 logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
     : LogEventLevel.Information;
@@ -50,11 +51,11 @@ Log.Information("Starting up");
 try
 {
     var builder = WebApplication.CreateBuilder(args);
-    var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+    var appDomain = startupConfiguration.AppDomain;
 
     builder.Services.AddAuthenticationJwtBearer(opts =>
     {
-        opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+        opts.SigningKey = startupConfiguration.JwtSigningKey;
     });
 
     builder.Services.AddAuthorization();
@@ -100,7 +101,7 @@ try
 
     // Database configuration
 
-    var connectionString = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
+    var connectionString = startupConfiguration.DatabaseUrl;
     builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
     Log.Information("Using PostgreSQL database");
@@ -218,22 +219,18 @@ try
     
     if (environment != "Test")
     {
-        var sqlFilePath = Path.Combine(Directory.GetCurrentDirectory(), "quartz.sql");
-        var sql = await File.ReadAllTextAsync(sqlFilePath);
+        var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);
         await db.Database.ExecuteSqlRawAsync(sql);
     }
 
-    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
+    await StartupSeedDataValidator.ValidateAsync(db);
 
-    if (superuserRole == null)
-    {
-        throw new MissingRoleInDatabaseException(UserRoles.Superuser);
-    }
+    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
 
     var hasSuperuser = await db.Users
         .AsNoTracking()
         .Include(e => e.Role)
-        .AnyAsync(e => e.Role == superuserRole);
+        .AnyAsync(e => e.Role == superuserRole!);
 
     var inviteCode = await db.InviteCodes
         .AsNoTracking()
@@ -250,7 +247,7 @@ try
             {
                 Id = Ulid.NewUlid(),
                 Code = code,
-                Role = superuserRole,
+                Role = superuserRole!,
                 ValidUntil = DateTime.UtcNow.AddDays(2)
             });
             await db.SaveChangesAsync();
