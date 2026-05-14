@@ -6,59 +6,12 @@ namespace MelodyTrack.Backend.Services;
 
 public interface IRecordActivityService
 {
-    Task<List<RecordActivityDto>> GetRecentClientActivityAsync(Ulid clientId, string firstName, string lastName, string? patronymic, CancellationToken ct);
     Task<Dictionary<string, RecordActivityDto>> GetLatestActivitiesAsync(string entityType, IReadOnlyCollection<string> entityIds, CancellationToken ct);
     Task<RecordActivityDto?> GetLatestActivityAsync(string entityType, string entityId, CancellationToken ct);
 }
 
 public class RecordActivityService(AppDbContext db) : IRecordActivityService
 {
-    public async Task<List<RecordActivityDto>> GetRecentClientActivityAsync(Ulid clientId, string firstName, string lastName, string? patronymic, CancellationToken ct)
-    {
-        var fullName = $"{lastName} {firstName}".Trim();
-        var patronymicName = string.IsNullOrWhiteSpace(patronymic)
-            ? null
-            : $"{lastName} {firstName} {patronymic}".Trim();
-
-        var query = db.AuditLogs
-            .AsNoTracking()
-            .Where(item => item.EntityType == "client" && item.EntityId == clientId.ToString());
-
-        if (!string.IsNullOrWhiteSpace(fullName))
-        {
-            var fullNamePattern = $"%{fullName}%";
-            query = query.Concat(db.AuditLogs.AsNoTracking().Where(item =>
-                (item.EntityType == "payment" || item.EntityType == "appointment") &&
-                item.Details != null &&
-                EF.Functions.ILike(item.Details, fullNamePattern)));
-        }
-
-        if (!string.IsNullOrWhiteSpace(patronymicName))
-        {
-            var patronymicPattern = $"%{patronymicName}%";
-            query = query.Concat(db.AuditLogs.AsNoTracking().Where(item =>
-                (item.EntityType == "payment" || item.EntityType == "appointment") &&
-                item.Details != null &&
-                EF.Functions.ILike(item.Details, patronymicPattern)));
-        }
-
-        return await query
-            .OrderByDescending(item => item.CreatedAtUtc)
-            .Take(8)
-            .Select(item => new RecordActivityDto
-            {
-                Id = item.Id,
-                CreatedAtUtc = item.CreatedAtUtc,
-                Category = item.Category,
-                Action = item.Action,
-                ActorEmail = item.ActorEmail,
-                ActorDisplayName = item.ActorDisplayName,
-                SourceIpAddress = item.SourceIpAddress,
-                Details = item.Details
-            })
-            .ToListAsync(ct);
-    }
-
     public async Task<Dictionary<string, RecordActivityDto>> GetLatestActivitiesAsync(string entityType, IReadOnlyCollection<string> entityIds, CancellationToken ct)
     {
         if (entityIds.Count == 0)

@@ -39,12 +39,6 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
         }
 
         var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
-        var recentActivity = await recordActivityService.GetRecentClientActivityAsync(
-            client.Id,
-            client.FirstName,
-            client.LastName,
-            client.Patronymic,
-            ct);
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
         var recentPayments = await db.Payments
@@ -135,7 +129,6 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 LastVisitAtUtc = lastVisitAtUtc,
                 NextAppointmentAtUtc = nextAppointmentAtUtc
             },
-            RecentActivity = recentActivity,
             RecentPayments = recentPayments,
             RecentAppointments = recentAppointments
         });

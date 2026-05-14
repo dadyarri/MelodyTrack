@@ -1,7 +1,6 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
-using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -11,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<GetEntityRequest>, NotFound, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/clients/{id}");
     }
 
-    public override async Task<Results<Ok<GetEntityRequest>, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
+    public override async Task<Results<Ok<CreateEntityResponse>, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {
         Logger.LogInformation(
@@ -78,7 +77,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             Details = $"{client.LastName} {client.FirstName}".Trim()
         }, ct);
 
-        return TypedResults.Ok(new GetEntityRequest { Id = req.Id });
+        return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
     }
 
     private static bool IsNoOp(Data.Models.Client client, UpdateClientRequest req)
