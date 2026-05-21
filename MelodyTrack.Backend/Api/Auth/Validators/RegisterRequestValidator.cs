@@ -8,9 +8,11 @@ namespace MelodyTrack.Backend.Api.Auth.Validators;
 
 public class RegisterRequestValidator : Validator<RegisterRequest>
 {
+    private const string CommonPasswordsFileName = "common_passwords.txt";
+
     public RegisterRequestValidator(IWebHostEnvironment env)
     {
-        var contentRoot = env.ContentRootPath;
+        var commonPasswordsPath = ResolveCommonPasswordsPath(env.ContentRootPath);
 
         RuleFor(e => e.Email)
             .NotEmpty()
@@ -28,14 +30,15 @@ public class RegisterRequestValidator : Validator<RegisterRequest>
                 "Пароль слишком простой: включите хотя бы одну заглавную латинскую букву, одну строчную, одну цифру и один спецсимвол")
             .Custom((value, ctx) =>
             {
-                var path = Directory
-                    .EnumerateFiles(contentRoot, "common_passwords.txt", SearchOption.TopDirectoryOnly)
-                    .First();
+                if (commonPasswordsPath is null)
+                {
+                    return;
+                }
 
-                var fileSize = new FileInfo(path).Length;
+                var fileSize = new FileInfo(commonPasswordsPath).Length;
 
                 using var mmf = MemoryMappedFile.CreateFromFile(
-                    path,
+                    commonPasswordsPath,
                     FileMode.Open,
                     mapName: null,
                     capacity: 0,
@@ -50,5 +53,31 @@ public class RegisterRequestValidator : Validator<RegisterRequest>
                     ctx.AddFailure("Password", "Пароль не должен быть частоиспользуемым");
                 }
             });
+    }
+
+    private static string? ResolveCommonPasswordsPath(string contentRootPath)
+    {
+        foreach (var basePath in new[] { contentRootPath, AppContext.BaseDirectory })
+        {
+            var current = new DirectoryInfo(basePath);
+            while (current is not null)
+            {
+                var directCandidate = Path.Combine(current.FullName, CommonPasswordsFileName);
+                if (File.Exists(directCandidate))
+                {
+                    return directCandidate;
+                }
+
+                var projectCandidate = Path.Combine(current.FullName, "MelodyTrack.Backend", CommonPasswordsFileName);
+                if (File.Exists(projectCandidate))
+                {
+                    return projectCandidate;
+                }
+
+                current = current.Parent;
+            }
+        }
+
+        return null;
     }
 }
