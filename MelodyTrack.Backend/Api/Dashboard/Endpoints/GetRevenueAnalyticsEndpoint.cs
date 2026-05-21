@@ -206,9 +206,7 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
                 var bucketExpenses = expensesByBucket.GetValueOrDefault(bucketStart, 0m);
                 var netProfit = revenue - bucketExpenses;
                 var changeFromPrevious = previousNetProfit is null ? (decimal?)null : netProfit - previousNetProfit.Value;
-                var changePercentFromPrevious = previousNetProfit is null || previousNetProfit == 0
-                    ? (decimal?)null
-                    : (netProfit - previousNetProfit.Value) / Math.Abs(previousNetProfit.Value) * 100m;
+                var changePercentFromPrevious = CalculateChangePercentFromPrevious(previousNetProfit, netProfit);
                 previousNetProfit = netProfit;
 
                 return new NetProfitBucketDto
@@ -272,6 +270,21 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
             .Where(price => price.EffectiveDate <= appointmentStartDate)
             .Select(price => price.Price)
             .FirstOrDefault();
+    }
+
+    private static decimal? CalculateChangePercentFromPrevious(decimal? previousValue, decimal currentValue)
+    {
+        if (previousValue is null)
+        {
+            return null;
+        }
+
+        if (previousValue == 0)
+        {
+            return currentValue == 0 ? 0m : currentValue > 0 ? 100m : -100m;
+        }
+
+        return (currentValue - previousValue.Value) / Math.Abs(previousValue.Value) * 100m;
     }
 
     private static bool TryParseGroupBy(string? value, out RevenueGroupBy groupBy)

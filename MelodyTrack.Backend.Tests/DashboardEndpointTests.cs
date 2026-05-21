@@ -305,6 +305,119 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task GetExpensesAnalytics_ReturnsTotalsDynamicsCategoriesAndRatio()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var rentCategory = new ExpenseCategory
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Аренда"
+        };
+
+        await db.ExpenseCategories.AddAsync(rentCategory, TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 150m,
+            EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 02, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 02, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 20, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 20, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Burned,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Expenses.AddRangeAsync(
+            [
+                new Expense
+                {
+                    Id = Ulid.NewUlid(),
+                    Description = "Rent",
+                    Amount = 100m,
+                    Date = new DateTime(2026, 05, 05, 0, 0, 0, DateTimeKind.Utc),
+                    Category = rentCategory
+                },
+                new Expense
+                {
+                    Id = Ulid.NewUlid(),
+                    Description = "Snacks",
+                    Amount = 50m,
+                    Date = new DateTime(2026, 05, 25, 0, 0, 0, DateTimeKind.Utc)
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetExpensesAnalyticsEndpoint, GetExpensesAnalyticsRequest, GetExpensesAnalyticsResponse>(
+            new GetExpensesAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC",
+                GroupBy = "week"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.GroupBy.ShouldBe("week");
+        res.TotalExpenses.ShouldBe(150m);
+        res.TotalRevenue.ShouldBe(300m);
+        res.ExpenseToRevenueRatio.ShouldBe(50m);
+        res.ExpensesCount.ShouldBe(2);
+        res.Categories.Count.ShouldBe(2);
+        res.Categories[0].CategoryName.ShouldBe("Аренда");
+        res.Categories[0].Amount.ShouldBe(100m);
+        res.Categories[0].Share.ShouldBe(100m / 150m * 100m);
+        res.Categories[1].CategoryName.ShouldBe("Без категории");
+        res.Categories[1].Amount.ShouldBe(50m);
+        res.Categories[1].Share.ShouldBe(50m / 150m * 100m);
+        res.Dynamics.Count.ShouldBe(5);
+        res.Dynamics[0].Expenses.ShouldBe(0m);
+        res.Dynamics[0].ChangeFromPrevious.ShouldBeNull();
+        res.Dynamics[0].ChangePercentFromPrevious.ShouldBeNull();
+        res.Dynamics[1].Expenses.ShouldBe(100m);
+        res.Dynamics[1].ChangeFromPrevious.ShouldBe(100m);
+        res.Dynamics[1].ChangePercentFromPrevious.ShouldBe(100m);
+        res.Dynamics[2].Expenses.ShouldBe(0m);
+        res.Dynamics[2].ChangeFromPrevious.ShouldBe(-100m);
+        res.Dynamics[2].ChangePercentFromPrevious.ShouldBe(-100m);
+        res.Dynamics[3].Expenses.ShouldBe(0m);
+        res.Dynamics[3].ChangeFromPrevious.ShouldBe(0m);
+        res.Dynamics[3].ChangePercentFromPrevious.ShouldBe(0m);
+    }
+
+    [Fact]
     public async Task GetPriceChangeAnalytics_ReturnsBeforeAndAfterMetricsForChangedService()
     {
         await using var scope = App.Services.CreateAsyncScope();
