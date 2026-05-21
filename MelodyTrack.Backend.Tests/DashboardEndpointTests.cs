@@ -195,4 +195,159 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.Teachers[0].BurnedAppointmentsCount.ShouldBe(1);
         res.Teachers[0].ServicesProvidedCount.ShouldBe(1);
     }
+
+    [Fact]
+    public async Task GetPriceChangeAnalytics_ReturnsBeforeAndAfterMetricsForChangedService()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddRangeAsync(
+            [
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = 100m,
+                    EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = 130m,
+                    EffectiveDate = new DateTime(2026, 05, 15, 0, 0, 0, DateTimeKind.Utc)
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 05, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 05, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 10, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Cancelled,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 16, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 16, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 18, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 18, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Burned,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Expenses.AddRangeAsync(
+            [
+                new Expense
+                {
+                    Id = Ulid.NewUlid(),
+                    Description = "Rent before",
+                    Amount = 20m,
+                    Date = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new Expense
+                {
+                    Id = Ulid.NewUlid(),
+                    Description = "Rent after",
+                    Amount = 30m,
+                    Date = new DateTime(2026, 05, 20, 0, 0, 0, DateTimeKind.Utc)
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetPriceChangeAnalyticsEndpoint, GetPriceChangeAnalyticsRequest, GetPriceChangeAnalyticsResponse>(
+            new GetPriceChangeAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC",
+                WindowDays = 14
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.TotalChanges.ShouldBe(1);
+        res.PriceIncreasesCount.ShouldBe(1);
+        res.PositiveRevenueImpactCount.ShouldBe(1);
+        res.NegativeDemandImpactCount.ShouldBe(0);
+
+        var change = res.Changes.Single();
+        change.ServiceId.ShouldBe(service.Id);
+        change.OldPrice.ShouldBe(100m);
+        change.NewPrice.ShouldBe(130m);
+        change.PriceChange.ShouldBe(30m);
+        change.PriceChangePercent.ShouldBe(30m);
+        change.AffectedAppointmentsCount.ShouldBe(2);
+        change.RevenueBefore.ShouldBe(100m);
+        change.RevenueAfter.ShouldBe(260m);
+        change.RevenueChange.ShouldBe(160m);
+        change.RevenueChangePercent.ShouldBe(160m);
+        change.AppointmentsBefore.ShouldBe(2);
+        change.AppointmentsAfter.ShouldBe(2);
+        change.AppointmentChange.ShouldBe(0);
+        change.AppointmentChangePercent.ShouldBe(0m);
+        change.CompletedAppointmentsBefore.ShouldBe(1);
+        change.CompletedAppointmentsAfter.ShouldBe(1);
+        change.CancellationShareBefore.ShouldBe(50m);
+        change.CancellationShareAfter.ShouldBe(0m);
+        change.BurnedShareBefore.ShouldBe(0m);
+        change.BurnedShareAfter.ShouldBe(50m);
+        change.AverageReceiptBefore.ShouldBe(100m);
+        change.AverageReceiptAfter.ShouldBe(130m);
+        change.ExpensesBefore.ShouldBe(20m);
+        change.ExpensesAfter.ShouldBe(30m);
+        change.NetProfitBefore.ShouldBe(80m);
+        change.NetProfitAfter.ShouldBe(230m);
+        change.ProfitImpact.ShouldBe(150m);
+        change.PriceElasticity.ShouldBe(0m);
+        change.AdditionalRevenue.ShouldBe(60m);
+        change.Teachers.Count.ShouldBe(1);
+        change.Teachers[0].TeacherId.ShouldBe(teacher.Id);
+        change.Teachers[0].RevenueBefore.ShouldBe(100m);
+        change.Teachers[0].RevenueAfter.ShouldBe(260m);
+        change.Teachers[0].AppointmentsBefore.ShouldBe(2);
+        change.Teachers[0].AppointmentsAfter.ShouldBe(2);
+    }
 }
