@@ -23,6 +23,7 @@ public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db, ClientToClie
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
             .Include(e => e.Contacts)
+            .Include(e => e.Source)
             .ToListAsync(ct);
 
         var clientsFacets = await clients.ToFacetsAsync(mapper, ct);

@@ -8,4 +8,5 @@ public class CreateClientRequest
     public string? Telegram { get; set; }
     public string? Vk { get; set; }
     public string? Phone { get; set; }
+    public Ulid? SourceId { get; set; }
 }

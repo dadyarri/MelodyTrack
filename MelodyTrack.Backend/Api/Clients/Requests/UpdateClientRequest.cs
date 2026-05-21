@@ -12,5 +12,6 @@ public class UpdateClientRequest
     public string? Vk { get; set; }
     public string? Telegram { get; set; }
     public string? Phone { get; set; }
+    public Ulid? SourceId { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
 }

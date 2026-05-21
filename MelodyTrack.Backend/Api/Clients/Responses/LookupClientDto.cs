@@ -1,7 +1,14 @@
-using Facet;
 using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Clients.Responses;
 
-[Facet(typeof(Client), Include = [nameof(Client.Id), nameof(Client.FirstName), nameof(Client.LastName), nameof(Client.Patronymic), nameof(Client.Contacts)])]
-public partial class LookupClientDto;
+public class LookupClientDto
+{
+    public required Ulid Id { get; set; }
+    public required string FirstName { get; set; }
+    public required string LastName { get; set; }
+    public string? Patronymic { get; set; }
+    public ClientHistoryContactsDto? Contacts { get; set; }
+    public Ulid? SourceId { get; set; }
+    public string? SourceName { get; set; }
+}

@@ -26,6 +26,7 @@ public class AppDbContext : DbContext
     public DbSet<RecurrenceType> RecurrenceTypes { get; set; }
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
+    public DbSet<ClientSource> ClientSources { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RequestReplay> RequestReplays { get; set; }
 
@@ -79,5 +80,17 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RequestReplay>()
             .HasIndex(e => new { e.Endpoint, e.ReplayKey })
             .IsUnique();
+
+        modelBuilder.Entity<Expense>()
+            .HasOne(e => e.Category)
+            .WithMany()
+            .HasForeignKey(e => e.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Client>()
+            .HasOne(e => e.Source)
+            .WithMany()
+            .HasForeignKey(e => e.SourceId)
+            .OnDelete(DeleteBehavior.SetNull);
     }
 }

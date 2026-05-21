@@ -27,6 +27,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
         var client = await db.Clients
             .AsNoTracking()
             .Include(e => e.Contacts)
+            .Include(e => e.Source)
             .FirstOrDefaultAsync(e => e.Id == req.Id, ct);
 
         if (client is null)

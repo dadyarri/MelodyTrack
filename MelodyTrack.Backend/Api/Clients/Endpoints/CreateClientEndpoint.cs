@@ -12,7 +12,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
     CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
-    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
 {
     private const string ReplayEndpoint = "clients:create";
 
@@ -21,7 +21,7 @@ public class
         Post("/clients");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
@@ -48,12 +48,24 @@ public class
                 replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
             }
 
+            ClientSource? source = null;
+            if (req.SourceId is not null)
+            {
+                source = await db.ClientSources.FirstOrDefaultAsync(e => e.Id == req.SourceId.Value, ct);
+                if (source is null)
+                {
+                    AddError(e => e.SourceId, "Источник не найден");
+                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                }
+            }
+
             var client = new Client
             {
                 Id = Ulid.NewUlid(),
                 FirstName = req.FirstName,
                 LastName = req.LastName,
                 Patronymic = req.Patronymic,
+                Source = source,
                 Contacts = new ClientContacts
                 {
                     Id = Ulid.NewUlid(),

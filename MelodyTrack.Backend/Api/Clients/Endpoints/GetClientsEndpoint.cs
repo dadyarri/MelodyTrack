@@ -41,6 +41,7 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .ThenBy(e => e.FirstName)
             .ApplyPagination(req)
             .Include(e => e.Contacts)
+            .Include(e => e.Source)
             .ToListAsync(ct);
 
         var clientsFacets = await clients.ToFacetsAsync(mapper, ct);

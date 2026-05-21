@@ -41,6 +41,16 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             return TypedResults.NotFound();
         }
 
+        if (req.SourceId is not null)
+        {
+            var sourceExists = await db.ClientSources.AnyAsync(e => e.Id == req.SourceId.Value, ct);
+            if (!sourceExists)
+            {
+                AddError(e => e.SourceId, "Источник не найден");
+                return TypedResults.NotFound();
+            }
+        }
+
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
             "client",
             client.Id,
@@ -66,6 +76,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         client.Contacts.Phone = req.Phone;
         client.Contacts.Telegram = req.Telegram;
         client.Contacts.Vk = req.Vk;
+        client.SourceId = req.SourceId;
 
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
@@ -87,6 +98,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                && req.Patronymic == client.Patronymic
                && req.Phone == client.Contacts.Phone
                && req.Telegram == client.Contacts.Telegram
-               && req.Vk == client.Contacts.Vk;
+               && req.Vk == client.Contacts.Vk
+               && req.SourceId == client.SourceId;
     }
 }
