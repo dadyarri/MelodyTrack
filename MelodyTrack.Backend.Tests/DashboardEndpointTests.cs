@@ -90,4 +90,109 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.ShouldNotBeNull();
         res.MonthIncome.ShouldBe(240m);
     }
+
+    [Fact]
+    public async Task GetRevenueAnalytics_ReturnsRevenuePlannedRevenueAndTeacherBreakdown()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 150m,
+            EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 10, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 11, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 11, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Burned,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 12, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 12, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Planned,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 13, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 13, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Cancelled,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Expenses.AddAsync(new Expense
+        {
+            Id = Ulid.NewUlid(),
+            Description = "Rent",
+            Amount = 90m,
+            Date = new DateTime(2026, 05, 15, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetRevenueAnalyticsEndpoint, GetRevenueAnalyticsRequest, GetRevenueAnalyticsResponse>(
+            new GetRevenueAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.TotalRevenue.ShouldBe(300m);
+        res.PlannedRevenue.ShouldBe(150m);
+        res.TotalExpenses.ShouldBe(90m);
+        res.NetProfit.ShouldBe(210m);
+        res.AverageReceipt.ShouldBe(150m);
+        res.RevenueCountedAppointmentsCount.ShouldBe(2);
+        res.PlannedAppointmentsCount.ShouldBe(1);
+        res.Teachers.Count.ShouldBe(1);
+        res.Teachers[0].TeacherId.ShouldBe(teacher.Id);
+        res.Teachers[0].Revenue.ShouldBe(300m);
+        res.Teachers[0].RevenueCountedAppointmentsCount.ShouldBe(2);
+        res.Teachers[0].CompletedAppointmentsCount.ShouldBe(1);
+        res.Teachers[0].BurnedAppointmentsCount.ShouldBe(1);
+        res.Teachers[0].ServicesProvidedCount.ShouldBe(1);
+    }
 }
