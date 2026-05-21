@@ -34,7 +34,12 @@ public class RegisterRequestValidator : Validator<RegisterRequest>
 
                 var fileSize = new FileInfo(path).Length;
 
-                using var mmf = MemoryMappedFile.CreateFromFile(path, FileMode.Open);
+                using var mmf = MemoryMappedFile.CreateFromFile(
+                    path,
+                    FileMode.Open,
+                    mapName: null,
+                    capacity: 0,
+                    MemoryMappedFileAccess.Read);
                 using var accessor = mmf.CreateViewAccessor(0, fileSize);
                 var buffer = new byte[fileSize];
                 accessor.ReadArray(0, buffer, 0, (int)fileSize);
