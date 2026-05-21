@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
+public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService, IUserAvailabilityService userAvailabilityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
@@ -62,6 +62,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         var serviceChanged = req.ServiceId is not null && req.ServiceId.Value != appointment.Service.Id;
         var providerChanged = req.ProviderId is not null && req.ProviderId.Value != appointment.Provider?.Id;
         var startDateChanged = req.StartDate is not null && req.StartDate.Value != appointment.StartDate;
+        var nextStartDate = req.StartDate ?? appointment.StartDate;
+        var nextDuration = appointment.EndDate - appointment.StartDate;
 
         if (req.ClientId is not null)
         {
@@ -97,6 +99,28 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             }
 
             appointment.Provider = provider;
+        }
+
+        if (appointment.Provider is not null && (providerChanged || startDateChanged))
+        {
+            if (string.IsNullOrWhiteSpace(req.Timezone))
+            {
+                AddError(r => r.Timezone, "Нужно указать таймзону.");
+                return new ProblemDetails(ValidationFailures);
+            }
+
+            var isAvailable = await userAvailabilityService.IsAvailableAsync(
+                appointment.Provider.Id,
+                nextStartDate.ToUniversalTime(),
+                nextStartDate.Add(nextDuration).ToUniversalTime(),
+                req.Timezone,
+                ct);
+
+            if (!isAvailable)
+            {
+                AddError(r => r.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
+                return new ProblemDetails(ValidationFailures);
+            }
         }
 
         if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged))

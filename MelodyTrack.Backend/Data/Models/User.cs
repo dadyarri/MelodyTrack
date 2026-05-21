@@ -39,4 +39,7 @@ public class User : BaseModel
     ///     Determines, if user failed too much login attempts and is locked out for some time
     /// </summary>
     public DateTime? LockedUntil { get; set; }
+
+    public List<UserWorkingHoursDay> WorkingHours { get; set; } = [];
+    public List<UserVacation> Vacations { get; set; } = [];
 }

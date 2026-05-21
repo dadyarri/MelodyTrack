@@ -11,6 +11,7 @@ public class UpdateAppointmentRequest
     public Ulid? ProviderId { get; set; }
     public Ulid? RecurrenceTypeId { get; set; }
     public DateTime? StartDate { get; set; }
+    public string? Timezone { get; set; }
     public string? Status { get; set; }
     public int? RecurrencePattern { get; set; }
     public Ulid? ExpectedActivityId { get; set; }

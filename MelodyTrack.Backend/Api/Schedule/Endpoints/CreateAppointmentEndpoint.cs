@@ -11,7 +11,7 @@ using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService) : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService, IUserAvailabilityService userAvailabilityService) : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
 {
     private const string ReplayEndpoint = "appointments:create";
 
@@ -20,7 +20,7 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         Post("/appointments");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(CreateAppointmentRequest req, CancellationToken ct)
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(CreateAppointmentRequest req, CancellationToken ct)
     {
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
         if (replayKey is not null)
@@ -63,6 +63,22 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             }
 
             var provider = await db.Users.Where(e => e.Id == req.ProviderId).FirstOrDefaultAsync(ct);
+
+            if (provider is not null)
+            {
+                var isAvailable = await userAvailabilityService.IsAvailableAsync(
+                    provider.Id,
+                    req.StartDate.ToUniversalTime(),
+                    req.StartDate.AddHours(1).ToUniversalTime(),
+                    req.Timezone,
+                    ct);
+
+                if (!isAvailable)
+                {
+                    AddError(e => e.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
+                    return new ProblemDetails(ValidationFailures);
+                }
+            }
 
             var recurrenceType = await db.RecurrenceTypes.Where(e => e.Id == req.RecurrenceTypeId).FirstOrDefaultAsync(ct);
 

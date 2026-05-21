@@ -16,6 +16,10 @@ public class CreateAppointmentRequestValidator : Validator<CreateAppointmentRequ
             .Must(id => id != Ulid.Empty)
             .WithMessage("Идентификатор услуги не может быть пустым.");
 
+        RuleFor(x => x.Timezone)
+            .NotEmpty()
+            .WithMessage("Нужно указать таймзону.");
+
         RuleFor(x => x.StartDate)
             .LessThanOrEqualTo(x => x.PatternEndDate)
             .When(x => x.PatternEndDate.HasValue)

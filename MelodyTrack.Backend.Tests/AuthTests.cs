@@ -2361,6 +2361,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             ClientId = client.Id,
             ServiceId = service.Id,
             StartDate = new DateTime(2026, 05, 11, 12, 0, 0, DateTimeKind.Utc),
+            Timezone = "UTC",
             RecurrenceTypeId = recurrenceType.Id,
             PatternEndDate = new DateTime(2026, 05, 31, 23, 59, 59, DateTimeKind.Utc),
             RecurrencePattern = 1 + 4
@@ -2412,6 +2413,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = appointment.Id,
             StartDate = appointment.StartDate,
+            Timezone = "UTC",
             RecurrenceTypeId = recurrenceType.Id,
             RecurrencePattern = 1
         });

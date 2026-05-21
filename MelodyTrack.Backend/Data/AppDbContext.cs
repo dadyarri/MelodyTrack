@@ -27,6 +27,8 @@ public class AppDbContext : DbContext
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
     public DbSet<ClientSource> ClientSources { get; set; }
+    public DbSet<UserWorkingHoursDay> UserWorkingHoursDays { get; set; }
+    public DbSet<UserVacation> UserVacations { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RequestReplay> RequestReplays { get; set; }
 
@@ -92,5 +94,21 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.SourceId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<UserWorkingHoursDay>()
+            .HasOne(e => e.User)
+            .WithMany(e => e.WorkingHours)
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserWorkingHoursDay>()
+            .HasIndex(e => new { e.UserId, e.DayOfWeek })
+            .IsUnique();
+
+        modelBuilder.Entity<UserVacation>()
+            .HasOne(e => e.User)
+            .WithMany(e => e.Vacations)
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
     }
 }

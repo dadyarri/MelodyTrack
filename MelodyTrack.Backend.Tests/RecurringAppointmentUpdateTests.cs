@@ -65,7 +65,8 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var (rsp, _) = await App.Client.PATCHAsync<UpdateAppointmentEndpoint, UpdateAppointmentRequest, NoContent>(new UpdateAppointmentRequest
         {
             Id = occurrence.Id,
-            StartDate = movedStartDate
+            StartDate = movedStartDate,
+            Timezone = "UTC"
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);

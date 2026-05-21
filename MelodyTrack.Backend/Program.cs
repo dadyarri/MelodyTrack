@@ -117,6 +117,7 @@ try
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
+    builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
 
     builder.Services.Configure<QuartzOptions>(opts =>
     {
