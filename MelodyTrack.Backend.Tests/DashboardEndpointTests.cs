@@ -530,4 +530,213 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.Changes.Count.ShouldBe(1);
         res.Changes[0].AffectedAppointmentsCount.ShouldBeGreaterThanOrEqualTo(1);
     }
+
+    [Fact]
+    public async Task GetPaymentsAnalytics_AllocatesPaymentsByServiceThenFifoAndReturnsDelayStats()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var vocalService = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var pianoService = await TestDataFactory.CreateServiceAsync(db, "Piano lesson", TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddRangeAsync(
+            [
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = vocalService,
+                    Price = 100m,
+                    EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = pianoService,
+                    Price = 200m,
+                    EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = vocalService,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 10, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = pianoService,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 12, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 12, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Burned,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = pianoService,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 14, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 14, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Cancelled,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Payments.AddRangeAsync(
+            [
+                new Payment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = pianoService,
+                    Amount = 150m,
+                    Date = new DateTime(2026, 05, 13, 12, 0, 0, DateTimeKind.Utc),
+                    Description = "Partial piano payment"
+                },
+                new Payment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Amount = 100m,
+                    Date = new DateTime(2026, 05, 20, 12, 0, 0, DateTimeKind.Utc),
+                    Description = "General payment"
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetPaymentsAnalyticsEndpoint, GetPaymentsAnalyticsRequest, GetPaymentsAnalyticsResponse>(
+            new GetPaymentsAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.UnpaidAppointmentsCount.ShouldBe(1);
+        res.DebtorsCount.ShouldBe(1);
+        res.TotalDebt.ShouldBe(50m);
+        res.AveragePaymentDelayDays.ShouldBe(5.5m);
+        res.MedianPaymentDelayDays.ShouldBe(5.5m);
+        res.MaxPaymentDelayDays.ShouldBe(10m);
+
+        res.Clients.Count.ShouldBe(1);
+        res.Clients[0].TotalRevenue.ShouldBe(300m);
+        res.Clients[0].TotalPayments.ShouldBe(250m);
+        res.Clients[0].Balance.ShouldBe(-50m);
+        res.Clients[0].Debt.ShouldBe(50m);
+        res.Clients[0].UnpaidAppointmentsCount.ShouldBe(1);
+        res.Clients[0].AveragePaymentDelayDays.ShouldBe(5.5m);
+        res.Clients[0].MedianPaymentDelayDays.ShouldBe(5.5m);
+        res.Clients[0].MaxPaymentDelayDays.ShouldBe(10m);
+
+        res.Teachers.Count.ShouldBe(1);
+        res.Teachers[0].TotalRevenue.ShouldBe(300m);
+        res.Teachers[0].OutstandingDebt.ShouldBe(50m);
+        res.Teachers[0].UnpaidAppointmentsCount.ShouldBe(1);
+        res.Teachers[0].AveragePaymentDelayDays.ShouldBe(5.5m);
+        res.Teachers[0].MedianPaymentDelayDays.ShouldBe(5.5m);
+        res.Teachers[0].MaxPaymentDelayDays.ShouldBe(10m);
+
+        res.Services.Count.ShouldBe(2);
+
+        var vocalAnalytics = res.Services.Single(e => e.ServiceName == "Vocal lesson");
+        vocalAnalytics.TotalRevenue.ShouldBe(100m);
+        vocalAnalytics.OutstandingDebt.ShouldBe(0m);
+        vocalAnalytics.UnpaidAppointmentsCount.ShouldBe(0);
+        vocalAnalytics.AveragePaymentDelayDays.ShouldBe(10m);
+        vocalAnalytics.MedianPaymentDelayDays.ShouldBe(10m);
+        vocalAnalytics.MaxPaymentDelayDays.ShouldBe(10m);
+
+        var pianoAnalytics = res.Services.Single(e => e.ServiceName == "Piano lesson");
+        pianoAnalytics.TotalRevenue.ShouldBe(200m);
+        pianoAnalytics.OutstandingDebt.ShouldBe(50m);
+        pianoAnalytics.UnpaidAppointmentsCount.ShouldBe(1);
+        pianoAnalytics.AveragePaymentDelayDays.ShouldBe(1m);
+        pianoAnalytics.MedianPaymentDelayDays.ShouldBe(1m);
+        pianoAnalytics.MaxPaymentDelayDays.ShouldBe(1m);
+    }
+
+    [Fact]
+    public async Task GetPaymentsAnalytics_TreatsPrepaymentAsZeroDelay()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Maria", "Sidorova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Dance lesson", TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 120m,
+            EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = teacher,
+            StartDate = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 05, 10, 11, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.Payments.AddAsync(new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Amount = 120m,
+            Date = new DateTime(2026, 05, 08, 12, 0, 0, DateTimeKind.Utc),
+            Description = "Prepayment"
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetPaymentsAnalyticsEndpoint, GetPaymentsAnalyticsRequest, GetPaymentsAnalyticsResponse>(
+            new GetPaymentsAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.TotalDebt.ShouldBe(0m);
+        res.AveragePaymentDelayDays.ShouldBe(0m);
+        res.MedianPaymentDelayDays.ShouldBe(0m);
+        res.MaxPaymentDelayDays.ShouldBe(0m);
+        res.Clients[0].AveragePaymentDelayDays.ShouldBe(0m);
+        res.Services[0].AveragePaymentDelayDays.ShouldBe(0m);
+    }
 }
