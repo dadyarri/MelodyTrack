@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -89,6 +90,55 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
         res.MonthIncome.ShouldBe(240m);
+    }
+
+    [Fact]
+    public async Task GetDashboardStats_MaterializesRecurringAppointmentsForPlannedCounts()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
+        var timezone = TimeZoneInfo.Utc;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var appointmentStart = DateTime.SpecifyKind(today.AddHours(10), DateTimeKind.Utc);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 120m,
+            EffectiveDate = appointmentStart.AddDays(-1)
+        }, TestContext.Current.CancellationToken);
+
+        await db.RecurrenceRules.AddAsync(new AppointmentRecurrenceRule
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = user,
+            StartDate = appointmentStart,
+            EndDate = appointmentStart.Date,
+            RecurrenceType = recurrenceType,
+            RecurrencePattern = null
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await App.Client.GETAsync<GetDashboardStatsEndpoint, GetDashboardStatsRequest, GetDashboardStatsResponse>(
+            new GetDashboardStatsRequest
+            {
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.AppointmentsToday.ShouldBeGreaterThanOrEqualTo(1);
     }
 
     [Fact]
@@ -184,16 +234,74 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.PlannedRevenue.ShouldBe(150m);
         res.TotalExpenses.ShouldBe(90m);
         res.NetProfit.ShouldBe(210m);
+        res.GroupBy.ShouldBe("month");
         res.AverageReceipt.ShouldBe(150m);
         res.RevenueCountedAppointmentsCount.ShouldBe(2);
         res.PlannedAppointmentsCount.ShouldBe(1);
         res.Teachers.Count.ShouldBe(1);
+        res.Clients.Count.ShouldBe(1);
+        res.Clients[0].Revenue.ShouldBe(300m);
+        res.Services.Count.ShouldBe(1);
+        res.Services[0].Revenue.ShouldBe(300m);
+        res.NetProfitDynamics.Count.ShouldBe(1);
+        res.NetProfitDynamics[0].NetProfit.ShouldBe(210m);
+        res.MostProfitablePeriods.Count.ShouldBe(1);
+        res.UnprofitablePeriods.Count.ShouldBe(0);
         res.Teachers[0].TeacherId.ShouldBe(teacher.Id);
         res.Teachers[0].Revenue.ShouldBe(300m);
         res.Teachers[0].RevenueCountedAppointmentsCount.ShouldBe(2);
         res.Teachers[0].CompletedAppointmentsCount.ShouldBe(1);
         res.Teachers[0].BurnedAppointmentsCount.ShouldBe(1);
         res.Teachers[0].ServicesProvidedCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetRevenueAnalytics_MaterializesRecurringAppointmentsForPlannedRevenue()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 150m,
+            EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.RecurrenceRules.AddAsync(new AppointmentRecurrenceRule
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = teacher,
+            StartDate = new DateTime(2026, 05, 12, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc),
+            RecurrenceType = recurrenceType,
+            RecurrencePattern = null
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetRevenueAnalyticsEndpoint, GetRevenueAnalyticsRequest, GetRevenueAnalyticsResponse>(
+            new GetRevenueAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.PlannedRevenue.ShouldBe(150m);
+        res.PlannedAppointmentsCount.ShouldBe(1);
     }
 
     [Fact]
@@ -343,11 +451,83 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         change.ProfitImpact.ShouldBe(150m);
         change.PriceElasticity.ShouldBe(0m);
         change.AdditionalRevenue.ShouldBe(60m);
+        change.ActiveClientsBeforeCount.ShouldBe(1);
+        change.ContinuedClientsCount.ShouldBe(1);
+        change.StoppedClientsCount.ShouldBe(0);
+        change.ReducedFrequencyClientsCount.ShouldBe(0);
+        change.IncreasedFrequencyClientsCount.ShouldBe(0);
+        change.ChurnShare.ShouldBe(0m);
         change.Teachers.Count.ShouldBe(1);
         change.Teachers[0].TeacherId.ShouldBe(teacher.Id);
         change.Teachers[0].RevenueBefore.ShouldBe(100m);
         change.Teachers[0].RevenueAfter.ShouldBe(260m);
         change.Teachers[0].AppointmentsBefore.ShouldBe(2);
         change.Teachers[0].AppointmentsAfter.ShouldBe(2);
+        change.Clients.Count.ShouldBe(1);
+        change.Clients[0].ClientId.ShouldBe(client.Id);
+        change.Clients[0].ContinuedAfterPriceIncrease.ShouldBeTrue();
+        res.StrongestPositiveImpacts.Count.ShouldBe(1);
+        res.NegativeImpacts.Count.ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task GetPriceChangeAnalytics_MaterializesRecurringAppointmentsForAffectedCounts()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddRangeAsync(
+            [
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = 100m,
+                    EffectiveDate = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc)
+                },
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = 130m,
+                    EffectiveDate = new DateTime(2026, 05, 15, 0, 0, 0, DateTimeKind.Utc)
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.RecurrenceRules.AddAsync(new AppointmentRecurrenceRule
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = teacher,
+            StartDate = new DateTime(2026, 05, 16, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 05, 16, 0, 0, 0, DateTimeKind.Utc),
+            RecurrenceType = recurrenceType,
+            RecurrencePattern = null
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetPriceChangeAnalyticsEndpoint, GetPriceChangeAnalyticsRequest, GetPriceChangeAnalyticsResponse>(
+            new GetPriceChangeAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC",
+                WindowDays = 14
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.Changes.Count.ShouldBe(1);
+        res.Changes[0].AffectedAppointmentsCount.ShouldBeGreaterThanOrEqualTo(1);
     }
 }

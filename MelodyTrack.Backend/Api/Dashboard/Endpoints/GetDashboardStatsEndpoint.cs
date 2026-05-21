@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetDashboardStatsEndpoint(AppDbContext db)
+public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
     : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -47,6 +48,9 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
         var dayAfterTomorrowStartUtc = TimeZoneInfo.ConvertTimeToUtc(dayAfterTomorrow, timezone);
         var monthStartUtc = TimeZoneInfo.ConvertTimeToUtc(monthStart, timezone);
         var nextMonthStartUtc = TimeZoneInfo.ConvertTimeToUtc(nextMonthStart, timezone);
+        var materializationEndUtc = (nextMonthStartUtc > dayAfterTomorrowStartUtc ? nextMonthStartUtc : dayAfterTomorrowStartUtc).AddTicks(-1);
+
+        await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(monthStartUtc, materializationEndUtc, ct);
 
         var appointmentsToday = await db.Appointments
             .AsNoTracking()

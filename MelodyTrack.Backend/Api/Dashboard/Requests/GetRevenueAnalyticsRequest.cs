@@ -12,4 +12,7 @@ public class GetRevenueAnalyticsRequest
 
     [BindFrom("timezone")]
     public required string Timezone { get; set; }
+
+    [BindFrom("groupBy")]
+    public string? GroupBy { get; set; }
 }

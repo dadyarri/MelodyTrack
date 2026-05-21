@@ -3,12 +3,13 @@ using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
+public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
     : Ep.Req<GetPriceChangeAnalyticsRequest>.Res<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -70,18 +71,7 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
 
         if (selectedRows.Count == 0)
         {
-            return TypedResults.Ok(new GetPriceChangeAnalyticsResponse
-            {
-                StartDate = rangeStartLocal,
-                EndDate = req.End.Date,
-                WindowDays = req.WindowDays,
-                TotalChanges = 0,
-                PriceIncreasesCount = 0,
-                PriceDecreasesCount = 0,
-                PositiveRevenueImpactCount = 0,
-                NegativeDemandImpactCount = 0,
-                Changes = []
-            });
+            return TypedResults.Ok(CreateEmptyResponse(rangeStartLocal, req.End.Date, req.WindowDays));
         }
 
         var changedServiceIds = selectedRows.Select(e => e.ServiceId).Distinct().ToList();
@@ -137,22 +127,13 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
 
         if (changes.Count == 0)
         {
-            return TypedResults.Ok(new GetPriceChangeAnalyticsResponse
-            {
-                StartDate = rangeStartLocal,
-                EndDate = req.End.Date,
-                WindowDays = req.WindowDays,
-                TotalChanges = 0,
-                PriceIncreasesCount = 0,
-                PriceDecreasesCount = 0,
-                PositiveRevenueImpactCount = 0,
-                NegativeDemandImpactCount = 0,
-                Changes = []
-            });
+            return TypedResults.Ok(CreateEmptyResponse(rangeStartLocal, req.End.Date, req.WindowDays));
         }
 
         var comparisonStartUtc = changes.Min(e => e.EffectiveDate.AddDays(-req.WindowDays));
         var comparisonEndUtc = changes.Max(e => e.EffectiveDate.AddDays(req.WindowDays));
+
+        await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(comparisonStartUtc, comparisonEndUtc.AddTicks(-1), ct);
 
         var appointments = await db.Appointments
             .AsNoTracking()
@@ -163,6 +144,10 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
             .Select(e => new AppointmentRow
             {
                 ServiceId = e.Service.Id,
+                ClientId = e.Client.Id,
+                ClientFirstName = e.Client.FirstName,
+                ClientLastName = e.Client.LastName,
+                ClientSourceName = e.Client.Source != null ? e.Client.Source.Name : null,
                 StartDate = e.StartDate,
                 Status = e.Status,
                 ProviderId = e.Provider != null ? e.Provider.Id : null,
@@ -185,6 +170,30 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
             .Select(change => BuildChangeDto(change, appointments, expenses, priceLookup, req.WindowDays))
             .ToList();
 
+        var strongestPositiveImpacts = changeDtos
+            .Where(e => e.PriceChange > 0)
+            .OrderByDescending(e => e.RevenueChange)
+            .ThenByDescending(e => e.RevenueChangePercent ?? decimal.MinValue)
+            .ThenByDescending(e => e.ProfitImpact)
+            .ThenByDescending(e => e.AdditionalRevenue ?? decimal.MinValue)
+            .Take(10)
+            .Select(MapRanking)
+            .ToList();
+
+        var negativeImpacts = changeDtos
+            .Where(e => e.PriceChange > 0
+                        && (e.RevenueAfter < e.RevenueBefore
+                            || e.AppointmentsAfter < e.AppointmentsBefore
+                            || (e.CancellationShareAfter ?? 0) > (e.CancellationShareBefore ?? 0)
+                            || (e.BurnedShareAfter ?? 0) > (e.BurnedShareBefore ?? 0)
+                            || e.StoppedClientsCount > 0))
+            .OrderBy(e => e.RevenueChange)
+            .ThenBy(e => e.AppointmentChange)
+            .ThenByDescending(e => e.ChurnShare ?? decimal.MinValue)
+            .Take(10)
+            .Select(MapRanking)
+            .ToList();
+
         return TypedResults.Ok(new GetPriceChangeAnalyticsResponse
         {
             StartDate = rangeStartLocal,
@@ -195,8 +204,28 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
             PriceDecreasesCount = changeDtos.Count(e => e.PriceChange < 0),
             PositiveRevenueImpactCount = changeDtos.Count(e => e.RevenueChange > 0),
             NegativeDemandImpactCount = changeDtos.Count(e => e.AppointmentChange < 0),
-            Changes = changeDtos
+            Changes = changeDtos,
+            StrongestPositiveImpacts = strongestPositiveImpacts,
+            NegativeImpacts = negativeImpacts
         });
+    }
+
+    private static GetPriceChangeAnalyticsResponse CreateEmptyResponse(DateTime startDate, DateTime endDate, int windowDays)
+    {
+        return new GetPriceChangeAnalyticsResponse
+        {
+            StartDate = startDate,
+            EndDate = endDate,
+            WindowDays = windowDays,
+            TotalChanges = 0,
+            PriceIncreasesCount = 0,
+            PriceDecreasesCount = 0,
+            PositiveRevenueImpactCount = 0,
+            NegativeDemandImpactCount = 0,
+            Changes = [],
+            StrongestPositiveImpacts = [],
+            NegativeImpacts = []
+        };
     }
 
     private static PriceChangeAnalyticsDto BuildChangeDto(
@@ -258,21 +287,19 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
                     .ToList();
                 var teacherBeforeRevenueAppointments = teacherBefore.Where(e => e.Status.CountsAsRevenue()).ToList();
                 var teacherAfterRevenueAppointments = teacherAfter.Where(e => e.Status.CountsAsRevenue()).ToList();
+                var teacherBeforeRevenue = teacherBeforeRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                var teacherAfterRevenue = teacherAfterRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
 
                 return new PriceChangeTeacherImpactDto
                 {
                     TeacherId = group.Key.ProviderId,
                     TeacherDisplayName = group.Key.ProviderDisplayName,
-                    RevenueBefore = teacherBeforeRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup)),
-                    RevenueAfter = teacherAfterRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup)),
+                    RevenueBefore = teacherBeforeRevenue,
+                    RevenueAfter = teacherAfterRevenue,
                     AppointmentsBefore = teacherBefore.Count,
                     AppointmentsAfter = teacherAfter.Count,
-                    AverageReceiptBefore = CalculateAverageReceipt(
-                        teacherBeforeRevenueAppointments.Count,
-                        teacherBeforeRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup))),
-                    AverageReceiptAfter = CalculateAverageReceipt(
-                        teacherAfterRevenueAppointments.Count,
-                        teacherAfterRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup))),
+                    AverageReceiptBefore = CalculateAverageReceipt(teacherBeforeRevenueAppointments.Count, teacherBeforeRevenue),
+                    AverageReceiptAfter = CalculateAverageReceipt(teacherAfterRevenueAppointments.Count, teacherAfterRevenue),
                     CancellationShareBefore = CalculateStatusShare(teacherBefore, AppointmentStatus.Cancelled),
                     CancellationShareAfter = CalculateStatusShare(teacherAfter, AppointmentStatus.Cancelled),
                     BurnedShareBefore = CalculateStatusShare(teacherBefore, AppointmentStatus.Burned),
@@ -283,6 +310,62 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
             .OrderByDescending(e => e.RevenueAfter - e.RevenueBefore)
             .ThenBy(e => e.TeacherDisplayName)
             .ToList();
+
+        var clients = serviceAppointments
+            .GroupBy(e => new
+            {
+                e.ClientId,
+                ClientDisplayName = $"{e.ClientLastName} {e.ClientFirstName}".Trim(),
+                e.ClientSourceName
+            })
+            .Select(group =>
+            {
+                var clientBefore = group
+                    .Where(e => e.StartDate >= beforeStart && e.StartDate < beforeEnd)
+                    .OrderBy(e => e.StartDate)
+                    .ToList();
+                var clientAfter = group
+                    .Where(e => e.StartDate >= afterStart && e.StartDate < afterEnd)
+                    .OrderBy(e => e.StartDate)
+                    .ToList();
+                var clientBeforeRevenue = clientBefore
+                    .Where(e => e.Status.CountsAsRevenue())
+                    .Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                var clientAfterRevenue = clientAfter
+                    .Where(e => e.Status.CountsAsRevenue())
+                    .Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                var continued = clientBefore.Count > 0 && clientAfter.Count > 0;
+                var stopped = clientBefore.Count > 0 && clientAfter.Count == 0;
+                var reducedFrequency = clientBefore.Count > 0 && clientAfter.Count > 0 && clientAfter.Count < clientBefore.Count;
+                var increasedFrequency = clientBefore.Count > 0 && clientAfter.Count > 0 && clientAfter.Count > clientBefore.Count;
+
+                return new PriceChangeClientImpactDto
+                {
+                    ClientId = group.Key.ClientId,
+                    ClientDisplayName = group.Key.ClientDisplayName,
+                    SourceName = group.Key.ClientSourceName,
+                    AppointmentsBefore = clientBefore.Count,
+                    AppointmentsAfter = clientAfter.Count,
+                    RevenueBefore = clientBeforeRevenue,
+                    RevenueAfter = clientAfterRevenue,
+                    AverageIntervalBeforeDays = CalculateAverageIntervalDays(clientBefore.Select(e => e.StartDate).ToList()),
+                    AverageIntervalAfterDays = CalculateAverageIntervalDays(clientAfter.Select(e => e.StartDate).ToList()),
+                    ContinuedAfterPriceIncrease = continued,
+                    StoppedAfterPriceIncrease = stopped,
+                    ReducedAppointmentFrequency = reducedFrequency,
+                    IncreasedAppointmentFrequency = increasedFrequency
+                };
+            })
+            .Where(e => e.AppointmentsBefore > 0 || e.AppointmentsAfter > 0)
+            .OrderByDescending(e => e.RevenueAfter - e.RevenueBefore)
+            .ThenBy(e => e.ClientDisplayName)
+            .ToList();
+
+        var activeClientsBeforeCount = clients.Count(e => e.AppointmentsBefore > 0);
+        var continuedClientsCount = clients.Count(e => e.ContinuedAfterPriceIncrease);
+        var stoppedClientsCount = clients.Count(e => e.StoppedAfterPriceIncrease);
+        var reducedFrequencyClientsCount = clients.Count(e => e.ReducedAppointmentFrequency);
+        var increasedFrequencyClientsCount = clients.Count(e => e.IncreasedAppointmentFrequency);
 
         var priceChange = change.NewPrice - change.OldPrice;
         var appointmentChange = afterAppointments.Count - beforeAppointments.Count;
@@ -329,13 +412,57 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
             AdditionalRevenue = afterRevenueAppointments.Count == 0
                 ? 0m
                 : afterRevenue - afterRevenueAppointments.Count * change.OldPrice,
-            Teachers = teachers
+            ActiveClientsBeforeCount = activeClientsBeforeCount,
+            ContinuedClientsCount = continuedClientsCount,
+            StoppedClientsCount = stoppedClientsCount,
+            ReducedFrequencyClientsCount = reducedFrequencyClientsCount,
+            IncreasedFrequencyClientsCount = increasedFrequencyClientsCount,
+            ChurnShare = activeClientsBeforeCount == 0 ? null : stoppedClientsCount / (decimal)activeClientsBeforeCount * 100m,
+            Teachers = teachers,
+            Clients = clients
+        };
+    }
+
+    private static PriceChangeRankingDto MapRanking(PriceChangeAnalyticsDto change)
+    {
+        return new PriceChangeRankingDto
+        {
+            ServiceId = change.ServiceId,
+            ServiceName = change.ServiceName,
+            EffectiveDate = change.EffectiveDate,
+            RevenueChange = change.RevenueChange,
+            RevenueChangePercent = change.RevenueChangePercent,
+            ProfitImpact = change.ProfitImpact,
+            AppointmentChange = change.AppointmentChange,
+            AppointmentChangePercent = change.AppointmentChangePercent,
+            AdditionalRevenue = change.AdditionalRevenue,
+            ChurnShare = change.ChurnShare,
+            CancellationShareBefore = change.CancellationShareBefore,
+            CancellationShareAfter = change.CancellationShareAfter,
+            BurnedShareBefore = change.BurnedShareBefore,
+            BurnedShareAfter = change.BurnedShareAfter
         };
     }
 
     private static decimal? CalculateAverageReceipt(int appointmentCount, decimal revenue)
     {
         return appointmentCount == 0 ? null : revenue / appointmentCount;
+    }
+
+    private static decimal? CalculateAverageIntervalDays(IReadOnlyList<DateTime> appointments)
+    {
+        if (appointments.Count < 2)
+        {
+            return null;
+        }
+
+        var intervals = new List<decimal>();
+        for (var i = 1; i < appointments.Count; i++)
+        {
+            intervals.Add((decimal)(appointments[i] - appointments[i - 1]).TotalDays);
+        }
+
+        return intervals.Average();
     }
 
     private static decimal? CalculatePercentChange(decimal beforeValue, decimal change)
@@ -388,6 +515,10 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db)
     private sealed class AppointmentRow
     {
         public required Ulid ServiceId { get; set; }
+        public required Ulid ClientId { get; set; }
+        public required string ClientFirstName { get; set; }
+        public required string ClientLastName { get; set; }
+        public string? ClientSourceName { get; set; }
         public required DateTime StartDate { get; set; }
         public required AppointmentStatus Status { get; set; }
         public Ulid? ProviderId { get; set; }
