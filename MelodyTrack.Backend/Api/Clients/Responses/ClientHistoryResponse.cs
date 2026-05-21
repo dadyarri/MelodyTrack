@@ -42,6 +42,5 @@ public class ClientHistoryAppointmentDto
     public required DateTime EndDate { get; set; }
     public required string ServiceName { get; set; }
     public string? ProviderDisplayName { get; set; }
-    public bool IsCompleted { get; set; }
-    public bool IsCanceled { get; set; }
+    public required string Status { get; set; }
 }

@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -90,8 +91,7 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Provider = provider,
                 StartDate = req.StartDate.ToUniversalTime(),
                 EndDate = req.StartDate.AddHours(1).ToUniversalTime(),
-                IsCanceled = false,
-                IsCompleted = false,
+                Status = AppointmentStatus.Planned,
                 IsDeleted = false,
                 RecurringRule = recurrenceRule
             };

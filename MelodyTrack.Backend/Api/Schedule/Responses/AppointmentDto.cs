@@ -12,8 +12,7 @@ public partial class AppointmentDto
     public AppointmentProviderDto? Provider { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
-    public required bool IsCompleted { get; set; }
-    public required bool IsCanceled { get; set; }
+    public required string Status { get; set; }
     public AppointmentRecurrenceRuleDto? RecurringRule { get; set; }
     public RecordActivityDto? LastActivity { get; set; }
 
@@ -58,8 +57,7 @@ public partial class AppointmentDto
                 },
             StartDate = appointment.StartDate,
             EndDate = appointment.EndDate,
-            IsCompleted = appointment.IsCompleted,
-            IsCanceled = appointment.IsCanceled,
+            Status = appointment.Status.ToApiKey(),
             RecurringRule = recurringRule is null
                 ? null
                 : new AppointmentRecurrenceRuleDto
@@ -74,7 +72,8 @@ public partial class AppointmentDto
                         _ => "monthly"
                     },
                     RecurrencePattern = recurringRule.RecurrencePattern
-                }
+                },
+            LastActivity = null
         };
     }
 }

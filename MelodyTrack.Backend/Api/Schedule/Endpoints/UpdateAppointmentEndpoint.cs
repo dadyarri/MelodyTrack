@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -43,6 +44,18 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         if (conflict is not null && !IsNoOp(appointment, req))
         {
             return TypedResults.Conflict(conflict);
+        }
+
+        AppointmentStatus? requestedStatus = null;
+        if (req.Status is not null)
+        {
+            if (!AppointmentStatusExtensions.TryParseApiKey(req.Status, out var parsedStatus))
+            {
+                AddError(r => r.Status, "Некорректный статус записи");
+                return new ProblemDetails(ValidationFailures);
+            }
+
+            requestedStatus = parsedStatus;
         }
 
         var clientChanged = req.ClientId is not null && req.ClientId.Value != appointment.Client.Id;
@@ -97,20 +110,9 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Provider = appointment.Provider,
                 StartDate = req.StartDate ?? appointment.StartDate,
                 EndDate = (req.StartDate ?? appointment.StartDate).Add(duration),
-                IsCompleted = req.IsCompleted ?? appointment.IsCompleted,
-                IsCanceled = req.IsCanceled ?? appointment.IsCanceled,
+                Status = requestedStatus ?? appointment.Status,
                 IsDeleted = false
             };
-
-            if (updatedAppointment.IsCompleted)
-            {
-                updatedAppointment.IsCanceled = false;
-            }
-
-            if (updatedAppointment.IsCanceled)
-            {
-                updatedAppointment.IsCompleted = false;
-            }
 
             appointment.IsDeleted = true;
             db.Appointments.Add(updatedAppointment);
@@ -134,22 +136,9 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             appointment.EndDate = req.StartDate.Value.AddHours(1);
         }
 
-        if (req.IsCompleted is not null)
+        if (requestedStatus is not null)
         {
-            appointment.IsCompleted = req.IsCompleted.Value;
-            if (req.IsCompleted.Value)
-            {
-                appointment.IsCanceled = false;
-            }
-        }
-
-        if (req.IsCanceled is not null)
-        {
-            appointment.IsCanceled = req.IsCanceled.Value;
-            if (req.IsCanceled.Value)
-            {
-                appointment.IsCompleted = false;
-            }
+            appointment.Status = requestedStatus.Value;
         }
 
         if (req.RecurrenceTypeId is not null)
@@ -214,12 +203,15 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         var recurrencePatternChanged = req.RecurrencePattern is not null
                                        && req.RecurrencePattern != appointment.RecurringRule?.RecurrencePattern;
 
+        var statusChanged = req.Status is not null
+                            && (!AppointmentStatusExtensions.TryParseApiKey(req.Status, out var parsedStatus)
+                                || parsedStatus != appointment.Status);
+
         return (req.ClientId is null || req.ClientId == appointment.Client.Id)
                && (req.ServiceId is null || req.ServiceId == appointment.Service.Id)
                && (req.ProviderId is null || req.ProviderId == appointment.Provider?.Id)
                && (req.StartDate is null || req.StartDate == appointment.StartDate)
-               && (req.IsCompleted is null || req.IsCompleted == appointment.IsCompleted)
-               && (req.IsCanceled is null || req.IsCanceled == appointment.IsCanceled)
+               && !statusChanged
                && !recurrenceTypeChanged
                && !recurrencePatternChanged;
     }

@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Api.Dashboard.Endpoints;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
@@ -18,7 +19,7 @@ namespace MelodyTrack.Backend.Tests;
 public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task GetDashboardStats_CountsCanceledAppointmentsInMonthIncome()
+    public async Task GetDashboardStats_CountsBurnedAppointmentsInMonthIncome()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -47,8 +48,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
                     Provider = user,
                     StartDate = monthStart.AddDays(3).AddHours(10),
                     EndDate = monthStart.AddDays(3).AddHours(11),
-                    IsCompleted = true,
-                    IsCanceled = false,
+                    Status = AppointmentStatus.Completed,
                     IsDeleted = false
                 },
                 new Appointment
@@ -59,8 +59,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
                     Provider = user,
                     StartDate = monthStart.AddDays(4).AddHours(10),
                     EndDate = monthStart.AddDays(4).AddHours(11),
-                    IsCompleted = false,
-                    IsCanceled = true,
+                    Status = AppointmentStatus.Burned,
                     IsDeleted = false
                 },
                 new Appointment
@@ -71,8 +70,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
                     Provider = user,
                     StartDate = monthStart.AddDays(5).AddHours(10),
                     EndDate = monthStart.AddDays(5).AddHours(11),
-                    IsCompleted = false,
-                    IsCanceled = false,
+                    Status = AppointmentStatus.Cancelled,
                     IsDeleted = false
                 }
             ],

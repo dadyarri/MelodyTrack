@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -51,7 +52,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
             .AsNoTracking()
             .CountAsync(e => e.StartDate >= todayStartUtc
                              && e.StartDate < tomorrowStartUtc
-                             && !e.IsCanceled
+                             && e.Status == AppointmentStatus.Planned
                              && !e.IsDeleted, ct);
 
         var totalClients = await db.Clients
@@ -62,14 +63,14 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
             .AsNoTracking()
             .CountAsync(e => e.StartDate >= tomorrowStartUtc
                              && e.StartDate < dayAfterTomorrowStartUtc
-                             && !e.IsCanceled
+                             && e.Status == AppointmentStatus.Planned
                              && !e.IsDeleted, ct);
 
         var incomeAppointmentsThisMonth = await db.Appointments
             .AsNoTracking()
             .Where(e => e.StartDate >= monthStartUtc
                         && e.StartDate < nextMonthStartUtc
-                        && (e.IsCompleted || e.IsCanceled)
+                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
                         && !e.IsDeleted)
             .Select(e => new
             {
@@ -113,7 +114,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db)
 
         var serviceCostsByClient = await db.Appointments
             .AsNoTracking()
-            .Where(e => (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
+            .Where(e => (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned) && !e.IsDeleted)
             .Join(db.ServicePriceHistory,
                 appointment => appointment.Service.Id,
                 price => price.Service.Id,

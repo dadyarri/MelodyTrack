@@ -2,6 +2,7 @@ using Facet;
 using Facet.Mapping;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,7 +32,9 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
             .SumAsync(e => e.Amount, cancellationToken);
 
         var totalServiceCost = await db.Appointments
-            .Where(e => e.Client.Id == source.Id && (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
+            .Where(e => e.Client.Id == source.Id
+                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
+                        && !e.IsDeleted)
             .Join(db.ServicePriceHistory, s => s.Service.Id, p => p.Service.Id, (s, p) => p.Price)
             .SumAsync(cancellationToken);
 
@@ -42,12 +45,17 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
         target.SourceId = source.SourceId;
         target.SourceName = source.Source?.Name;
         target.LastAppointmentAtUtc = await db.Appointments
-            .Where(e => e.Client.Id == source.Id && (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
+            .Where(e => e.Client.Id == source.Id
+                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
+                        && !e.IsDeleted)
             .OrderByDescending(e => e.StartDate)
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
         target.NextAppointmentAtUtc = await db.Appointments
-            .Where(e => e.Client.Id == source.Id && !e.IsCanceled && !e.IsDeleted && e.StartDate >= DateTime.UtcNow)
+            .Where(e => e.Client.Id == source.Id
+                        && e.Status == AppointmentStatus.Planned
+                        && !e.IsDeleted
+                        && e.StartDate >= DateTime.UtcNow)
             .OrderBy(e => e.StartDate)
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(cancellationToken);

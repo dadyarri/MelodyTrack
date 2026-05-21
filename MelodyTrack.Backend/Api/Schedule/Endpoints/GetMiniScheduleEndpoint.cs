@@ -4,6 +4,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -49,6 +50,7 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
                 !e.IsDeleted &&
                 e.Provider != null &&
                 e.Provider.Id == currentUser.Id &&
+                e.Status == AppointmentStatus.Planned &&
                 e.StartDate >= startUtc &&
                 e.StartDate < endUtc &&
                 e.EndDate > nowUtc)

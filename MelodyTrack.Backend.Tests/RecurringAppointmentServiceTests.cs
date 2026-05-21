@@ -393,8 +393,7 @@ public class RecurringAppointmentServiceTests
         {
             apt.Client.ShouldNotBeNull();
             apt.Service.ShouldNotBeNull();
-            apt.IsCompleted.ShouldBeFalse();
-            apt.IsCanceled.ShouldBeFalse();
+            apt.Status.ShouldBe(AppointmentStatus.Planned);
             apt.RecurringRule.ShouldBe(rule);
             apt.StartDate.ShouldBeLessThan(apt.EndDate);
             apt.EndDate.ShouldBe(apt.StartDate.AddHours(1));

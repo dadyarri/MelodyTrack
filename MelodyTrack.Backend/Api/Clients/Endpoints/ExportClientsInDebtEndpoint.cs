@@ -1,6 +1,7 @@
 using ClosedXML.Excel;
 using FastEndpoints;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,7 +38,7 @@ public class ExportClientsInDebtEndpoint(AppDbContext db)
 
         var totalServiceCostByClient = await db.Appointments
             .AsNoTracking()
-            .Where(e => (e.IsCompleted || e.IsCanceled) && !e.IsDeleted)
+            .Where(e => (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned) && !e.IsDeleted)
             .Join(db.ServicePriceHistory,
                 appointment => appointment.Service.Id,
                 price => price.Service.Id,

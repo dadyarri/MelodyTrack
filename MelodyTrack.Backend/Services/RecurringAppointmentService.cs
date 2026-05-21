@@ -181,8 +181,7 @@ public class RecurringAppointmentService : IRecurringAppointmentService
             Provider = rule.Provider,
             StartDate = appointmentStartTime,
             EndDate = appointmentStartTime.AddHours(1),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false,
             RecurringRule = rule
         };

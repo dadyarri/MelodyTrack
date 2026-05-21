@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Api.Schedule.Endpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
@@ -37,8 +38,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Provider = currentUser,
             StartDate = nowUtc.AddMinutes(30),
             EndDate = nowUtc.AddMinutes(90),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
 
@@ -50,8 +50,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Provider = currentUser,
             StartDate = nowUtc.AddHours(-2),
             EndDate = nowUtc.AddMinutes(-10),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
 
@@ -63,8 +62,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Provider = otherUser,
             StartDate = nowUtc.AddHours(2),
             EndDate = nowUtc.AddHours(3),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
 

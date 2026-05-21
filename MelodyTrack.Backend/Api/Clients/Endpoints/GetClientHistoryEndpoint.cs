@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -76,8 +77,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 ProviderDisplayName = e.Provider == null
                     ? null
                     : e.Provider.FirstName + " " + e.Provider.LastName,
-                IsCompleted = e.IsCompleted,
-                IsCanceled = e.IsCanceled
+                Status = e.Status.ToApiKey()
             })
             .ToListAsync(ct);
 
@@ -92,7 +92,9 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
 
         var completedAppointmentsQuery = db.Appointments
             .AsNoTracking()
-            .Where(e => e.Client.Id == client.Id && (e.IsCompleted || e.IsCanceled) && !e.IsDeleted);
+            .Where(e => e.Client.Id == client.Id
+                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
+                        && !e.IsDeleted);
 
         var completedAppointmentsCount = await completedAppointmentsQuery.CountAsync(ct);
         var lastVisitAtUtc = await completedAppointmentsQuery
@@ -102,7 +104,10 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
 
         var upcomingAppointmentsQuery = db.Appointments
             .AsNoTracking()
-            .Where(e => e.Client.Id == client.Id && !e.IsCanceled && !e.IsDeleted && e.StartDate >= DateTime.UtcNow);
+            .Where(e => e.Client.Id == client.Id
+                        && e.Status == AppointmentStatus.Planned
+                        && !e.IsDeleted
+                        && e.StartDate >= DateTime.UtcNow);
 
         var upcomingAppointmentsCount = await upcomingAppointmentsQuery.CountAsync(ct);
         var nextAppointmentAtUtc = await upcomingAppointmentsQuery

@@ -1,3 +1,5 @@
+using MelodyTrack.Backend.Data.Enums;
+
 namespace MelodyTrack.Backend.Data.Models;
 
 public class Appointment : BaseModel
@@ -7,8 +9,7 @@ public class Appointment : BaseModel
     public User? Provider { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
-    public required bool IsCompleted { get; set; }
-    public required bool IsCanceled { get; set; }
+    public required AppointmentStatus Status { get; set; }
     public required bool IsDeleted { get; set; }
     public AppointmentRecurrenceRule? RecurringRule { get; set; }
 }

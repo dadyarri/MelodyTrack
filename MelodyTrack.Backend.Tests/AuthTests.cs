@@ -2399,8 +2399,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             Service = service,
             StartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2026, 05, 12, 15, 0, 0, DateTimeKind.Utc),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
 
@@ -2459,8 +2458,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             Service = service,
             StartDate = recurrenceRule.StartDate,
             EndDate = recurrenceRule.StartDate.AddHours(1),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false,
             RecurringRule = recurrenceRule
         };
@@ -2557,20 +2555,18 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             Service = service,
             StartDate = new DateTime(2024, 01, 10, 9, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2024, 01, 10, 10, 0, 0, DateTimeKind.Utc),
-            IsCompleted = true,
-            IsCanceled = false,
+            Status = AppointmentStatus.Completed,
             IsDeleted = false
         };
 
-        var canceledAppointment = new Appointment
+        var burnedAppointment = new Appointment
         {
             Id = Ulid.NewUlid(),
             Client = client,
             Service = service,
             StartDate = new DateTime(2024, 01, 12, 9, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2024, 01, 12, 10, 0, 0, DateTimeKind.Utc),
-            IsCompleted = false,
-            IsCanceled = true,
+            Status = AppointmentStatus.Burned,
             IsDeleted = false
         };
 
@@ -2581,8 +2577,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             Service = service,
             StartDate = new DateTime(2030, 01, 15, 11, 0, 0, DateTimeKind.Utc),
             EndDate = new DateTime(2030, 01, 15, 12, 0, 0, DateTimeKind.Utc),
-            IsCompleted = false,
-            IsCanceled = false,
+            Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
 
@@ -2591,7 +2586,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.Services.AddAsync(service, TestContext.Current.CancellationToken);
         await db.ServicePriceHistory.AddAsync(servicePrice, TestContext.Current.CancellationToken);
         await db.Payments.AddRangeAsync([oldPayment, newPayment], TestContext.Current.CancellationToken);
-        await db.Appointments.AddRangeAsync([completedAppointment, canceledAppointment, upcomingAppointment], TestContext.Current.CancellationToken);
+        await db.Appointments.AddRangeAsync([completedAppointment, burnedAppointment, upcomingAppointment], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
@@ -2613,10 +2608,11 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.Summary.LastVisitAtUtc.ShouldNotBeNull();
         res.Summary.NextAppointmentAtUtc.ShouldNotBeNull();
         res.Summary.LastPaymentAtUtc.Value.ShouldBe(newPayment.Date, TimeSpan.FromSeconds(1));
-        res.Summary.LastVisitAtUtc.Value.ShouldBe(canceledAppointment.StartDate, TimeSpan.FromSeconds(1));
+        res.Summary.LastVisitAtUtc.Value.ShouldBe(burnedAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.Summary.NextAppointmentAtUtc.Value.ShouldBe(upcomingAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.RecentPayments.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
-        res.RecentAppointments.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, canceledAppointment.Id, completedAppointment.Id]);
+        res.RecentAppointments.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, burnedAppointment.Id, completedAppointment.Id]);
+        res.RecentAppointments.Select(e => e.Status).ShouldBe(["planned", "burned", "completed"]);
     }
 
     [Fact]
