@@ -43,7 +43,7 @@ public class RegisterRequestValidator : Validator<RegisterRequest>
                     mapName: null,
                     capacity: 0,
                     MemoryMappedFileAccess.Read);
-                using var accessor = mmf.CreateViewAccessor(0, fileSize);
+                using var accessor = mmf.CreateViewAccessor(0, fileSize, MemoryMappedFileAccess.Read);
                 var buffer = new byte[fileSize];
                 accessor.ReadArray(0, buffer, 0, (int)fileSize);
                 var fileContent = Encoding.UTF8.GetString(buffer);
