@@ -26,7 +26,9 @@ public class ExportExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginat
         if (!string.IsNullOrWhiteSpace(req.Search))
         {
             var pattern = $"%{req.Search.Trim().ToLower()}%";
-            expensesQuery = expensesQuery.Where(e => EF.Functions.ILike(e.Description, pattern));
+            expensesQuery = expensesQuery.Where(e =>
+                EF.Functions.ILike(e.Description, pattern)
+                || (e.Category != null && EF.Functions.ILike(e.Category.Name, pattern)));
         }
 
         var expenses = await expensesQuery
@@ -38,7 +40,8 @@ public class ExportExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginat
 
         sheet.Cell(1, 1).Value = "Дата";
         sheet.Cell(1, 2).Value = "Описание";
-        sheet.Cell(1, 3).Value = "Сумма";
+        sheet.Cell(1, 3).Value = "Категория";
+        sheet.Cell(1, 4).Value = "Сумма";
 
         for (var index = 0; index < expenses.Count; index++)
         {
@@ -48,8 +51,9 @@ public class ExportExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginat
             sheet.Cell(row, 1).Value = expense.Date;
             sheet.Cell(row, 1).Style.DateFormat.Format = "dd.MM.yyyy HH:mm";
             sheet.Cell(row, 2).Value = expense.Description;
-            sheet.Cell(row, 3).Value = expense.Amount;
-            sheet.Cell(row, 3).Style.NumberFormat.Format = "#,##0.00";
+            sheet.Cell(row, 3).Value = expense.Category?.Name;
+            sheet.Cell(row, 4).Value = expense.Amount;
+            sheet.Cell(row, 4).Style.NumberFormat.Format = "#,##0.00";
         }
 
         sheet.Row(1).Style.Font.Bold = true;

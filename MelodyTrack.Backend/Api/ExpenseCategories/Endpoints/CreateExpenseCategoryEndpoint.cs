@@ -17,7 +17,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
 
     public override void Configure()
     {
-        Post("/expenseCategory");
+        Post("/expense-categories");
     }
 
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(CreateExpenseCategoryRequest req, CancellationToken ct)
@@ -49,7 +49,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
             var expenseCategory = new ExpenseCategory
             {
                 Id = Ulid.NewUlid(),
-                Name = req.Name,
+                Name = req.Name.Trim(),
             };
 
             await db.ExpenseCategories.AddAsync(expenseCategory, ct);

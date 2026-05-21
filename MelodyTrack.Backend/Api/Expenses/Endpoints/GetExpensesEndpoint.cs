@@ -3,7 +3,6 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Responses;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +25,9 @@ public class GetExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedR
         if (!string.IsNullOrWhiteSpace(req.Search))
         {
             var pattern = $"%{req.Search.Trim().ToLower()}%";
-            expensesQuery = expensesQuery.Where(e => EF.Functions.ILike(e.Description, pattern));
+            expensesQuery = expensesQuery.Where(e =>
+                EF.Functions.ILike(e.Description, pattern)
+                || (e.Category != null && EF.Functions.ILike(e.Category.Name, pattern)));
         }
 
         var totalCount = await expensesQuery.CountAsync(ct);
@@ -43,6 +44,15 @@ public class GetExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedR
         var expenses = await expensesQuery
             .OrderByDescending(e => e.Date)
             .ApplyPagination(req)
+            .Select(e => new ExpenseDto
+            {
+                Id = e.Id,
+                Description = e.Description,
+                Amount = e.Amount,
+                Date = e.Date,
+                CategoryId = e.CategoryId,
+                CategoryName = e.Category != null ? e.Category.Name : null
+            })
             .ToListAsync(ct);
 
         var response = PaginatedResponse.Create(expenses, totalCount, req);

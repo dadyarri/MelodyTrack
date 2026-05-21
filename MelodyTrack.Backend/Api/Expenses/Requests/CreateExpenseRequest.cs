@@ -4,4 +4,5 @@ public class CreateExpenseRequest
 {
     public required string Description { get; set; }
     public required decimal Amount { get; set; }
+    public Ulid? CategoryId { get; set; }
 }

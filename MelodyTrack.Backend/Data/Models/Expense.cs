@@ -11,5 +11,7 @@ public class Expense : BaseModel
 
     public required DateTime Date { get; set; } = DateTime.UtcNow;
 
+    public Ulid? CategoryId { get; set; }
+
     public ExpenseCategory? Category { get; set; }
 }

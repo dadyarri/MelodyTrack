@@ -45,10 +45,20 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
             }
 
+            if (req.CategoryId is not null)
+            {
+                var categoryExists = await db.ExpenseCategories.AnyAsync(e => e.Id == req.CategoryId.Value, ct);
+                if (!categoryExists)
+                {
+                    ThrowError("Категория расхода не найдена");
+                }
+            }
+
             var expense = new Expense
             {
                 Id = Ulid.NewUlid(),
                 Amount = req.Amount,
+                CategoryId = req.CategoryId,
                 Date = DateTime.UtcNow,
                 Description = req.Description
             };
