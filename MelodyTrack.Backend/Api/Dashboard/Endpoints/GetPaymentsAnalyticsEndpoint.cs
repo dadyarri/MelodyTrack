@@ -150,12 +150,13 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
                         clientAppointments.Where(e => e.ServiceId == serviceId).ToList(),
                         payment,
                         remaining,
-                        allocations);
+                        allocations,
+                        timezone);
                 }
 
                 if (remaining > 0)
                 {
-                    _ = AllocatePayment(clientAppointments, payment, remaining, allocations);
+                    _ = AllocatePayment(clientAppointments, payment, remaining, allocations, timezone);
                 }
             }
         }
@@ -262,7 +263,8 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
         List<AppointmentLedger> openAppointments,
         PaymentRow payment,
         decimal remaining,
-        List<AllocationRow> allocations)
+        List<AllocationRow> allocations,
+        TimeZoneInfo timezone)
     {
         foreach (var appointment in openAppointments.Where(e => e.RemainingAmount > 0).OrderBy(e => e.StartDate).ThenBy(e => e.AppointmentId))
         {
@@ -287,12 +289,19 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
                 ServiceId = appointment.ServiceId,
                 TeacherId = appointment.TeacherId,
                 PaymentDate = payment.Date,
-                DelayDays = Math.Max(0m, (decimal)(payment.Date - appointment.StartDate).TotalDays),
+                DelayDays = CalculateDelayDays(payment.Date, appointment.StartDate, timezone),
                 Amount = allocatedAmount
             });
         }
 
         return remaining;
+    }
+
+    private static decimal CalculateDelayDays(DateTime paymentDateUtc, DateTime appointmentStartDateUtc, TimeZoneInfo timezone)
+    {
+        var paymentLocalDate = TimeZoneInfo.ConvertTimeFromUtc(paymentDateUtc, timezone).Date;
+        var appointmentLocalDate = TimeZoneInfo.ConvertTimeFromUtc(appointmentStartDateUtc, timezone).Date;
+        return Math.Max(0m, (decimal)(paymentLocalDate - appointmentLocalDate).TotalDays);
     }
 
     private static decimal ResolveAppointmentPrice(

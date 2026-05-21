@@ -467,7 +467,10 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         change.Clients[0].ClientId.ShouldBe(client.Id);
         change.Clients[0].ContinuedAfterPriceIncrease.ShouldBeTrue();
         res.StrongestPositiveImpacts.Count.ShouldBe(1);
-        res.NegativeImpacts.Count.ShouldBe(0);
+        res.NegativeImpacts.Count.ShouldBe(1);
+        res.NegativeImpacts[0].ServiceId.ShouldBe(service.Id);
+        res.NegativeImpacts[0].BurnedShareBefore.ShouldBe(0m);
+        res.NegativeImpacts[0].BurnedShareAfter.ShouldBe(50m);
     }
 
     [Fact]
