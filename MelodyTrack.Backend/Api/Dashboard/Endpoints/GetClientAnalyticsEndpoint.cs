@@ -13,6 +13,8 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
     : Ep.Req<GetClientAnalyticsRequest>.Res<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     private const int LostClientWindowDays = 30;
+    private const int ActiveClientRecentAppointmentWindowDays = 7;
+    private const int RfmScoreBuckets = 5;
     private const int RegularClientWindowDays = 90;
     private const int RegularClientCompletedAppointmentsThreshold = 4;
     private const decimal RiskMultiplier = 1.5m;
@@ -55,6 +57,8 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         var rangeLengthDays = (rangeEndExclusiveLocal - rangeStartLocal).Days;
         var previousRangeStartLocal = rangeStartLocal.AddDays(-rangeLengthDays);
         var previousRangeEndLocal = rangeStartLocal.AddDays(-1);
+        var activePaymentWindowStartLocal = rangeEndExclusiveLocal.AddMonths(-1);
+        var activeAppointmentWindowStartLocal = rangeEndExclusiveLocal.AddDays(-ActiveClientRecentAppointmentWindowDays);
 
         var previousRangeStartUtc = TimeZoneInfo.ConvertTimeToUtc(previousRangeStartLocal, timezone);
         var rangeStartUtc = TimeZoneInfo.ConvertTimeToUtc(rangeStartLocal, timezone);
@@ -99,16 +103,20 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             })
             .ToListAsync(ct);
 
-        var paymentsByClient = await db.Payments
+        var paymentRows = await db.Payments
             .AsNoTracking()
             .Where(e => e.Date < rangeEndExclusiveUtc)
-            .GroupBy(e => e.Client.Id)
-            .Select(group => new
+            .Select(e => new PaymentRow
             {
-                ClientId = group.Key,
-                Amount = group.Sum(item => item.Amount)
+                ClientId = e.Client.Id,
+                Amount = e.Amount,
+                DateUtc = e.Date
             })
-            .ToDictionaryAsync(e => e.ClientId, e => e.Amount, ct);
+            .ToListAsync(ct);
+
+        var paymentsByClient = paymentRows
+            .GroupBy(e => e.ClientId)
+            .ToDictionary(group => group.Key, group => group.Sum(item => item.Amount));
 
         var priceLookup = servicePrices
             .GroupBy(e => e.ServiceId)
@@ -131,6 +139,31 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             .ToDictionary(group => group.Key, group => group.OrderBy(e => e.StartDateUtc).ThenBy(e => e.AppointmentId).ToList());
 
         var vipClientIds = BuildVipClientIds(historicalAppointmentsByClient, priceLookup);
+
+        var activeNowClientIds = clients
+            .Where(client =>
+            {
+                var hasRecentPayment = paymentRows.Any(payment =>
+                    payment.ClientId == client.ClientId
+                    && TimeZoneInfo.ConvertTimeFromUtc(payment.DateUtc, timezone).Date >= activePaymentWindowStartLocal);
+                var hasRecentAppointment = historicalAppointmentsByClient.GetValueOrDefault(client.ClientId, []).Any(appointment =>
+                    TimeZoneInfo.ConvertTimeFromUtc(appointment.StartDateUtc, timezone).Date >= activeAppointmentWindowStartLocal);
+
+                return hasRecentPayment || hasRecentAppointment;
+            })
+            .Select(client => client.ClientId)
+            .ToHashSet();
+
+        var allAppointmentIntervalsDays = historicalAppointmentsByClient
+            .SelectMany(group =>
+            {
+                var orderedLocalDates = group.Value
+                    .Select(e => TimeZoneInfo.ConvertTimeFromUtc(e.StartDateUtc, timezone).Date)
+                    .ToList();
+
+                return EnumerateIntervals(orderedLocalDates);
+            })
+            .ToList();
 
         var clientDtos = clients
             .Select(client =>
@@ -162,6 +195,11 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                 var isNew = client.CreatedAtUtc >= rangeStartUtc && client.CreatedAtUtc < rangeEndExclusiveUtc;
                 var isLost = hasHistoricalAppointments
                     && !clientAppointments.Any(e => TimeZoneInfo.ConvertTimeFromUtc(e.StartDateUtc, timezone).Date >= rangeEndExclusiveLocal.AddDays(-LostClientWindowDays));
+                var hasAppointmentInPeriod = clientAppointments.Any(e => e.StartDateUtc >= rangeStartUtc && e.StartDateUtc < rangeEndExclusiveUtc);
+                var isReturned = clientAppointments.Count >= 2
+                    && hasAppointmentInPeriod
+                    && firstAppointmentAtUtc is not null
+                    && clientAppointments.Any(e => e.StartDateUtc >= rangeStartUtc && e.StartDateUtc < rangeEndExclusiveUtc && e.StartDateUtc > firstAppointmentAtUtc.Value);
                 var isAtRisk = !isLost
                     && averageIntervalDays is not null
                     && daysSinceLastAppointment is not null
@@ -194,48 +232,58 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                     IsRegular = regularCompletedAppointmentsCount >= RegularClientCompletedAppointmentsThreshold,
                     IsSingleTime = completedAppointmentsCount == 1,
                     IsDebtor = debt > 0m,
-                    IsNew = isNew
+                    IsNew = isNew,
+                    IsReturned = isReturned
                 };
             })
-            .Where(e => e.RevenueCountedAppointmentsCount > 0 || e.LastAppointmentAtUtc is not null || e.Debt > 0m)
             .OrderByDescending(e => e.LifetimeValue)
             .ThenBy(e => e.ClientDisplayName)
             .ToList();
+
+        var clientsWithAnyAppointmentInPeriodCount = clientDtos.Count(e =>
+            e.LastAppointmentAtUtc is not null
+            && historicalAppointmentsByClient.GetValueOrDefault(e.ClientId, []).Any(a => a.StartDateUtc >= rangeStartUtc && a.StartDateUtc < rangeEndExclusiveUtc));
+
+        var historicalClients = clientDtos.Where(e => e.LastAppointmentAtUtc is not null).ToList();
+        var rfmClients = BuildRfmClients(clientDtos, historicalAppointmentsByClient, priceLookup, timezone, rangeStartUtc, rangeEndExclusiveUtc, rangeEndLocal);
 
         var sourceDtos = clientDtos
             .GroupBy(e => e.SourceName)
             .Select(group =>
             {
                 var groupClientIds = group.Select(e => e.ClientId).ToHashSet();
+                var currentPeriodActiveCount = currentActiveClientIds.Count(groupClientIds.Contains);
                 var previousActiveCount = previousActiveClientIds.Count(groupClientIds.Contains);
                 var retainedCount = currentActiveClientIds.Count(clientId => groupClientIds.Contains(clientId) && previousActiveClientIds.Contains(clientId));
                 var newClientsCount = group.Count(e => e.IsNew);
                 var lostCount = group.Count(e => e.IsLost);
                 var lifetimeValueClients = group.Where(e => e.LifetimeValue > 0m).ToList();
+                var historicalGroupClientsCount = group.Count(e => e.LastAppointmentAtUtc is not null);
 
                 return new ClientSourceAnalyticsDto
                 {
                     SourceName = group.Key,
-                    ActiveClientsCount = group.Count(),
+                    ClientsCount = group.Count(),
+                    ActiveClientsCount = currentPeriodActiveCount,
                     PreviousPeriodActiveClientsCount = previousActiveCount,
                     RetainedClientsCount = retainedCount,
                     RetentionRate = previousActiveCount == 0 ? null : retainedCount / (decimal)previousActiveCount * 100m,
                     NewClientsCount = newClientsCount,
                     NewClientsShare = group.Count() == 0 ? null : newClientsCount / (decimal)group.Count() * 100m,
                     LostClientsCount = lostCount,
-                    LostShare = group.Count() == 0 ? null : lostCount / (decimal)group.Count() * 100m,
+                    LostShare = historicalGroupClientsCount == 0 ? null : lostCount / (decimal)historicalGroupClientsCount * 100m,
                     Revenue = group.Sum(e => e.LifetimeValue),
                     AverageLifetimeValue = lifetimeValueClients.Count == 0 ? null : lifetimeValueClients.Average(e => e.LifetimeValue)
                 };
             })
             .OrderByDescending(e => e.Revenue)
-            .ThenByDescending(e => e.ActiveClientsCount)
+            .ThenByDescending(e => e.ClientsCount)
             .ThenBy(e => e.SourceName)
             .ToList();
 
         var retainedClientsCount = previousActiveClientIds.Count(currentActiveClientIds.Contains);
         var lifetimeValueClientsAll = clientDtos.Where(e => e.LifetimeValue > 0m).ToList();
-        var historicalClients = clientDtos.Where(e => e.LastAppointmentAtUtc is not null).ToList();
+        var returnedClientsCount = clientDtos.Count(e => e.IsReturned);
 
         return TypedResults.Ok(new GetClientAnalyticsResponse
         {
@@ -243,13 +291,20 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             EndDate = rangeEndLocal,
             PreviousPeriodStartDate = previousRangeStartLocal,
             PreviousPeriodEndDate = previousRangeEndLocal,
+            TotalClientsCount = clientDtos.Count,
+            ActiveNowClientsCount = activeNowClientIds.Count,
+            InactiveClientsCount = clientDtos.Count - activeNowClientIds.Count,
             ActiveClientsCount = currentActiveClientIds.Count,
             PreviousPeriodActiveClientsCount = previousActiveClientIds.Count,
             RetainedClientsCount = retainedClientsCount,
             RetentionRate = previousActiveClientIds.Count == 0 ? null : retainedClientsCount / (decimal)previousActiveClientIds.Count * 100m,
             NewClientsCount = clientDtos.Count(e => e.IsNew),
+            ReturnedClientsCount = returnedClientsCount,
+            ReturningClientsShare = clientsWithAnyAppointmentInPeriodCount == 0 ? null : returnedClientsCount / (decimal)clientsWithAnyAppointmentInPeriodCount * 100m,
             LostClientsCount = clientDtos.Count(e => e.IsLost),
+            LostShare = historicalClients.Count == 0 ? null : clientDtos.Count(e => e.IsLost) / (decimal)historicalClients.Count * 100m,
             AtRiskClientsCount = clientDtos.Count(e => e.IsAtRisk),
+            AverageIntervalDays = allAppointmentIntervalsDays.Count == 0 ? null : allAppointmentIntervalsDays.Average(),
             AverageLifetimeValue = lifetimeValueClientsAll.Count == 0 ? null : lifetimeValueClientsAll.Average(e => e.LifetimeValue),
             AverageClientLifetimeDays = historicalClients.Count == 0
                 ? null
@@ -259,8 +314,79 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             SingleTimeClientsCount = clientDtos.Count(e => e.IsSingleTime),
             DebtorsCount = clientDtos.Count(e => e.IsDebtor),
             Sources = sourceDtos,
-            Clients = clientDtos
+            Clients = clientDtos,
+            RfmClients = rfmClients
         });
+    }
+
+    private static List<ClientRfmAnalyticsDto> BuildRfmClients(
+        IReadOnlyList<ClientAnalyticsDto> clientDtos,
+        IReadOnlyDictionary<Ulid, List<AppointmentRow>> historicalAppointmentsByClient,
+        IReadOnlyDictionary<Ulid, List<ServicePriceRow>> priceLookup,
+        TimeZoneInfo timezone,
+        DateTime rangeStartUtc,
+        DateTime rangeEndExclusiveUtc,
+        DateTime rangeEndLocal)
+    {
+        var rows = clientDtos
+            .Select(client =>
+            {
+                var appointments = historicalAppointmentsByClient.GetValueOrDefault(client.ClientId, []);
+                var completedAppointmentsInPeriod = appointments.Count(e =>
+                    e.Status == AppointmentStatus.Completed
+                    && e.StartDateUtc >= rangeStartUtc
+                    && e.StartDateUtc < rangeEndExclusiveUtc);
+                var revenueAppointmentsInPeriod = appointments.Where(e =>
+                    (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
+                    && e.StartDateUtc >= rangeStartUtc
+                    && e.StartDateUtc < rangeEndExclusiveUtc);
+                var monetary = revenueAppointmentsInPeriod.Sum(e => ResolveAppointmentPrice(e.ServiceId, e.StartDateUtc, priceLookup));
+                var recencyDays = client.LastAppointmentAtUtc is null
+                    ? (int?)null
+                    : (int?)(rangeEndLocal - TimeZoneInfo.ConvertTimeFromUtc(client.LastAppointmentAtUtc.Value, timezone).Date).TotalDays;
+
+                return new ClientRfmRow
+                {
+                    ClientId = client.ClientId,
+                    ClientDisplayName = client.ClientDisplayName,
+                    SourceName = client.SourceName,
+                    RecencyDays = recencyDays,
+                    Frequency = completedAppointmentsInPeriod,
+                    Monetary = monetary
+                };
+            })
+            .ToList();
+
+        var recencyScores = BuildBucketScores(rows.Where(e => e.RecencyDays is not null).OrderBy(e => e.RecencyDays).Select(e => e.ClientId).ToList(), reverse: true);
+        var frequencyScores = BuildBucketScores(rows.OrderByDescending(e => e.Frequency).ThenBy(e => e.ClientId).Select(e => e.ClientId).ToList(), reverse: true);
+        var monetaryScores = BuildBucketScores(rows.OrderByDescending(e => e.Monetary).ThenBy(e => e.ClientId).Select(e => e.ClientId).ToList(), reverse: true);
+
+        return rows
+            .Select(row =>
+            {
+                var recencyScore = row.RecencyDays is null ? 1 : recencyScores.GetValueOrDefault(row.ClientId, 1);
+                var frequencyScore = row.Frequency == 0 ? 1 : frequencyScores.GetValueOrDefault(row.ClientId, 1);
+                var monetaryScore = row.Monetary == 0m ? 1 : monetaryScores.GetValueOrDefault(row.ClientId, 1);
+
+                return new ClientRfmAnalyticsDto
+                {
+                    ClientId = row.ClientId,
+                    ClientDisplayName = row.ClientDisplayName,
+                    SourceName = row.SourceName,
+                    RecencyDays = row.RecencyDays,
+                    Frequency = row.Frequency,
+                    Monetary = row.Monetary,
+                    RecencyScore = recencyScore,
+                    FrequencyScore = frequencyScore,
+                    MonetaryScore = monetaryScore,
+                    RfmScore = $"{recencyScore}{frequencyScore}{monetaryScore}",
+                    Segment = ResolveRfmSegment(recencyScore, frequencyScore, monetaryScore, row.RecencyDays)
+                };
+            })
+            .OrderByDescending(e => e.RecencyScore + e.FrequencyScore + e.MonetaryScore)
+            .ThenByDescending(e => e.Monetary)
+            .ThenBy(e => e.ClientDisplayName)
+            .ToList();
     }
 
     private static HashSet<Ulid> BuildVipClientIds(
@@ -308,6 +434,72 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         return intervals.Count == 0 ? null : intervals.Average();
     }
 
+    private static IEnumerable<decimal> EnumerateIntervals(IReadOnlyList<DateTime> appointmentDatesLocal)
+    {
+        if (appointmentDatesLocal.Count < 2)
+        {
+            yield break;
+        }
+
+        for (var i = 1; i < appointmentDatesLocal.Count; i++)
+        {
+            yield return (decimal)(appointmentDatesLocal[i] - appointmentDatesLocal[i - 1]).TotalDays;
+        }
+    }
+
+    private static Dictionary<Ulid, int> BuildBucketScores(IReadOnlyList<Ulid> orderedClientIds, bool reverse)
+    {
+        if (orderedClientIds.Count == 0)
+        {
+            return [];
+        }
+
+        var scores = new Dictionary<Ulid, int>(orderedClientIds.Count);
+        for (var i = 0; i < orderedClientIds.Count; i++)
+        {
+            var bucket = (int)Math.Floor(i * RfmScoreBuckets / (decimal)orderedClientIds.Count) + 1;
+            var normalizedBucket = Math.Clamp(bucket, 1, RfmScoreBuckets);
+            scores[orderedClientIds[i]] = reverse ? RfmScoreBuckets - normalizedBucket + 1 : normalizedBucket;
+        }
+
+        return scores;
+    }
+
+    private static string ResolveRfmSegment(int recencyScore, int frequencyScore, int monetaryScore, int? recencyDays)
+    {
+        if (recencyDays is null)
+        {
+            return "Низкая ценность";
+        }
+
+        if (recencyScore >= 4 && frequencyScore >= 4 && monetaryScore >= 4)
+        {
+            return "Лучшие";
+        }
+
+        if (frequencyScore >= 4 && monetaryScore >= 3)
+        {
+            return "Лояльные";
+        }
+
+        if (recencyScore >= 4 && (frequencyScore >= 2 || monetaryScore >= 2))
+        {
+            return "Перспективные";
+        }
+
+        if (recencyScore <= 2 && (frequencyScore >= 3 || monetaryScore >= 3))
+        {
+            return "Под риском";
+        }
+
+        if (recencyScore == 1 && frequencyScore <= 2 && monetaryScore <= 2)
+        {
+            return "Потерянные";
+        }
+
+        return "Низкая ценность";
+    }
+
     private static decimal ResolveAppointmentPrice(
         Ulid serviceId,
         DateTime appointmentStartDateUtc,
@@ -346,5 +538,22 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         public required Ulid ServiceId { get; set; }
         public required DateTime EffectiveDate { get; set; }
         public required decimal Price { get; set; }
+    }
+
+    private sealed class PaymentRow
+    {
+        public required Ulid ClientId { get; set; }
+        public required decimal Amount { get; set; }
+        public required DateTime DateUtc { get; set; }
+    }
+
+    private sealed class ClientRfmRow
+    {
+        public required Ulid ClientId { get; set; }
+        public required string ClientDisplayName { get; set; }
+        public required string SourceName { get; set; }
+        public int? RecencyDays { get; set; }
+        public required int Frequency { get; set; }
+        public required decimal Monetary { get; set; }
     }
 }

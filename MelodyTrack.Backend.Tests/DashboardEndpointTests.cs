@@ -752,7 +752,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
         res.UnpaidAppointmentsCount.ShouldBe(1);
-        res.DebtorsCount.ShouldBe(1);
+        res.DebtorsCount.ShouldBe(4);
         res.TotalDebt.ShouldBe(50m);
         res.AveragePaymentDelayDays.ShouldBe(5.5m);
         res.MedianPaymentDelayDays.ShouldBe(5.5m);
@@ -1073,17 +1073,24 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
+        res.TotalClientsCount.ShouldBe(4);
+        res.ActiveNowClientsCount.ShouldBe(1);
+        res.InactiveClientsCount.ShouldBe(3);
         res.ActiveClientsCount.ShouldBe(3);
         res.PreviousPeriodActiveClientsCount.ShouldBe(2);
         res.RetainedClientsCount.ShouldBe(2);
         res.RetentionRate.ShouldBe(100m);
+        res.ReturnedClientsCount.ShouldBe(3);
+        res.ReturningClientsShare.ShouldBe(100m);
         res.LostClientsCount.ShouldBe(1);
+        res.LostShare.ShouldBe(25m);
         res.AtRiskClientsCount.ShouldBe(1);
+        res.AverageIntervalDays.ShouldBe(12.5m);
         res.AverageLifetimeValue.ShouldBe(250m);
         res.VipClientsCount.ShouldBe(1);
         res.RegularClientsCount.ShouldBe(1);
         res.SingleTimeClientsCount.ShouldBe(1);
-        res.DebtorsCount.ShouldBe(1);
+        res.DebtorsCount.ShouldBe(4);
 
         var debtorClient = res.Clients.Single(e => e.ClientDisplayName == "Petrova Anna");
         debtorClient.Debt.ShouldBe(100m);
@@ -1092,20 +1099,34 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         var lostClient = res.Clients.Single(e => e.ClientDisplayName == "Sidorova Maria");
         lostClient.IsLost.ShouldBeTrue();
         lostClient.IsSingleTime.ShouldBeTrue();
+        lostClient.IsReturned.ShouldBeFalse();
 
         var vipClient = res.Clients.Single(e => e.ClientDisplayName == "Ivanova Olga");
         vipClient.IsVip.ShouldBeTrue();
         vipClient.IsRegular.ShouldBeTrue();
+        vipClient.IsReturned.ShouldBeTrue();
 
         var atRiskClient = res.Clients.Single(e => e.ClientDisplayName == "Smirnova Elena");
         atRiskClient.IsAtRisk.ShouldBeTrue();
+        atRiskClient.IsReturned.ShouldBeTrue();
 
         var adsSource = res.Sources.Single(e => e.SourceName == "Ads");
+        adsSource.ClientsCount.ShouldBe(2);
         adsSource.ActiveClientsCount.ShouldBe(2);
         adsSource.RetentionRate.ShouldBe(100m);
 
         var referralSource = res.Sources.Single(e => e.SourceName == "Referral");
-        referralSource.ActiveClientsCount.ShouldBe(2);
+        referralSource.ClientsCount.ShouldBe(2);
+        referralSource.ActiveClientsCount.ShouldBe(1);
         referralSource.LostClientsCount.ShouldBe(1);
+        referralSource.LostShare.ShouldBe(50m);
+
+        var vipRfmClient = res.RfmClients.Single(e => e.ClientDisplayName == "Ivanova Olga");
+        vipRfmClient.Frequency.ShouldBe(4);
+        vipRfmClient.Monetary.ShouldBe(400m);
+        vipRfmClient.FrequencyScore.ShouldBe(5);
+        vipRfmClient.MonetaryScore.ShouldBe(5);
+        vipRfmClient.RfmScore.Length.ShouldBe(3);
+        vipRfmClient.Segment.ShouldNotBeNullOrWhiteSpace();
     }
 }
