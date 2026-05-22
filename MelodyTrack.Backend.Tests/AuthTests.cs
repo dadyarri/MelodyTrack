@@ -2212,7 +2212,10 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         sessionsRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         sessionsRes.ShouldNotBeNull();
-        sessionsRes.Data.Count.ShouldBeGreaterThanOrEqualTo(2, "Should have at least 2 sessions");
+        // Active sessions are now deduplicated by device info, so repeated logins from the same test client
+        // collapse into a single visible session entry.
+        sessionsRes.Data.Count.ShouldBe(1);
+        sessionsRes.Data[0].DeviceInfo.ShouldNotBeNullOrWhiteSpace();
 
         // Step 10: Logout from one session
         var (logoutRsp, _) = await App.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest

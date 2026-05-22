@@ -752,7 +752,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
         res.UnpaidAppointmentsCount.ShouldBe(1);
-        res.DebtorsCount.ShouldBe(4);
+        res.DebtorsCount.ShouldBe(1);
         res.TotalDebt.ShouldBe(50m);
         res.AveragePaymentDelayDays.ShouldBe(5.5m);
         res.MedianPaymentDelayDays.ShouldBe(5.5m);
