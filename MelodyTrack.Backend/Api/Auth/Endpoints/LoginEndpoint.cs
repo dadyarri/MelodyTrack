@@ -60,13 +60,18 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         }
 
         var refreshToken = UserUtils.GenerateRandomString(14);
+        var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+
+        await db.Sessions
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow && e.DeviceInfo == deviceInfo)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
 
         var session = new Session
         {
             Id = Ulid.NewUlid(),
             User = user,
             RefreshToken = refreshToken,
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
+            DeviceInfo = deviceInfo,
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 

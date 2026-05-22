@@ -40,6 +40,7 @@ public class User : BaseModel
     /// </summary>
     public DateTime? LockedUntil { get; set; }
 
+    public UserOnboardingState? OnboardingState { get; set; }
     public List<UserWorkingHoursDay> WorkingHours { get; set; } = [];
     public List<UserVacation> Vacations { get; set; } = [];
 }

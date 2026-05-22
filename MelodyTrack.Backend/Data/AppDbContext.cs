@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<ClientSource> ClientSources { get; set; }
     public DbSet<UserWorkingHoursDay> UserWorkingHoursDays { get; set; }
     public DbSet<UserVacation> UserVacations { get; set; }
+    public DbSet<UserOnboardingState> UserOnboardingStates { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RequestReplay> RequestReplays { get; set; }
 
@@ -110,5 +111,15 @@ public class AppDbContext : DbContext
             .WithMany(e => e.Vacations)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserOnboardingState>()
+            .HasOne(e => e.User)
+            .WithOne(e => e.OnboardingState)
+            .HasForeignKey<UserOnboardingState>(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<UserOnboardingState>()
+            .HasIndex(e => e.UserId)
+            .IsUnique();
     }
 }

@@ -43,6 +43,11 @@ public class GetSessionsEndpoint(AppDbContext db)
             .ToListAsync(ct);
 
         var data = sessions
+            .GroupBy(e => string.IsNullOrWhiteSpace(e.DeviceInfo) ? "Неизвестное устройство" : e.DeviceInfo.Trim())
+            .Select(group => group
+                .OrderByDescending(session => session.Id)
+                .First())
+            .OrderByDescending(e => e.Id)
             .Select(e => new SessionDto
             {
                 Id = e.Id,

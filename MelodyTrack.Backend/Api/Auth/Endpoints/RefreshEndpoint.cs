@@ -61,13 +61,18 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         var refreshToken = UserUtils.GenerateRandomString(14);
+        var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+
+        await db.Sessions
+            .Where(e => e.User.Id == session.User.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow && e.DeviceInfo == deviceInfo)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
 
         var newSession = new Session
         {
             Id = Ulid.NewUlid(),
             User = session.User,
             RefreshToken = refreshToken,
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
+            DeviceInfo = deviceInfo,
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };
 
