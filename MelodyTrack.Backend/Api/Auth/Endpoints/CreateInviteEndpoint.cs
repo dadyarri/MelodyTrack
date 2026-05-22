@@ -23,6 +23,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
+        var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim();
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
@@ -66,7 +67,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
             Id = Ulid.NewUlid(),
             Code = code,
             Role = role,
-            Email = req.Email,
+            Email = inviteEmail,
             ValidUntil = DateTime.UtcNow.AddDays(2)
         };
 
@@ -81,7 +82,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         Logger.LogInformation(
             "auth.invite_created actor {ActorEmail} target {Email} role {Role} url {Url}",
             caller.Email,
-            req.Email,
+            inviteEmail,
             role.RoleName,
             inviteUrl);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
@@ -90,7 +91,9 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
             Action = "invite_created",
             EntityType = "invite",
             EntityId = invite.Id.ToString(),
-            Details = $"Приглашение для {req.Email} с ролью {role.DisplayName}"
+            Details = inviteEmail is null
+                ? $"Приглашение без привязки к email с ролью {role.DisplayName}"
+                : $"Приглашение для {inviteEmail} с ролью {role.DisplayName}"
         }, ct);
         return TypedResults.Created("/auth/invite", response);
     }

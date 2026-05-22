@@ -21,7 +21,6 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
 
         if (login is null)
         {
-            AddError(_ => login, "Пользователь не авторизован");
             return TypedResults.Unauthorized();
         }
 
@@ -32,7 +31,6 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
 
         if (user is null || !user.Role.RoleName.IsAnyAdmin())
         {
-            AddError(_ => login, "Нет доступа");
             return TypedResults.Forbid();
         }
 

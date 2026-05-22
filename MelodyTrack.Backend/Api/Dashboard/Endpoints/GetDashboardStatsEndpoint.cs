@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
@@ -21,6 +22,23 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         GetDashboardStatsRequest req,
         CancellationToken ct)
     {
+        var email = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+
+        if (email is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        var currentUser = await db.Users
+            .AsNoTracking()
+            .Include(user => user.Role)
+            .FirstOrDefaultAsync(user => user.Email == email, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
         TimeZoneInfo timezone;
         try
         {
@@ -52,23 +70,28 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
 
         await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(monthStartUtc, materializationEndUtc, ct);
 
-        var appointmentsToday = await db.Appointments
+        var appointmentsQuery = db.Appointments
+            .AsNoTracking()
+            .Where(appointment => appointment.Status == AppointmentStatus.Planned && !appointment.IsDeleted);
+
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
+        {
+            appointmentsQuery = appointmentsQuery.Where(appointment => appointment.Provider != null && appointment.Provider.Id == currentUser.Id);
+        }
+
+        var appointmentsToday = await appointmentsQuery
             .AsNoTracking()
             .CountAsync(e => e.StartDate >= todayStartUtc
-                             && e.StartDate < tomorrowStartUtc
-                             && e.Status == AppointmentStatus.Planned
-                             && !e.IsDeleted, ct);
+                             && e.StartDate < tomorrowStartUtc, ct);
 
         var totalClients = await db.Clients
             .AsNoTracking()
             .CountAsync(ct);
 
-        var appointmentsTomorrow = await db.Appointments
-            .AsNoTracking()
+        var appointmentsTomorrow = await appointmentsQuery
             .CountAsync(e => e.StartDate >= tomorrowStartUtc
                              && e.StartDate < dayAfterTomorrowStartUtc
-                             && e.Status == AppointmentStatus.Planned
-                             && !e.IsDeleted, ct);
+                             && e.EndDate > DateTime.UtcNow, ct);
 
         var incomeAppointmentsThisMonth = await db.Appointments
             .AsNoTracking()
