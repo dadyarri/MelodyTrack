@@ -36,6 +36,7 @@ public static class TestDataFactory
             Id = Ulid.NewUlid(),
             FirstName = firstName,
             LastName = lastName,
+            CreatedAtUtc = DateTime.UtcNow,
             Contacts = new ClientContacts
             {
                 Id = Ulid.NewUlid()

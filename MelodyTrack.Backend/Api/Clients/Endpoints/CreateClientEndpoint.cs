@@ -66,6 +66,7 @@ public class
                 LastName = req.LastName,
                 Patronymic = req.Patronymic,
                 Source = source,
+                CreatedAtUtc = DateTime.UtcNow,
                 Contacts = new ClientContacts
                 {
                     Id = Ulid.NewUlid(),

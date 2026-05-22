@@ -855,4 +855,257 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.Clients[0].AveragePaymentDelayDays.ShouldBe(0m);
         res.Services[0].AveragePaymentDelayDays.ShouldBe(0m);
     }
+
+    [Fact]
+    public async Task GetClientAnalytics_ReturnsRetentionSegmentsAndSourceBreakdown()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var sourceAds = new ClientSource
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Ads"
+        };
+        var sourceReferral = new ClientSource
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Referral"
+        };
+
+        var clientRetainedDebtor = new Client
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Anna",
+            LastName = "Petrova",
+            CreatedAtUtc = DateTime.UtcNow,
+            Source = sourceAds,
+            Contacts = new ClientContacts
+            {
+                Id = Ulid.NewUlid()
+            }
+        };
+        var clientLostSingle = new Client
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Maria",
+            LastName = "Sidorova",
+            Source = sourceReferral,
+            CreatedAtUtc = DateTime.UtcNow,
+            Contacts = new ClientContacts
+            {
+                Id = Ulid.NewUlid()
+            }
+        };
+        var clientVipRegular = new Client
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Olga",
+            LastName = "Ivanova",
+            Source = sourceReferral,
+            CreatedAtUtc = DateTime.UtcNow,
+            Contacts = new ClientContacts
+            {
+                Id = Ulid.NewUlid()
+            }
+        };
+        var clientAtRisk = new Client
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Elena",
+            LastName = "Smirnova",
+            Source = sourceAds,
+            CreatedAtUtc = DateTime.UtcNow,
+            Contacts = new ClientContacts
+            {
+                Id = Ulid.NewUlid()
+            }
+        };
+
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+
+        await db.ClientSources.AddRangeAsync([sourceAds, sourceReferral], TestContext.Current.CancellationToken);
+        await db.Clients.AddRangeAsync([clientRetainedDebtor, clientLostSingle, clientVipRegular, clientAtRisk], TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = new DateTime(2026, 01, 01, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientRetainedDebtor,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 04, 10, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 04, 10, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientRetainedDebtor,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 10, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientRetainedDebtor,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 24, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 24, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientLostSingle,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 01, 01, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 01, 01, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientVipRegular,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 01, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 01, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientVipRegular,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 08, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 08, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientVipRegular,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 15, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 15, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientVipRegular,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 22, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 22, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientAtRisk,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 04, 25, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 04, 25, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = clientAtRisk,
+                    Service = service,
+                    Provider = teacher,
+                    StartDate = new DateTime(2026, 05, 05, 10, 0, 0, DateTimeKind.Utc),
+                    EndDate = new DateTime(2026, 05, 05, 11, 0, 0, DateTimeKind.Utc),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Payments.AddAsync(new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Client = clientRetainedDebtor,
+            Amount = 200m,
+            Date = new DateTime(2026, 05, 30, 12, 0, 0, DateTimeKind.Utc),
+            Description = "Partial payment"
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+
+        var (rsp, res) = await App.Client.GETAsync<GetClientAnalyticsEndpoint, GetClientAnalyticsRequest, GetClientAnalyticsResponse>(
+            new GetClientAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.ActiveClientsCount.ShouldBe(3);
+        res.PreviousPeriodActiveClientsCount.ShouldBe(2);
+        res.RetainedClientsCount.ShouldBe(2);
+        res.RetentionRate.ShouldBe(100m);
+        res.LostClientsCount.ShouldBe(1);
+        res.AtRiskClientsCount.ShouldBe(1);
+        res.AverageLifetimeValue.ShouldBe(250m);
+        res.VipClientsCount.ShouldBe(1);
+        res.RegularClientsCount.ShouldBe(1);
+        res.SingleTimeClientsCount.ShouldBe(1);
+        res.DebtorsCount.ShouldBe(1);
+
+        var debtorClient = res.Clients.Single(e => e.ClientDisplayName == "Petrova Anna");
+        debtorClient.Debt.ShouldBe(100m);
+        debtorClient.IsDebtor.ShouldBeTrue();
+
+        var lostClient = res.Clients.Single(e => e.ClientDisplayName == "Sidorova Maria");
+        lostClient.IsLost.ShouldBeTrue();
+        lostClient.IsSingleTime.ShouldBeTrue();
+
+        var vipClient = res.Clients.Single(e => e.ClientDisplayName == "Ivanova Olga");
+        vipClient.IsVip.ShouldBeTrue();
+        vipClient.IsRegular.ShouldBeTrue();
+
+        var atRiskClient = res.Clients.Single(e => e.ClientDisplayName == "Smirnova Elena");
+        atRiskClient.IsAtRisk.ShouldBeTrue();
+
+        var adsSource = res.Sources.Single(e => e.SourceName == "Ads");
+        adsSource.ActiveClientsCount.ShouldBe(2);
+        adsSource.RetentionRate.ShouldBe(100m);
+
+        var referralSource = res.Sources.Single(e => e.SourceName == "Referral");
+        referralSource.ActiveClientsCount.ShouldBe(2);
+        referralSource.LostClientsCount.ShouldBe(1);
+    }
 }

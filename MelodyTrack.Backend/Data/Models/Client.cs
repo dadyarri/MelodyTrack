@@ -17,5 +17,7 @@ public class Client : BaseModel
 
     public ClientSource? Source { get; set; }
 
+    public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+
     public required ClientContacts Contacts { get; set; } = new();
 }

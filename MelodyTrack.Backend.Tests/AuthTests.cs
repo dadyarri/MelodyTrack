@@ -2508,6 +2508,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             FirstName = "Анна",
             LastName = "Иванова",
             Patronymic = "Сергеевна",
+            CreatedAtUtc = DateTime.UtcNow,
             Contacts = new ClientContacts
             {
                 Id = Ulid.NewUlid(),
@@ -2823,6 +2824,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             Id = Ulid.NewUlid(),
             FirstName = "Nina",
             LastName = "Petrova",
+            CreatedAtUtc = DateTime.UtcNow,
             Contacts = new ClientContacts
             {
                 Id = Ulid.NewUlid()
