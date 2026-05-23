@@ -26,6 +26,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             .Include(e => e.Client)
             .Include(e => e.Provider)
             .Include(e => e.RecurringRule)
+            .ThenInclude(rule => rule!.RecurrenceType)
             .FirstOrDefaultAsync(ct);
 
         if (appointment is null)
@@ -64,6 +65,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         var startDateChanged = req.StartDate is not null && req.StartDate.Value != appointment.StartDate;
         var nextStartDate = req.StartDate ?? appointment.StartDate;
         var nextDuration = appointment.EndDate - appointment.StartDate;
+        var requestedScope = ParseScope(req.Scope);
 
         if (req.ClientId is not null)
         {
@@ -121,6 +123,21 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 AddError(r => r.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
                 return new ProblemDetails(ValidationFailures);
             }
+        }
+
+        if (appointment.RecurringRule is not null && startDateChanged && requestedScope != AppointmentUpdateScope.Single)
+        {
+            await RescheduleRecurringSeriesAsync(appointment, req.StartDate!.Value, requestedScope, ct);
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "schedule",
+                Action = requestedScope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
+                EntityType = "appointment",
+                EntityId = appointment.Id.ToString(),
+                Details = $"{appointment.Client.LastName} {appointment.Client.FirstName}, {appointment.Service.Name}, {req.StartDate:O}"
+            }, ct);
+
+            return TypedResults.NoContent();
         }
 
         if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged))
@@ -239,4 +256,125 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                && !recurrenceTypeChanged
                && !recurrencePatternChanged;
     }
+
+    private static AppointmentUpdateScope ParseScope(string? rawScope)
+    {
+        return rawScope?.Trim().ToLowerInvariant() switch
+        {
+            "this-and-following" => AppointmentUpdateScope.ThisAndFollowing,
+            "all" => AppointmentUpdateScope.All,
+            _ => AppointmentUpdateScope.Single
+        };
+    }
+
+    private async Task RescheduleRecurringSeriesAsync(
+        Appointment appointment,
+        DateTime nextStartDate,
+        AppointmentUpdateScope scope,
+        CancellationToken ct)
+    {
+        var recurringRule = appointment.RecurringRule!;
+        var delta = nextStartDate - appointment.StartDate;
+        var originalRuleEndDate = recurringRule.EndDate;
+
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+
+        if (scope == AppointmentUpdateScope.All || appointment.StartDate.Date <= recurringRule.StartDate.Date)
+        {
+            recurringRule.StartDate = recurringRule.StartDate.Add(delta);
+            recurringRule.EndDate = recurringRule.EndDate?.Add(delta);
+            recurringRule.RecurrencePattern = ShiftRecurrencePattern(recurringRule, delta, nextStartDate);
+
+            var recurringAppointments = await db.Appointments
+                .Where(item =>
+                    item.RecurringRule != null &&
+                    item.RecurringRule.Id == recurringRule.Id &&
+                    !item.IsDeleted)
+                .ToListAsync(ct);
+
+            foreach (var recurringAppointment in recurringAppointments)
+            {
+                recurringAppointment.StartDate = recurringAppointment.StartDate.Add(delta);
+                recurringAppointment.EndDate = recurringAppointment.EndDate.Add(delta);
+            }
+
+            await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
+            return;
+        }
+
+        await db.Appointments
+            .Where(item =>
+                item.RecurringRule != null &&
+                item.RecurringRule.Id == recurringRule.Id &&
+                item.StartDate >= appointment.StartDate &&
+                !item.IsDeleted)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(item => item.IsDeleted, true), ct);
+
+        recurringRule.EndDate = appointment.StartDate.Date.AddDays(-1);
+
+        var nextRule = new AppointmentRecurrenceRule
+        {
+            Id = Ulid.NewUlid(),
+            Client = appointment.Client,
+            Service = appointment.Service,
+            Provider = appointment.Provider,
+            StartDate = nextStartDate,
+            EndDate = originalRuleEndDate?.Add(delta),
+            RecurrenceType = recurringRule.RecurrenceType,
+            RecurrencePattern = ShiftRecurrencePattern(recurringRule, delta, nextStartDate)
+        };
+
+        await db.RecurrenceRules.AddAsync(nextRule, ct);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+    }
+
+    private static int? ShiftRecurrencePattern(AppointmentRecurrenceRule recurringRule, TimeSpan delta, DateTime nextStartDate)
+    {
+        return recurringRule.RecurrenceType.Type switch
+        {
+            AppointmentRecurrenceType.Daily => recurringRule.RecurrencePattern,
+            AppointmentRecurrenceType.Monthly => nextStartDate.Day,
+            AppointmentRecurrenceType.Weekly => ShiftWeeklyPattern(recurringRule.RecurrencePattern, delta.Days),
+            _ => recurringRule.RecurrencePattern
+        };
+    }
+
+    private static int? ShiftWeeklyPattern(int? currentPattern, int dayOffset)
+    {
+        if (currentPattern is null or 0)
+        {
+            return currentPattern;
+        }
+
+        var normalizedOffset = ((dayOffset % 7) + 7) % 7;
+        if (normalizedOffset == 0)
+        {
+            return currentPattern;
+        }
+
+        var shiftedPattern = 0;
+        for (var bitIndex = 0; bitIndex < 7; bitIndex++)
+        {
+            var currentFlag = 1 << bitIndex;
+            if ((currentPattern.Value & currentFlag) == 0)
+            {
+                continue;
+            }
+
+            var shiftedIndex = (bitIndex + normalizedOffset) % 7;
+            shiftedPattern |= 1 << shiftedIndex;
+        }
+
+        return shiftedPattern;
+    }
+}
+
+public enum AppointmentUpdateScope
+{
+    Single,
+    ThisAndFollowing,
+    All
 }
