@@ -1,4 +1,3 @@
-using Facet.Extensions;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
@@ -21,7 +20,16 @@ public class LookupServicesEndpoint(AppDbContext db)
         Logger.LogDebug("Fetching lookup list of all services");
         var services = await db.Services
             .AsNoTracking()
-            .SelectFacet<LookupServicesDto>()
+            .Select(service => new LookupServicesDto
+            {
+                Id = service.Id,
+                Name = service.Name,
+                Price = db.ServicePriceHistory
+                    .Where(price => price.Service.Id == service.Id)
+                    .OrderByDescending(price => price.EffectiveDate)
+                    .Select(price => (decimal?)price.Price)
+                    .FirstOrDefault() ?? 0m
+            })
             .OrderBy(e => e.Name)
             .ToListAsync(ct);
 

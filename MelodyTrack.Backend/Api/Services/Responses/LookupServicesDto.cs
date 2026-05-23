@@ -18,7 +18,7 @@ public class ServiceToLookupServicesDtoMapConfig(AppDbContext db)
     public async Task MapAsync(Service source, LookupServicesDto target, CancellationToken cancellationToken = default)
     {
         var latestPrice = await db.ServicePriceHistory
-            .Where(item => item.Service == source)
+            .Where(item => item.Service.Id == source.Id)
             .OrderByDescending(item => item.EffectiveDate)
             .FirstOrDefaultAsync(cancellationToken);
 

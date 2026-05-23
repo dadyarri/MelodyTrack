@@ -19,7 +19,7 @@ public class ServiceToServiceWithCurrentPriceDtoMapConfig(AppDbContext db)
         CancellationToken cancellationToken = default)
     {
         var latestPrice = await db.ServicePriceHistory
-            .Where(e => e.Service == source)
+            .Where(e => e.Service.Id == source.Id)
             .OrderByDescending(e => e.EffectiveDate)
             .Take(1)
             .FirstOrDefaultAsync(cancellationToken);
