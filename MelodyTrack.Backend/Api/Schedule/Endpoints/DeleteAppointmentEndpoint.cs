@@ -70,6 +70,8 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
             Category = "schedule",
             Action = scope switch
             {
+                AppointmentDeleteScope.WeekdayThisAndFollowing => "appointments_deleted_selected_weekday_this_and_following",
+                AppointmentDeleteScope.WeekdayAll => "appointments_deleted_selected_weekday_all",
                 AppointmentDeleteScope.ThisAndFollowing => "appointments_deleted_this_and_following",
                 AppointmentDeleteScope.All => "appointments_deleted_all",
                 _ => "appointment_deleted"
@@ -95,6 +97,8 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
             "single" => true,
             "this-and-following" => (scope = AppointmentDeleteScope.ThisAndFollowing) == AppointmentDeleteScope.ThisAndFollowing,
             "all" => (scope = AppointmentDeleteScope.All) == AppointmentDeleteScope.All,
+            "weekday-this-and-following" => (scope = AppointmentDeleteScope.WeekdayThisAndFollowing) == AppointmentDeleteScope.WeekdayThisAndFollowing,
+            "weekday-all" => (scope = AppointmentDeleteScope.WeekdayAll) == AppointmentDeleteScope.WeekdayAll,
             _ => false
         };
     }

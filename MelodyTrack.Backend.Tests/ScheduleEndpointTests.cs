@@ -8,8 +8,10 @@ using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -88,5 +90,48 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
         returnedAppointments[0].Id.ShouldBe(visibleAppointment.Id);
         returnedAppointments[0].Provider.ShouldNotBeNull();
         returnedAppointments[0].Provider!.Id.ShouldBe(currentUser.Id);
+    }
+
+    [Theory]
+    [InlineData("single")]
+    [InlineData("weekday-this-and-following")]
+    [InlineData("weekday-all")]
+    [InlineData("this-and-following")]
+    [InlineData("all")]
+    public async Task DeleteAppointment_AcceptsAllSupportedRecurringScopes(string scope)
+    {
+        await using var serviceScope = App.Services.CreateAsyncScope();
+        var db = serviceScope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var materializer = serviceScope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
+
+        var currentUser = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var rule = await TestDataFactory.CreateWeeklyRuleAsync(
+            db,
+            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc),
+            1 + 4,
+            "Artem",
+            "Volkov",
+            "Drums",
+            TestContext.Current.CancellationToken);
+
+        await materializer.EnsureAppointmentsGeneratedAsync(
+            new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc),
+            TestContext.Current.CancellationToken);
+
+        var occurrenceId = await db.Appointments
+            .Where(item =>
+                item.RecurringRule != null &&
+                item.RecurringRule.Id == rule.Id &&
+                item.StartDate == new DateTime(2025, 11, 26, 12, 0, 0, DateTimeKind.Utc))
+            .Select(item => item.Id)
+            .FirstAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(currentUser));
+
+        var response = await App.Client.DeleteAsync($"/appointments/{occurrenceId}?scope={scope}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
     }
 }

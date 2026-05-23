@@ -72,7 +72,11 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var updated = await db.Services.FirstAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+
+        var updated = await db.Services
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
         updated.Name.ShouldBe("New name");
         updated.Description.ShouldBe("Updated description");
     }
