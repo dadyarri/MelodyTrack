@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,9 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
 
+        var beforeName = service.Name;
+        var beforeDescription = service.Description;
+
         service.Name = req.Name;
         service.Description = req.Description;
 
@@ -36,7 +40,10 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             Action = "service_updated",
             EntityType = "service",
             EntityId = service.Id.ToString(),
-            Details = $"{service.Name}{(string.IsNullOrWhiteSpace(service.Description) ? "" : $", {service.Description}")}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeChange("Название", beforeName, service.Name),
+                AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, service.Description)
+            )
         }, ct);
 
         return TypedResults.NoContent();

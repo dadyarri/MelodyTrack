@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,6 +28,12 @@ public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditL
             return TypedResults.NotFound();
         }
 
+        var previousPrice = await db.ServicePriceHistory
+            .Where(item => item.Service.Id == service.Id)
+            .OrderByDescending(item => item.EffectiveDate)
+            .Select(item => (decimal?)item.Price)
+            .FirstOrDefaultAsync(ct);
+
         var price = new ServicePrice
         {
             Id = Ulid.NewUlid(),
@@ -43,7 +50,10 @@ public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditL
             Action = "service_price_updated",
             EntityType = "service",
             EntityId = service.Id.ToString(),
-            Details = $"{service.Name}, новая цена {req.Price}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeChange("Услуга", service.Name, service.Name),
+                AuditDetailsFormatter.DescribeChange("Цена", previousPrice?.ToString("0.##"), req.Price.ToString("0.##"))
+            )
         }, ct);
 
         return TypedResults.Ok(new CreateEntityResponse

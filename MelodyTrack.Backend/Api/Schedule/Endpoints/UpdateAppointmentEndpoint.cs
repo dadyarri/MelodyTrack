@@ -29,6 +29,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             .ThenInclude(rule => rule!.RecurrenceType)
             .FirstOrDefaultAsync(ct);
 
+        var beforeClientName = FormatClientDisplayName(appointment?.Client);
+        var beforeServiceName = appointment?.Service.Name;
+        var beforeProviderName = FormatProviderDisplayName(appointment?.Provider);
+        var beforeStartDate = appointment?.StartDate.ToString("O");
+        var beforeStatus = appointment?.Status.ToString();
+
         if (appointment is null)
         {
             AddError(r => r.Id, "Встреча не найдена");
@@ -134,7 +140,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Action = requestedScope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
-                Details = $"{appointment.Client.LastName} {appointment.Client.FirstName}, {appointment.Service.Name}, {req.StartDate:O}"
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(appointment.Client)),
+                    AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, appointment.Service.Name),
+                    AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(appointment.Provider)),
+                    AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, req.StartDate?.ToString("O"))
+                )
             }, ct);
 
             return TypedResults.NoContent();
@@ -165,7 +176,13 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Action = "recurring_appointment_detached_and_updated",
                 EntityType = "appointment",
                 EntityId = updatedAppointment.Id.ToString(),
-                Details = $"{updatedAppointment.Client.LastName} {updatedAppointment.Client.FirstName}, {updatedAppointment.Service.Name}, {updatedAppointment.StartDate:O}"
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(updatedAppointment.Client)),
+                    AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, updatedAppointment.Service.Name),
+                    AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(updatedAppointment.Provider)),
+                    AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, updatedAppointment.StartDate.ToString("O")),
+                    AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, updatedAppointment.Status.ToString())
+                )
             }, ct);
 
             return TypedResults.NoContent();
@@ -231,7 +248,13 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             Action = "appointment_updated",
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),
-            Details = $"{appointment.Client.LastName} {appointment.Client.FirstName}, {appointment.Service.Name}, {appointment.StartDate:O}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(appointment.Client)),
+                AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, appointment.Service.Name),
+                AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(appointment.Provider)),
+                AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, appointment.StartDate.ToString("O")),
+                AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, appointment.Status.ToString())
+            )
         }, ct);
 
         return TypedResults.NoContent();
@@ -369,6 +392,26 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         }
 
         return shiftedPattern;
+    }
+
+    private static string FormatClientDisplayName(Client? client)
+    {
+        if (client is null)
+        {
+            return "—";
+        }
+
+        return $"{client.LastName} {client.FirstName}".Trim();
+    }
+
+    private static string FormatProviderDisplayName(User? provider)
+    {
+        if (provider is null)
+        {
+            return "—";
+        }
+
+        return $"{provider.LastName} {provider.FirstName}".Trim();
     }
 }
 

@@ -34,6 +34,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         var client = await db.Clients
             .Where(e => e.Id == req.Id)
             .Include(client => client.Contacts)
+            .Include(client => client.Source)
             .FirstOrDefaultAsync(ct);
 
         if (client is null)
@@ -63,6 +64,14 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             return TypedResults.Conflict(conflict);
         }
 
+        var beforeFirstName = client.FirstName;
+        var beforeLastName = client.LastName;
+        var beforePatronymic = client.Patronymic;
+        var beforePhone = client.Contacts.Phone;
+        var beforeTelegram = client.Contacts.Telegram;
+        var beforeVk = client.Contacts.Vk;
+        var beforeSourceName = client.Source?.Name;
+
         if (req.FirstName != null)
         {
             client.FirstName = req.FirstName;
@@ -85,7 +94,15 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             Action = "client_updated",
             EntityType = "client",
             EntityId = client.Id.ToString(),
-            Details = $"{client.LastName} {client.FirstName}".Trim()
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeChange("Имя", beforeFirstName, client.FirstName),
+                AuditDetailsFormatter.DescribeChange("Фамилия", beforeLastName, client.LastName),
+                AuditDetailsFormatter.DescribeChange("Отчество", beforePatronymic, client.Patronymic),
+                AuditDetailsFormatter.DescribeChange("Телефон", beforePhone, client.Contacts.Phone),
+                AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
+                AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
+                AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name)
+            )
         }, ct);
 
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });

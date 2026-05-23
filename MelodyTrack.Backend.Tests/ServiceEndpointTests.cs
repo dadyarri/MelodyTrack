@@ -79,6 +79,54 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .FirstAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
         updated.Name.ShouldBe("New name");
         updated.Description.ShouldBe("Updated description");
+
+        var auditLog = await db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .FirstAsync(item => item.Action == "service_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
+        auditLog.Details.ShouldBe("Название: Old name -> New name; Описание: — -> Updated description");
+    }
+
+    [Fact]
+    public async Task UpdateServicePrice_WritesDetailedAuditLog()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Pricing", TestContext.Current.CancellationToken);
+
+        await db.ServicePriceHistory.AddAsync(
+            new ServicePrice
+            {
+                Id = Ulid.NewUlid(),
+                Service = service,
+                Price = 2500m,
+                EffectiveDate = DateTime.UtcNow.AddDays(-7)
+            },
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.PatchAsJsonAsync(
+            $"/services/{service.Id}/price",
+            new
+            {
+                id = service.Id,
+                price = 3200m
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        db.ChangeTracker.Clear();
+
+        var auditLog = await db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .FirstAsync(item => item.Action == "service_price_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
+        auditLog.Details.ShouldBe("Цена: 2500 -> 3200");
     }
 
     [Fact]
