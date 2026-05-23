@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,17 +11,29 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
-    : Ep.Req<GetRevenueAnalyticsRequest>.Res<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+    : Ep.Req<GetRevenueAnalyticsRequest>.Res<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/revenue");
     }
 
-    public override async Task<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
         GetRevenueAnalyticsRequest req,
         CancellationToken ct)
     {
+        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!DashboardAccess.CanViewDashboardAnalytics(currentUser))
+        {
+            return TypedResults.Forbid();
+        }
+
         TimeZoneInfo timezone;
         try
         {

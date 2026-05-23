@@ -142,12 +142,88 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task GetDashboardStats_ScheduleUser_OnlySeesOwnPlannedAppointments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var currentUser = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var otherUser = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var timezone = TimeZoneInfo.Utc;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = currentUser,
+                    StartDate = DateTime.SpecifyKind(today.AddHours(10), DateTimeKind.Utc),
+                    EndDate = DateTime.SpecifyKind(today.AddHours(11), DateTimeKind.Utc),
+                    Status = AppointmentStatus.Planned,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = client,
+                    Service = service,
+                    Provider = otherUser,
+                    StartDate = DateTime.SpecifyKind(today.AddHours(12), DateTimeKind.Utc),
+                    EndDate = DateTime.SpecifyKind(today.AddHours(13), DateTimeKind.Utc),
+                    Status = AppointmentStatus.Planned,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(currentUser));
+
+        var (rsp, res) = await App.Client.GETAsync<GetDashboardStatsEndpoint, GetDashboardStatsRequest, GetDashboardStatsResponse>(
+            new GetDashboardStatsRequest
+            {
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.AppointmentsToday.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetRevenueAnalytics_ScheduleUser_IsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, _) = await App.Client.GETAsync<GetRevenueAnalyticsEndpoint, GetRevenueAnalyticsRequest, GetRevenueAnalyticsResponse>(
+            new GetRevenueAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task GetRevenueAnalytics_ReturnsRevenuePlannedRevenueAndTeacherBreakdown()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
 
@@ -261,7 +337,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
@@ -310,7 +386,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var rentCategory = new ExpenseCategory
@@ -423,7 +499,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
 
@@ -592,7 +668,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
@@ -653,7 +729,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var vocalService = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var pianoService = await TestDataFactory.CreateServiceAsync(db, "Piano lesson", TestContext.Current.CancellationToken);
@@ -801,7 +877,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Maria", "Sidorova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Dance lesson", TestContext.Current.CancellationToken);
 
@@ -862,7 +938,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var sourceAds = new ClientSource
         {
             Id = Ulid.NewUlid(),

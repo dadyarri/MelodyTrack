@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,17 +10,29 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
-    : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+    : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/payments");
     }
 
-    public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
         GetPaymentsAnalyticsRequest req,
         CancellationToken ct)
     {
+        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!DashboardAccess.CanViewDashboardAnalytics(currentUser))
+        {
+            return TypedResults.Forbid();
+        }
+
         TimeZoneInfo timezone;
         try
         {

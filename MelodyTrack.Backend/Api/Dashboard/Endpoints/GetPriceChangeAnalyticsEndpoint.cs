@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,17 +11,29 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
-    : Ep.Req<GetPriceChangeAnalyticsRequest>.Res<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+    : Ep.Req<GetPriceChangeAnalyticsRequest>.Res<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/price-changes");
     }
 
-    public override async Task<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
         GetPriceChangeAnalyticsRequest req,
         CancellationToken ct)
     {
+        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!DashboardAccess.CanViewDashboardAnalytics(currentUser))
+        {
+            return TypedResults.Forbid();
+        }
+
         TimeZoneInfo timezone;
         try
         {

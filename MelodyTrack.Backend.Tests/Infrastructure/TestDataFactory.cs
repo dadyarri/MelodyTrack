@@ -7,6 +7,24 @@ namespace MelodyTrack.Backend.Tests.Infrastructure;
 
 public static class TestDataFactory
 {
+    public static async Task<User> CreateAdminUserAsync(AppDbContext db, CancellationToken cancellationToken)
+    {
+        var adminRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Admin, cancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Admin",
+            LastName = "Viewer",
+            Email = $"{Ulid.NewUlid()}@example.com",
+            Password = "hash",
+            Role = adminRole
+        };
+
+        await db.Users.AddAsync(user, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        return user;
+    }
+
     public static async Task<User> CreateAuthorizedScheduleUserAsync(AppDbContext db, CancellationToken cancellationToken)
     {
         var userRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.User, cancellationToken);

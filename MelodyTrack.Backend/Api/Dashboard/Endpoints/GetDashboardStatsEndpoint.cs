@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
@@ -6,7 +7,6 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
@@ -22,17 +22,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         GetDashboardStatsRequest req,
         CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .AsNoTracking()
-            .Include(user => user.Role)
-            .FirstOrDefaultAsync(user => user.Email == email, ct);
+        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
 
         if (currentUser is null)
         {
@@ -74,7 +64,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
             .AsNoTracking()
             .Where(appointment => appointment.Status == AppointmentStatus.Planned && !appointment.IsDeleted);
 
-        if (!currentUser.Role.RoleName.IsAnyAdmin())
+        if (DashboardAccess.IsProviderScoped(currentUser))
         {
             appointmentsQuery = appointmentsQuery.Where(appointment => appointment.Provider != null && appointment.Provider.Id == currentUser.Id);
         }
