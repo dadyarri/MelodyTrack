@@ -8,6 +8,7 @@ namespace MelodyTrack.Backend.Services;
 public interface IUserAvailabilityService
 {
     Task<UserAvailabilitySnapshot> GetAvailabilityAsync(Ulid userId, CancellationToken ct);
+    Task<IReadOnlyList<UserAvailabilitySnapshot>> GetAvailabilitiesAsync(IReadOnlyCollection<Ulid>? userIds, CancellationToken ct);
     Task<bool> IsAvailableAsync(Ulid userId, DateTime startUtc, DateTime endUtc, string timezoneId, CancellationToken ct);
 }
 
@@ -62,6 +63,68 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
             userId,
             workingHours.Count > 0 ? workingHours : GetDefaultWorkingHours(),
             vacations);
+    }
+
+    public async Task<IReadOnlyList<UserAvailabilitySnapshot>> GetAvailabilitiesAsync(IReadOnlyCollection<Ulid>? userIds, CancellationToken ct)
+    {
+        var usersQuery = db.Users.AsNoTracking();
+        if (userIds is { Count: > 0 })
+        {
+            usersQuery = usersQuery.Where(user => userIds.Contains(user.Id));
+        }
+
+        var userIdsList = await usersQuery
+            .OrderBy(user => user.LastName)
+            .ThenBy(user => user.FirstName)
+            .Select(user => user.Id)
+            .ToListAsync(ct);
+
+        if (userIdsList.Count == 0)
+        {
+            return [];
+        }
+
+        var workingHours = await db.UserWorkingHoursDays
+            .AsNoTracking()
+            .Where(item => userIdsList.Contains(item.UserId))
+            .OrderBy(item => item.UserId)
+            .ThenBy(item => item.DayOfWeek)
+            .Select(item => new
+            {
+                item.UserId,
+                Snapshot = new UserWorkingHoursDaySnapshot(
+                    item.DayOfWeek,
+                    item.IsWorkingDay,
+                    item.StartMinuteOfDay,
+                    item.EndMinuteOfDay)
+            })
+            .ToListAsync(ct);
+
+        var vacations = await db.UserVacations
+            .AsNoTracking()
+            .Where(item => userIdsList.Contains(item.UserId))
+            .OrderBy(item => item.UserId)
+            .ThenBy(item => item.StartDate)
+            .Select(item => new
+            {
+                item.UserId,
+                Snapshot = new UserVacationSnapshot(item.Id, item.StartDate, item.EndDate)
+            })
+            .ToListAsync(ct);
+
+        var workingHoursLookup = workingHours
+            .GroupBy(item => item.UserId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<UserWorkingHoursDaySnapshot>)group.Select(item => item.Snapshot).ToList());
+        var vacationsLookup = vacations
+            .GroupBy(item => item.UserId)
+            .ToDictionary(group => group.Key, group => (IReadOnlyList<UserVacationSnapshot>)group.Select(item => item.Snapshot).ToList());
+
+        return userIdsList
+            .Select(userId => new UserAvailabilitySnapshot(
+                userId,
+                workingHoursLookup.TryGetValue(userId, out var hours) && hours.Count > 0 ? hours : GetDefaultWorkingHours(),
+                vacationsLookup.GetValueOrDefault(userId, [])))
+            .ToList();
     }
 
     public async Task<bool> IsAvailableAsync(Ulid userId, DateTime startUtc, DateTime endUtc, string timezoneId, CancellationToken ct)
