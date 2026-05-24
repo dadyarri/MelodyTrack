@@ -111,7 +111,13 @@ public class GetExpensesAnalyticsEndpoint(AppDbContext db, IRecurringAppointment
             .ToDictionary(group => group.Key, group => group.OrderByDescending(e => e.EffectiveDate).ToList());
 
         var totalExpenses = expenses.Sum(e => e.Amount);
-        var totalRevenue = revenueAppointments.Sum(e => ResolveAppointmentPrice(e.ServiceId, e.StartDate, priceLookup));
+        var totalRevenue = revenueAppointments.Sum(e =>
+            DashboardPriceResolver.ResolveAppointmentPrice(
+                e.ServiceId,
+                e.StartDate,
+                priceLookup,
+                price => price.EffectiveDate,
+                price => price.Price));
 
         var categories = expenses
             .GroupBy(e => new
@@ -167,22 +173,6 @@ public class GetExpensesAnalyticsEndpoint(AppDbContext db, IRecurringAppointment
             Categories = categories,
             Dynamics = dynamics
         });
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDate,
-        IReadOnlyDictionary<Ulid, List<ServicePriceRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDate)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private static decimal? CalculateChangePercentFromPrevious(decimal? previousValue, decimal currentValue)

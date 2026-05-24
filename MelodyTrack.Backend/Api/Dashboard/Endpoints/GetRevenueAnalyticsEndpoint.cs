@@ -117,7 +117,12 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
             ProviderDisplayName = appointment.ProviderId is null
                 ? "Без преподавателя"
                 : $"{appointment.ProviderLastName} {appointment.ProviderFirstName}".Trim(),
-            Price = ResolveAppointmentPrice(appointment.ServiceId, appointment.StartDate, priceLookup),
+            Price = DashboardPriceResolver.ResolveAppointmentPrice(
+                appointment.ServiceId,
+                appointment.StartDate,
+                priceLookup,
+                price => price.EffectiveDate,
+                price => price.Price),
             LocalStartDate = TimeZoneInfo.ConvertTimeFromUtc(appointment.StartDate, timezone)
         }).ToList();
 
@@ -267,22 +272,6 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
                 .Take(5)
                 .ToList()
         });
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDate,
-        IReadOnlyDictionary<Ulid, List<RevenuePriceRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDate)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private static decimal? CalculateChangePercentFromPrevious(decimal? previousValue, decimal currentValue)

@@ -273,8 +273,20 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
             .Where(e => e.Status.CountsAsRevenue())
             .ToList();
 
-        var beforeRevenue = beforeRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
-        var afterRevenue = afterRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+        var beforeRevenue = beforeRevenueAppointments.Sum(appointment =>
+            DashboardPriceResolver.ResolveAppointmentPrice(
+                change.ServiceId,
+                appointment.StartDate,
+                priceLookup,
+                price => price.EffectiveDate,
+                price => price.Price));
+        var afterRevenue = afterRevenueAppointments.Sum(appointment =>
+            DashboardPriceResolver.ResolveAppointmentPrice(
+                change.ServiceId,
+                appointment.StartDate,
+                priceLookup,
+                price => price.EffectiveDate,
+                price => price.Price));
         var beforeExpenses = expenses
             .Where(e => e.Date >= beforeStart && e.Date < beforeEnd)
             .Sum(e => e.Amount);
@@ -300,8 +312,20 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
                     .ToList();
                 var teacherBeforeRevenueAppointments = teacherBefore.Where(e => e.Status.CountsAsRevenue()).ToList();
                 var teacherAfterRevenueAppointments = teacherAfter.Where(e => e.Status.CountsAsRevenue()).ToList();
-                var teacherBeforeRevenue = teacherBeforeRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
-                var teacherAfterRevenue = teacherAfterRevenueAppointments.Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                var teacherBeforeRevenue = teacherBeforeRevenueAppointments.Sum(appointment =>
+                    DashboardPriceResolver.ResolveAppointmentPrice(
+                        change.ServiceId,
+                        appointment.StartDate,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
+                var teacherAfterRevenue = teacherAfterRevenueAppointments.Sum(appointment =>
+                    DashboardPriceResolver.ResolveAppointmentPrice(
+                        change.ServiceId,
+                        appointment.StartDate,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
 
                 return new PriceChangeTeacherImpactDto
                 {
@@ -343,10 +367,20 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
                     .ToList();
                 var clientBeforeRevenue = clientBefore
                     .Where(e => e.Status.CountsAsRevenue())
-                    .Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                    .Sum(appointment => DashboardPriceResolver.ResolveAppointmentPrice(
+                        change.ServiceId,
+                        appointment.StartDate,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
                 var clientAfterRevenue = clientAfter
                     .Where(e => e.Status.CountsAsRevenue())
-                    .Sum(appointment => ResolveAppointmentPrice(change.ServiceId, appointment.StartDate, priceLookup));
+                    .Sum(appointment => DashboardPriceResolver.ResolveAppointmentPrice(
+                        change.ServiceId,
+                        appointment.StartDate,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
                 var continued = clientBefore.Count > 0 && clientAfter.Count > 0;
                 var stopped = clientBefore.Count > 0 && clientAfter.Count == 0;
                 var reducedFrequency = clientBefore.Count > 0 && clientAfter.Count > 0 && clientAfter.Count < clientBefore.Count;
@@ -488,23 +522,6 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
         return appointments.Count == 0
             ? null
             : appointments.Count(e => e.Status == status) / (decimal)appointments.Count * 100m;
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDate,
-        IReadOnlyDictionary<Ulid, List<PriceChangeRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDate)
-            .OrderByDescending(price => price.EffectiveDate)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private sealed class PriceChangeRow

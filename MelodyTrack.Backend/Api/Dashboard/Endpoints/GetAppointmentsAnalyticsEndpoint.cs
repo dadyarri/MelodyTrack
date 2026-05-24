@@ -125,7 +125,12 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
                     Status = appointment.Status,
                     DurationHours = Convert.ToDecimal((localEnd - localStart).TotalHours),
                     Price = appointment.Status.CountsAsRevenue()
-                        ? ResolveAppointmentPrice(appointment.ServiceId, appointment.StartDateUtc, priceLookup)
+                        ? DashboardPriceResolver.ResolveAppointmentPrice(
+                            appointment.ServiceId,
+                            appointment.StartDateUtc,
+                            priceLookup,
+                            price => price.EffectiveDate,
+                            price => price.Price)
                         : 0m
                 };
             })
@@ -546,22 +551,6 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
         where TKey : notnull
     {
         return buckets.TryGetValue(key, out var value) ? value : 0m;
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDateUtc,
-        IReadOnlyDictionary<Ulid, List<ServicePriceRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDateUtc)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private static bool IsOccupiedAppointment(AppointmentValue appointment)

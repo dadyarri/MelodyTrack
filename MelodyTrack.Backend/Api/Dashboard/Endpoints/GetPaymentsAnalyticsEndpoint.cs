@@ -123,8 +123,18 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
                 TeacherId = e.ProviderId,
                 TeacherDisplayName = e.ProviderId is null ? "Без преподавателя" : $"{e.ProviderLastName} {e.ProviderFirstName}".Trim(),
                 StartDate = e.StartDate,
-                Amount = ResolveAppointmentPrice(e.ServiceId, e.StartDate, priceLookup),
-                RemainingAmount = ResolveAppointmentPrice(e.ServiceId, e.StartDate, priceLookup)
+                Amount = DashboardPriceResolver.ResolveAppointmentPrice(
+                    e.ServiceId,
+                    e.StartDate,
+                    priceLookup,
+                    price => price.EffectiveDate,
+                    price => price.Price),
+                RemainingAmount = DashboardPriceResolver.ResolveAppointmentPrice(
+                    e.ServiceId,
+                    e.StartDate,
+                    priceLookup,
+                    price => price.EffectiveDate,
+                    price => price.Price)
             })
             .OrderBy(e => e.ClientId)
             .ThenBy(e => e.StartDate)
@@ -315,22 +325,6 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
         var paymentLocalDate = TimeZoneInfo.ConvertTimeFromUtc(paymentDateUtc, timezone).Date;
         var appointmentLocalDate = TimeZoneInfo.ConvertTimeFromUtc(appointmentStartDateUtc, timezone).Date;
         return Math.Max(0m, (decimal)(paymentLocalDate - appointmentLocalDate).TotalDays);
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDate,
-        IReadOnlyDictionary<Ulid, List<PriceRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDate)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private static decimal? CalculateAverage(List<decimal> values)

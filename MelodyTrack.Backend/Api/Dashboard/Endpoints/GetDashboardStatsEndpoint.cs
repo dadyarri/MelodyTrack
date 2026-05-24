@@ -106,13 +106,19 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
             })
             .ToListAsync(ct);
 
+        var priceLookup = servicePrices
+            .GroupBy(price => price.ServiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.OrderByDescending(price => price.EffectiveDate).ToList());
+
         var monthIncome = incomeAppointmentsThisMonth.Sum(appointment =>
-            servicePrices
-                .Where(price => price.ServiceId == appointment.ServiceId
-                                && price.EffectiveDate <= appointment.StartDate)
-                .OrderByDescending(price => price.EffectiveDate)
-                .Select(price => price.Price)
-                .FirstOrDefault());
+            DashboardPriceResolver.ResolveAppointmentPrice(
+                appointment.ServiceId,
+                appointment.StartDate,
+                priceLookup,
+                price => price.EffectiveDate,
+                price => price.Price));
 
         var monthExpenses = await db.Expenses
             .AsNoTracking()
@@ -129,24 +135,31 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
             })
             .ToListAsync(ct);
 
-        var serviceCostsByClient = await db.Appointments
+        var serviceCostAppointments = await db.Appointments
             .AsNoTracking()
             .Where(e => (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned) && !e.IsDeleted)
-            .Join(db.ServicePriceHistory,
-                appointment => appointment.Service.Id,
-                price => price.Service.Id,
-                (appointment, price) => new
-                {
-                    ClientId = appointment.Client.Id,
-                    price.Price
-                })
-            .GroupBy(e => e.ClientId)
             .Select(e => new
             {
-                ClientId = e.Key,
-                Amount = e.Sum(service => service.Price)
+                ClientId = e.Client.Id,
+                ServiceId = e.Service.Id,
+                e.StartDate
             })
             .ToListAsync(ct);
+
+        var serviceCostsByClient = serviceCostAppointments
+            .GroupBy(appointment => appointment.ClientId)
+            .Select(group => new
+            {
+                ClientId = group.Key,
+                Amount = group.Sum(appointment =>
+                    DashboardPriceResolver.ResolveAppointmentPrice(
+                        appointment.ServiceId,
+                        appointment.StartDate,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price))
+            })
+            .ToList();
 
         var payments = paymentsByClient.ToDictionary(e => e.ClientId, e => e.Amount);
         var serviceCosts = serviceCostsByClient.ToDictionary(e => e.ClientId, e => e.Amount);

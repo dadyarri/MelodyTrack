@@ -93,6 +93,54 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task GetDashboardStats_UsesEarliestKnownPrice_WhenAppointmentPredatesPriceHistory()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+
+        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var appointmentStart = monthStart.AddDays(2).AddHours(10);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 180m,
+            EffectiveDate = appointmentStart.AddDays(5)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = user,
+            StartDate = appointmentStart,
+            EndDate = appointmentStart.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await App.Client.GETAsync<GetDashboardStatsEndpoint, GetDashboardStatsRequest, GetDashboardStatsResponse>(
+            new GetDashboardStatsRequest
+            {
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.MonthIncome.ShouldBe(180m);
+    }
+
+    [Fact]
     public async Task GetDashboardStats_MaterializesRecurringAppointmentsForPlannedCounts()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -329,6 +377,58 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         res.Teachers[0].CompletedAppointmentsCount.ShouldBe(1);
         res.Teachers[0].BurnedAppointmentsCount.ShouldBe(1);
         res.Teachers[0].ServicesProvidedCount.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task GetRevenueAnalytics_UsesEarliestKnownPrice_WhenAppointmentPredatesPriceHistory()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var appointmentStart = new DateTime(2026, 05, 10, 10, 0, 0, DateTimeKind.Utc);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 175m,
+            EffectiveDate = appointmentStart.AddDays(7)
+        }, TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = admin,
+            StartDate = appointmentStart,
+            EndDate = appointmentStart.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var (rsp, res) = await App.Client.GETAsync<GetRevenueAnalyticsEndpoint, GetRevenueAnalyticsRequest, GetRevenueAnalyticsResponse>(
+            new GetRevenueAnalyticsRequest
+            {
+                Start = new DateTime(2026, 05, 01, 0, 0, 0, DateTimeKind.Utc),
+                End = new DateTime(2026, 05, 31, 0, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.TotalRevenue.ShouldBe(175m);
+        res.Teachers.Count.ShouldBe(1);
+        res.Teachers[0].Revenue.ShouldBe(175m);
+        res.Services.Count.ShouldBe(1);
+        res.Services[0].Revenue.ShouldBe(175m);
     }
 
     [Fact]

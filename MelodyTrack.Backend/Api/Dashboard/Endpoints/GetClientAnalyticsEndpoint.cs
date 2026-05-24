@@ -191,7 +191,13 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                     .Where(e => e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
                     .ToList();
                 var revenueCountedAppointmentsCount = revenueAppointments.Count;
-                var lifetimeValue = revenueAppointments.Sum(e => ResolveAppointmentPrice(e.ServiceId, e.StartDateUtc, priceLookup));
+                var lifetimeValue = revenueAppointments.Sum(e =>
+                    DashboardPriceResolver.ResolveAppointmentPrice(
+                        e.ServiceId,
+                        e.StartDateUtc,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
                 var firstAppointmentAtUtc = clientAppointments.FirstOrDefault()?.StartDateUtc;
                 var lastAppointmentAtUtc = clientAppointments.LastOrDefault()?.StartDateUtc;
                 var lifetimeDays = appointmentDatesLocal.Count == 0
@@ -353,7 +359,13 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                     (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
                     && e.StartDateUtc >= rangeStartUtc
                     && e.StartDateUtc < rangeEndExclusiveUtc);
-                var monetary = revenueAppointmentsInPeriod.Sum(e => ResolveAppointmentPrice(e.ServiceId, e.StartDateUtc, priceLookup));
+                var monetary = revenueAppointmentsInPeriod.Sum(e =>
+                    DashboardPriceResolver.ResolveAppointmentPrice(
+                        e.ServiceId,
+                        e.StartDateUtc,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price));
                 var recencyDays = client.LastAppointmentAtUtc is null
                     ? (int?)null
                     : (int?)(rangeEndLocal - TimeZoneInfo.ConvertTimeFromUtc(client.LastAppointmentAtUtc.Value, timezone).Date).TotalDays;
@@ -412,7 +424,12 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                 ClientId = group.Key,
                 LifetimeValue = group.Value
                     .Where(e => e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
-                    .Sum(e => ResolveAppointmentPrice(e.ServiceId, e.StartDateUtc, priceLookup))
+                    .Sum(e => DashboardPriceResolver.ResolveAppointmentPrice(
+                        e.ServiceId,
+                        e.StartDateUtc,
+                        priceLookup,
+                        price => price.EffectiveDate,
+                        price => price.Price))
             })
             .Where(e => e.LifetimeValue > 0m)
             .OrderByDescending(e => e.LifetimeValue)
@@ -511,22 +528,6 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         }
 
         return "Низкая ценность";
-    }
-
-    private static decimal ResolveAppointmentPrice(
-        Ulid serviceId,
-        DateTime appointmentStartDateUtc,
-        IReadOnlyDictionary<Ulid, List<ServicePriceRow>> priceLookup)
-    {
-        if (!priceLookup.TryGetValue(serviceId, out var prices))
-        {
-            return 0m;
-        }
-
-        return prices
-            .Where(price => price.EffectiveDate <= appointmentStartDateUtc)
-            .Select(price => price.Price)
-            .FirstOrDefault();
     }
 
     private sealed class ClientRow
