@@ -1,6 +1,10 @@
 on:
   push:
 
+concurrency:
+  group: backend-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
@@ -11,12 +15,18 @@ jobs:
         uses: actions/setup-dotnet@v5
         with:
           dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: |
+            global.json
+            MelodyTrack.slnx
+            MelodyTrack.Backend/*.csproj
+            MelodyTrack.Backend.Tests/*.csproj
       - name: Restore dependencies
-        run: dotnet restore
+        run: dotnet restore MelodyTrack.slnx
       - name: Build
-        run: dotnet build --no-restore -c Release
+        run: dotnet build MelodyTrack.slnx --no-restore -c Release
       - name: Run tests
-        run: dotnet test --no-build --no-restore -c Release --verbosity normal
+        run: dotnet test MelodyTrack.slnx --no-build --no-restore -c Release --verbosity normal
 
   push-to-docker:
     runs-on: ubuntu-latest
@@ -25,16 +35,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v5
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v5
-        with:
-          dotnet-version: "10.0.x"
-      - name: Build
-        run: |
-          dotnet restore
-          dotnet build --no-restore -c Release
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
       - name: Login to GitHub Container Registry
-        uses: docker/login-action@v3
+        uses: docker/login-action@v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -45,6 +49,8 @@ jobs:
           context: .
           file: MelodyTrack.Backend/Dockerfile
           push: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
           tags: |
             ghcr.io/${{ github.repository_owner }}/melody-track-backend:latest
             ghcr.io/${{ github.repository_owner }}/melody-track-backend:${{ github.sha }}
