@@ -141,6 +141,114 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
     }
 
     [Fact]
+    public async Task GetDashboardStats_SumsOnlyPositiveClientBalances()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var firstClient = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var secondClient = await TestDataFactory.CreateClientAsync(db, "Elena", "Sidorova", TestContext.Current.CancellationToken);
+        var thirdClient = await TestDataFactory.CreateClientAsync(db, "Maria", "Ivanova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+
+        var monthStart = new DateTime(DateTime.UtcNow.Year, DateTime.UtcNow.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = monthStart
+        }, TestContext.Current.CancellationToken);
+
+        await db.Payments.AddRangeAsync(
+            [
+                new Payment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = firstClient,
+                    Service = service,
+                    Amount = 250m,
+                    Date = monthStart.AddDays(1),
+                    Description = "Advance"
+                },
+                new Payment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = secondClient,
+                    Service = service,
+                    Amount = 50m,
+                    Date = monthStart.AddDays(1),
+                    Description = "Partial"
+                },
+                new Payment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = thirdClient,
+                    Service = service,
+                    Amount = 100m,
+                    Date = monthStart.AddDays(1),
+                    Description = "Exact"
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddRangeAsync(
+            [
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = firstClient,
+                    Service = service,
+                    Provider = user,
+                    StartDate = monthStart.AddDays(2).AddHours(10),
+                    EndDate = monthStart.AddDays(2).AddHours(11),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = secondClient,
+                    Service = service,
+                    Provider = user,
+                    StartDate = monthStart.AddDays(3).AddHours(10),
+                    EndDate = monthStart.AddDays(3).AddHours(11),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                },
+                new Appointment
+                {
+                    Id = Ulid.NewUlid(),
+                    Client = thirdClient,
+                    Service = service,
+                    Provider = user,
+                    StartDate = monthStart.AddDays(4).AddHours(10),
+                    EndDate = monthStart.AddDays(4).AddHours(11),
+                    Status = AppointmentStatus.Completed,
+                    IsDeleted = false
+                }
+            ],
+            TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await App.Client.GETAsync<GetDashboardStatsEndpoint, GetDashboardStatsRequest, GetDashboardStatsResponse>(
+            new GetDashboardStatsRequest
+            {
+                Timezone = "UTC"
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
+        res.TotalPositiveBalance.ShouldBe(150m);
+        res.TotalDebt.ShouldBe(50m);
+    }
+
+    [Fact]
     public async Task GetDashboardStats_MaterializesRecurringAppointmentsForPlannedCounts()
     {
         await using var scope = App.Services.CreateAsyncScope();

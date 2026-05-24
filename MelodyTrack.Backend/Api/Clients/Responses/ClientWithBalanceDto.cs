@@ -1,5 +1,6 @@
 using Facet;
 using Facet.Mapping;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -31,12 +32,39 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
             .Where(e => e.Client.Id == source.Id)
             .SumAsync(e => e.Amount, cancellationToken);
 
-        var totalServiceCost = await db.Appointments
+        var appointments = await db.Appointments
             .Where(e => e.Client.Id == source.Id
                         && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
                         && !e.IsDeleted)
-            .Join(db.ServicePriceHistory, s => s.Service.Id, p => p.Service.Id, (s, p) => p.Price)
-            .SumAsync(cancellationToken);
+            .Select(e => new
+            {
+                ServiceId = e.Service.Id,
+                e.StartDate
+            })
+            .ToListAsync(cancellationToken);
+
+        var serviceIds = appointments.Select(appointment => appointment.ServiceId).Distinct().ToList();
+        var priceLookup = await db.ServicePriceHistory
+            .Where(e => serviceIds.Contains(e.Service.Id))
+            .Select(e => new
+            {
+                ServiceId = e.Service.Id,
+                e.EffectiveDate,
+                e.Price
+            })
+            .ToListAsync(cancellationToken);
+
+        var groupedPriceLookup = priceLookup
+            .GroupBy(price => price.ServiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(price => new ServicePriceSnapshot(price.EffectiveDate, price.Price))
+                    .ToList());
+
+        var totalServiceCost = ClientBalanceCalculator.CalculateServiceCost(
+            appointments.Select(appointment => (appointment.ServiceId, appointment.StartDate)),
+            groupedPriceLookup);
 
         target.Balance = totalPayments - totalServiceCost;
         target.Telegram = source.Contacts.Telegram;

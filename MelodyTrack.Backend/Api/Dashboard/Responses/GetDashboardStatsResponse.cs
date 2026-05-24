@@ -5,6 +5,7 @@ public class GetDashboardStatsResponse
     public int TotalClients { get; set; }
     public int DebtorsCount { get; set; }
     public decimal TotalDebt { get; set; }
+    public decimal TotalPositiveBalance { get; set; }
     public int AppointmentsToday { get; set; }
     public int AppointmentsTomorrow { get; set; }
     public decimal MonthIncome { get; set; }

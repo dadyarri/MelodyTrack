@@ -1,5 +1,6 @@
 using ClosedXML.Excel;
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -36,24 +37,42 @@ public class ExportClientsInDebtEndpoint(AppDbContext db)
             })
             .ToDictionaryAsync(e => e.ClientId, e => e.TotalPayments, ct);
 
-        var totalServiceCostByClient = await db.Appointments
+        var serviceCostAppointments = await db.Appointments
             .AsNoTracking()
             .Where(e => (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned) && !e.IsDeleted)
-            .Join(db.ServicePriceHistory,
-                appointment => appointment.Service.Id,
-                price => price.Service.Id,
-                (appointment, price) => new
-                {
-                    ClientId = appointment.Client.Id,
-                    price.Price
-                })
-            .GroupBy(e => e.ClientId)
             .Select(e => new
             {
-                ClientId = e.Key,
-                TotalCost = e.Sum(item => item.Price)
+                ClientId = e.Client.Id,
+                ServiceId = e.Service.Id,
+                e.StartDate
             })
-            .ToDictionaryAsync(e => e.ClientId, e => e.TotalCost, ct);
+            .ToListAsync(ct);
+
+        var servicePrices = await db.ServicePriceHistory
+            .AsNoTracking()
+            .Select(e => new
+            {
+                ServiceId = e.Service.Id,
+                e.EffectiveDate,
+                e.Price
+            })
+            .ToListAsync(ct);
+
+        var priceLookup = servicePrices
+            .GroupBy(price => price.ServiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .Select(price => new ServicePriceSnapshot(price.EffectiveDate, price.Price))
+                    .ToList());
+
+        var totalServiceCostByClient = serviceCostAppointments
+            .GroupBy(appointment => appointment.ClientId)
+            .ToDictionary(
+                group => group.Key,
+                group => ClientBalanceCalculator.CalculateServiceCost(
+                    group.Select(appointment => (appointment.ServiceId, appointment.StartDate)),
+                    priceLookup));
 
         var debtors = clients
             .Select(client => new

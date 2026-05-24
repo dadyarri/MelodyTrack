@@ -167,12 +167,14 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         var balances = clientIds.Select(clientId =>
             payments.GetValueOrDefault(clientId) - serviceCosts.GetValueOrDefault(clientId));
         var debts = balances.Where(e => e < 0).ToList();
+        var positiveBalances = balances.Where(e => e > 0).ToList();
 
         return TypedResults.Ok(new GetDashboardStatsResponse
         {
             TotalClients = totalClients,
             DebtorsCount = debts.Count,
             TotalDebt = Math.Abs(debts.Sum()),
+            TotalPositiveBalance = positiveBalances.Sum(),
             AppointmentsToday = appointmentsToday,
             AppointmentsTomorrow = appointmentsTomorrow,
             MonthIncome = monthIncome,
