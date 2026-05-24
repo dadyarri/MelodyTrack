@@ -4,18 +4,16 @@ WORKDIR /app
 EXPOSE 8080
 EXPOSE 8081
 
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
+COPY ["global.json", "."]
+COPY ["MelodyTrack.slnx", "."]
 COPY ["MelodyTrack.Backend/MelodyTrack.Backend.csproj", "MelodyTrack.Backend/"]
 RUN dotnet restore "MelodyTrack.Backend/MelodyTrack.Backend.csproj"
-COPY . .
+COPY ["MelodyTrack.Backend/", "MelodyTrack.Backend/"]
 WORKDIR "/src/MelodyTrack.Backend"
-RUN dotnet build "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/build
-
-FROM build AS publish
-ARG BUILD_CONFIGURATION=Release
-RUN dotnet publish "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
