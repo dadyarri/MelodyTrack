@@ -35,10 +35,10 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
                 });
             }
         }
-        
+
         Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
         RequestReplay? replay = null;
-        
+
         try
         {
             if (replayKey is not null)
@@ -100,7 +100,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
             throw;
         }
     }
-    
+
     private static bool IsUniqueViolation(DbUpdateException exception)
     {
         return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };

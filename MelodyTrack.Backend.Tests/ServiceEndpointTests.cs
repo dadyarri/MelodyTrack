@@ -3,6 +3,7 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using MelodyTrack.Backend.Api.Audit.Responses;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
@@ -120,6 +121,55 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
     }
 
     [Fact]
+    public async Task UpdateService_ReturnsConflictWhenExpectedActivityIdIsStale()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Freshness", TestContext.Current.CancellationToken);
+
+        await db.AuditLogs.AddAsync(
+            new AuditLog
+            {
+                Id = Ulid.NewUlid(),
+                CreatedAtUtc = DateTime.UtcNow,
+                Category = "services",
+                Action = "service_updated",
+                EntityType = "service",
+                EntityId = service.Id.ToString(),
+                Details = "Freshness changed"
+            },
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.PutAsJsonAsync(
+            $"/services/{service.Id}",
+            new
+            {
+                name = "New name",
+                description = "Updated description",
+                expectedActivityId = Ulid.NewUlid()
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+
+        var payload = await response.Content.ReadFromJsonAsync<StaleEntityConflictResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.EntityType.ShouldBe("service");
+        payload.EntityId.ShouldBe(service.Id.ToString());
+
+        db.ChangeTracker.Clear();
+        var unchanged = await db.Services
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
+        unchanged.Name.ShouldBe("Freshness");
+    }
+
+    [Fact]
     public async Task UpdateServicePrice_WritesDetailedAuditLog()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -159,6 +209,42 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.Action == "service_price_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
         auditLog.Details.ShouldBe("Услуга: Pricing; Цена: 2500 → 3200");
+    }
+
+    [Fact]
+    public async Task GetService_ReturnsLastActivity()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Activity", TestContext.Current.CancellationToken);
+        var latestActivityId = Ulid.NewUlid();
+
+        await db.AuditLogs.AddAsync(
+            new AuditLog
+            {
+                Id = latestActivityId,
+                CreatedAtUtc = DateTime.UtcNow,
+                Category = "services",
+                Action = "service_updated",
+                EntityType = "service",
+                EntityId = service.Id.ToString(),
+                Details = "Activity details"
+            },
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync($"/services/{service.Id}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<ServiceWithCurrentPriceDto>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.LastActivity.ShouldNotBeNull();
+        payload.LastActivity.Id.ShouldBe(latestActivityId);
     }
 
     [Fact]
@@ -246,6 +332,47 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         using var payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken));
         payload.RootElement.GetProperty("detail").GetString().ShouldBe("Нельзя удалить услугу, которая уже используется в платежах или расписании.");
+
+        var exists = await db.Services.AnyAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
+        exists.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task DeleteService_ReturnsConflictWhenExpectedActivityIdIsStale()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Protected by freshness", TestContext.Current.CancellationToken);
+        var latestActivityId = Ulid.NewUlid();
+
+        await db.AuditLogs.AddAsync(
+            new AuditLog
+            {
+                Id = latestActivityId,
+                CreatedAtUtc = DateTime.UtcNow,
+                Category = "services",
+                Action = "service_updated",
+                EntityType = "service",
+                EntityId = service.Id.ToString(),
+                Details = "Another update"
+            },
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.DeleteAsync(
+            $"/services/{service.Id}?expectedActivityId={Ulid.NewUlid()}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+
+        var payload = await response.Content.ReadFromJsonAsync<StaleEntityConflictResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.CurrentActivity.ShouldNotBeNull();
+        payload.CurrentActivity.Id.ShouldBe(latestActivityId);
 
         var exists = await db.Services.AnyAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
         exists.ShouldBeTrue();

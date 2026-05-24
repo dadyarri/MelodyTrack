@@ -1,7 +1,7 @@
+using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Attributes;
 using MelodyTrack.Backend.Data.Models;
-using FastEndpoints;
 
 namespace MelodyTrack.Backend.Api.Payments.Requests;
 

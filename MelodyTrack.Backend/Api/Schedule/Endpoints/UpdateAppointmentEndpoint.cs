@@ -137,14 +137,14 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Action = requestedScope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
+                Details = AuditDetailsFormatter.JoinChanges(
                 AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(appointment.Client)),
                 AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
                 AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(appointment.Provider)),
                 AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
                 AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, req.StartDate)
             )
-        }, ct);
+            }, ct);
 
             return TypedResults.NoContent();
         }

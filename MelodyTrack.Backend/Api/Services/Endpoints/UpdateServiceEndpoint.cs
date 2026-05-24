@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
@@ -8,15 +9,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<UpdateServiceRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult>>
+public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+    : Ep.Req<UpdateServiceRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/services/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateServiceRequest req,
         CancellationToken ct)
     {
@@ -25,6 +26,19 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         {
             AddError(item => item.Id, "Услуга не найдена");
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
+
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "service",
+            service.Id,
+            req.ExpectedActivityId,
+            "Услуга была изменена другим пользователем. Обновите данные и повторите сохранение.",
+            ct);
+
+        if (conflict is not null
+            && (req.Name != service.Name || req.Description != service.Description))
+        {
+            return TypedResults.Conflict(conflict);
         }
 
         var beforeName = service.Name;

@@ -61,14 +61,14 @@ public class CreateClientSourceEndpoint(
             await db.ClientSources.AddAsync(source, ct);
             await db.SaveChangesAsync(ct);
 
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "clients",
-            Action = "client_source_created",
-            EntityType = "client_source",
-            EntityId = source.Id.ToString(),
-            Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)
-        }, ct);
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "clients",
+                Action = "client_source_created",
+                EntityType = "client_source",
+                EntityId = source.Id.ToString(),
+                Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)
+            }, ct);
 
             if (replay is not null)
             {

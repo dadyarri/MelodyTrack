@@ -10,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>>
+public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Patch("/services/{id}/price");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
     {
         var service = await db.Services
             .Where(e => e.Id == req.Id)
@@ -26,6 +26,18 @@ public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditL
         if (service is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "service",
+            service.Id,
+            req.ExpectedActivityId,
+            "Цена услуги была изменена другим пользователем. Обновите данные и повторите изменение.",
+            ct);
+
+        if (conflict is not null)
+        {
+            return TypedResults.Conflict(conflict);
         }
 
         var previousPrice = await db.ServicePriceHistory

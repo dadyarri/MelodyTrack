@@ -1,5 +1,6 @@
 using Facet;
 using Facet.Mapping;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.EntityFrameworkCore;
@@ -10,6 +11,7 @@ namespace MelodyTrack.Backend.Api.Services.Responses;
 public partial class ServiceWithCurrentPriceDto
 {
     public decimal Price { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 }
 
 public class ServiceToServiceWithCurrentPriceDtoMapConfig(AppDbContext db)

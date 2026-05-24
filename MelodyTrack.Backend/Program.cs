@@ -217,7 +217,7 @@ try
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     await db.Database.MigrateAsync();
-    
+
     if (environment != "Test")
     {
         var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);

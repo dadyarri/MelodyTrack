@@ -1,27 +1,44 @@
 using System.Security.Claims;
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService)
-    : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService, IRecordActivityService recordActivityService)
+    : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
     {
         Get("/users/{id}/availability");
     }
 
-    public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
     {
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
         if (login is null)
         {
             return TypedResults.Unauthorized();
+        }
+
+        var currentUser = await db.Users
+            .AsNoTracking()
+            .Include(user => user.Role)
+            .FirstOrDefaultAsync(user => user.Email == login, ct);
+
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (currentUser.Id != req.Id && !currentUser.Role.RoleName.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
         }
 
         var userExists = await db.Users
@@ -38,6 +55,7 @@ public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServi
         return TypedResults.Ok(new UserAvailabilityResponse
         {
             UserId = req.Id,
+            LastActivity = await recordActivityService.GetLatestActivityAsync("user_availability", req.Id.ToString(), ct),
             WorkingHours = availability.WorkingHours
                 .Select(item => new UserWorkingHoursDayDto
                 {

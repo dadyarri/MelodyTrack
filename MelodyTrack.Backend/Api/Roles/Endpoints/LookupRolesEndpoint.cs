@@ -1,10 +1,10 @@
+using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Roles.Endpoints;
 

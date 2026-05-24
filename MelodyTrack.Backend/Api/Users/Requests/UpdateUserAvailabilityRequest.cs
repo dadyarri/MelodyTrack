@@ -6,6 +6,7 @@ public class UpdateUserAvailabilityRequest
 {
     [BindFrom("id")]
     public Ulid Id { get; set; }
+    public Ulid? ExpectedActivityId { get; set; }
     public required List<UserWorkingHoursDayItem> WorkingHours { get; set; }
     public required List<UserVacationItem> Vacations { get; set; }
 }

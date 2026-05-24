@@ -1,3 +1,5 @@
+using MelodyTrack.Backend.Api.Common.Responses;
+
 namespace MelodyTrack.Backend.Api.Expenses.Responses;
 
 public class ExpenseDto
@@ -8,4 +10,5 @@ public class ExpenseDto
     public required DateTime Date { get; set; }
     public Ulid? CategoryId { get; set; }
     public string? CategoryName { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 }

@@ -1,3 +1,5 @@
+using MelodyTrack.Backend.Api.Common.Responses;
+
 namespace MelodyTrack.Backend.Api.Users.Responses;
 
 public class UserAvailabilityResponse
@@ -5,6 +7,7 @@ public class UserAvailabilityResponse
     public required Ulid UserId { get; set; }
     public required List<UserWorkingHoursDayDto> WorkingHours { get; set; }
     public required List<UserVacationDto> Vacations { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 }
 
 public class UserWorkingHoursDayDto

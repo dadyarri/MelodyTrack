@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
@@ -8,7 +9,6 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using System.Security.Claims;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

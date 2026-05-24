@@ -1,5 +1,6 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -8,15 +9,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class DeleteServiceEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult>>
+public class DeleteServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Delete("/services/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)
     {
@@ -29,6 +30,18 @@ public class DeleteServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         if (service is null)
         {
             return TypedResults.NoContent();
+        }
+
+        var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
+            "service",
+            service.Id,
+            req.ExpectedActivityId,
+            "Услуга была изменена другим пользователем. Проверьте последние изменения перед удалением.",
+            ct);
+
+        if (conflict is not null)
+        {
+            return TypedResults.Conflict(conflict);
         }
 
         var hasPayments = await db.Payments.AnyAsync(item => item.Service != null && item.Service.Id == req.Id, ct);

@@ -2,12 +2,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class GetServiceEndpoint(AppDbContext db)
+public class GetServiceEndpoint(AppDbContext db, IRecordActivityService recordActivityService)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ProblemDetails>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -39,7 +40,8 @@ public class GetServiceEndpoint(AppDbContext db)
             Id = service.Id,
             Name = service.Name,
             Description = service.Description,
-            Price = latestPrice ?? 0m
+            Price = latestPrice ?? 0m,
+            LastActivity = await recordActivityService.GetLatestActivityAsync("service", service.Id.ToString(), ct)
         });
     }
 }

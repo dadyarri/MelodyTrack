@@ -1,5 +1,5 @@
-using MelodyTrack.Backend.Api.Common.Requests;
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Common.Requests;
 
 namespace MelodyTrack.Backend.Api.Expenses.Requests;
 

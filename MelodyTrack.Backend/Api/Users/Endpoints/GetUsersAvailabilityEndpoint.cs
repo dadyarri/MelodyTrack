@@ -1,5 +1,6 @@
 using System.Security.Claims;
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService)
+public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService, IRecordActivityService recordActivityService)
     : Ep.NoReq.Res<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -37,17 +38,25 @@ public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServ
         }
 
         var availabilities = await userAvailabilityService.GetAvailabilitiesAsync(null, ct);
+        var latestActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "user_availability",
+            availabilities.Select(availability => availability.UserId.ToString()).ToArray(),
+            ct);
+
         return TypedResults.Ok(new GetUsersAvailabilityResponse
         {
-            Availabilities = availabilities.Select(MapAvailability).ToList()
+            Availabilities = availabilities
+                .Select(availability => MapAvailability(availability, latestActivities.GetValueOrDefault(availability.UserId.ToString())))
+                .ToList()
         });
     }
 
-    private static UserAvailabilityResponse MapAvailability(UserAvailabilitySnapshot availability)
+    private static UserAvailabilityResponse MapAvailability(UserAvailabilitySnapshot availability, RecordActivityDto? lastActivity)
     {
         return new UserAvailabilityResponse
         {
             UserId = availability.UserId,
+            LastActivity = lastActivity,
             WorkingHours = availability.WorkingHours
                 .Select(item => new UserWorkingHoursDayDto
                 {

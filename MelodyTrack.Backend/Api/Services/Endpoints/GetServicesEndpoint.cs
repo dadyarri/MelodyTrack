@@ -5,12 +5,13 @@ using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPriceDtoMapConfig mapper)
+public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPriceDtoMapConfig mapper, IRecordActivityService recordActivityService)
     : Ep.Req<GetServicesPaginatedRequest>.Res<
         Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult>>
 {
@@ -34,6 +35,16 @@ public class GetServicesEndpoint(AppDbContext db, ServiceToServiceWithCurrentPri
             .ToListAsync(ct);
 
         var servicesFacets = await services.ToFacetsAsync(mapper, ct);
+        var latestActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "service",
+            services.Select(service => service.Id.ToString()).ToArray(),
+            ct);
+
+        foreach (var serviceDto in servicesFacets)
+        {
+            serviceDto.LastActivity = latestActivities.GetValueOrDefault(serviceDto.Id.ToString());
+        }
+
         var totalCount = await db.Services.CountAsync(ct);
 
         Logger.LogInformation(

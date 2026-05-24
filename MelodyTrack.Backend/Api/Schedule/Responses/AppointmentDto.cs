@@ -1,6 +1,6 @@
 using MelodyTrack.Backend.Api.Common.Responses;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Schedule.Responses;
 

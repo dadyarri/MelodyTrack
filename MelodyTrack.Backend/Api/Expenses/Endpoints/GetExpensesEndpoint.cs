@@ -4,12 +4,13 @@ using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class GetExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult>>
+public class GetExpensesEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
@@ -54,6 +55,16 @@ public class GetExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedR
                 CategoryName = e.Category != null ? e.Category.Name : null
             })
             .ToListAsync(ct);
+
+        var latestActivities = await recordActivityService.GetLatestActivitiesAsync(
+            "expense",
+            expenses.Select(expense => expense.Id.ToString()).ToArray(),
+            ct);
+
+        foreach (var expense in expenses)
+        {
+            expense.LastActivity = latestActivities.GetValueOrDefault(expense.Id.ToString());
+        }
 
         var response = PaginatedResponse.Create(expenses, totalCount, req);
 
