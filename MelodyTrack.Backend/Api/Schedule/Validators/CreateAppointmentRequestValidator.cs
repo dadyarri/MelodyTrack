@@ -25,11 +25,6 @@ public class CreateAppointmentRequestValidator : Validator<CreateAppointmentRequ
             .When(x => x.PatternEndDate.HasValue)
             .WithMessage("Дата начала не может быть позже даты окончания шаблона.");
 
-        RuleFor(x => x.PatternEndDate)
-            .NotNull()
-            .When(x => x.RecurrenceTypeId.HasValue)
-            .WithMessage("Дата окончания шаблона должна быть указана для повторяющейся записи.");
-
         RuleFor(x => x.RecurrencePattern)
             .NotNull()
             .When(x => x.RecurrenceTypeId.HasValue) // If RecurrenceTypeId is set

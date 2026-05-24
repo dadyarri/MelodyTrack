@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using FastEndpoints;
 using FastEndpoints.Testing;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Endpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
@@ -180,5 +181,46 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
                 TestContext.Current.CancellationToken);
 
         auditLog.Details.ShouldBe("Клиент: Иванова Анна; Услуга: Вокал; Преподаватель: —; Начало: 2026-05-24T12:00:00.0000000Z; Статус: Запланировано → Завершено");
+    }
+
+    [Fact]
+    public async Task CreateRecurringAppointment_AllowsOpenEndedSeriesWithoutPatternEndDate()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(
+            type => type.Type == AppointmentRecurrenceType.Weekly,
+            TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, res) = await App.Client.POSTAsync<CreateAppointmentEndpoint, CreateAppointmentRequest, CreateEntityResponse>(
+            new CreateAppointmentRequest
+            {
+                ClientId = client.Id,
+                ServiceId = service.Id,
+                StartDate = new DateTime(2026, 05, 26, 12, 0, 0, DateTimeKind.Utc),
+                Timezone = "UTC",
+                RecurrenceTypeId = recurrenceType.Id,
+                PatternEndDate = null,
+                RecurrencePattern = 2 + 8
+            });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+        res.ShouldNotBeNull();
+
+        db.ChangeTracker.Clear();
+
+        var appointment = await db.Appointments
+            .Include(item => item.RecurringRule)
+            .FirstAsync(item => item.Id == res.Id, TestContext.Current.CancellationToken);
+
+        appointment.RecurringRule.ShouldNotBeNull();
+        appointment.RecurringRule!.EndDate.ShouldBeNull();
+        appointment.RecurringRule.RecurrencePattern.ShouldBe(2 + 8);
     }
 }
