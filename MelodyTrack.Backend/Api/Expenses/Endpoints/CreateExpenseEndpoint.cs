@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -45,10 +46,15 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
             }
 
+            string? categoryName = null;
             if (req.CategoryId is not null)
             {
-                var categoryExists = await db.ExpenseCategories.AnyAsync(e => e.Id == req.CategoryId.Value, ct);
-                if (!categoryExists)
+                categoryName = await db.ExpenseCategories
+                    .Where(e => e.Id == req.CategoryId.Value)
+                    .Select(e => e.Name)
+                    .FirstOrDefaultAsync(ct);
+
+                if (categoryName is null)
                 {
                     ThrowError("Категория расхода не найдена");
                 }
@@ -73,7 +79,12 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 Action = "expense_created",
                 EntityType = "expense",
                 EntityId = expense.Id.ToString(),
-                Details = $"{expense.Description}, сумма {expense.Amount}"
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Описание", expense.Description),
+                    AuditDetailsFormatter.DescribeContext("Сумма", expense.Amount.ToString("0.##")),
+                    AuditDetailsFormatter.DescribeContext("Категория", categoryName),
+                    AuditDetailsFormatter.DescribeContext("Дата", expense.Date)
+                )
             }, ct);
 
             if (replay is not null)

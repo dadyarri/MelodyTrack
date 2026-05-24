@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,7 +43,7 @@ public class DeleteClientSourceEndpoint(AppDbContext db, IAuditLogService auditL
             Action = "client_source_deleted",
             EntityType = "client_source",
             EntityId = source.Id.ToString(),
-            Details = source.Name
+            Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)
         }, ct);
 
         return TypedResults.NoContent();

@@ -7,4 +7,7 @@ public class GetAuditLogsPaginatedRequest : PaginatedRequest
 {
     [BindFrom("search")]
     public string? Search { get; set; }
+
+    [BindFrom("timezone")]
+    public string? Timezone { get; set; }
 }

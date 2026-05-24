@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -120,7 +121,13 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Action = recurrenceRule is null ? "appointment_created" : "recurring_appointment_created",
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
-                Details = $"{client.LastName} {client.FirstName}, {service.Name}, {appointment.StartDate:O}"
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
+                    AuditDetailsFormatter.DescribeContext("Преподаватель", provider is null ? null : $"{provider.LastName} {provider.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
+                    AuditDetailsFormatter.DescribeContext("Повторение", recurrenceRule?.RecurrenceType.DisplayName)
+                )
             }, ct);
 
             if (replay is not null)

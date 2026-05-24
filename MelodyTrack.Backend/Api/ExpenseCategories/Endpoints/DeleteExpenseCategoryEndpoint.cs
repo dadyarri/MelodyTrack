@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,7 +43,7 @@ public class DeleteExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
             Action = "expense_category_deleted",
             EntityType = "expense_category",
             EntityId = category.Id.ToString(),
-            Details = category.Name
+            Details = AuditDetailsFormatter.DescribeContext("Категория расхода", category.Name)
         }, ct);
 
         return TypedResults.NoContent();

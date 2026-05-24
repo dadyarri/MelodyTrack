@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,6 +21,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
 
     public override async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAuditLogsPaginatedRequest req, CancellationToken ct)
     {
+        var timezone = ResolveTimezoneOrUtc(req.Timezone);
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
@@ -74,7 +76,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
                 ActorEmail = item.ActorEmail,
                 ActorDisplayName = item.ActorDisplayName,
                 SourceIpAddress = item.SourceIpAddress,
-                Details = item.Details
+                Details = AuditDetailsFormatter.FormatForDisplay(item.Details, timezone)
             })
             .ToListAsync(ct);
 
@@ -83,5 +85,26 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
             Data = logs,
             Info = PaginatedResponse.Create(logs, totalCount, req).Info
         });
+    }
+
+    private static TimeZoneInfo ResolveTimezoneOrUtc(string? timezone)
+    {
+        if (string.IsNullOrWhiteSpace(timezone))
+        {
+            return TimeZoneInfo.Utc;
+        }
+
+        try
+        {
+            return TimeZoneInfo.FindSystemTimeZoneById(timezone);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            return TimeZoneInfo.Utc;
+        }
+        catch (InvalidTimeZoneException)
+        {
+            return TimeZoneInfo.Utc;
+        }
     }
 }

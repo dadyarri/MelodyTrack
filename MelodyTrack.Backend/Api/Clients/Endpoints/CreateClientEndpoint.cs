@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -94,7 +95,14 @@ public class
                 Action = "client_created",
                 EntityType = "client",
                 EntityId = client.Id.ToString(),
-                Details = $"{client.LastName} {client.FirstName}".Trim()
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Отчество", client.Patronymic),
+                    AuditDetailsFormatter.DescribeContext("Телефон", client.Contacts.Phone),
+                    AuditDetailsFormatter.DescribeContext("Telegram", client.Contacts.Telegram),
+                    AuditDetailsFormatter.DescribeContext("VK", client.Contacts.Vk),
+                    AuditDetailsFormatter.DescribeContext("Источник", source?.Name)
+                )
             }, ct);
 
             if (replay is not null)

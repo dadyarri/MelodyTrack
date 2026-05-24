@@ -34,7 +34,8 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
                 e.Id,
                 e.StartDate,
                 ClientName = e.Client.LastName + " " + e.Client.FirstName,
-                ServiceName = e.Service.Name
+                ServiceName = e.Service.Name,
+                ProviderName = e.Provider != null ? e.Provider.LastName + " " + e.Provider.FirstName : null
             })
             .FirstOrDefaultAsync(ct);
 
@@ -78,7 +79,12 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
             },
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),
-            Details = $"{appointment.ClientName}, {appointment.ServiceName}, {appointment.StartDate:O}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", appointment.ClientName),
+                AuditDetailsFormatter.DescribeContext("Услуга", appointment.ServiceName),
+                AuditDetailsFormatter.DescribeContext("Преподаватель", appointment.ProviderName),
+                AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate)
+            )
         }, ct);
         return TypedResults.NoContent();
     }

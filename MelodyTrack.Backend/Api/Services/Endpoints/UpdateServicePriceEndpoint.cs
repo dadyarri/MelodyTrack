@@ -51,7 +51,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditL
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
-                AuditDetailsFormatter.DescribeChange("Услуга", service.Name, service.Name),
+                AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
                 AuditDetailsFormatter.DescribeChange("Цена", previousPrice?.ToString("0.##"), req.Price.ToString("0.##"))
             )
         }, ct);

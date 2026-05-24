@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.ExpenseCategories.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -62,7 +63,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
                 Action = "expense_category_created",
                 EntityType = "expense_category",
                 EntityId = expenseCategory.Id.ToString(),
-                Details = $"{expenseCategory.Name}"
+                Details = AuditDetailsFormatter.DescribeContext("Категория расхода", expenseCategory.Name)
             }, ct);
 
             if (replay is not null)

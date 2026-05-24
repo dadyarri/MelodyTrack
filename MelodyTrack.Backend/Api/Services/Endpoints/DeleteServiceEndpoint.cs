@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +23,7 @@ public class DeleteServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         var service = await db.Services
             .AsNoTracking()
             .Where(item => item.Id == req.Id)
-            .Select(item => new { item.Id, item.Name })
+            .Select(item => new { item.Id, item.Name, item.Description })
             .FirstOrDefaultAsync(ct);
 
         if (service is null)
@@ -47,7 +48,10 @@ public class DeleteServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             Action = "service_deleted",
             EntityType = "service",
             EntityId = service.Id.ToString(),
-            Details = service.Name
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
+                AuditDetailsFormatter.DescribeContext("Описание", service.Description)
+            )
         }, ct);
 
         return TypedResults.NoContent();

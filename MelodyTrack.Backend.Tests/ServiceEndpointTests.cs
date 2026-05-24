@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using MelodyTrack.Backend.Api.Audit.Responses;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
@@ -84,7 +85,38 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.Action == "service_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Details.ShouldBe("Название: Old name -> New name; Описание: — -> Updated description");
+        auditLog.Details.ShouldBe("Название: Old name → New name; Описание: — → Updated description");
+    }
+
+    [Fact]
+    public async Task UpdateService_BindsIdFromRoute_WhenBodyOmitsId()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Route bound", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.PutAsJsonAsync(
+            $"/services/{service.Id}",
+            new
+            {
+                name = "Route update",
+                description = "Updated through route id"
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updated = await db.Services
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == service.Id, TestContext.Current.CancellationToken);
+        updated.Name.ShouldBe("Route update");
+        updated.Description.ShouldBe("Updated through route id");
     }
 
     [Fact]
@@ -126,7 +158,43 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.Action == "service_price_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Details.ShouldBe("Цена: 2500 -> 3200");
+        auditLog.Details.ShouldBe("Услуга: Pricing; Цена: 2500 → 3200");
+    }
+
+    [Fact]
+    public async Task GetAuditLogs_FormatsEmbeddedTimestampsForRequestedTimezone()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        await db.AuditLogs.AddAsync(
+            new AuditLog
+            {
+                Id = Ulid.NewUlid(),
+                CreatedAtUtc = new DateTime(2026, 05, 24, 12, 0, 0, DateTimeKind.Utc),
+                Category = "schedule",
+                Action = "appointment_updated",
+                EntityType = "appointment",
+                EntityId = Ulid.NewUlid().ToString(),
+                ActorEmail = user.Email,
+                ActorDisplayName = $"{user.LastName} {user.FirstName}",
+                Details = "Клиент: Иванова Анна; Начало: 2026-05-24T12:00:00.0000000Z -> 2026-05-24T13:30:00.0000000Z"
+            },
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/audit-logs?page=1&page_size=20&timezone=Europe/Moscow", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var body = await response.Content.ReadFromJsonAsync<GetAuditLogsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        body.ShouldNotBeNull();
+        body.Data.ShouldNotBeEmpty();
+        body.Data[0].Details.ShouldBe("Клиент: Иванова Анна; Начало: 24.05.2026 15:00 → 24.05.2026 16:30");
     }
 
     [Fact]

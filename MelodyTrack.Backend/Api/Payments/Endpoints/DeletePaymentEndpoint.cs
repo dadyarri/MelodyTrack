@@ -22,7 +22,7 @@ public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
         var payment = await db.Payments
             .AsNoTracking()
             .Where(e => e.Id == req.Id)
-            .Select(e => new { e.Id, e.Amount, e.Client.LastName, e.Client.FirstName })
+            .Select(e => new { e.Id, e.Amount, e.Date, e.Description, e.Client.LastName, e.Client.FirstName, ServiceName = e.Service != null ? e.Service.Name : null })
             .FirstOrDefaultAsync(ct);
 
         if (payment is null)
@@ -52,7 +52,13 @@ public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
             Action = "payment_deleted",
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
-            Details = $"{payment.LastName} {payment.FirstName}, сумма {payment.Amount}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", $"{payment.LastName} {payment.FirstName}".Trim()),
+                AuditDetailsFormatter.DescribeContext("Услуга", payment.ServiceName),
+                AuditDetailsFormatter.DescribeContext("Сумма", payment.Amount.ToString("0.##")),
+                AuditDetailsFormatter.DescribeContext("Дата", payment.Date),
+                AuditDetailsFormatter.DescribeContext("Описание", payment.Description)
+            )
         }, ct);
         return TypedResults.NoContent();
     }

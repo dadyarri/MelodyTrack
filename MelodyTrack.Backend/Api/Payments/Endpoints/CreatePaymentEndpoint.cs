@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -88,7 +89,13 @@ public class CreatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 Action = "payment_created",
                 EntityType = "payment",
                 EntityId = payment.Id.ToString(),
-                Details = $"{client.LastName} {client.FirstName}, сумма {payment.Amount}"
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Услуга", service?.Name),
+                    AuditDetailsFormatter.DescribeContext("Сумма", payment.Amount.ToString("0.##")),
+                    AuditDetailsFormatter.DescribeContext("Дата", payment.Date),
+                    AuditDetailsFormatter.DescribeContext("Описание", payment.Description)
+                )
             }, ct);
 
             if (replay is not null)

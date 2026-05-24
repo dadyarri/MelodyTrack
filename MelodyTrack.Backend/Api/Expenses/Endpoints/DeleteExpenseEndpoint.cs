@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -20,7 +21,7 @@ public class DeleteExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
         var expense = await db.Expenses
             .AsNoTracking()
             .Where(e => e.Id == req.Id)
-            .Select(e => new { e.Id, e.Description, e.Amount })
+            .Select(e => new { e.Id, e.Description, e.Amount, e.Date, CategoryName = e.Category != null ? e.Category.Name : null })
             .FirstOrDefaultAsync(ct);
 
         if (expense is null)
@@ -38,7 +39,12 @@ public class DeleteExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
             Action = "expense_deleted",
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
-            Details = $"{expense.Description}, сумма {expense.Amount}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Описание", expense.Description),
+                AuditDetailsFormatter.DescribeContext("Сумма", expense.Amount.ToString("0.##")),
+                AuditDetailsFormatter.DescribeContext("Категория", expense.CategoryName),
+                AuditDetailsFormatter.DescribeContext("Дата", expense.Date)
+            )
         }, ct);
         return TypedResults.NoContent();
     }

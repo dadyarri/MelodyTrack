@@ -25,6 +25,24 @@ public static class TestDataFactory
         return user;
     }
 
+    public static async Task<User> CreateSuperuserAsync(AppDbContext db, CancellationToken cancellationToken)
+    {
+        var superuserRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Superuser, cancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = "Super",
+            LastName = "Viewer",
+            Email = $"{Ulid.NewUlid()}@example.com",
+            Password = "hash",
+            Role = superuserRole
+        };
+
+        await db.Users.AddAsync(user, cancellationToken);
+        await db.SaveChangesAsync(cancellationToken);
+        return user;
+    }
+
     public static async Task<User> CreateAuthorizedScheduleUserAsync(AppDbContext db, CancellationToken cancellationToken)
     {
         var userRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.User, cancellationToken);

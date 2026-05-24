@@ -11,6 +11,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -133,5 +134,51 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
         var response = await App.Client.DeleteAsync($"/appointments/{occurrenceId}?scope={scope}", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+    }
+
+    [Fact]
+    public async Task UpdateAppointment_WritesRussianStatusLabelsToAudit()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Вокал", TestContext.Current.CancellationToken);
+
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = new DateTime(2026, 05, 24, 12, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 05, 24, 13, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (rsp, _) = await App.Client.PATCHAsync<UpdateAppointmentEndpoint, UpdateAppointmentRequest, NoContent>(new UpdateAppointmentRequest
+        {
+            Id = appointment.Id,
+            Status = "completed"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var auditLog = await db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(item => item.CreatedAtUtc)
+            .FirstAsync(
+                item => item.Action == "appointment_updated" && item.EntityId == appointment.Id.ToString(),
+                TestContext.Current.CancellationToken);
+
+        auditLog.Details.ShouldBe("Клиент: Иванова Анна; Услуга: Вокал; Преподаватель: —; Начало: 2026-05-24T12:00:00.0000000Z; Статус: Запланировано → Завершено");
     }
 }

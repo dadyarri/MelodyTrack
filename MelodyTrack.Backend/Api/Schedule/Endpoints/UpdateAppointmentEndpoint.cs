@@ -29,11 +29,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             .ThenInclude(rule => rule!.RecurrenceType)
             .FirstOrDefaultAsync(ct);
 
-        var beforeClientName = FormatClientDisplayName(appointment?.Client);
-        var beforeServiceName = appointment?.Service.Name;
-        var beforeProviderName = FormatProviderDisplayName(appointment?.Provider);
-        var beforeStartDate = appointment?.StartDate.ToString("O");
-        var beforeStatus = appointment?.Status.ToString();
+        var beforeStartDateUtc = appointment?.StartDate;
+        var beforeStatus = appointment?.Status.ToDisplayName();
 
         if (appointment is null)
         {
@@ -140,13 +137,14 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Action = requestedScope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(appointment.Client)),
-                    AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, appointment.Service.Name),
-                    AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(appointment.Provider)),
-                    AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, req.StartDate?.ToString("O"))
-                )
-            }, ct);
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(appointment.Client)),
+                AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
+                AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(appointment.Provider)),
+                AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
+                AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, req.StartDate)
+            )
+        }, ct);
 
             return TypedResults.NoContent();
         }
@@ -177,11 +175,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 EntityType = "appointment",
                 EntityId = updatedAppointment.Id.ToString(),
                 Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(updatedAppointment.Client)),
-                    AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, updatedAppointment.Service.Name),
-                    AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(updatedAppointment.Provider)),
-                    AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, updatedAppointment.StartDate.ToString("O")),
-                    AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, updatedAppointment.Status.ToString())
+                    AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(updatedAppointment.Client)),
+                    AuditDetailsFormatter.DescribeContext("Услуга", updatedAppointment.Service.Name),
+                    AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(updatedAppointment.Provider)),
+                    AuditDetailsFormatter.DescribeContext("Начало", updatedAppointment.StartDate),
+                    AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, updatedAppointment.StartDate),
+                    AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, updatedAppointment.Status.ToDisplayName())
                 )
             }, ct);
 
@@ -249,11 +248,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
-                AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, FormatClientDisplayName(appointment.Client)),
-                AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, appointment.Service.Name),
-                AuditDetailsFormatter.DescribeChange("Преподаватель", beforeProviderName, FormatProviderDisplayName(appointment.Provider)),
-                AuditDetailsFormatter.DescribeChange("Начало", beforeStartDate, appointment.StartDate.ToString("O")),
-                AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, appointment.Status.ToString())
+                AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(appointment.Client)),
+                AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
+                AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(appointment.Provider)),
+                AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
+                AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, appointment.StartDate),
+                AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, appointment.Status.ToDisplayName())
             )
         }, ct);
 

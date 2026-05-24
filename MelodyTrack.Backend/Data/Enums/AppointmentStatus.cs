@@ -32,6 +32,17 @@ public static class AppointmentStatusExtensions
                 _ => "planned"
             };
         }
+
+        public string ToDisplayName()
+        {
+            return status switch
+            {
+                AppointmentStatus.Completed => "Завершено",
+                AppointmentStatus.Cancelled => "Отменено",
+                AppointmentStatus.Burned => "Сгорело",
+                _ => "Запланировано"
+            };
+        }
     }
 
     public static bool TryParseApiKey(string? value, out AppointmentStatus status)
