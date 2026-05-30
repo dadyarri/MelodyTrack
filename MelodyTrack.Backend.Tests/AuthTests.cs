@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Api.Auth.Endpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.Clients.Endpoints;
+using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -2597,8 +2598,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var (rsp, res) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetEntityRequest, ClientHistoryResponse>(
-            new GetEntityRequest { Id = client.Id });
+        var (rsp, res) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetClientHistoryRequest, ClientHistoryResponse>(
+            new GetClientHistoryRequest { Id = client.Id, Page = 1, PageSize = 8 });
 
         App.Client.DefaultRequestHeaders.Authorization = null;
 
@@ -2617,8 +2618,11 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.Summary.LastVisitAtUtc.Value.ShouldBe(burnedAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.Summary.NextAppointmentAtUtc.Value.ShouldBe(upcomingAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.RecentPayments.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
-        res.RecentAppointments.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, burnedAppointment.Id, completedAppointment.Id]);
-        res.RecentAppointments.Select(e => e.Status).ShouldBe(["planned", "burned", "completed"]);
+        res.Appointments.Info.Page.ShouldBe(1);
+        res.Appointments.Info.PageSize.ShouldBe(8);
+        res.Appointments.Info.Total.ShouldBe(3);
+        res.Appointments.Data.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, burnedAppointment.Id, completedAppointment.Id]);
+        res.Appointments.Data.Select(e => e.Status).ShouldBe(["planned", "burned", "completed"]);
     }
 
     [Fact]

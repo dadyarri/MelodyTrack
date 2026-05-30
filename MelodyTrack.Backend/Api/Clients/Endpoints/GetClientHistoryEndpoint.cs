@@ -1,9 +1,11 @@
 using Facet.Mapping;
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
-using MelodyTrack.Backend.Api.Common.Requests;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -12,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>>
+    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>>
 {
     public override void Configure()
     {
@@ -20,7 +22,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
     }
 
     public override async Task<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>> ExecuteAsync(
-        GetEntityRequest req,
+        GetClientHistoryRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Fetching history for client {ClientId}", req.Id);
@@ -59,15 +61,18 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
             })
             .ToListAsync(ct);
 
-        var recentAppointments = await db.Appointments
+        var appointmentsQuery = db.Appointments
             .AsNoTracking()
-            .Where(e => e.Client.Id == client.Id && !e.IsDeleted)
+            .Where(e => e.Client.Id == client.Id && !e.IsDeleted);
+
+        var appointmentsTotalCount = await appointmentsQuery.CountAsync(ct);
+        var appointments = await appointmentsQuery
             .Include(e => e.Service)
             .Include(e => e.Provider)
                 .ThenInclude(e => e!.Role)
             .OrderByDescending(e => e.StartDate)
             .ThenByDescending(e => e.Id)
-            .Take(8)
+            .ApplyPagination(req)
             .Select(e => new ClientHistoryAppointmentDto
             {
                 Id = e.Id,
@@ -136,7 +141,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 NextAppointmentAtUtc = nextAppointmentAtUtc
             },
             RecentPayments = recentPayments,
-            RecentAppointments = recentAppointments
+            Appointments = PaginatedResponse.Create(appointments, appointmentsTotalCount, req)
         });
     }
 }
