@@ -44,7 +44,10 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
                 Id = e.Id,
                 LastName = e.LastName,
                 FirstName = e.FirstName,
-                RoleDisplayName = e.Role.DisplayName
+                RoleDisplayName = e.Role.DisplayName,
+                Telegram = e.Telegram,
+                Vk = e.Vk,
+                Phone = e.Phone
             })
             .ToListAsync(ct);
 
