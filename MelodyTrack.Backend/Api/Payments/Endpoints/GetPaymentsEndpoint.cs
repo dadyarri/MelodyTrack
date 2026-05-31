@@ -65,8 +65,8 @@ public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordA
             .FirstOrDefaultAsync(ct);
 
         var payments = await paymentsQuery
-            .OrderBy(e => e.Client.LastName)
-            .ThenBy(e => e.Client.FirstName)
+            .OrderByDescending(e => e.Date)
+            .ThenBy(e => e.Client.LastName)
             .ApplyPagination(req)
             .ToFacetsAsync<GetPaymentsDto>(ct);
 
