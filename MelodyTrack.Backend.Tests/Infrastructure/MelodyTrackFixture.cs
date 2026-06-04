@@ -12,7 +12,7 @@ namespace MelodyTrack.Backend.Tests.Infrastructure;
 public sealed class MelodyTrackFixture : AppFixture<Program>
 {
     private static readonly SemaphoreSlim ResetLock = new(1, 1);
-    private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes"];
+    private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
 
     private string _connectionString = null!;
     private PostgreSqlContainer? _dbContainer;
