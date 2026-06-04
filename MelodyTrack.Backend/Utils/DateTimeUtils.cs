@@ -25,4 +25,11 @@ public static class DateTimeUtils
 
         return TimeZoneInfo.ConvertTimeFromUtc(date, tz);
     }
+
+    public static DateTime ConvertLocalDateToUtc(DateOnly date, TimeOnly time, string timeZoneId)
+    {
+        var tz = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+        var localDateTime = date.ToDateTime(time, DateTimeKind.Unspecified);
+        return TimeZoneInfo.ConvertTimeToUtc(localDateTime, tz);
+    }
 }

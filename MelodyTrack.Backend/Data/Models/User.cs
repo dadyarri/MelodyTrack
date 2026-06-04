@@ -20,6 +20,10 @@ public class User : BaseModel
     /// </summary>
     public required string Email { get; set; }
 
+    public string? Telegram { get; set; }
+    public string? Vk { get; set; }
+    public string? Phone { get; set; }
+
     /// <summary>
     ///     Hashed password of the user
     /// </summary>

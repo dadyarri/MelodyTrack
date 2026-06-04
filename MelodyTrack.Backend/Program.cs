@@ -11,6 +11,7 @@ using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Services.RecurringTasks;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -43,8 +44,6 @@ Log.Logger = new LoggerConfiguration()
 using var listener = new ActivityListenerConfiguration()
     .Instrument.AspNetCoreRequests()
     .TraceToSharedLogger();
-
-// var scheduler = 
 
 Log.Information("Starting up");
 
@@ -117,6 +116,8 @@ try
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
+    builder.Services.AddScoped<IRecurringTaskService, RecurringTaskService>();
+    builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
 
     builder.Services.Configure<QuartzOptions>(opts =>

@@ -3,6 +3,7 @@ using System;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260604192227_AddRecurringTasks")]
+    partial class AddRecurringTasks
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -575,17 +578,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                             MessageTemplate = "Здравствуйте, {Client.FirstName}! Вы давно не были на занятиях. Хотите подобрать удобное время для следующего занятия?",
                             Name = "Напомнить о занятиях",
                             Type = 3,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 52, 58, 169, 122, 130, 189, 13, 60, 143, 67, 219, 74, 153 },
-                            CooldownDays = 1,
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Teacher.FirstName}! Отправляем ваше расписание на {Date}.",
-                            Name = "Отправить расписание преподавателю",
-                            Type = 4,
                             UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
                         });
                 });

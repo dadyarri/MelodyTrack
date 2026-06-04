@@ -42,6 +42,9 @@
         <PackageReference Include="SerilogTimings" Version="3.1.0"/>
         <PackageReference Include="SerilogTracing.Expressions" Version="2.3.1"/>
         <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" Version="2.3.1"/>
+        <PackageReference Include="SixLabors.Fonts" Version="2.1.3"/>
+        <PackageReference Include="SixLabors.ImageSharp" Version="3.1.11"/>
+        <PackageReference Include="SixLabors.ImageSharp.Drawing" Version="2.1.7"/>
         <PackageReference Include="UaDetector" Version="5.1.0"/>
         <PackageReference Include="Ulid" Version="1.4.1"/>
     </ItemGroup>

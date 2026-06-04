@@ -3,12 +3,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetMeEndpoint(AppDbContext db)
+public class GetMeEndpoint(AppDbContext db, IRecordActivityService recordActivityService)
     : Ep.NoReq.Res<Results<Ok<MeResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -58,6 +59,10 @@ public class GetMeEndpoint(AppDbContext db)
             FirstName = user.FirstName,
             LastName = user.LastName,
             RoleDisplayName = user.Role.DisplayName,
+            Phone = user.Phone,
+            Telegram = user.Telegram,
+            Vk = user.Vk,
+            LastActivity = await recordActivityService.GetLatestActivityAsync("user", user.Id.ToString(), ct),
             IsAdmin = user.Role.RoleName.IsAnyAdmin(),
             IsSuperuser = user.Role.RoleName.IsSuperuser(),
             IsTwoFactorEnabled = user.TotpSecret is not null,

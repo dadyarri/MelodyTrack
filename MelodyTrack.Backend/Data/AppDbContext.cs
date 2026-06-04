@@ -32,6 +32,8 @@ public class AppDbContext : DbContext
     public DbSet<UserOnboardingState> UserOnboardingStates { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RequestReplay> RequestReplays { get; set; }
+    public DbSet<RecurringTaskRule> RecurringTaskRules { get; set; }
+    public DbSet<RecurringTaskExecution> RecurringTaskExecutions { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -80,9 +82,122 @@ public class AppDbContext : DbContext
             Type = AppointmentRecurrenceType.Monthly
         });
 
+        var recurringTaskSeededAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, DateTimeKind.Utc);
+
+        modelBuilder.Entity<RecurringTaskRule>().HasData(
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN36Z4HZ3D3GCQQ10SFNNM0"),
+                Name = "Напоминание о записи",
+                Type = RecurringTaskType.AppointmentReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Напоминаем, что {When} в {Appointment.StartTime} у вас запланировано занятие.",
+                OffsetMinutes = 24 * 60,
+                CooldownDays = null,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN37C3NCG2TP5S89KX2M48Q"),
+                Name = "Поздравление с днём рождения",
+                Type = RecurringTaskType.BirthdayGreeting,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Поздравляем вас с днём рождения! Желаем хорошего дня, отличного настроения и вдохновения.",
+                OffsetMinutes = null,
+                CooldownDays = 365,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN37N45DQ5CNVZ8BPKSWHR0"),
+                Name = "Связаться после пробного занятия",
+                Type = RecurringTaskType.TrialFollowUp,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Спасибо, что пришли на пробное занятие. Хотите подобрать удобное время для следующих занятий?",
+                OffsetMinutes = 24 * 60,
+                CooldownDays = null,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN381RT0F9ZJQTFQNYJH80A"),
+                Name = "Напомнить о занятиях",
+                Type = RecurringTaskType.InactiveClientReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Вы давно не были на занятиях. Хотите подобрать удобное время для следующего занятия?",
+                OffsetMinutes = null,
+                CooldownDays = 7,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN38EN9FA1BT39WHX1XPJMS"),
+                Name = "Отправить расписание преподавателю",
+                Type = RecurringTaskType.TeacherDailySchedule,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Teacher.FirstName}! Отправляем ваше расписание на {Date}.",
+                OffsetMinutes = null,
+                CooldownDays = 1,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            });
+
         modelBuilder.Entity<RequestReplay>()
             .HasIndex(e => new { e.Endpoint, e.ReplayKey })
             .IsUnique();
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasIndex(e => e.DeduplicationKey)
+            .IsUnique();
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasIndex(e => new { e.RuleId, e.Status });
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasIndex(e => new { e.ClientId, e.RuleId, e.CompletedAtUtc });
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasIndex(e => e.AppointmentId);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.Rule)
+            .WithMany()
+            .HasForeignKey(e => e.RuleId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.Teacher)
+            .WithMany()
+            .HasForeignKey(e => e.TeacherId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.Appointment)
+            .WithMany()
+            .HasForeignKey(e => e.AppointmentId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.CompletedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.CompletedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.SkippedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.SkippedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Expense>()
             .HasOne(e => e.Category)

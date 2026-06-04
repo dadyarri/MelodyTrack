@@ -66,6 +66,7 @@ public class
                 FirstName = req.FirstName,
                 LastName = req.LastName,
                 Patronymic = req.Patronymic,
+                DateOfBirth = req.DateOfBirth,
                 Source = source,
                 CreatedAtUtc = DateTime.UtcNow,
                 Contacts = new ClientContacts
@@ -98,6 +99,7 @@ public class
                 Details = AuditDetailsFormatter.JoinChanges(
                     AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
                     AuditDetailsFormatter.DescribeContext("Отчество", client.Patronymic),
+                    AuditDetailsFormatter.DescribeContext("Дата рождения", client.DateOfBirth?.ToString("yyyy-MM-dd")),
                     AuditDetailsFormatter.DescribeContext("Телефон", client.Contacts.Phone),
                     AuditDetailsFormatter.DescribeContext("Telegram", client.Contacts.Telegram),
                     AuditDetailsFormatter.DescribeContext("VK", client.Contacts.Vk),

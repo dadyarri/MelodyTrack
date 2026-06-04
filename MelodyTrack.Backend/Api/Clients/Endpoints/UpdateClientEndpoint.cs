@@ -21,11 +21,12 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         CancellationToken ct)
     {
         Logger.LogInformation(
-            "Updating client {ClientId} with new data - FirstName: {FirstName}, LastName: {LastName}, Patronymic: {Patronymic}, Contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+            "Updating client {ClientId} with new data - FirstName: {FirstName}, LastName: {LastName}, Patronymic: {Patronymic}, DateOfBirth: {DateOfBirth}, Contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
             req.Id,
             req.FirstName,
             req.LastName,
             req.Patronymic,
+            req.DateOfBirth?.ToString("yyyy-MM-dd") ?? "not provided",
             req.Phone ?? "not provided",
             req.Telegram ?? "not provided",
             req.Vk ?? "not provided"
@@ -67,6 +68,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         var beforeFirstName = client.FirstName;
         var beforeLastName = client.LastName;
         var beforePatronymic = client.Patronymic;
+        var beforeDateOfBirth = client.DateOfBirth;
         var beforePhone = client.Contacts.Phone;
         var beforeTelegram = client.Contacts.Telegram;
         var beforeVk = client.Contacts.Vk;
@@ -82,6 +84,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         }
 
         client.Patronymic = req.Patronymic;
+        client.DateOfBirth = req.DateOfBirth;
         client.Contacts.Phone = req.Phone;
         client.Contacts.Telegram = req.Telegram;
         client.Contacts.Vk = req.Vk;
@@ -98,6 +101,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 AuditDetailsFormatter.DescribeChange("Имя", beforeFirstName, client.FirstName),
                 AuditDetailsFormatter.DescribeChange("Фамилия", beforeLastName, client.LastName),
                 AuditDetailsFormatter.DescribeChange("Отчество", beforePatronymic, client.Patronymic),
+                AuditDetailsFormatter.DescribeChange("Дата рождения", beforeDateOfBirth?.ToString("yyyy-MM-dd"), client.DateOfBirth?.ToString("yyyy-MM-dd")),
                 AuditDetailsFormatter.DescribeChange("Телефон", beforePhone, client.Contacts.Phone),
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
@@ -113,6 +117,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         return (req.FirstName is null || req.FirstName == client.FirstName)
                && (req.LastName is null || req.LastName == client.LastName)
                && req.Patronymic == client.Patronymic
+               && req.DateOfBirth == client.DateOfBirth
                && req.Phone == client.Contacts.Phone
                && req.Telegram == client.Contacts.Telegram
                && req.Vk == client.Contacts.Vk

@@ -3,6 +3,7 @@ using System;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260531193355_AddBirthDateToClientAndContactsToUser")]
+    partial class AddBirthDateToClientAndContactsToUser
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -424,172 +427,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                         });
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.RecurringTaskExecution", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<byte[]>("AppointmentId")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateOnly>("BusinessDate")
-                        .HasColumnType("date");
-
-                    b.Property<byte[]>("ClientId")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime?>("CompletedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("CompletedByUserId")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("DeduplicationKey")
-                        .IsRequired()
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)");
-
-                    b.Property<string>("GeneratedText")
-                        .HasMaxLength(2000)
-                        .HasColumnType("character varying(2000)");
-
-                    b.Property<int>("RecipientType")
-                        .HasColumnType("integer");
-
-                    b.Property<byte[]>("RuleId")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime?>("SkippedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("SkippedByUserId")
-                        .HasColumnType("bytea");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer");
-
-                    b.Property<byte[]>("TeacherId")
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("AppointmentId");
-
-                    b.HasIndex("CompletedByUserId");
-
-                    b.HasIndex("DeduplicationKey")
-                        .IsUnique();
-
-                    b.HasIndex("SkippedByUserId");
-
-                    b.HasIndex("TeacherId");
-
-                    b.HasIndex("RuleId", "Status");
-
-                    b.HasIndex("ClientId", "RuleId", "CompletedAtUtc");
-
-                    b.ToTable("RecurringTaskExecutions");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.RecurringTaskRule", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<int?>("CooldownDays")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<bool>("IsEnabled")
-                        .HasColumnType("boolean");
-
-                    b.Property<string>("MessageTemplate")
-                        .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("character varying(1000)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.Property<int?>("OffsetMinutes")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("Type")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime>("UpdatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.ToTable("RecurringTaskRules");
-
-                    b.HasData(
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 51, 124, 145, 248, 218, 56, 50, 247, 8, 50, 250, 214, 128 },
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Client.FirstName}! Напоминаем, что {When} в {Appointment.StartTime} у вас запланировано занятие.",
-                            Name = "Напоминание о записи",
-                            OffsetMinutes = 1440,
-                            Type = 0,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 51, 176, 117, 100, 5, 171, 23, 40, 76, 250, 42, 17, 23 },
-                            CooldownDays = 365,
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Client.FirstName}! Поздравляем вас с днём рождения! Желаем хорошего дня, отличного настроения и вдохновения.",
-                            Name = "Поздравление с днём рождения",
-                            Type = 1,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 51, 212, 133, 109, 202, 202, 239, 232, 93, 167, 158, 71, 0 },
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Client.FirstName}! Спасибо, что пришли на пробное занятие. Хотите подобрать удобное время для следующих занятий?",
-                            Name = "Связаться после пробного занятия",
-                            OffsetMinutes = 1440,
-                            Type = 2,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 52, 7, 26, 3, 211, 249, 95, 79, 189, 125, 40, 160, 10 },
-                            CooldownDays = 7,
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Client.FirstName}! Вы давно не были на занятиях. Хотите подобрать удобное время для следующего занятия?",
-                            Name = "Напомнить о занятиях",
-                            Type = 3,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        },
-                        new
-                        {
-                            Id = new byte[] { 1, 151, 42, 52, 58, 169, 122, 130, 189, 13, 60, 143, 67, 219, 74, 153 },
-                            CooldownDays = 1,
-                            CreatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc),
-                            IsEnabled = true,
-                            MessageTemplate = "Здравствуйте, {Teacher.FirstName}! Отправляем ваше расписание на {Date}.",
-                            Name = "Отправить расписание преподавателю",
-                            Type = 4,
-                            UpdatedAtUtc = new DateTime(2026, 6, 4, 0, 0, 0, 0, DateTimeKind.Utc)
-                        });
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.RequestReplay", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -991,52 +828,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.RecurringTaskExecution", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.Appointment", "Appointment")
-                        .WithMany()
-                        .HasForeignKey("AppointmentId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "CompletedByUser")
-                        .WithMany()
-                        .HasForeignKey("CompletedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.RecurringTaskRule", "Rule")
-                        .WithMany()
-                        .HasForeignKey("RuleId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "SkippedByUser")
-                        .WithMany()
-                        .HasForeignKey("SkippedByUserId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "Teacher")
-                        .WithMany()
-                        .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.SetNull);
-
-                    b.Navigation("Appointment");
-
-                    b.Navigation("Client");
-
-                    b.Navigation("CompletedByUser");
-
-                    b.Navigation("Rule");
-
-                    b.Navigation("SkippedByUser");
-
-                    b.Navigation("Teacher");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ServicePrice", b =>

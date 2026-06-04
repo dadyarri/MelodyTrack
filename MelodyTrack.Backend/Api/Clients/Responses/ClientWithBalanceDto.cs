@@ -71,6 +71,7 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
         target.Vk = source.Contacts.Vk;
         target.Phone = source.Contacts.Phone;
         target.SourceId = source.SourceId;
+        target.DateOfBirth = source.DateOfBirth;
         target.SourceName = source.Source?.Name;
         target.LastAppointmentAtUtc = await db.Appointments
             .Where(e => e.Client.Id == source.Id

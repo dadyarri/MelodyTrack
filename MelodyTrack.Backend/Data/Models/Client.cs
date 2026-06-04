@@ -13,6 +13,8 @@ public class Client : BaseModel
     [MaxLength(100)]
     public string? Patronymic { get; set; }
 
+    public DateOnly? DateOfBirth { get; set; }
+
     public Ulid? SourceId { get; set; }
 
     public ClientSource? Source { get; set; }
