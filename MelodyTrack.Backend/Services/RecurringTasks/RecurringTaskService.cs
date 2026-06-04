@@ -10,7 +10,7 @@ namespace MelodyTrack.Backend.Services.RecurringTasks;
 
 public interface IRecurringTaskService
 {
-    Task<List<RecurringTaskDto>> GetDueTasksAsync(string timezone, RecurringTaskType? filterType, CancellationToken ct);
+    Task<List<RecurringTaskDto>> GetTasksAsync(string timezone, RecurringTaskType? filterType, RecurringTaskListStatus status, CancellationToken ct);
     Task<RecurringTaskActionResult> CompleteAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct);
     Task<RecurringTaskActionResult> SkipAsync(SkipRecurringTaskRequest request, User actor, CancellationToken ct);
 }
@@ -40,7 +40,18 @@ public sealed class RecurringTaskActionResult
 
 public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogService) : IRecurringTaskService
 {
-    public async Task<List<RecurringTaskDto>> GetDueTasksAsync(string timezone, RecurringTaskType? filterType, CancellationToken ct)
+    public async Task<List<RecurringTaskDto>> GetTasksAsync(string timezone, RecurringTaskType? filterType, RecurringTaskListStatus status, CancellationToken ct)
+    {
+        return status switch
+        {
+            RecurringTaskListStatus.Open => await GetOpenTasksAsync(timezone, filterType, ct),
+            RecurringTaskListStatus.Completed => await GetProcessedTasksAsync(filterType, RecurringTaskStatus.Completed, ct),
+            RecurringTaskListStatus.Skipped => await GetProcessedTasksAsync(filterType, RecurringTaskStatus.Skipped, ct),
+            _ => []
+        };
+    }
+
+    private async Task<List<RecurringTaskDto>> GetOpenTasksAsync(string timezone, RecurringTaskType? filterType, CancellationToken ct)
     {
         var rulesQuery = db.RecurringTaskRules
             .AsNoTracking()
@@ -65,6 +76,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 RecurringTaskType.BirthdayGreeting => await BuildBirthdayCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.TrialFollowUp => await BuildTrialFollowUpCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.InactiveClientReminder => await BuildInactiveClientCandidatesAsync(rule, timezone, ct),
+                RecurringTaskType.TeacherDailySchedule => await BuildTeacherDailyScheduleCandidatesAsync(rule, timezone, ct),
                 _ => []
             };
 
@@ -95,6 +107,31 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToList();
     }
 
+    private async Task<List<RecurringTaskDto>> GetProcessedTasksAsync(RecurringTaskType? filterType, RecurringTaskStatus status, CancellationToken ct)
+    {
+        var query = db.RecurringTaskExecutions
+            .AsNoTracking()
+            .Include(execution => execution.Rule)
+            .Include(execution => execution.Client)
+            .ThenInclude(client => client!.Contacts)
+            .Include(execution => execution.Teacher)
+            .Include(execution => execution.Appointment)
+            .Where(execution => execution.Status == status);
+
+        if (filterType is { } type)
+        {
+            query = query.Where(execution => execution.Rule.Type == type);
+        }
+
+        var executions = await query
+            .OrderByDescending(execution => execution.CompletedAtUtc ?? execution.SkippedAtUtc ?? execution.CreatedAtUtc)
+            .ToListAsync(ct);
+
+        return executions
+            .Select(MapExecution)
+            .ToList();
+    }
+
     public async Task<RecurringTaskActionResult> CompleteAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct)
     {
         if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out _))
@@ -111,7 +148,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        var candidate = await FindCandidateAsync(request.Timezone, request.RuleId, request.DeduplicationKey, request.Type, request.ClientId, request.AppointmentId, ct);
+        var candidate = await FindCandidateAsync(request.Timezone, request.RuleId, request.DeduplicationKey, request.Type, request.ClientId, request.TeacherId, request.AppointmentId, ct);
         if (candidate is null)
         {
             return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
@@ -126,7 +163,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             Status = RecurringTaskStatus.Completed,
             RecipientType = candidate.RecipientType,
             ClientId = candidate.ClientId,
-            TeacherId = null,
+            TeacherId = candidate.TeacherId,
             AppointmentId = candidate.AppointmentId,
             BusinessDate = candidate.BusinessDate,
             DeduplicationKey = candidate.DeduplicationKey,
@@ -169,7 +206,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        var candidate = await FindCandidateAsync(request.Timezone, request.RuleId, request.DeduplicationKey, request.Type, request.ClientId, request.AppointmentId, ct);
+        var candidate = await FindCandidateAsync(request.Timezone, request.RuleId, request.DeduplicationKey, request.Type, request.ClientId, request.TeacherId, request.AppointmentId, ct);
         if (candidate is null)
         {
             return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
@@ -184,7 +221,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             Status = RecurringTaskStatus.Skipped,
             RecipientType = candidate.RecipientType,
             ClientId = candidate.ClientId,
-            TeacherId = null,
+            TeacherId = candidate.TeacherId,
             AppointmentId = candidate.AppointmentId,
             BusinessDate = candidate.BusinessDate,
             DeduplicationKey = candidate.DeduplicationKey,
@@ -217,6 +254,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         string deduplicationKey,
         string typeApiKey,
         Ulid? clientId,
+        Ulid? teacherId,
         Ulid? appointmentId,
         CancellationToken ct)
     {
@@ -225,12 +263,13 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return null;
         }
 
-        var candidates = await GetDueTasksAsync(timezone, filterType, ct);
+        var candidates = await GetOpenTasksAsync(timezone, filterType, ct);
 
         return candidates
             .Where(candidate => candidate.RuleId == ruleId
                                 && candidate.DeduplicationKey == deduplicationKey
                                 && candidate.ClientId == clientId
+                                && candidate.TeacherId == teacherId
                                 && candidate.AppointmentId == appointmentId)
             .Select(dto => new RecurringTaskCandidate
             {
@@ -239,6 +278,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 RecipientType = dto.RecipientType == "teacher" ? RecurringTaskRecipientType.Teacher : RecurringTaskRecipientType.Client,
                 DeduplicationKey = dto.DeduplicationKey,
                 ClientId = dto.ClientId,
+                TeacherId = dto.TeacherId,
                 AppointmentId = dto.AppointmentId,
                 Title = dto.Title,
                 RelatedPersonDisplayName = dto.RelatedPersonDisplayName,
@@ -568,6 +608,69 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         return candidates;
     }
 
+    private async Task<List<RecurringTaskCandidate>> BuildTeacherDailyScheduleCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
+    {
+        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(DateTime.UtcNow, timezone));
+        var dayStartUtc = DateTimeUtils.ConvertLocalDateToUtc(todayLocal, TimeOnly.MinValue, timezone);
+        var nextDayStartUtc = DateTimeUtils.ConvertLocalDateToUtc(todayLocal.AddDays(1), TimeOnly.MinValue, timezone);
+
+        var teacherAppointments = await db.Appointments
+            .AsNoTracking()
+            .Where(appointment =>
+                !appointment.IsDeleted
+                && appointment.Provider != null
+                && appointment.Status == AppointmentStatus.Planned
+                && appointment.StartDate >= dayStartUtc
+                && appointment.StartDate < nextDayStartUtc)
+            .Select(appointment => new
+            {
+                TeacherId = appointment.Provider!.Id,
+                appointment.Provider!.FirstName,
+                appointment.Provider.LastName,
+                appointment.Provider.Phone,
+                appointment.Provider.Telegram,
+                appointment.Provider.Vk,
+                appointment.StartDate
+            })
+            .ToListAsync(ct);
+
+        return teacherAppointments
+            .GroupBy(appointment => new
+            {
+                appointment.TeacherId,
+                appointment.FirstName,
+                appointment.LastName,
+                appointment.Phone,
+                appointment.Telegram,
+                appointment.Vk
+            })
+            .Where(group =>
+                !string.IsNullOrWhiteSpace(group.Key.Phone)
+                || !string.IsNullOrWhiteSpace(group.Key.Telegram)
+                || !string.IsNullOrWhiteSpace(group.Key.Vk))
+            .Select(group => new RecurringTaskCandidate
+            {
+                RuleId = rule.Id,
+                Type = RecurringTaskType.TeacherDailySchedule,
+                RecipientType = RecurringTaskRecipientType.Teacher,
+                DeduplicationKey = $"teacher-schedule:{rule.Id}:{group.Key.TeacherId}:{todayLocal:yyyy-MM-dd}",
+                ClientId = null,
+                TeacherId = group.Key.TeacherId,
+                AppointmentId = null,
+                Title = "Отправить расписание",
+                RelatedPersonDisplayName = $"{group.Key.LastName} {group.Key.FirstName}".Trim(),
+                RelevantAtUtc = dayStartUtc,
+                BusinessDate = todayLocal,
+                Phone = group.Key.Phone,
+                Telegram = group.Key.Telegram,
+                Vk = group.Key.Vk,
+                PreparedMessage = $"Здравствуйте, {group.Key.FirstName}! Отправляем ваше расписание на {todayLocal:dd.MM.yyyy}.",
+                SortAtUtc = group.Min(item => item.StartDate)
+            })
+            .OrderBy(candidate => candidate.RelatedPersonDisplayName)
+            .ToList();
+    }
+
     private static bool HasAnyClientContact(Client client)
     {
         return !string.IsNullOrWhiteSpace(client.Contacts.Phone)
@@ -575,8 +678,13 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                || !string.IsNullOrWhiteSpace(client.Contacts.Vk);
     }
 
-    private static string FormatClientName(Client client)
+    private static string FormatClientName(Client? client)
     {
+        if (client is null)
+        {
+            return "Клиент";
+        }
+
         return string.Join(' ', new[] { client.LastName, client.FirstName, client.Patronymic }
             .Where(value => !string.IsNullOrWhiteSpace(value)));
     }
@@ -599,6 +707,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             RecipientType = candidate.RecipientType == RecurringTaskRecipientType.Teacher ? "teacher" : "client",
             DeduplicationKey = candidate.DeduplicationKey,
             ClientId = candidate.ClientId,
+            TeacherId = candidate.TeacherId,
             AppointmentId = candidate.AppointmentId,
             Title = candidate.Title,
             RelatedPersonDisplayName = candidate.RelatedPersonDisplayName,
@@ -611,6 +720,57 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         };
     }
 
+    private static RecurringTaskDto MapExecution(RecurringTaskExecution execution)
+    {
+        var type = execution.Rule.Type;
+        var relatedPersonDisplayName = execution.RecipientType == RecurringTaskRecipientType.Teacher
+            ? FormatTeacherName(execution.Teacher)
+            : FormatClientName(execution.Client);
+
+        return new RecurringTaskDto
+        {
+            RuleId = execution.RuleId,
+            Type = type.ToApiKey(),
+            RecipientType = execution.RecipientType == RecurringTaskRecipientType.Teacher ? "teacher" : "client",
+            DeduplicationKey = execution.DeduplicationKey,
+            ClientId = execution.ClientId,
+            TeacherId = execution.TeacherId,
+            AppointmentId = execution.AppointmentId,
+            Title = GetTaskTitle(type),
+            RelatedPersonDisplayName = relatedPersonDisplayName,
+            RelevantAtUtc = execution.Appointment?.StartDate,
+            BusinessDate = execution.BusinessDate,
+            Phone = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Phone : execution.Client?.Contacts.Phone,
+            Telegram = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Telegram : execution.Client?.Contacts.Telegram,
+            Vk = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Vk : execution.Client?.Contacts.Vk,
+            PreparedMessage = execution.GeneratedText ?? string.Empty
+        };
+    }
+
+    private static string GetTaskTitle(RecurringTaskType type)
+    {
+        return type switch
+        {
+            RecurringTaskType.AppointmentReminder => "Напомнить о записи",
+            RecurringTaskType.BirthdayGreeting => "Поздравить с днём рождения",
+            RecurringTaskType.TrialFollowUp => "Связаться после пробного занятия",
+            RecurringTaskType.InactiveClientReminder => "Напомнить о занятиях",
+            RecurringTaskType.TeacherDailySchedule => "Отправить расписание",
+            _ => "Задача"
+        };
+    }
+
+    private static string FormatTeacherName(User? teacher)
+    {
+        if (teacher is null)
+        {
+            return "Преподаватель";
+        }
+
+        return string.Join(' ', new[] { teacher.LastName, teacher.FirstName }
+            .Where(value => !string.IsNullOrWhiteSpace(value)));
+    }
+
     private sealed class RecurringTaskCandidate
     {
         public required Ulid RuleId { get; init; }
@@ -618,6 +778,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         public required RecurringTaskRecipientType RecipientType { get; init; }
         public required string DeduplicationKey { get; init; }
         public Ulid? ClientId { get; init; }
+        public Ulid? TeacherId { get; init; }
         public Ulid? AppointmentId { get; init; }
         public required string Title { get; init; }
         public required string RelatedPersonDisplayName { get; init; }

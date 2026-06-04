@@ -36,6 +36,11 @@ public class GetDueRecurringTasksEndpoint(AppDbContext db, IRecurringTaskService
             return TypedResults.Problem("Не указан часовой пояс.", statusCode: StatusCodes.Status400BadRequest);
         }
 
+        if (!RecurringTaskListStatusExtensions.TryParseApiKey(req.Status, out var status))
+        {
+            return TypedResults.Problem("Неизвестный статус списка задач.", statusCode: StatusCodes.Status400BadRequest);
+        }
+
         if (!string.IsNullOrWhiteSpace(req.Type) && !RecurringTaskTypeExtensions.TryParseApiKey(req.Type, out _))
         {
             return TypedResults.Problem("Неизвестный тип задачи.", statusCode: StatusCodes.Status400BadRequest);
@@ -45,7 +50,7 @@ public class GetDueRecurringTasksEndpoint(AppDbContext db, IRecurringTaskService
             ? parsedType
             : null;
 
-        var tasks = await recurringTaskService.GetDueTasksAsync(req.Timezone, filterType, ct);
+        var tasks = await recurringTaskService.GetTasksAsync(req.Timezone, filterType, status, ct);
         return TypedResults.Ok(new GetDueRecurringTasksResponse { Tasks = tasks });
     }
 }

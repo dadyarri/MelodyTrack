@@ -132,6 +132,18 @@ public class AppDbContext : DbContext
                 CooldownDays = 7,
                 CreatedAtUtc = recurringTaskSeededAtUtc,
                 UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JWN38EN9FA1BT39WHX1XPJMS"),
+                Name = "Отправить расписание преподавателю",
+                Type = RecurringTaskType.TeacherDailySchedule,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Teacher.FirstName}! Отправляем ваше расписание на {Date}.",
+                OffsetMinutes = null,
+                CooldownDays = 1,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
             });
 
         modelBuilder.Entity<RequestReplay>()

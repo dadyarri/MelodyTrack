@@ -7,6 +7,7 @@ public class RecurringTaskDto
     public required string RecipientType { get; set; }
     public required string DeduplicationKey { get; set; }
     public Ulid? ClientId { get; set; }
+    public Ulid? TeacherId { get; set; }
     public Ulid? AppointmentId { get; set; }
     public required string Title { get; set; }
     public required string RelatedPersonDisplayName { get; set; }

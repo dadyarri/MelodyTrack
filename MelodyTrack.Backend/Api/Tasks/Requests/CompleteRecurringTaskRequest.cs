@@ -7,6 +7,7 @@ public class CompleteRecurringTaskRequest
     public required string Type { get; set; }
     public required string DeduplicationKey { get; set; }
     public Ulid? ClientId { get; set; }
+    public Ulid? TeacherId { get; set; }
     public Ulid? AppointmentId { get; set; }
     public string? PreparedMessage { get; set; }
 }

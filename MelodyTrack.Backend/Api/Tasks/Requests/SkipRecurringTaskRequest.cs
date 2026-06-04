@@ -7,5 +7,6 @@ public class SkipRecurringTaskRequest
     public required string Type { get; set; }
     public required string DeduplicationKey { get; set; }
     public Ulid? ClientId { get; set; }
+    public Ulid? TeacherId { get; set; }
     public Ulid? AppointmentId { get; set; }
 }

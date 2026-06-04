@@ -117,6 +117,7 @@ try
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
     builder.Services.AddScoped<IRecurringTaskService, RecurringTaskService>();
+    builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
 
     builder.Services.Configure<QuartzOptions>(opts =>
