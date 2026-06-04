@@ -343,7 +343,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = appointment.Client.Contacts.Phone,
                 Telegram = appointment.Client.Contacts.Telegram,
                 Vk = appointment.Client.Contacts.Vk,
-                PreparedMessage = $"Здравствуйте, {appointment.Client.FirstName}! Напоминаем, что {whenWord} в {localAppointmentDate:HH:mm} у вас запланировано занятие.",
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    clientFirstName: appointment.Client.FirstName,
+                    clientLastName: appointment.Client.LastName,
+                    clientPatronymic: appointment.Client.Patronymic,
+                    whenWord: whenWord,
+                    appointmentStartTime: localAppointmentDate.ToString("HH:mm"),
+                    appointmentDate: localAppointmentDate.ToString("dd.MM.yyyy")),
                 SortAtUtc = appointment.StartDate
             });
         }
@@ -383,7 +390,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = client.Contacts.Phone,
                 Telegram = client.Contacts.Telegram,
                 Vk = client.Contacts.Vk,
-                PreparedMessage = $"Здравствуйте, {client.FirstName}! Поздравляем вас с днём рождения! Желаем хорошего дня, отличного настроения и вдохновения.",
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    clientFirstName: client.FirstName,
+                    clientLastName: client.LastName,
+                    clientPatronymic: client.Patronymic,
+                    date: todayLocal.ToString("dd.MM.yyyy")),
                 SortAtUtc = DateTime.UtcNow
             })
             .ToList();
@@ -505,7 +517,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = appointment.Client.Contacts.Phone,
                 Telegram = appointment.Client.Contacts.Telegram,
                 Vk = appointment.Client.Contacts.Vk,
-                PreparedMessage = $"Здравствуйте, {appointment.Client.FirstName}! Спасибо, что пришли на пробное занятие. Хотите подобрать удобное время для следующих занятий?",
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    clientFirstName: appointment.Client.FirstName,
+                    clientLastName: appointment.Client.LastName,
+                    clientPatronymic: appointment.Client.Patronymic,
+                    date: businessDate.ToString("dd.MM.yyyy")),
                 SortAtUtc = appointment.StartDate
             });
         }
@@ -600,7 +617,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = attendance.Client.Contacts.Phone,
                 Telegram = attendance.Client.Contacts.Telegram,
                 Vk = attendance.Client.Contacts.Vk,
-                PreparedMessage = $"Здравствуйте, {attendance.Client.FirstName}! Вы давно не были на занятиях. Хотите подобрать удобное время для следующего занятия?",
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    clientFirstName: attendance.Client.FirstName,
+                    clientLastName: attendance.Client.LastName,
+                    clientPatronymic: attendance.Client.Patronymic,
+                    date: periodStartDate.ToString("dd.MM.yyyy")),
                 SortAtUtc = attendance.StartDate
             });
         }
@@ -664,11 +686,39 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = group.Key.Phone,
                 Telegram = group.Key.Telegram,
                 Vk = group.Key.Vk,
-                PreparedMessage = $"Здравствуйте, {group.Key.FirstName}! Отправляем ваше расписание на {todayLocal:dd.MM.yyyy}.",
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    teacherFirstName: group.Key.FirstName,
+                    teacherLastName: group.Key.LastName,
+                    date: todayLocal.ToString("dd.MM.yyyy")),
                 SortAtUtc = group.Min(item => item.StartDate)
             })
             .OrderBy(candidate => candidate.RelatedPersonDisplayName)
             .ToList();
+    }
+
+    private static string RenderMessageTemplate(
+        string template,
+        string? clientFirstName = null,
+        string? clientLastName = null,
+        string? clientPatronymic = null,
+        string? teacherFirstName = null,
+        string? teacherLastName = null,
+        string? whenWord = null,
+        string? appointmentStartTime = null,
+        string? appointmentDate = null,
+        string? date = null)
+    {
+        return template
+            .Replace("{Client.FirstName}", clientFirstName ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Client.LastName}", clientLastName ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Client.Patronymic}", clientPatronymic ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Teacher.FirstName}", teacherFirstName ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Teacher.LastName}", teacherLastName ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{When}", whenWord ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Appointment.StartTime}", appointmentStartTime ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Appointment.Date}", appointmentDate ?? string.Empty, StringComparison.Ordinal)
+            .Replace("{Date}", date ?? appointmentDate ?? string.Empty, StringComparison.Ordinal);
     }
 
     private static bool HasAnyClientContact(Client client)
