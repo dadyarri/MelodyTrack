@@ -3,12 +3,13 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUsersResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class GetUsersEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.NoReq.Res<Results<Ok<GetUsersResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
@@ -50,6 +51,13 @@ public class GetUsersEndpoint(AppDbContext db) : Ep.NoReq.Res<Results<Ok<GetUser
                 Phone = e.Phone
             })
             .ToListAsync(ct);
+
+        var latestActivities = await recordActivityService.GetLatestActivitiesAsync("user", users.Select(user => user.Id.ToString()).ToList(), ct);
+
+        foreach (var item in users)
+        {
+            item.LastActivity = latestActivities.GetValueOrDefault(item.Id.ToString());
+        }
 
         return TypedResults.Ok(new GetUsersResponse { Users = users });
     }

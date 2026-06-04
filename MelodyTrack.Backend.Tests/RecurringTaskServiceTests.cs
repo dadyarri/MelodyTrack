@@ -37,7 +37,11 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
         await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var initialTasks = await recurringTaskService.GetDueTasksAsync("Europe/Moscow", RecurringTaskType.AppointmentReminder, TestContext.Current.CancellationToken);
+        var initialTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
         var initialTask = initialTasks.ShouldHaveSingleItem();
 
         var completeResult = await recurringTaskService.CompleteAsync(new MelodyTrack.Backend.Api.Tasks.Requests.CompleteRecurringTaskRequest
@@ -57,7 +61,11 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
         appointment.EndDate = appointment.EndDate.AddHours(1);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var rescheduledTasks = await recurringTaskService.GetDueTasksAsync("Europe/Moscow", RecurringTaskType.AppointmentReminder, TestContext.Current.CancellationToken);
+        var rescheduledTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
         var rescheduledTask = rescheduledTasks.ShouldHaveSingleItem();
 
         rescheduledTask.DeduplicationKey.ShouldNotBe(initialTask.DeduplicationKey);

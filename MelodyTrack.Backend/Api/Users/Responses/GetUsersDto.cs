@@ -1,3 +1,5 @@
+using MelodyTrack.Backend.Api.Common.Responses;
+
 namespace MelodyTrack.Backend.Api.Users.Responses;
 
 public class GetUsersDto
@@ -9,4 +11,5 @@ public class GetUsersDto
     public string? Telegram { get; set; }
     public string? Vk { get; set; }
     public string? Phone { get; set; }
+    public RecordActivityDto? LastActivity { get; set; }
 }
