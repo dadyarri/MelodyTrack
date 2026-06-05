@@ -24,6 +24,19 @@ public static class RecurringTaskTypeExtensions
         };
     }
 
+    public static string ToDisplayLabel(this RecurringTaskType type)
+    {
+        return type switch
+        {
+            RecurringTaskType.AppointmentReminder => "Напоминание о записи",
+            RecurringTaskType.BirthdayGreeting => "Поздравление с днем рождения",
+            RecurringTaskType.TrialFollowUp => "Связаться после пробного",
+            RecurringTaskType.InactiveClientReminder => "Вернуть клиента",
+            RecurringTaskType.TeacherDailySchedule => "Расписание преподавателя",
+            _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
+        };
+    }
+
     public static bool TryParseApiKey(string? value, out RecurringTaskType type)
     {
         type = RecurringTaskType.AppointmentReminder;

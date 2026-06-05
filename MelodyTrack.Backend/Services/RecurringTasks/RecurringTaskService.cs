@@ -216,7 +216,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             Action = "task_completed",
             EntityType = "recurring_task",
             EntityId = execution.Id.ToString(),
-            Details = $"Тип: {candidate.Type.ToApiKey()}; Ключ: {candidate.DeduplicationKey}; Получатель: {candidate.RelatedPersonDisplayName}"
+            Details = BuildRecurringTaskAuditDetails(candidate)
         }, ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
@@ -292,7 +292,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             Action = "task_cancelled",
             EntityType = "recurring_task",
             EntityId = execution.Id.ToString(),
-            Details = $"Тип: {candidate.Type.ToApiKey()}; Ключ: {candidate.DeduplicationKey}; Получатель: {candidate.RelatedPersonDisplayName}"
+            Details = BuildRecurringTaskAuditDetails(candidate)
         }, ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
@@ -375,7 +375,9 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             Action = "task_delayed",
             EntityType = "recurring_task",
             EntityId = execution.Id.ToString(),
-            Details = $"Тип: {candidate.Type.ToApiKey()}; Ключ: {candidate.DeduplicationKey}; Получатель: {candidate.RelatedPersonDisplayName}; До: {delayUntilUtc:O}"
+            Details = AuditDetailsFormatter.JoinChanges(
+                BuildRecurringTaskAuditDetails(candidate),
+                AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc))
         }, ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
@@ -828,6 +830,16 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             })
             .OrderBy(candidate => candidate.RelatedPersonDisplayName)
             .ToList();
+    }
+
+    private static string BuildRecurringTaskAuditDetails(RecurringTaskCandidate candidate)
+    {
+        return AuditDetailsFormatter.JoinChanges(
+            AuditDetailsFormatter.DescribeContext("Тип", candidate.Type.ToDisplayLabel()),
+            AuditDetailsFormatter.DescribeContext("Задача", candidate.Title),
+            AuditDetailsFormatter.DescribeContext("Получатель", candidate.RelatedPersonDisplayName),
+            AuditDetailsFormatter.DescribeContext("Дата", candidate.BusinessDate.ToString("dd.MM.yyyy")),
+            candidate.RelevantAtUtc is null ? null : AuditDetailsFormatter.DescribeContext("Время", candidate.RelevantAtUtc));
     }
 
     private static string RenderMessageTemplate(
