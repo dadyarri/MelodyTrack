@@ -32,12 +32,19 @@ public class RecurringTaskExecution : BaseModel
     public Ulid? CompletedByUserId { get; set; }
     public User? CompletedByUser { get; set; }
 
-    public Ulid? SkippedByUserId { get; set; }
-    public User? SkippedByUser { get; set; }
+    public Ulid? CancelledByUserId { get; set; }
+    public User? CancelledByUser { get; set; }
+
+    public Ulid? DelayedByUserId { get; set; }
+    public User? DelayedByUser { get; set; }
 
     public required DateTime CreatedAtUtc { get; set; }
 
     public DateTime? CompletedAtUtc { get; set; }
 
-    public DateTime? SkippedAtUtc { get; set; }
+    public DateTime? CancelledAtUtc { get; set; }
+
+    public DateTime? DelayedAtUtc { get; set; }
+
+    public DateTime? DelayedUntilUtc { get; set; }
 }

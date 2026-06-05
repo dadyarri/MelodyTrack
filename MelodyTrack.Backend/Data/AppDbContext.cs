@@ -194,9 +194,15 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<RecurringTaskExecution>()
-            .HasOne(e => e.SkippedByUser)
+            .HasOne(e => e.CancelledByUser)
             .WithMany()
-            .HasForeignKey(e => e.SkippedByUserId)
+            .HasForeignKey(e => e.CancelledByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.DelayedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.DelayedByUserId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Expense>()

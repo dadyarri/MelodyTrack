@@ -4,7 +4,8 @@ public enum RecurringTaskListStatus
 {
     Open = 0,
     Completed = 1,
-    Skipped = 2
+    Cancelled = 2,
+    Delayed = 3
 }
 
 public static class RecurringTaskListStatusExtensions
@@ -23,8 +24,12 @@ public static class RecurringTaskListStatusExtensions
             case "completed":
                 status = RecurringTaskListStatus.Completed;
                 return true;
+            case "cancelled":
             case "skipped":
-                status = RecurringTaskListStatus.Skipped;
+                status = RecurringTaskListStatus.Cancelled;
+                return true;
+            case "delayed":
+                status = RecurringTaskListStatus.Delayed;
                 return true;
             default:
                 return false;

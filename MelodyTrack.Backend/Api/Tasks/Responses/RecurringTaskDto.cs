@@ -12,6 +12,7 @@ public class RecurringTaskDto
     public required string Title { get; set; }
     public required string RelatedPersonDisplayName { get; set; }
     public DateTime? RelevantAtUtc { get; set; }
+    public DateTime? DelayedUntilUtc { get; set; }
     public required DateOnly BusinessDate { get; set; }
     public string? Phone { get; set; }
     public string? Telegram { get; set; }

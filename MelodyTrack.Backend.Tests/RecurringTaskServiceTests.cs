@@ -2,6 +2,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services.RecurringTasks;
+using Microsoft.EntityFrameworkCore;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -70,5 +71,81 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
 
         rescheduledTask.DeduplicationKey.ShouldNotBe(initialTask.DeduplicationKey);
         rescheduledTask.AppointmentId.ShouldBe(appointment.Id);
+    }
+
+    [Fact]
+    public async Task DelayAsync_HidesTaskUntilRequestedTime_AndShowsItAgainAfterDelayExpires()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Мария", "Иванова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234568";
+
+        var service = await TestDataFactory.CreateServiceAsync(db, "Английский", TestContext.Current.CancellationToken);
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = DateTime.UtcNow.AddHours(8),
+            EndDate = DateTime.UtcNow.AddHours(9),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var openTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+        var openTask = openTasks.ShouldHaveSingleItem();
+
+        var delayedUntilUtc = DateTime.UtcNow.AddHours(2);
+        var delayResult = await recurringTaskService.DelayAsync(new MelodyTrack.Backend.Api.Tasks.Requests.DelayRecurringTaskRequest
+        {
+            Timezone = "Europe/Moscow",
+            RuleId = openTask.RuleId,
+            Type = openTask.Type,
+            DeduplicationKey = openTask.DeduplicationKey,
+            ClientId = openTask.ClientId,
+            AppointmentId = openTask.AppointmentId,
+            DelayUntilUtc = delayedUntilUtc
+        }, admin, TestContext.Current.CancellationToken);
+
+        delayResult.Succeeded.ShouldBeTrue();
+        delayResult.Status.ShouldBe(RecurringTaskStatus.Delayed);
+
+        var hiddenTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+        hiddenTasks.ShouldBeEmpty();
+
+        var delayedTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Delayed,
+            TestContext.Current.CancellationToken);
+        delayedTasks.ShouldHaveSingleItem().DelayedUntilUtc.ShouldNotBeNull();
+
+        var execution = await db.RecurringTaskExecutions.SingleAsync(
+            item => item.DeduplicationKey == openTask.DeduplicationKey,
+            TestContext.Current.CancellationToken);
+        execution.DelayedUntilUtc = DateTime.UtcNow.AddMinutes(-5);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var reopenedTasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.AppointmentReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+        reopenedTasks.ShouldHaveSingleItem().DeduplicationKey.ShouldBe(openTask.DeduplicationKey);
     }
 }

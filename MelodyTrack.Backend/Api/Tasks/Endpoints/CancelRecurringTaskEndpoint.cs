@@ -8,16 +8,16 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class SkipRecurringTaskEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService)
-    : Ep.Req<SkipRecurringTaskRequest>.Res<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>>
+public class CancelRecurringTaskEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService)
+    : Ep.Req<CancelRecurringTaskRequest>.Res<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>>
 {
     public override void Configure()
     {
-        Post("/tasks/skip");
+        Post("/tasks/cancel");
     }
 
     public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(
-        SkipRecurringTaskRequest req,
+        CancelRecurringTaskRequest req,
         CancellationToken ct)
     {
         var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
@@ -31,7 +31,7 @@ public class SkipRecurringTaskEndpoint(AppDbContext db, IRecurringTaskService re
             return TypedResults.Forbid();
         }
 
-        var result = await recurringTaskService.SkipAsync(req, currentUser, ct);
+        var result = await recurringTaskService.CancelAsync(req, currentUser, ct);
         if (!result.Succeeded)
         {
             return TypedResults.Problem(result.ErrorMessage, statusCode: StatusCodes.Status409Conflict);

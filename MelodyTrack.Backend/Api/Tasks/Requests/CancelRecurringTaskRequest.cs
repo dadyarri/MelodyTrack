@@ -1,6 +1,6 @@
 namespace MelodyTrack.Backend.Api.Tasks.Requests;
 
-public class SkipRecurringTaskRequest
+public class CancelRecurringTaskRequest
 {
     public required string Timezone { get; set; }
     public required Ulid RuleId { get; set; }
