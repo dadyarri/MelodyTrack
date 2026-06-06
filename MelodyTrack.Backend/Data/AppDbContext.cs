@@ -144,6 +144,54 @@ public class AppDbContext : DbContext
                 CooldownDays = 1,
                 CreatedAtUtc = recurringTaskSeededAtUtc,
                 UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JX22E8S0Y8Q5NQMY4H3G2H5A"),
+                Name = "Напомнить о долге через день",
+                Type = RecurringTaskType.DebtorReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Напоминаем, что у вас есть задолженность. Напишите нам, пожалуйста, если хотите уточнить сумму или подобрать удобный способ оплаты.",
+                OffsetMinutes = 24 * 60,
+                CooldownDays = null,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JX22E8S0Y8Q5NQMY4H3G2H5B"),
+                Name = "Напомнить о долге через 3 дня",
+                Type = RecurringTaskType.DebtorReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Напоминаем о задолженности по занятиям. Если удобно, можем помочь с оплатой или ответить на вопросы.",
+                OffsetMinutes = 3 * 24 * 60,
+                CooldownDays = null,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JX22E8S0Y8Q5NQMY4H3G2H5C"),
+                Name = "Напомнить о долге через неделю",
+                Type = RecurringTaskType.DebtorReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! У вас по-прежнему есть задолженность. Напишите нам, если нужна помощь с оплатой или хотите обсудить детали.",
+                OffsetMinutes = 7 * 24 * 60,
+                CooldownDays = null,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
+            },
+            new RecurringTaskRule
+            {
+                Id = Ulid.Parse("01JX22E8S0Y8Q5NQMY4H3G2H5D"),
+                Name = "Напоминать о долге каждую неделю",
+                Type = RecurringTaskType.DebtorReminder,
+                IsEnabled = true,
+                MessageTemplate = "Здравствуйте, {Client.FirstName}! Напоминаем, что задолженность всё ещё не закрыта. Если нужна помощь или удобный вариант оплаты, мы на связи.",
+                OffsetMinutes = 7 * 24 * 60,
+                CooldownDays = 7,
+                CreatedAtUtc = recurringTaskSeededAtUtc,
+                UpdatedAtUtc = recurringTaskSeededAtUtc
             });
 
         modelBuilder.Entity<RequestReplay>()

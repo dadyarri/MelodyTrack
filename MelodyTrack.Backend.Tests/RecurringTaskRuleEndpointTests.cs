@@ -31,9 +31,10 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         var payload = await response.Content.ReadFromJsonAsync<GetRecurringTaskRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
-        payload.Rules.Count.ShouldBeGreaterThanOrEqualTo(5);
+        payload.Rules.Count.ShouldBeGreaterThanOrEqualTo(9);
         payload.Rules.ShouldContain(rule => rule.Type == "appointment-reminder");
         payload.Rules.ShouldContain(rule => rule.Type == "teacher-daily-schedule");
+        payload.Rules.Count(rule => rule.Type == "debtor-reminder").ShouldBe(4);
     }
 
     [Fact]

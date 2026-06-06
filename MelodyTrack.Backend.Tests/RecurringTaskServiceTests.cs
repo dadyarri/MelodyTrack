@@ -2,6 +2,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services.RecurringTasks;
+using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
@@ -147,5 +148,139 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
             RecurringTaskListStatus.Open,
             TestContext.Current.CancellationToken);
         reopenedTasks.ShouldHaveSingleItem().DeduplicationKey.ShouldBe(openTask.DeduplicationKey);
+    }
+
+    [Fact]
+    public async Task DebtorReminder_ForOlderDebt_KeepsOnlyCurrentWeeklyReminder()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var client = await TestDataFactory.CreateClientAsync(db, "Елена", "Сидорова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234569";
+
+        var service = await TestDataFactory.CreateServiceAsync(db, "Фортепиано", TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1_000m,
+            EffectiveDate = DateTime.UtcNow.AddMonths(-2)
+        }, TestContext.Current.CancellationToken);
+
+        var debtStartedAtUtc = DateTime.UtcNow.AddDays(-16);
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = debtStartedAtUtc,
+            EndDate = debtStartedAtUtc.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.DebtorReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        tasks.Count.ShouldBe(1);
+        tasks.ShouldContain(task => task.DeduplicationKey.Contains("debtor-reminder", StringComparison.Ordinal));
+        tasks.Count(task => task.Type == "debtor-reminder").ShouldBe(1);
+
+        var debtStartDate = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(debtStartedAtUtc, "Europe/Moscow"));
+        tasks.ShouldContain(task => task.BusinessDate == debtStartDate.AddDays(14));
+    }
+
+    [Fact]
+    public async Task DebtorReminder_OnFirstDayAfterDebt_GeneratesOnlyFirstReminder()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Кузнецова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234570";
+
+        var service = await TestDataFactory.CreateServiceAsync(db, "Сольфеджио", TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1_000m,
+            EffectiveDate = DateTime.UtcNow.AddMonths(-2)
+        }, TestContext.Current.CancellationToken);
+
+        var debtStartedAtUtc = DateTime.UtcNow.AddDays(-1);
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = debtStartedAtUtc,
+            EndDate = debtStartedAtUtc.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.DebtorReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        tasks.Count.ShouldBe(1);
+        tasks.ShouldContain(task => task.BusinessDate == DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(debtStartedAtUtc, "Europe/Moscow")).AddDays(1));
+    }
+
+    [Fact]
+    public async Task DebtorReminder_BetweenThresholds_KeepsOnlyCurrentStageReminder()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var client = await TestDataFactory.CreateClientAsync(db, "Ольга", "Миронова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234571";
+
+        var service = await TestDataFactory.CreateServiceAsync(db, "Вокал", TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1_000m,
+            EffectiveDate = DateTime.UtcNow.AddMonths(-2)
+        }, TestContext.Current.CancellationToken);
+
+        var debtStartedAtUtc = DateTime.UtcNow.AddDays(-5);
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            StartDate = debtStartedAtUtc,
+            EndDate = debtStartedAtUtc.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.DebtorReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        var debtStartDate = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(debtStartedAtUtc, "Europe/Moscow"));
+        tasks.Count.ShouldBe(1);
+        tasks.ShouldContain(task => task.BusinessDate == debtStartDate.AddDays(3));
     }
 }

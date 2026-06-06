@@ -6,7 +6,8 @@ public enum RecurringTaskType
     BirthdayGreeting = 1,
     TrialFollowUp = 2,
     InactiveClientReminder = 3,
-    TeacherDailySchedule = 4
+    TeacherDailySchedule = 4,
+    DebtorReminder = 5
 }
 
 public static class RecurringTaskTypeExtensions
@@ -20,6 +21,7 @@ public static class RecurringTaskTypeExtensions
             RecurringTaskType.TrialFollowUp => "trial-follow-up",
             RecurringTaskType.InactiveClientReminder => "inactive-client-reminder",
             RecurringTaskType.TeacherDailySchedule => "teacher-daily-schedule",
+            RecurringTaskType.DebtorReminder => "debtor-reminder",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -33,6 +35,7 @@ public static class RecurringTaskTypeExtensions
             RecurringTaskType.TrialFollowUp => "Связаться после пробного",
             RecurringTaskType.InactiveClientReminder => "Вернуть клиента",
             RecurringTaskType.TeacherDailySchedule => "Расписание преподавателя",
+            RecurringTaskType.DebtorReminder => "Напомнить о долге",
             _ => throw new ArgumentOutOfRangeException(nameof(type), type, null)
         };
     }
@@ -57,6 +60,9 @@ public static class RecurringTaskTypeExtensions
                 return true;
             case "teacher-daily-schedule":
                 type = RecurringTaskType.TeacherDailySchedule;
+                return true;
+            case "debtor-reminder":
+                type = RecurringTaskType.DebtorReminder;
                 return true;
             default:
                 return false;

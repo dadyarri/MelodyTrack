@@ -113,11 +113,11 @@ public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessSe
 
     private static bool SupportsOffsetMinutes(RecurringTaskType type)
     {
-        return type is RecurringTaskType.AppointmentReminder or RecurringTaskType.TrialFollowUp;
+        return type is RecurringTaskType.AppointmentReminder or RecurringTaskType.TrialFollowUp or RecurringTaskType.DebtorReminder;
     }
 
     private static bool SupportsCooldownDays(RecurringTaskType type)
     {
-        return type is RecurringTaskType.BirthdayGreeting or RecurringTaskType.InactiveClientReminder or RecurringTaskType.TeacherDailySchedule;
+        return type is RecurringTaskType.BirthdayGreeting or RecurringTaskType.InactiveClientReminder or RecurringTaskType.TeacherDailySchedule or RecurringTaskType.DebtorReminder;
     }
 }

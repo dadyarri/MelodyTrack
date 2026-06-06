@@ -79,6 +79,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 RecurringTaskType.TrialFollowUp => await BuildTrialFollowUpCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.InactiveClientReminder => await BuildInactiveClientCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.TeacherDailySchedule => await BuildTeacherDailyScheduleCandidatesAsync(rule, timezone, ct),
+                RecurringTaskType.DebtorReminder => await BuildDebtorReminderCandidatesAsync(rule, timezone, ct),
                 _ => []
             };
 
@@ -832,6 +833,207 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToList();
     }
 
+    private async Task<List<RecurringTaskCandidate>> BuildDebtorReminderCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
+    {
+        var nowUtc = DateTime.UtcNow;
+        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(nowUtc, timezone));
+        var initialDelayDays = Math.Max(1, (rule.OffsetMinutes ?? 24 * 60) / (24 * 60));
+        var repeatEveryDays = rule.CooldownDays;
+        var currentStageStartDays = GetDebtorReminderStageStartDays(initialDelayDays, repeatEveryDays);
+
+        var debtorRuleStageStartDays = await db.RecurringTaskRules
+            .AsNoTracking()
+            .Where(item => item.IsEnabled && item.Type == RecurringTaskType.DebtorReminder)
+            .Select(item => new
+            {
+                OffsetMinutes = item.OffsetMinutes,
+                CooldownDays = item.CooldownDays
+            })
+            .ToListAsync(ct);
+
+        var nextStageStartDays = debtorRuleStageStartDays
+            .Select(item => GetDebtorReminderStageStartDays(
+                Math.Max(1, (item.OffsetMinutes ?? 24 * 60) / (24 * 60)),
+                item.CooldownDays))
+            .Where(stageStartDays => stageStartDays > currentStageStartDays)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
+        var appointments = await db.Appointments
+            .AsNoTracking()
+            .Include(appointment => appointment.Client)
+            .ThenInclude(client => client.Contacts)
+            .Where(appointment =>
+                !appointment.IsDeleted
+                && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned))
+            .Select(appointment => new
+            {
+                appointment.Id,
+                Client = appointment.Client,
+                ServiceId = appointment.Service.Id,
+                appointment.StartDate
+            })
+            .ToListAsync(ct);
+
+        if (appointments.Count == 0)
+        {
+            return [];
+        }
+
+        var clientIds = appointments
+            .Select(appointment => appointment.Client.Id)
+            .Distinct()
+            .ToList();
+
+        var serviceIds = appointments
+            .Select(appointment => appointment.ServiceId)
+            .Distinct()
+            .ToList();
+
+        var payments = await db.Payments
+            .AsNoTracking()
+            .Where(payment => clientIds.Contains(payment.Client.Id))
+            .Select(payment => new
+            {
+                ClientId = payment.Client.Id,
+                payment.Amount,
+                payment.Date
+            })
+            .ToListAsync(ct);
+
+        var priceHistory = await db.ServicePriceHistory
+            .AsNoTracking()
+            .Where(entry => serviceIds.Contains(entry.Service.Id))
+            .Select(entry => new
+            {
+                ServiceId = entry.Service.Id,
+                entry.EffectiveDate,
+                entry.Price
+            })
+            .ToListAsync(ct);
+
+        var priceLookup = priceHistory
+            .GroupBy(entry => entry.ServiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group
+                    .OrderBy(entry => entry.EffectiveDate)
+                    .Select(entry => new DebtorServicePrice(entry.EffectiveDate, entry.Price))
+                    .ToList());
+
+        var candidates = new List<RecurringTaskCandidate>();
+
+        foreach (var clientAppointments in appointments.GroupBy(appointment => appointment.Client.Id))
+        {
+            var client = clientAppointments.First().Client;
+            if (!HasAnyClientContact(client))
+            {
+                continue;
+            }
+
+            var openLedgers = clientAppointments
+                .OrderBy(appointment => appointment.StartDate)
+                .Select(appointment => new DebtorAppointmentLedger
+                {
+                    AppointmentId = appointment.Id,
+                    StartDate = appointment.StartDate,
+                    Price = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, priceLookup),
+                    RemainingAmount = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, priceLookup)
+                })
+                .Where(ledger => ledger.Price > 0)
+                .ToList();
+
+            if (openLedgers.Count == 0)
+            {
+                continue;
+            }
+
+            var remainingPayments = payments
+                .Where(payment => payment.ClientId == clientAppointments.Key)
+                .OrderBy(payment => payment.Date)
+                .Select(payment => payment.Amount)
+                .ToList();
+
+            foreach (var paymentAmount in remainingPayments)
+            {
+                var remaining = paymentAmount;
+                foreach (var ledger in openLedgers.Where(ledger => ledger.RemainingAmount > 0))
+                {
+                    if (remaining <= 0)
+                    {
+                        break;
+                    }
+
+                    var allocated = Math.Min(ledger.RemainingAmount, remaining);
+                    ledger.RemainingAmount -= allocated;
+                    remaining -= allocated;
+                }
+            }
+
+            var firstOutstandingLedger = openLedgers
+                .Where(ledger => ledger.RemainingAmount > 0)
+                .OrderBy(ledger => ledger.StartDate)
+                .FirstOrDefault();
+
+            if (firstOutstandingLedger is null)
+            {
+                continue;
+            }
+
+            var debtAppearedDate = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(firstOutstandingLedger.StartDate, timezone));
+            var debtAgeDays = todayLocal.DayNumber - debtAppearedDate.DayNumber;
+
+            DateOnly businessDate;
+            if (repeatEveryDays is > 0)
+            {
+                if (debtAgeDays < currentStageStartDays)
+                {
+                    continue;
+                }
+
+                businessDate = debtAppearedDate.AddDays(currentStageStartDays + ((debtAgeDays - currentStageStartDays) / repeatEveryDays.Value) * repeatEveryDays.Value);
+            }
+            else
+            {
+                if (debtAgeDays < initialDelayDays || debtAgeDays >= nextStageStartDays)
+                {
+                    continue;
+                }
+
+                businessDate = debtAppearedDate.AddDays(initialDelayDays);
+            }
+
+            candidates.Add(new RecurringTaskCandidate
+            {
+                RuleId = rule.Id,
+                Type = RecurringTaskType.DebtorReminder,
+                RecipientType = RecurringTaskRecipientType.Client,
+                DeduplicationKey = $"debtor-reminder:{rule.Id}:{client.Id}:{businessDate:yyyy-MM-dd}",
+                ClientId = client.Id,
+                AppointmentId = firstOutstandingLedger.AppointmentId,
+                Title = "Напомнить о долге",
+                RelatedPersonDisplayName = FormatClientName(client),
+                RelevantAtUtc = firstOutstandingLedger.StartDate,
+                BusinessDate = businessDate,
+                Phone = client.Contacts.Phone,
+                Telegram = client.Contacts.Telegram,
+                Vk = client.Contacts.Vk,
+                PreparedMessage = RenderMessageTemplate(
+                    rule.MessageTemplate,
+                    clientFirstName: client.FirstName,
+                    clientLastName: client.LastName,
+                    clientPatronymic: client.Patronymic,
+                    date: businessDate.ToString("dd.MM.yyyy")),
+                SortAtUtc = firstOutstandingLedger.StartDate
+            });
+        }
+
+        return candidates
+            .OrderBy(candidate => candidate.BusinessDate)
+            .ThenBy(candidate => candidate.RelatedPersonDisplayName)
+            .ToList();
+    }
+
     private static string BuildRecurringTaskAuditDetails(RecurringTaskCandidate candidate)
     {
         return AuditDetailsFormatter.JoinChanges(
@@ -953,6 +1155,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             RecurringTaskType.TrialFollowUp => "Связаться после пробного занятия",
             RecurringTaskType.InactiveClientReminder => "Напомнить о занятиях",
             RecurringTaskType.TeacherDailySchedule => "Отправить расписание",
+            RecurringTaskType.DebtorReminder => "Напомнить о долге",
             _ => "Задача"
         };
     }
@@ -986,5 +1189,37 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         public string? Vk { get; init; }
         public required string PreparedMessage { get; init; }
         public required DateTime SortAtUtc { get; init; }
+    }
+
+    private sealed class DebtorAppointmentLedger
+    {
+        public required Ulid AppointmentId { get; init; }
+        public required DateTime StartDate { get; init; }
+        public required decimal Price { get; init; }
+        public decimal RemainingAmount { get; set; }
+    }
+
+    private sealed record DebtorServicePrice(DateTime EffectiveDateUtc, decimal Price);
+
+    private static decimal ResolveDebtorAppointmentPrice(
+        Ulid serviceId,
+        DateTime appointmentStartUtc,
+        IReadOnlyDictionary<Ulid, List<DebtorServicePrice>> priceLookup)
+    {
+        if (!priceLookup.TryGetValue(serviceId, out var prices))
+        {
+            return 0m;
+        }
+
+        return prices
+            .Where(price => price.EffectiveDateUtc <= appointmentStartUtc)
+            .OrderByDescending(price => price.EffectiveDateUtc)
+            .Select(price => price.Price)
+            .FirstOrDefault();
+    }
+
+    private static int GetDebtorReminderStageStartDays(int initialDelayDays, int? repeatEveryDays)
+    {
+        return initialDelayDays + (repeatEveryDays is > 0 ? repeatEveryDays.Value : 0);
     }
 }
