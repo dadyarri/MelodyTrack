@@ -1331,17 +1331,35 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task Remove2Fa_ForRegularUser_RemovesSecret()
+    public async Task Remove2Fa_ForRegularUser_RemovesSecret_RevokesSessions_And_InvalidatesRecoveryCodes()
     {
         var db = App.Services.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var email = Fake.Internet.Email().ToLowerInvariant();
         var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "Rem", LastName = "Fa", Role = role, Password = "hash", TotpSecret = "secret" };
+        var activeSession = new Session
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            RefreshToken = HashRefreshToken("remove-2fa-session"),
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            DeviceInfo = "test-device"
+        };
+        var recoveryCode = new RecoveryCode
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            Code = "REMOVE2FA1",
+            WasUsed = false
+        };
+
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.Sessions.AddAsync(activeSession, TestContext.Current.CancellationToken);
+        await db.RecoveryCodes.AddAsync(recoveryCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var token = UserUtils.CreateAccessToken(user);
+        var token = UserUtils.CreateAccessToken(user, activeSession.Id);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         var (rsp, _) = await App.Client.DELETEAsync<Remove2FaEndpoint, EmptyRequest, NoContent>(EmptyRequest.Instance);
@@ -1352,6 +1370,14 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var updated = await assertionDb.Users.FirstOrDefaultAsync(u => u.Id == user.Id, TestContext.Current.CancellationToken);
         updated.ShouldNotBeNull();
         updated.TotpSecret.ShouldBeNull();
+
+        var updatedSession = await assertionDb.Sessions.FirstOrDefaultAsync(s => s.Id == activeSession.Id, TestContext.Current.CancellationToken);
+        updatedSession.ShouldNotBeNull();
+        updatedSession.WasRevoked.ShouldBeTrue();
+
+        var updatedRecoveryCode = await assertionDb.RecoveryCodes.FirstOrDefaultAsync(rc => rc.Id == recoveryCode.Id, TestContext.Current.CancellationToken);
+        updatedRecoveryCode.ShouldNotBeNull();
+        updatedRecoveryCode.WasUsed.ShouldBeTrue();
     }
 
     [Fact]

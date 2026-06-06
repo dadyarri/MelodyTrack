@@ -43,6 +43,14 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
             return TypedResults.Forbid();
         }
 
+        await db.RecoveryCodes
+            .Where(e => e.User.Id == user.Id && !e.WasUsed)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasUsed, true), ct);
+
+        await db.Sessions
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked)
+            .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
 
@@ -56,7 +64,7 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
             ActorUserId = user.Id,
             ActorEmail = user.Email,
             ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
-            Details = "2FA отключена"
+            Details = "2FA отключена, активные сессии завершены, коды восстановления отозваны"
         }, ct);
         return TypedResults.NoContent();
     }
