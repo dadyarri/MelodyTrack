@@ -51,13 +51,13 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
             .Where(e => e.User.Id == user.Id && !e.WasUsed && e.Id != recoveryCode.Id)
             .ExecuteDeleteAsync(ct);
 
-        var refreshToken = UserUtils.GenerateRandomString(14);
+        var refreshToken = UserUtils.GenerateRandomString(32);
 
         var session = new Session
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = refreshToken,
+            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };

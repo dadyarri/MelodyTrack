@@ -95,6 +95,14 @@ public static class UserUtils
         return codes;
     }
 
+    public static string HashOpaqueToken(string token)
+    {
+        var secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"));
+        var tokenBytes = Encoding.UTF8.GetBytes(token);
+        var hash = HMACSHA256.HashData(secret, tokenBytes);
+        return Convert.ToHexString(hash);
+    }
+
     public static string CreateAccessToken(User user, Ulid? sessionId = null)
     {
         var expireAt = DateTime.UtcNow.AddMinutes(10);

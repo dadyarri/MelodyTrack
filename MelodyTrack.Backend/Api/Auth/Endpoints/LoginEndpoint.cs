@@ -59,7 +59,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
             }
         }
 
-        var refreshToken = UserUtils.GenerateRandomString(14);
+        var refreshToken = UserUtils.GenerateRandomString(32);
         var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
 
         await db.Sessions
@@ -70,7 +70,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = refreshToken,
+            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = deviceInfo,
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };

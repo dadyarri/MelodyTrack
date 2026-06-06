@@ -37,6 +37,8 @@ namespace MelodyTrack.Backend.Tests;
 [Collection(IntegrationTestCollection.Name)]
 public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
+    private static string HashRefreshToken(string token) => UserUtils.HashOpaqueToken(token);
+
     [Fact]
     public async Task RegisterNewSuperUser_WithValidRequest_Success()
     {
@@ -875,6 +877,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawRefreshToken = "refresh-token-123";
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User
@@ -892,7 +895,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "refresh-token-123",
+            RefreshToken = HashRefreshToken(rawRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = ""
         };
@@ -904,7 +907,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
         {
-            RefreshToken = session.RefreshToken
+            RefreshToken = rawRefreshToken
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -928,10 +931,52 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task Refresh_WithPlaintextTokenStoredInDatabase_Unauthorized()
+    {
+        using var scope = App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawRefreshToken = "legacy-plaintext-token";
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Legacy",
+            LastName = "Session",
+            Role = role,
+            Password = "hash"
+        };
+
+        var session = new Session
+        {
+            Id = Ulid.NewUlid(),
+            User = user,
+            RefreshToken = rawRefreshToken,
+            ValidUntil = DateTime.UtcNow.AddDays(1),
+            DeviceInfo = "legacy-device"
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
+        {
+            RefreshToken = rawRefreshToken
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task Refresh_WithExpiredToken_Unauthorized_AndRevokesExpiredSession()
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawRefreshToken = "expired-refresh-token";
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User
@@ -948,7 +993,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "expired-refresh-token",
+            RefreshToken = HashRefreshToken(rawRefreshToken),
             ValidUntil = DateTime.UtcNow.AddMinutes(-5),
             DeviceInfo = "old-device"
         };
@@ -959,7 +1004,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
         {
-            RefreshToken = session.RefreshToken
+            RefreshToken = rawRefreshToken
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -976,6 +1021,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string revokedRefreshToken = "replayed-token";
+        const string activeRefreshToken = "still-active-token";
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User
@@ -992,7 +1039,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "replayed-token",
+            RefreshToken = HashRefreshToken(revokedRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             WasRevoked = true,
             DeviceInfo = "device-a"
@@ -1002,7 +1049,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "still-active-token",
+            RefreshToken = HashRefreshToken(activeRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = "device-b"
         };
@@ -1013,7 +1060,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
         {
-            RefreshToken = revokedSession.RefreshToken
+            RefreshToken = revokedRefreshToken
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -1033,6 +1080,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawRefreshToken = "refresh-without-ua";
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User
@@ -1049,7 +1097,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "refresh-without-ua",
+            RefreshToken = HashRefreshToken(rawRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = "old-device"
         };
@@ -1062,7 +1110,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
         {
-            RefreshToken = session.RefreshToken
+            RefreshToken = rawRefreshToken
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -1071,7 +1119,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         using var assertionScope = App.Services.CreateScope();
         var assertionDb = assertionScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var newSession = await assertionDb.Sessions
-            .FirstAsync(s => s.RefreshToken == res.RefreshToken, TestContext.Current.CancellationToken);
+            .FirstAsync(s => s.RefreshToken == UserUtils.HashOpaqueToken(res.RefreshToken), TestContext.Current.CancellationToken);
 
         newSession.DeviceInfo.ShouldBe("Неизвестное устройство");
     }
@@ -1277,6 +1325,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     public async Task Logout_And_LogoutAll_RevokeSessions()
     {
         var dbContextForSetup = App.Services.GetRequiredService<AppDbContext>();
+        const string rawRefreshToken1 = "r1";
+        const string rawRefreshToken2 = "r2";
 
         var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "L", LastName = "O", Role = role, Password = "hash" };
@@ -1286,7 +1336,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "r1",
+            RefreshToken = HashRefreshToken(rawRefreshToken1),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = ""
         };
@@ -1294,7 +1344,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = "r2",
+            RefreshToken = HashRefreshToken(rawRefreshToken2),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = ""
         };
@@ -1305,7 +1355,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
 
         // logout single session r1
-        var (rspLogout, _) = await App.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest { RefreshToken = session1.RefreshToken });
+        var (rspLogout, _) = await App.Client.POSTAsync<LogoutEndpoint, LogoutRequest, EmptyResponse>(new LogoutRequest { RefreshToken = rawRefreshToken1 });
         rspLogout.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         using (var assertionScope = App.Services.CreateScope())
@@ -1332,6 +1382,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     public async Task Logout_CannotRevokeAnotherUsersSession()
     {
         var dbContextForSetup = App.Services.GetRequiredService<AppDbContext>();
+        const string rawTargetRefreshToken = "foreign-refresh-token";
 
         var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var caller = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
@@ -1341,7 +1392,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             User = target,
-            RefreshToken = "foreign-refresh-token",
+            RefreshToken = HashRefreshToken(rawTargetRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
             DeviceInfo = "foreign-device"
         };
@@ -1354,7 +1405,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<LogoutEndpoint, LogoutRequest, ProblemDetails>(new LogoutRequest
         {
-            RefreshToken = targetSession.RefreshToken
+            RefreshToken = rawTargetRefreshToken
         });
 
         App.Client.DefaultRequestHeaders.Authorization = null;
@@ -1381,8 +1432,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "G", LastName = "S", Role = role, Password = "hash" };
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
 
-        var currentSession = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = "r-current", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev-current" };
-        var otherSession = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = "r-other", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev-other" };
+        var currentSession = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-current"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev-current" };
+        var otherSession = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-other"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev-other" };
 
         await db.Sessions.AddRangeAsync([currentSession, otherSession], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -1413,7 +1464,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "R", LastName = "S", Role = role, Password = "hash" };
-        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = "r-owned", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
+        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-owned"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
 
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
         await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
@@ -1441,7 +1492,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Me", LastName = "Gone", Role = role, Password = "hash" };
-        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = "r-me", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
+        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-me"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
 
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
         await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
@@ -1468,7 +1519,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
         var caller = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
         var target = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
-        var targetSession = new Session { Id = Ulid.NewUlid(), User = target, RefreshToken = "r-foreign", ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "foreign" };
+        var targetSession = new Session { Id = Ulid.NewUlid(), User = target, RefreshToken = HashRefreshToken("r-foreign"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "foreign" };
 
         await db.Users.AddRangeAsync([caller, target], TestContext.Current.CancellationToken);
         await db.Sessions.AddAsync(targetSession, TestContext.Current.CancellationToken);
@@ -2157,8 +2208,11 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var session = await db.Sessions.FirstOrDefaultAsync(s => s.RefreshToken == refreshToken, TestContext.Current.CancellationToken);
+            var session = await db.Sessions.FirstOrDefaultAsync(
+                s => s.RefreshToken == UserUtils.HashOpaqueToken(refreshToken),
+                TestContext.Current.CancellationToken);
             session.ShouldNotBeNull();
+            session.RefreshToken.ShouldNotBe(refreshToken);
         }
 
         // Step 6: Generate recovery codes
@@ -2230,7 +2284,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var revokedSession = await db.Sessions.FirstOrDefaultAsync(s => s.RefreshToken == refreshToken, TestContext.Current.CancellationToken);
+            var revokedSession = await db.Sessions.FirstOrDefaultAsync(
+                s => s.RefreshToken == UserUtils.HashOpaqueToken(refreshToken),
+                TestContext.Current.CancellationToken);
             revokedSession.ShouldNotBeNull();
             revokedSession.WasRevoked.ShouldBeTrue();
         }

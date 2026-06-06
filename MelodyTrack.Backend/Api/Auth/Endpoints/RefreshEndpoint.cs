@@ -23,9 +23,10 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         CancellationToken ct)
     {
         Logger.LogDebug("Attempting to refresh token");
+        var refreshTokenHash = UserUtils.HashOpaqueToken(req.RefreshToken);
 
         var session = await db.Sessions
-            .Where(e => e.RefreshToken == req.RefreshToken)
+            .Where(e => e.RefreshToken == refreshTokenHash)
             .Include(e => e.User)
             .FirstOrDefaultAsync(ct);
 
@@ -57,10 +58,10 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
             return TypedResults.Unauthorized();
         }
 
-        await db.Sessions.Where(e => e.RefreshToken == req.RefreshToken)
+        await db.Sessions.Where(e => e.RefreshToken == refreshTokenHash)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        var refreshToken = UserUtils.GenerateRandomString(14);
+        var refreshToken = UserUtils.GenerateRandomString(32);
         var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
 
         await db.Sessions
@@ -71,7 +72,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         {
             Id = Ulid.NewUlid(),
             User = session.User,
-            RefreshToken = refreshToken,
+            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = deviceInfo,
             ValidUntil = DateTime.UtcNow.AddDays(7)
         };

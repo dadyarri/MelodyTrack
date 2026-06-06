@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -18,6 +19,7 @@ public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) :
     public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(LogoutRequest req,
         CancellationToken ct)
     {
+        var refreshTokenHash = UserUtils.HashOpaqueToken(req.RefreshToken);
         var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (email is null)
@@ -35,7 +37,7 @@ public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) :
         }
 
         var revokedCount = await db.Sessions
-            .Where(e => e.RefreshToken == req.RefreshToken && e.User.Id == user.Id)
+            .Where(e => e.RefreshToken == refreshTokenHash && e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         if (revokedCount == 0)
