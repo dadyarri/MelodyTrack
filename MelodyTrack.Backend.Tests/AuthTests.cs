@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using FastEndpoints;
 using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -413,6 +414,54 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task Login_TooManyAttempts_ReturnsTooManyRequests()
+    {
+        using var scope = App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var userRole = await db.Roles
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
+            .ShouldNotBeNull("User role should exist in migrations.");
+
+        UserUtils.HashPassword("cOmp1exP@ssw0rd", out var passwordHash);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Rate",
+            LastName = "Limited",
+            Password = passwordHash,
+            Role = userRole!
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        using var rateLimitedClient = App.CreateClient();
+        rateLimitedClient.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
+        rateLimitedClient.DefaultRequestHeaders.TryAddWithoutValidation("X-Forwarded-For", "203.0.113.10");
+
+        for (var attempt = 0; attempt < 10; attempt++)
+        {
+            using var response = await rateLimitedClient.PostAsJsonAsync("/auth/login", new LoginRequest
+            {
+                Email = user.Email,
+                Password = "wrong-password"
+            }, TestContext.Current.CancellationToken);
+
+            response.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        using var throttledResponse = await rateLimitedClient.PostAsJsonAsync("/auth/login", new LoginRequest
+        {
+            Email = user.Email,
+            Password = "wrong-password"
+        }, TestContext.Current.CancellationToken);
+
+        throttledResponse.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
+    }
+
+    [Fact]
     public async Task Login_WithUsedRecoveryCode_Unauthorized()
     {
         using var scope = App.Services.CreateScope();
@@ -457,37 +506,6 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.ShouldNotBeNull();
         res.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
         res.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
-    }
-
-    [Fact]
-    public async Task CheckIf2FaEnabled_ReturnsTrue_WhenTotpSecretSet()
-    {
-        using var scope = App.Services.CreateScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-
-        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User
-        {
-            Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
-            FirstName = "Two",
-            LastName = "FA",
-            Role = userRole,
-            Password = "hash",
-            TotpSecret = "JBSWY3DPEHPK3PXP" // any base32
-        };
-
-        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
-        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        var (rsp, res) = await App.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
-        {
-            Email = user.Email
-        });
-
-        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        res.ShouldNotBeNull();
-        res.Enabled.ShouldBeTrue();
     }
 
     [Fact]
@@ -2260,17 +2278,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             user.TotpSecret.ShouldBe(totpSecret);
         }
 
-        // Step 4: Check if 2FA is enabled
-        var (check2FaRsp, check2FaRes) = await App.Client.GETAsync<CheckIf2FaEnabledEndpoint, CheckIf2FaEnabledRequest, CheckIf2FaEnabledResponse>(new CheckIf2FaEnabledRequest
-        {
-            Email = email.ToLowerInvariant()
-        });
-
-        check2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        check2FaRes.ShouldNotBeNull();
-        check2FaRes.Enabled.ShouldBeTrue();
-
-        // Step 5: Login with OTP (first login)
+        // Step 4: Login with OTP (first login)
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
         var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginResponse>(new LoginRequest

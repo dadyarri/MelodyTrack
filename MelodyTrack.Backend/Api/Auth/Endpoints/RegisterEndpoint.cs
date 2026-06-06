@@ -19,6 +19,7 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
     {
         Post("/auth/register");
         AllowAnonymous();
+        Throttle(10, 300);
     }
 
     public override async Task<Results<Created<RegisterResponse>, ProblemDetails>> ExecuteAsync(RegisterRequest req,

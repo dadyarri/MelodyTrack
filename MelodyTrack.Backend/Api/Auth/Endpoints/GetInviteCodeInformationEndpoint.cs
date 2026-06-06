@@ -15,6 +15,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
     {
         Get("/auth/invite");
         AllowAnonymous();
+        Throttle(30, 60);
     }
 
     public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>> ExecuteAsync(

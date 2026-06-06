@@ -17,6 +17,7 @@ public class Verify2FaEndpoint(AppDbContext db)
     {
         Post("/auth/2fa/verify");
         AllowAnonymous();
+        Throttle(10, 300);
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(

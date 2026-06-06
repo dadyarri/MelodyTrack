@@ -17,6 +17,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
     {
         Post("/auth/resetPassword");
         AllowAnonymous();
+        Throttle(10, 600);
     }
 
     public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(

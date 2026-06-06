@@ -17,6 +17,7 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
     {
         Post("/auth/2fa/recover");
         AllowAnonymous();
+        Throttle(10, 300);
     }
 
     public override async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(

@@ -19,6 +19,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
     {
         Post("/auth/login");
         AllowAnonymous();
+        Throttle(10, 60);
     }
 
     public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,

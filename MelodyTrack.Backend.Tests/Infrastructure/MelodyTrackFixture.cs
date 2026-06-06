@@ -11,6 +11,7 @@ namespace MelodyTrack.Backend.Tests.Infrastructure;
 
 public sealed class MelodyTrackFixture : AppFixture<Program>
 {
+    private const string ThrottleBypassHeaderName = "X-Forwarded-For";
     private static readonly SemaphoreSlim ResetLock = new(1, 1);
     private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
 
@@ -35,6 +36,16 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", _connectionString);
         Environment.SetEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY", "super-secret-jwt-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
+    }
+
+    protected override ValueTask SetupAsync()
+    {
+        Client = CreateClient(new ClientOptions
+        {
+            ThrottleBypassHeaderName = ThrottleBypassHeaderName
+        });
+
+        return ValueTask.CompletedTask;
     }
 
     public async Task ResetStateAsync(CancellationToken cancellationToken)

@@ -17,6 +17,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
     {
         Post("/auth/refresh");
         AllowAnonymous();
+        Throttle(30, 60);
     }
 
     public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(RefreshRequest req,
