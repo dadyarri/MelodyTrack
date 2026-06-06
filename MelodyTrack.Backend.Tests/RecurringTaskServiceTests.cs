@@ -283,4 +283,37 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
         tasks.Count.ShouldBe(1);
         tasks.ShouldContain(task => task.BusinessDate == debtStartDate.AddDays(3));
     }
+
+    [Fact]
+    public async Task CustomTask_ForExistingClient_AppearsInOpenTasks()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Ирина", "Орлова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234572";
+
+        await db.CustomTasks.AddAsync(new CustomTask
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            ClientId = client.Id,
+            RecipientName = "Орлова Ирина",
+            Title = "Уточнить расписание",
+            MessageText = "Здравствуйте! Уточняю удобное время.",
+            DueAtUtc = DateTime.UtcNow.AddHours(1),
+            CreatedAtUtc = DateTime.UtcNow,
+            CreatedByUserId = admin.Id
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.CustomTask,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        tasks.ShouldHaveSingleItem().RelatedPersonDisplayName.ShouldContain("Орлова");
+    }
 }

@@ -46,9 +46,9 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         return status switch
         {
             RecurringTaskListStatus.Open => await GetOpenTasksAsync(timezone, filterType, ct),
-            RecurringTaskListStatus.Completed => await GetProcessedTasksAsync(filterType, RecurringTaskStatus.Completed, ct),
-            RecurringTaskListStatus.Cancelled => await GetProcessedTasksAsync(filterType, RecurringTaskStatus.Cancelled, ct),
-            RecurringTaskListStatus.Delayed => await GetProcessedTasksAsync(filterType, RecurringTaskStatus.Delayed, ct),
+            RecurringTaskListStatus.Completed => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Completed, ct),
+            RecurringTaskListStatus.Cancelled => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Cancelled, ct),
+            RecurringTaskListStatus.Delayed => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Delayed, ct),
             _ => []
         };
     }
@@ -69,6 +69,11 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToListAsync(ct);
 
         var candidates = new List<RecurringTaskCandidate>();
+
+        if (filterType is null or RecurringTaskType.CustomTask)
+        {
+            candidates.AddRange(await BuildCustomTaskCandidatesAsync(timezone, ct));
+        }
 
         foreach (var rule in rules)
         {
@@ -112,9 +117,9 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToList();
     }
 
-    private async Task<List<RecurringTaskDto>> GetProcessedTasksAsync(RecurringTaskType? filterType, RecurringTaskStatus status, CancellationToken ct)
+    private async Task<List<RecurringTaskDto>> GetProcessedTasksAsync(string timezone, RecurringTaskType? filterType, RecurringTaskStatus status, CancellationToken ct)
     {
-        var query = db.RecurringTaskExecutions
+        var recurringQuery = db.RecurringTaskExecutions
             .AsNoTracking()
             .Include(execution => execution.Rule)
             .Include(execution => execution.Client)
@@ -125,33 +130,47 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (filterType is { } type)
         {
-            query = query.Where(execution => execution.Rule.Type == type);
+            recurringQuery = recurringQuery.Where(execution => execution.Rule.Type == type);
         }
 
         if (status == RecurringTaskStatus.Delayed)
         {
-            query = query.Where(execution => execution.DelayedUntilUtc != null && execution.DelayedUntilUtc > DateTime.UtcNow);
+            recurringQuery = recurringQuery.Where(execution => execution.DelayedUntilUtc != null && execution.DelayedUntilUtc > DateTime.UtcNow);
         }
 
         var executions = status == RecurringTaskStatus.Delayed
-            ? await query
+            ? await recurringQuery
                 .OrderBy(execution => execution.DelayedUntilUtc)
                 .ThenBy(execution => execution.CreatedAtUtc)
                 .ToListAsync(ct)
-            : await query
+            : await recurringQuery
                 .OrderByDescending(execution => execution.CompletedAtUtc ?? execution.CancelledAtUtc ?? execution.DelayedAtUtc ?? execution.CreatedAtUtc)
                 .ToListAsync(ct);
 
-        return executions
+        var tasks = executions
             .Select(MapExecution)
             .ToList();
+
+        if (filterType is null or RecurringTaskType.CustomTask)
+        {
+            tasks.AddRange(await GetProcessedCustomTasksAsync(timezone, status, ct));
+        }
+
+        return status == RecurringTaskStatus.Delayed
+            ? tasks.OrderBy(task => task.DelayedUntilUtc).ThenBy(task => task.RelevantAtUtc).ToList()
+            : tasks.OrderByDescending(task => task.DelayedUntilUtc ?? task.RelevantAtUtc).ToList();
     }
 
     public async Task<RecurringTaskActionResult> CompleteAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct)
     {
-        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out _))
+        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out var type))
         {
             return RecurringTaskActionResult.Failure("Неизвестный тип задачи.");
+        }
+
+        if (type == RecurringTaskType.CustomTask)
+        {
+            return await CompleteCustomTaskAsync(request, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -225,9 +244,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     public async Task<RecurringTaskActionResult> CancelAsync(CancelRecurringTaskRequest request, User actor, CancellationToken ct)
     {
-        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out _))
+        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out var type))
         {
             return RecurringTaskActionResult.Failure("Неизвестный тип задачи.");
+        }
+
+        if (type == RecurringTaskType.CustomTask)
+        {
+            return await CancelCustomTaskAsync(request, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -301,7 +325,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     public async Task<RecurringTaskActionResult> DelayAsync(DelayRecurringTaskRequest request, User actor, CancellationToken ct)
     {
-        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out _))
+        if (!RecurringTaskTypeExtensions.TryParseApiKey(request.Type, out var type))
         {
             return RecurringTaskActionResult.Failure("Неизвестный тип задачи.");
         }
@@ -316,6 +340,11 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         if (delayUntilUtc <= DateTime.UtcNow)
         {
             return RecurringTaskActionResult.Failure("Дата и время переноса должны быть в будущем.");
+        }
+
+        if (type == RecurringTaskType.CustomTask)
+        {
+            return await DelayCustomTaskAsync(request, delayUntilUtc, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -384,6 +413,132 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
     }
 
+    private async Task<RecurringTaskActionResult> CompleteCustomTaskAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct)
+    {
+        var task = await db.CustomTasks
+            .Include(item => item.Client)
+            .ThenInclude(client => client!.Contacts)
+            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
+
+        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
+        {
+            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
+        }
+
+        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
+        {
+            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
+        }
+
+        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > DateTime.UtcNow)
+        {
+            return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
+        }
+
+        task.CompletedAtUtc = DateTime.UtcNow;
+        task.CompletedByUserId = actor.Id;
+        task.CancelledAtUtc = null;
+        task.CancelledByUserId = null;
+        task.DelayedAtUtc = null;
+        task.DelayedByUserId = null;
+        task.DelayedUntilUtc = null;
+
+        await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "recurring_tasks",
+            Action = "task_completed",
+            EntityType = "custom_task",
+            EntityId = task.Id.ToString(),
+            Details = BuildCustomTaskAuditDetails(task)
+        }, ct);
+
+        return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
+    }
+
+    private async Task<RecurringTaskActionResult> CancelCustomTaskAsync(CancelRecurringTaskRequest request, User actor, CancellationToken ct)
+    {
+        var task = await db.CustomTasks
+            .Include(item => item.Client)
+            .ThenInclude(client => client!.Contacts)
+            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
+
+        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
+        {
+            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
+        }
+
+        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
+        {
+            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
+        }
+
+        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > DateTime.UtcNow)
+        {
+            return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
+        }
+
+        task.CompletedAtUtc = null;
+        task.CompletedByUserId = null;
+        task.CancelledAtUtc = DateTime.UtcNow;
+        task.CancelledByUserId = actor.Id;
+        task.DelayedAtUtc = null;
+        task.DelayedByUserId = null;
+        task.DelayedUntilUtc = null;
+
+        await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "recurring_tasks",
+            Action = "task_cancelled",
+            EntityType = "custom_task",
+            EntityId = task.Id.ToString(),
+            Details = BuildCustomTaskAuditDetails(task)
+        }, ct);
+
+        return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
+    }
+
+    private async Task<RecurringTaskActionResult> DelayCustomTaskAsync(DelayRecurringTaskRequest request, DateTime delayUntilUtc, User actor, CancellationToken ct)
+    {
+        var task = await db.CustomTasks
+            .Include(item => item.Client)
+            .ThenInclude(client => client!.Contacts)
+            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
+
+        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
+        {
+            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
+        }
+
+        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
+        {
+            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
+        }
+
+        task.CompletedAtUtc = null;
+        task.CompletedByUserId = null;
+        task.CancelledAtUtc = null;
+        task.CancelledByUserId = null;
+        task.DelayedAtUtc = DateTime.UtcNow;
+        task.DelayedByUserId = actor.Id;
+        task.DelayedUntilUtc = delayUntilUtc;
+
+        await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "recurring_tasks",
+            Action = "task_delayed",
+            EntityType = "custom_task",
+            EntityId = task.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                BuildCustomTaskAuditDetails(task),
+                AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc))
+        }, ct);
+
+        return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
+    }
+
     private async Task<RecurringTaskCandidate?> FindCandidateAsync(
         string timezone,
         Ulid ruleId,
@@ -411,7 +566,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             {
                 RuleId = dto.RuleId,
                 Type = filterType,
-                RecipientType = dto.RecipientType == "teacher" ? RecurringTaskRecipientType.Teacher : RecurringTaskRecipientType.Client,
+                RecipientType = dto.RecipientType switch
+                {
+                    "teacher" => RecurringTaskRecipientType.Teacher,
+                    "external" => RecurringTaskRecipientType.External,
+                    _ => RecurringTaskRecipientType.Client
+                },
                 DeduplicationKey = dto.DeduplicationKey,
                 ClientId = dto.ClientId,
                 TeacherId = dto.TeacherId,
@@ -1034,6 +1194,49 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToList();
     }
 
+    private async Task<List<RecurringTaskCandidate>> BuildCustomTaskCandidatesAsync(string timezone, CancellationToken ct)
+    {
+        var nowUtc = DateTime.UtcNow;
+        var tasks = await db.CustomTasks
+            .AsNoTracking()
+            .Include(item => item.Client)
+            .ThenInclude(client => client!.Contacts)
+            .Where(item =>
+                item.CompletedAtUtc == null
+                && item.CancelledAtUtc == null
+                && (item.DelayedUntilUtc == null || item.DelayedUntilUtc <= nowUtc))
+            .OrderBy(item => item.DelayedUntilUtc ?? item.DueAtUtc)
+            .ThenBy(item => item.CreatedAtUtc)
+            .ToListAsync(ct);
+
+        return tasks
+            .Select(task => MapCustomTaskCandidate(task, timezone))
+            .ToList();
+    }
+
+    private async Task<List<RecurringTaskDto>> GetProcessedCustomTasksAsync(string timezone, RecurringTaskStatus status, CancellationToken ct)
+    {
+        var query = db.CustomTasks
+            .AsNoTracking()
+            .Include(item => item.Client)
+            .ThenInclude(client => client!.Contacts)
+            .AsQueryable();
+
+        query = status switch
+        {
+            RecurringTaskStatus.Completed => query.Where(item => item.CompletedAtUtc != null),
+            RecurringTaskStatus.Cancelled => query.Where(item => item.CancelledAtUtc != null),
+            RecurringTaskStatus.Delayed => query.Where(item => item.DelayedUntilUtc != null && item.DelayedUntilUtc > DateTime.UtcNow),
+            _ => query.Where(_ => false)
+        };
+
+        var tasks = status == RecurringTaskStatus.Delayed
+            ? await query.OrderBy(item => item.DelayedUntilUtc).ThenBy(item => item.DueAtUtc).ToListAsync(ct)
+            : await query.OrderByDescending(item => item.CompletedAtUtc ?? item.CancelledAtUtc ?? item.DelayedAtUtc ?? item.CreatedAtUtc).ToListAsync(ct);
+
+        return tasks.Select(task => MapCustomTaskExecution(task, timezone)).ToList();
+    }
+
     private static string BuildRecurringTaskAuditDetails(RecurringTaskCandidate candidate)
     {
         return AuditDetailsFormatter.JoinChanges(
@@ -1042,6 +1245,15 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             AuditDetailsFormatter.DescribeContext("Получатель", candidate.RelatedPersonDisplayName),
             AuditDetailsFormatter.DescribeContext("Дата", candidate.BusinessDate.ToString("dd.MM.yyyy")),
             candidate.RelevantAtUtc is null ? null : AuditDetailsFormatter.DescribeContext("Время", candidate.RelevantAtUtc));
+    }
+
+    private static string BuildCustomTaskAuditDetails(CustomTask task)
+    {
+        return AuditDetailsFormatter.JoinChanges(
+            AuditDetailsFormatter.DescribeContext("Тип", RecurringTaskType.CustomTask.ToDisplayLabel()),
+            AuditDetailsFormatter.DescribeContext("Задача", task.Title),
+            AuditDetailsFormatter.DescribeContext("Получатель", task.RecipientName),
+            AuditDetailsFormatter.DescribeContext("Дата", task.DueAtUtc));
     }
 
     private static string RenderMessageTemplate(
@@ -1101,7 +1313,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         {
             RuleId = candidate.RuleId,
             Type = candidate.Type.ToApiKey(),
-            RecipientType = candidate.RecipientType == RecurringTaskRecipientType.Teacher ? "teacher" : "client",
+            RecipientType = candidate.RecipientType switch
+            {
+                RecurringTaskRecipientType.Teacher => "teacher",
+                RecurringTaskRecipientType.External => "external",
+                _ => "client"
+            },
             DeduplicationKey = candidate.DeduplicationKey,
             ClientId = candidate.ClientId,
             TeacherId = candidate.TeacherId,
@@ -1129,7 +1346,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         {
             RuleId = execution.RuleId,
             Type = type.ToApiKey(),
-            RecipientType = execution.RecipientType == RecurringTaskRecipientType.Teacher ? "teacher" : "client",
+            RecipientType = execution.RecipientType switch
+            {
+                RecurringTaskRecipientType.Teacher => "teacher",
+                RecurringTaskRecipientType.External => "external",
+                _ => "client"
+            },
             DeduplicationKey = execution.DeduplicationKey,
             ClientId = execution.ClientId,
             TeacherId = execution.TeacherId,
@@ -1146,6 +1368,54 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         };
     }
 
+    private static RecurringTaskCandidate MapCustomTaskCandidate(CustomTask task, string timezone)
+    {
+        var localDueAt = DateTimeUtils.ConvertDateToTimezone(task.DelayedUntilUtc ?? task.DueAtUtc, timezone);
+        return new RecurringTaskCandidate
+        {
+            RuleId = task.Id,
+            Type = RecurringTaskType.CustomTask,
+            RecipientType = task.ClientId.HasValue ? RecurringTaskRecipientType.Client : RecurringTaskRecipientType.External,
+            DeduplicationKey = BuildCustomTaskDeduplicationKey(task.Id),
+            ClientId = task.ClientId,
+            TeacherId = null,
+            AppointmentId = null,
+            Title = task.Title,
+            RelatedPersonDisplayName = task.Client is not null ? FormatClientName(task.Client) : task.RecipientName,
+            RelevantAtUtc = task.DueAtUtc,
+            BusinessDate = DateOnly.FromDateTime(localDueAt),
+            Phone = task.Client?.Contacts.Phone ?? task.Phone,
+            Telegram = task.Client?.Contacts.Telegram ?? task.Telegram,
+            Vk = task.Client?.Contacts.Vk ?? task.Vk,
+            PreparedMessage = task.MessageText,
+            SortAtUtc = task.DelayedUntilUtc ?? task.DueAtUtc
+        };
+    }
+
+    private static RecurringTaskDto MapCustomTaskExecution(CustomTask task, string timezone)
+    {
+        var localRelevantAt = DateTimeUtils.ConvertDateToTimezone(task.DueAtUtc, timezone);
+        return new RecurringTaskDto
+        {
+            RuleId = task.Id,
+            Type = RecurringTaskType.CustomTask.ToApiKey(),
+            RecipientType = task.ClientId.HasValue ? "client" : "external",
+            DeduplicationKey = BuildCustomTaskDeduplicationKey(task.Id),
+            ClientId = task.ClientId,
+            TeacherId = null,
+            AppointmentId = null,
+            Title = task.Title,
+            RelatedPersonDisplayName = task.Client is not null ? FormatClientName(task.Client) : task.RecipientName,
+            RelevantAtUtc = task.DueAtUtc,
+            DelayedUntilUtc = task.DelayedUntilUtc,
+            BusinessDate = DateOnly.FromDateTime(localRelevantAt),
+            Phone = task.Client?.Contacts.Phone ?? task.Phone,
+            Telegram = task.Client?.Contacts.Telegram ?? task.Telegram,
+            Vk = task.Client?.Contacts.Vk ?? task.Vk,
+            PreparedMessage = task.MessageText
+        };
+    }
+
     private static string GetTaskTitle(RecurringTaskType type)
     {
         return type switch
@@ -1156,6 +1426,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             RecurringTaskType.InactiveClientReminder => "Напомнить о занятиях",
             RecurringTaskType.TeacherDailySchedule => "Отправить расписание",
             RecurringTaskType.DebtorReminder => "Напомнить о долге",
+            RecurringTaskType.CustomTask => "Пользовательская задача",
             _ => "Задача"
         };
     }
@@ -1221,5 +1492,10 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
     private static int GetDebtorReminderStageStartDays(int initialDelayDays, int? repeatEveryDays)
     {
         return initialDelayDays + (repeatEveryDays is > 0 ? repeatEveryDays.Value : 0);
+    }
+
+    private static string BuildCustomTaskDeduplicationKey(Ulid taskId)
+    {
+        return $"custom-task:{taskId}";
     }
 }

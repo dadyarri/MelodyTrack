@@ -34,6 +34,7 @@ public class AppDbContext : DbContext
     public DbSet<RequestReplay> RequestReplays { get; set; }
     public DbSet<RecurringTaskRule> RecurringTaskRules { get; set; }
     public DbSet<RecurringTaskExecution> RecurringTaskExecutions { get; set; }
+    public DbSet<CustomTask> CustomTasks { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -248,6 +249,42 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<RecurringTaskExecution>()
+            .HasOne(e => e.DelayedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.DelayedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CustomTask>()
+            .HasIndex(e => new { e.ClientId, e.DueAtUtc });
+
+        modelBuilder.Entity<CustomTask>()
+            .HasIndex(e => e.DelayedUntilUtc);
+
+        modelBuilder.Entity<CustomTask>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CustomTask>()
+            .HasOne(e => e.CreatedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.CreatedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CustomTask>()
+            .HasOne(e => e.CompletedByUser)
+            .WithMany()
+            .HasForeignKey(e => e.CompletedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CustomTask>()
+            .HasOne(e => e.CancelledByUser)
+            .WithMany()
+            .HasForeignKey(e => e.CancelledByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<CustomTask>()
             .HasOne(e => e.DelayedByUser)
             .WithMany()
             .HasForeignKey(e => e.DelayedByUserId)
