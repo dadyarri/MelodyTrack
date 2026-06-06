@@ -166,6 +166,14 @@ try
             headers.TryAdd("X-Frame-Options", "DENY");
             headers.TryAdd("Referrer-Policy", "no-referrer");
             headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+            if (ShouldDisableCaching(context.Request.Path))
+            {
+                headers["Cache-Control"] = "no-store, no-cache, max-age=0";
+                headers["Pragma"] = "no-cache";
+                headers["Expires"] = "0";
+            }
+
             return Task.CompletedTask;
         });
 
@@ -302,6 +310,17 @@ catch (Exception ex)
 finally
 {
     await Log.CloseAndFlushAsync();
+}
+
+static bool ShouldDisableCaching(PathString path)
+{
+    if (path.StartsWithSegments("/auth"))
+    {
+        return true;
+    }
+
+    return path.StartsWithSegments("/users", out var remainingPath)
+           && remainingPath.Value?.EndsWith("/password-reset-link", StringComparison.OrdinalIgnoreCase) == true;
 }
 
 public partial class Program;
