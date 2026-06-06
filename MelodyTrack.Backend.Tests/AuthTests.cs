@@ -21,6 +21,8 @@ using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Api.Schedule.Endpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
+using MelodyTrack.Backend.Api.Users.Endpoints;
+using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -809,24 +811,57 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task ForgotPassword_CreatesRestorationRequest()
+    public async Task CreatePasswordResetLink_WithAdminAccess_CreatesHashedResetRequest()
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var email = Fake.Internet.Email().ToLowerInvariant();
-
-        var (rsp, res) = await App.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, ForgotPasswordResponse>(new ForgotPasswordRequest
+        var adminRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken);
+        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var admin = new User
         {
-            Email = email
-        });
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Reset",
+            LastName = "Admin",
+            Role = adminRole,
+            Password = "hash"
+        };
+        var target = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Reset",
+            LastName = "Target",
+            Role = userRole,
+            Password = "hash"
+        };
 
-        rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        await db.Users.AddRangeAsync([admin, target], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var (rsp, res) = await App.Client.POSTAsync<CreatePasswordResetLinkEndpoint, GetEntityRequest, CreatePasswordResetLinkResponse>(
+            new GetEntityRequest
+            {
+                Id = target.Id
+            });
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
-        res.Message.ShouldBe("Если аккаунт найден, новая ссылка для восстановления уже готова. Обратитесь к администратору.");
+        res.Url.ShouldContain("/restore?code=");
 
-        var req = await db.PasswordRestorationRequests.FirstOrDefaultAsync(r => r.Email == email, TestContext.Current.CancellationToken);
-        req.ShouldNotBeNull();
+        var rawToken = res.Url.Split("code=").Last();
+        var request = await db.PasswordRestorationRequests
+            .OrderByDescending(r => r.ValidUntil)
+            .FirstOrDefaultAsync(r => r.Email == target.Email && !r.WasUsed, TestContext.Current.CancellationToken);
+
+        request.ShouldNotBeNull();
+        request.Token.ShouldBe(UserUtils.HashOpaqueToken(rawToken));
+        request.Token.ShouldNotBe(rawToken);
     }
 
     [Fact]
@@ -2035,6 +2070,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawResetToken = "EXPIREDTOKEN123";
 
         var userRole = await db.Roles
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
@@ -2055,7 +2091,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             Id = Ulid.NewUlid(),
             Email = user.Email,
-            Token = "EXPIREDTOKEN123",
+            Token = UserUtils.HashOpaqueToken(rawResetToken),
             ValidUntil = DateTime.UtcNow.AddMinutes(-10)
         };
 
@@ -2065,7 +2101,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var (rsp, res) = await App.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, ProblemDetails>(new ResetPasswordRequest
         {
-            Token = resetRequest.Token,
+            Token = rawResetToken,
             NewPassword = "new-password"
         });
 
@@ -2080,6 +2116,52 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var unchangedResetRequest = await db.PasswordRestorationRequests
             .FirstAsync(r => r.Id == resetRequest.Id, TestContext.Current.CancellationToken);
         unchangedResetRequest.WasUsed.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithPlaintextTokenStoredInDatabase_Forbids()
+    {
+        using var scope = App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        const string rawResetToken = "LEGACY-PLAINTEXT-RESET";
+
+        var userRole = await db.Roles
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
+            .ShouldNotBeNull("User role should exist in migrations.");
+
+        UserUtils.HashPassword("old-password", out var originalHash);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            Email = Fake.Internet.Email().ToLowerInvariant(),
+            FirstName = "Legacy",
+            LastName = "Reset",
+            Password = originalHash,
+            Role = userRole!
+        };
+
+        var resetRequest = new PasswordRestorationRequest
+        {
+            Id = Ulid.NewUlid(),
+            Email = user.Email,
+            Token = rawResetToken,
+            ValidUntil = DateTime.UtcNow.AddHours(2)
+        };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.PasswordRestorationRequests.AddAsync(resetRequest, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (rsp, res) = await App.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, ProblemDetails>(new ResetPasswordRequest
+        {
+            Token = rawResetToken,
+            NewPassword = "new-password"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        res.ShouldNotBeNull();
+        res.Status.ShouldBe((int)HttpStatusCode.Forbidden);
+        res.Detail.ShouldBe("Ссылка восстановления больше не действует. Запросите новую ссылку.");
     }
 
     [Fact]
@@ -2306,28 +2388,43 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             allSessions.ShouldAllBe(s => s.WasRevoked);
         }
 
-        // Step 12: Forgot password
+        // Step 12: Another superuser creates a reset link for the target account
         App.Client.DefaultRequestHeaders.Authorization = null;
-
-        var (forgotRsp, forgotRes) = await App.Client.POSTAsync<ForgotPasswordEndpoint, ForgotPasswordRequest, ForgotPasswordResponse>(new ForgotPasswordRequest
-        {
-            Email = email.ToLowerInvariant()
-        });
-
-        forgotRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        forgotRes.ShouldNotBeNull();
-        forgotRes.Message.ShouldBe("Если аккаунт найден, новая ссылка для восстановления уже готова. Обратитесь к администратору.");
-
-        // Get the password restoration token
         string restorationToken;
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var passwordRequest = await db.PasswordRestorationRequests
-                .Where(r => r.Email == email.ToLowerInvariant() && !r.WasUsed)
-                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
-            passwordRequest.ShouldNotBeNull();
-            restorationToken = passwordRequest.Token;
+            var operatorRole = await db.Roles
+                .FirstAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken);
+            var operatorUser = new User
+            {
+                Id = Ulid.NewUlid(),
+                Email = Fake.Internet.Email().ToLowerInvariant(),
+                FirstName = "Reset",
+                LastName = "Operator",
+                Role = operatorRole,
+                Password = "hash"
+            };
+
+            await db.Users.AddAsync(operatorUser, TestContext.Current.CancellationToken);
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+            App.Client.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(operatorUser));
+
+            var (createResetRsp, createResetRes) = await App.Client.POSTAsync<CreatePasswordResetLinkEndpoint, GetEntityRequest, CreatePasswordResetLinkResponse>(
+                new GetEntityRequest
+                {
+                    Id = await db.Users
+                        .Where(u => u.Email == email.ToLowerInvariant())
+                        .Select(u => u.Id)
+                        .FirstAsync(TestContext.Current.CancellationToken)
+                });
+
+            createResetRsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+            createResetRes.ShouldNotBeNull();
+            restorationToken = createResetRes.Url.Split("code=").Last();
+            App.Client.DefaultRequestHeaders.Authorization = null;
         }
 
         // Step 13: Reset password (with 2FA verification)

@@ -162,4 +162,10 @@ public static class UserUtils
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
         return $"{appDomain}/invite/{code}";
     }
+
+    public static string GetResetPasswordUrl(string token)
+    {
+        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+        return $"{appDomain}/restore?code={token}";
+    }
 }

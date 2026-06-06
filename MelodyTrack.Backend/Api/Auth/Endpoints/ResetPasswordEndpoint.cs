@@ -23,13 +23,14 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
         ResetPasswordRequest req,
         CancellationToken ct)
     {
+        var tokenHash = UserUtils.HashOpaqueToken(req.Token);
         var restoreCode = await db.PasswordRestorationRequests
-            .Where(e => !e.WasUsed && e.Token == req.Token)
+            .Where(e => !e.WasUsed && e.Token == tokenHash)
             .FirstOrDefaultAsync(ct);
 
         if (restoreCode is null || restoreCode.ValidUntil < DateTime.UtcNow)
         {
-            Logger.LogWarning("Password reset attempt with invalid, used or expired token {Token}", req.Token);
+            Logger.LogWarning("Password reset attempt with invalid, used or expired token");
             AddError(r => r.Token, "Ссылка восстановления больше не действует. Запросите новую ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 ValidationFailures,
