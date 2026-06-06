@@ -38,6 +38,19 @@ public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServ
         }
 
         var availabilities = await userAvailabilityService.GetAvailabilitiesAsync(null, ct);
+        if (!currentUser.Role.RoleName.IsSuperuser())
+        {
+            var superuserIds = await db.Users
+                .AsNoTracking()
+                .Where(user => user.Role.RoleName == UserRoles.Superuser)
+                .Select(user => user.Id)
+                .ToListAsync(ct);
+
+            availabilities = availabilities
+                .Where(availability => !superuserIds.Contains(availability.UserId))
+                .ToList();
+        }
+
         var latestActivities = await recordActivityService.GetLatestActivitiesAsync(
             "user_availability",
             availabilities.Select(availability => availability.UserId.ToString()).ToArray(),

@@ -19,6 +19,23 @@ namespace MelodyTrack.Backend.Tests;
 public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
+    public async Task GetServices_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/services?page=1&page_size=10", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task LookupServices_ReturnsCurrentPriceFromPriceHistory()
     {
         await using var scope = App.Services.CreateAsyncScope();

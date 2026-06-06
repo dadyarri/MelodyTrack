@@ -109,6 +109,49 @@ public class UserEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app
     }
 
     [Fact]
+    public async Task GetUsers_AsAdmin_DoesNotExposeSuperusers()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var response = await App.Client.GetAsync("/users", TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetUsersResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Users.ShouldNotContain(item => item.Id == superuser.Id);
+    }
+
+    [Fact]
+    public async Task UpdateUser_ReturnsForbiddenForAdminWhenTargetIsSuperuser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var response = await App.Client.PutAsJsonAsync(
+            $"/users/{superuser.Id}",
+            new
+            {
+                firstName = superuser.FirstName,
+                lastName = superuser.LastName,
+                phone = "+4915123456789"
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task GetMe_ReturnsContactsAndLastActivity()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -146,5 +189,19 @@ public class UserEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app
         payload.Vk.ShouldBe(user.Vk);
         payload.LastActivity.ShouldNotBeNull();
         payload.LastActivity.Id.ShouldBe(activityId);
+    }
+
+    [Fact]
+    public async Task GetClients_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/clients", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 }

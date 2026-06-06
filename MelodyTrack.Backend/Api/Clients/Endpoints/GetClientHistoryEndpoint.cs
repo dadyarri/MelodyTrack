@@ -8,23 +8,35 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>>
+    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
     {
         Get("/clients/{id}/history");
     }
 
-    public override async Task<Results<Ok<ClientHistoryResponse>, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
         GetClientHistoryRequest req,
         CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogDebug("Fetching history for client {ClientId}", req.Id);
 
         var client = await db.Clients

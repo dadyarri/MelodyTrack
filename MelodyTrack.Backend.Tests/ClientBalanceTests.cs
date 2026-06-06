@@ -23,7 +23,7 @@ public class ClientBalanceTests(MelodyTrackFixture app) : IntegrationTestBase(ap
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
 

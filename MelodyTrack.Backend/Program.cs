@@ -157,6 +157,20 @@ try
     var app = builder.Build();
 
     app.UseCors("AllowFrontend");
+    app.Use(async (context, next) =>
+    {
+        context.Response.OnStarting(() =>
+        {
+            var headers = context.Response.Headers;
+            headers.TryAdd("X-Content-Type-Options", "nosniff");
+            headers.TryAdd("X-Frame-Options", "DENY");
+            headers.TryAdd("Referrer-Policy", "no-referrer");
+            headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+            return Task.CompletedTask;
+        });
+
+        await next();
+    });
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseExceptionHandler(exceptionHandlerApp =>
@@ -217,6 +231,7 @@ try
             {
                 ep.PreProcessor<ActiveSessionPreProcessor>(Order.Before);
             }
+
         };
     });
     app.UseSerilogRequestLogging();

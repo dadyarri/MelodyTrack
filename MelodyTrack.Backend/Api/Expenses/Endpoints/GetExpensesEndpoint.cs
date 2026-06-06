@@ -3,22 +3,35 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class GetExpensesEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult>>
+public class GetExpensesEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/expenses");
     }
 
-    public override async Task<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult>> ExecuteAsync(GetExpensesPaginatedRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetExpensesPaginatedRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var expensesQuery = db.Expenses
             .AsNoTracking()
             .ApplyDateRangeFilter(e => e.Date, req.Start, req.End);

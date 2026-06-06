@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -9,15 +10,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+public class DeletePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Delete("/payments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogDebug("Attempting to delete payment with ID: {PaymentId}", req.Id);
         var payment = await db.Payments
             .AsNoTracking()

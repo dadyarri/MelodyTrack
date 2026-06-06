@@ -2,22 +2,35 @@ using Facet.Mapping;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.NoReq.Res<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult>>
+    : Ep.NoReq.Res<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/clients/inDebt");
     }
 
-    public override async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public override async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var clients = await db.Clients
             .AsNoTracking()
             .OrderBy(e => e.LastName)

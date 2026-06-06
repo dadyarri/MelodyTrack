@@ -3,13 +3,14 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class ExportClientsInDebtEndpoint(AppDbContext db)
-    : Ep.NoReq.Res<Results<FileContentHttpResult, UnauthorizedHttpResult>>
+    : Ep.NoReq.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -18,8 +19,19 @@ public class ExportClientsInDebtEndpoint(AppDbContext db)
         Get("/clients/inDebt/export");
     }
 
-    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var clients = await db.Clients
             .AsNoTracking()
             .OrderBy(e => e.LastName)

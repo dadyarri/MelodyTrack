@@ -4,8 +4,10 @@ using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -13,17 +15,28 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
     : Ep.Req<GetClientsPaginatedRequest>.Res<
-        Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
+        Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/clients");
     }
 
-    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult>>
+    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
         ExecuteAsync(GetClientsPaginatedRequest req,
             CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogDebug(
             "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName}, LastName: {LastName}, Search: {Search}",
             req.Page, req.PageSize,

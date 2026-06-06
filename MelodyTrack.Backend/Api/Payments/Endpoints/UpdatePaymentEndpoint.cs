@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -11,17 +12,28 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
 public class UpdatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdatePaymentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdatePaymentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/payments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdatePaymentRequest req,
         CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var payment = await db.Payments
             .Include(e => e.Client)
             .Include(e => e.Service)

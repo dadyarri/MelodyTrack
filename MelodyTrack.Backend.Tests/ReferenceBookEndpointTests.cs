@@ -22,6 +22,24 @@ namespace MelodyTrack.Backend.Tests;
 public class ReferenceBookEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
+    public async Task GetExpenseCategories_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (response, _) = await App.Client.GETAsync<GetExpenseCategoriesEndpoint, EmptyRequest, GetExpenseCategoriesResponse>(
+            EmptyRequest.Instance);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task GetExpenseCategories_ReturnsLastActivity()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -150,6 +168,24 @@ public class ReferenceBookEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var lastActivity = item.LastActivity;
         lastActivity.ShouldNotBeNull();
         lastActivity.Id.ShouldBe(activityId);
+    }
+
+    [Fact]
+    public async Task GetClientSources_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var (response, _) = await App.Client.GETAsync<GetClientSourcesEndpoint, EmptyRequest, GetClientSourcesResponse>(
+            EmptyRequest.Instance);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

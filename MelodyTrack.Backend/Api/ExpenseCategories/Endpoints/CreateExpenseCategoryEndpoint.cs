@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.ExpenseCategories.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -12,7 +13,7 @@ using Npgsql;
 namespace MelodyTrack.Backend.Api.ExpenseCategories.Endpoints;
 
 public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
-    : Ep.Req<CreateExpenseCategoryRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateExpenseCategoryRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ReplayEndpoint = "expenseCategory:create";
 
@@ -21,8 +22,19 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, IAuditLogService aud
         Post("/expense-categories");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(CreateExpenseCategoryRequest req, CancellationToken ct)
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CreateExpenseCategoryRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
         if (replayKey is not null)
         {

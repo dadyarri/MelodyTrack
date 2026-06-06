@@ -55,6 +55,25 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
     }
 
     [Fact]
+    public async Task GetUsersAvailability_AsAdmin_DoesNotExposeSuperusers()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var (response, content) = await App.Client.GETAsync<GetUsersAvailabilityEndpoint, EmptyRequest, GetUsersAvailabilityResponse>(
+            EmptyRequest.Instance);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        content.ShouldNotBeNull();
+        content.Availabilities.ShouldNotContain(item => item.UserId == superuser.Id);
+    }
+
+    [Fact]
     public async Task GetUsersAvailability_ReturnsForbiddenForRegularUser()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -97,6 +116,22 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         var response = await App.Client.GetAsync($"/users/{user.Id}/availability", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task GetUserAvailability_ReturnsForbiddenForAdminWhenTargetIsSuperuser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var response = await App.Client.GetAsync($"/users/{superuser.Id}/availability", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]
@@ -185,5 +220,38 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         payload.EntityType.ShouldBe("user_availability");
         payload.CurrentActivity.ShouldNotBeNull();
         payload.CurrentActivity.Id.ShouldBe(activityId);
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_ReturnsForbiddenForAdminWhenTargetIsSuperuser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var response = await App.Client.PutAsJsonAsync(
+            $"/users/{superuser.Id}/availability",
+            new
+            {
+                workingHours = new[]
+                {
+                    new { dayOfWeek = "monday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+                    new { dayOfWeek = "tuesday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+                    new { dayOfWeek = "wednesday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+                    new { dayOfWeek = "thursday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+                    new { dayOfWeek = "friday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+                    new { dayOfWeek = "saturday", isWorkingDay = false, startTime = (string?)null, endTime = (string?)null },
+                    new { dayOfWeek = "sunday", isWorkingDay = false, startTime = (string?)null, endTime = (string?)null },
+                },
+                vacations = Array.Empty<object>(),
+                expectedActivityId = (Ulid?)null,
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 }

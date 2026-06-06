@@ -4,22 +4,35 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Api.Payments.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult>>
+public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/payments");
     }
 
-    public override async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogDebug(
             "Fetching paginated list of payments with filters - Page: {Page}, PageSize: {PageSize}, Client's first name: {FirstName}, Client's last name: {LastName}, Search: {Search}",
             req.Page, req.PageSize,
@@ -105,6 +118,5 @@ public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordA
                 LastItemAtUtc = lastPaymentAtUtc
             }
         });
-
     }
 }

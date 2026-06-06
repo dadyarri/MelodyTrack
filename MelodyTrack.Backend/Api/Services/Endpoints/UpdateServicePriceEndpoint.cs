@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -10,15 +11,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
+public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Patch("/services/{id}/price");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var service = await db.Services
             .Where(e => e.Id == req.Id)
             .FirstOrDefaultAsync(ct);

@@ -134,4 +134,18 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         storedPayment.Amount.ShouldBe(1000m);
         storedPayment.Description.ShouldBe("Payment");
     }
+
+    [Fact]
+    public async Task GetPayments_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/payments", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
 }

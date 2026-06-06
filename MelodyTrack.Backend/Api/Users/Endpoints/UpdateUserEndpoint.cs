@@ -53,6 +53,11 @@ public class UpdateUserEndpoint(AppDbContext db, IEntityFreshnessService entityF
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
 
+        if (user.Role.RoleName.IsSuperuser() && !currentUser.Role.RoleName.IsSuperuser())
+        {
+            return TypedResults.Forbid();
+        }
+
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
             "user",
             user.Id,

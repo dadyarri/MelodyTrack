@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -12,7 +13,7 @@ using Npgsql;
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
 public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
-    : Ep.Req<CreateServiceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<CreateServiceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ReplayEndpoint = "services:create";
 
@@ -21,9 +22,20 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         Post("/services");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
         CreateServiceRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
         if (replayKey is not null)
         {

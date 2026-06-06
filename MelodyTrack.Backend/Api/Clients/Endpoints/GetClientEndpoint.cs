@@ -3,22 +3,35 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class GetClientEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientWithBalanceDto>, NotFound>>
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>>
 {
     public override void Configure()
     {
         Get("/clients/{id}");
     }
 
-    public override async Task<Results<Ok<ClientWithBalanceDto>, NotFound>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogDebug("Fetching client with ID: {ClientId}", req.Id);
         var client = await db.Clients
             .AsNoTracking()

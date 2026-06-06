@@ -118,4 +118,18 @@ public class ExpenseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         var exists = await db.Expenses.AnyAsync(item => item.Id == expense.Id, TestContext.Current.CancellationToken);
         exists.ShouldBeTrue();
     }
+
+    [Fact]
+    public async Task GetExpenses_ReturnsForbiddenForRegularUser()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/expenses", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
 }

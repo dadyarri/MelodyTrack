@@ -43,6 +43,7 @@ public class UpdateUserAvailabilityEndpoint(AppDbContext db, IEntityFreshnessSer
         }
 
         var user = await db.Users
+            .Include(e => e.Role)
             .Include(e => e.WorkingHours)
             .Include(e => e.Vacations)
             .FirstOrDefaultAsync(e => e.Id == req.Id, ct);
@@ -51,6 +52,11 @@ public class UpdateUserAvailabilityEndpoint(AppDbContext db, IEntityFreshnessSer
         {
             AddError(r => r.Id, "Пользователь не найден");
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
+
+        if (user.Role.RoleName.IsSuperuser() && !currentUser.Role.RoleName.IsSuperuser())
+        {
+            return TypedResults.Forbid();
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(

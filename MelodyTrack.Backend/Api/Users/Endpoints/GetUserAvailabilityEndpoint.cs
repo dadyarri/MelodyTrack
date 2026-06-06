@@ -43,12 +43,19 @@ public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServi
 
         var userExists = await db.Users
             .AsNoTracking()
-            .AnyAsync(e => e.Id == req.Id, ct);
+            .Where(e => e.Id == req.Id)
+            .Select(e => new { e.Id, RoleName = e.Role.RoleName })
+            .FirstOrDefaultAsync(ct);
 
-        if (!userExists)
+        if (userExists is null)
         {
             AddError(r => r.Id, "Пользователь не найден");
             return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
+
+        if (userExists.RoleName == UserRoles.Superuser && !currentUser.Role.RoleName.IsSuperuser())
+        {
+            return TypedResults.Forbid();
         }
 
         var availability = await userAvailabilityService.GetAvailabilityAsync(req.Id, ct);

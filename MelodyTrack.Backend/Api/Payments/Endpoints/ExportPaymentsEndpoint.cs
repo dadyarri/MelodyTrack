@@ -2,13 +2,15 @@ using ClosedXML.Excel;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class ExportPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult>>
+public class ExportPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -17,8 +19,19 @@ public class ExportPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginat
         Get("/payments/export");
     }
 
-    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
+    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         var paymentsQuery = db.Payments
             .AsNoTracking()
             .Include(e => e.Client)

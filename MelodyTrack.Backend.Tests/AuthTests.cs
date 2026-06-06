@@ -2711,16 +2711,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User
-        {
-            Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
-            FirstName = "History",
-            LastName = "Viewer",
-            Role = userRole,
-            Password = "hash"
-        };
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
 
         var client = new Client
         {
@@ -2804,7 +2795,6 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             IsDeleted = false
         };
 
-        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
         await db.Clients.AddAsync(client, TestContext.Current.CancellationToken);
         await db.Services.AddAsync(service, TestContext.Current.CancellationToken);
         await db.ServicePriceHistory.AddAsync(servicePrice, TestContext.Current.CancellationToken);
@@ -2847,18 +2837,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var userRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User
-        {
-            Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
-            FirstName = "History",
-            LastName = "Viewer",
-            Role = userRole,
-            Password = "hash"
-        };
-
-        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
@@ -2880,7 +2859,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var clientA = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
         var clientB = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
         clientB.LastName = "Sidorova";
@@ -2923,11 +2902,12 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         App.Client.DefaultRequestHeaders.Authorization = null;
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        res.ShouldNotBeNull();
         res.Data.Count.ShouldBe(1);
         res.Data[0].Id.ShouldBe(paymentA.Id);
         res.Info.Total.ShouldBe(1);
-        res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.TotalAmount.ShouldBe(1200m);
+        res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.FirstItemAtUtc.ShouldBe(paymentA.Date);
         res.Summary.LastItemAtUtc.ShouldBe(paymentA.Date);
     }
@@ -2938,7 +2918,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var client = await CreateScheduleClientAsync(db, TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
@@ -2976,7 +2956,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var user = await CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
 
         var expenseA = new Expense
         {

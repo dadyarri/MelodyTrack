@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,16 +11,27 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, NotFound, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/clients/{id}");
     }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
+    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {
+        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        if (currentUserRole is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
+        if (!currentUserRole.Value.IsAnyAdmin())
+        {
+            return TypedResults.Forbid();
+        }
+
         Logger.LogInformation(
             "Updating client {ClientId} with new data - FirstName: {FirstName}, LastName: {LastName}, Patronymic: {Patronymic}, DateOfBirth: {DateOfBirth}, Contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
             req.Id,
