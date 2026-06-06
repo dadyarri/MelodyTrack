@@ -4,6 +4,7 @@ using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Services.Responses;
+using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -210,6 +211,13 @@ try
         );
         x.Errors.ProducesMetadataType = typeof(ProblemDetails);
         x.Endpoints.ShortNames = true;
+        x.Endpoints.Configurator = ep =>
+        {
+            if (ep.AnonymousVerbs is null)
+            {
+                ep.PreProcessor<ActiveSessionPreProcessor>(Order.Before);
+            }
+        };
     });
     app.UseSerilogRequestLogging();
     app.UseSwaggerGen();

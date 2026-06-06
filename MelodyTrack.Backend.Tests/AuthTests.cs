@@ -1566,6 +1566,32 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task GetSessions_WithRevokedCurrentSession_Unauthorized()
+    {
+        using var scope = App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
+        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Sessions", LastName = "Gone", Role = role, Password = "hash" };
+        var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-sessions"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
+
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user, session.Id));
+
+        var (revokeRsp, _) = await App.Client.DELETEAsync<RevokeSessionEndpoint, GetEntityRequest, NoContent>(new GetEntityRequest { Id = session.Id });
+        revokeRsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var sessionsRsp = await App.Client.GetAsync("/auth/sessions", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        sessionsRsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
     public async Task RevokeSession_CannotRevokeAnotherUsersSession()
     {
         using var scope = App.Services.CreateScope();
@@ -2352,8 +2378,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         login2Rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         login2Res.ShouldNotBeNull();
 
-        // Step 9: Get sessions (using refreshed access token)
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", newAccessToken);
+        // Step 9: Get sessions using the latest active session token. The prior same-device session
+        // was revoked by the second login and should no longer authorize protected requests.
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login2Res.AccessToken);
 
         var (sessionsRsp, sessionsRes) = await App.Client.GETAsync<GetSessionsEndpoint, EmptyRequest, GetSessionsResponse>(EmptyRequest.Instance);
 
