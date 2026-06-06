@@ -245,7 +245,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task Login_Admin_WithoutOtp_Fails()
+    public async Task Login_Admin_WithoutOtp_ReturnsSecondFactorChallenge()
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -284,20 +284,21 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         // set valid User-Agent header required by LoginEndpoint for device info
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.IntegrationTests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginChallengeResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
         });
 
-        loginRsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        loginRsp.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         loginRes.ShouldNotBeNull();
-        loginRes.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
-        loginRes.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
+        loginRes.RequiresTwoFactor.ShouldBeTrue();
+        loginRes.CanUseOtp.ShouldBeTrue();
+        loginRes.CanUseRecoveryCode.ShouldBeFalse();
     }
 
     [Fact]
-    public async Task Login_Superuser_WithoutOtp_Fails()
+    public async Task Login_Superuser_WithoutOtp_ReturnsSecondFactorChallenge()
     {
         using var scope = App.Services.CreateScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -335,16 +336,17 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginChallengeResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
         });
 
-        loginRsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        loginRsp.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         loginRes.ShouldNotBeNull();
-        loginRes.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
-        loginRes.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
+        loginRes.RequiresTwoFactor.ShouldBeTrue();
+        loginRes.CanUseOtp.ShouldBeTrue();
+        loginRes.CanUseRecoveryCode.ShouldBeFalse();
     }
 
     [Fact]

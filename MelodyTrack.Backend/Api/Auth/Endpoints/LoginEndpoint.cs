@@ -13,7 +13,7 @@ using UaDetector;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService)
-    : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult>>
+    : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
@@ -21,7 +21,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         AllowAnonymous();
     }
 
-    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
+    public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Attempting to authenticate user with email {Email}", req.Email);
@@ -30,14 +30,32 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
             .Include(e => e.Role)
             .FirstOrDefaultAsync(e => e.Email == req.Email.ToLowerInvariant(), ct);
 
-        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password) ||
-            user.Role.RoleName.IsAnyAdmin() && req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
+        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
         {
             Logger.LogWarning("auth.login.failed email {Email}", req.Email);
             return TypedResults.Unauthorized();
         }
 
-        if (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null)
+        var requiresSecondFactor = user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null;
+
+        if (requiresSecondFactor && req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
+        {
+            var canUseRecoveryCode = await db.RecoveryCodes
+                .AsNoTracking()
+                .AnyAsync(e => e.User.Id == user.Id && !e.WasUsed, ct);
+
+            Logger.LogInformation("auth.login.challenge_required email {Email}", req.Email);
+            return TypedResults.Accepted(
+                "/auth/login",
+                new LoginChallengeResponse
+                {
+                    RequiresTwoFactor = true,
+                    CanUseOtp = user.TotpSecret is not null,
+                    CanUseRecoveryCode = canUseRecoveryCode
+                });
+        }
+
+        if (requiresSecondFactor)
         {
             if (!string.IsNullOrWhiteSpace(req.RecoveryCode))
             {
