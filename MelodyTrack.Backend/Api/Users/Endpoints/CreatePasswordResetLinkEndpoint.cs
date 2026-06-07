@@ -102,7 +102,7 @@ public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService a
             ActorUserId = caller.Id,
             ActorEmail = caller.Email,
             ActorDisplayName = $"{caller.LastName} {caller.FirstName}".Trim(),
-            Details = $"Создана ссылка на восстановление пароля для {targetUser.Email}"
+            Details = $"Создана ссылка на восстановление пароля для {UserUtils.DescribeEmailForLogs(targetUser.Email)}"
         }, ct);
 
         return TypedResults.Created(

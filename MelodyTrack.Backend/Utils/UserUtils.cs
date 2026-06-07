@@ -129,6 +129,22 @@ public static class UserUtils
         return $"email#{blindIndex[..12]}";
     }
 
+    public static string DescribeOpaqueValueForLogs(string prefix, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return $"{prefix}#unknown";
+        }
+
+        var reference = HashOpaqueToken(value);
+        return $"{prefix}#{reference[..12]}";
+    }
+
+    public static string DescribeInviteCodeForLogs(Ulid code)
+    {
+        return DescribeOpaqueValueForLogs("invite", code.ToString());
+    }
+
     public static string CreateAccessToken(User user, Ulid? sessionId = null)
     {
         var expireAt = DateTime.UtcNow.AddMinutes(10);

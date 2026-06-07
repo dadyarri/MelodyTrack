@@ -7,11 +7,13 @@ public static class StartupConfigurationValidator
     private const int MinimumJwtSigningKeyLength = 32;
     private const int MinimumPiiMasterKeyLength = 32;
     private const string DefaultPiiMasterKeyVersion = "v1";
+    private const string BootstrapSecretsLoggingVariableName = "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS";
 
     public static StartupConfiguration LoadAndValidate(string contentRootPath)
     {
         var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+        var logBootstrapSecrets = LoadLogBootstrapSecrets(environment);
         var jwtSigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
         var piiMasterKeyVersion = Environment.GetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY_VERSION") ?? DefaultPiiMasterKeyVersion;
         var piiMasterKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY");
@@ -19,7 +21,7 @@ public static class StartupConfigurationValidator
         var databaseUrl = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
         var quartzSqlPath = Path.Combine(contentRootPath, "quartz.sql");
 
-        ValidateAppDomain(appDomain);
+        ValidateAppDomain(appDomain, environment);
         ValidateJwtSigningKey(jwtSigningKey);
         ValidatePiiMasterKeyVersion(piiMasterKeyVersion);
         ValidatePiiMasterKeys(piiMasterKeys);
@@ -29,6 +31,7 @@ public static class StartupConfigurationValidator
         {
             Environment = environment,
             AppDomain = appDomain,
+            LogBootstrapSecrets = logBootstrapSecrets,
             JwtSigningKey = jwtSigningKey,
             PiiMasterKeyVersion = piiMasterKeyVersion,
             PiiMasterKey = piiMasterKey,
@@ -38,7 +41,7 @@ public static class StartupConfigurationValidator
         };
     }
 
-    private static void ValidateAppDomain(string appDomain)
+    private static void ValidateAppDomain(string appDomain, string environment)
     {
         if (!Uri.TryCreate(appDomain, UriKind.Absolute, out var uri))
         {
@@ -48,6 +51,11 @@ public static class StartupConfigurationValidator
         if (uri.Scheme is not ("http" or "https"))
         {
             throw new InvalidEnvironmentVariableException("MELODY_TRACK_APP_DOMAIN", "must use http or https");
+        }
+
+        if (!IsLocalOrTestEnvironment(environment) && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new InvalidEnvironmentVariableException("MELODY_TRACK_APP_DOMAIN", "must use https outside Development or Test");
         }
     }
 
@@ -109,6 +117,24 @@ public static class StartupConfigurationValidator
         return keys;
     }
 
+    private static bool LoadLogBootstrapSecrets(string environment)
+    {
+        var configuredValue = Environment.GetEnvironmentVariable(BootstrapSecretsLoggingVariableName);
+        if (string.IsNullOrWhiteSpace(configuredValue))
+        {
+            return IsLocalOrTestEnvironment(environment);
+        }
+
+        if (bool.TryParse(configuredValue, out var parsed))
+        {
+            return parsed;
+        }
+
+        throw new InvalidEnvironmentVariableException(
+            BootstrapSecretsLoggingVariableName,
+            "must be either 'true' or 'false'");
+    }
+
     private static void ValidatePiiMasterKeys(IReadOnlyDictionary<string, string> piiMasterKeys)
     {
         foreach (var (version, key) in piiMasterKeys)
@@ -135,5 +161,10 @@ public static class StartupConfigurationValidator
         {
             throw new RequiredStartupFileNotFoundException(filePath);
         }
+    }
+
+    private static bool IsLocalOrTestEnvironment(string environment)
+    {
+        return environment is "Development" or "Test";
     }
 }

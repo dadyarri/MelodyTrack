@@ -80,13 +80,14 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         {
             Url = inviteUrl
         };
+        var inviteRef = UserUtils.DescribeInviteCodeForLogs(invite.Code);
 
         Logger.LogInformation(
-            "auth.invite_created actor {ActorEmailRef} target {TargetEmailRef} role {Role} url {Url}",
+            "auth.invite_created actor {ActorEmailRef} target {TargetEmailRef} role {Role} invite {InviteRef}",
             UserUtils.DescribeEmailForLogs(caller.Email),
             UserUtils.DescribeEmailForLogs(inviteEmail),
             role.RoleName,
-            inviteUrl);
+            inviteRef);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",
@@ -94,8 +95,8 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
             EntityType = "invite",
             EntityId = invite.Id.ToString(),
             Details = inviteEmail is null
-                ? $"Приглашение без привязки к email с ролью {role.DisplayName}"
-                : $"Приглашение для {inviteEmail} с ролью {role.DisplayName}"
+                ? $"Приглашение {inviteRef} без привязки к email с ролью {role.DisplayName}"
+                : $"Приглашение {inviteRef} для {UserUtils.DescribeEmailForLogs(inviteEmail)} с ролью {role.DisplayName}"
         }, ct);
         return TypedResults.Created("/auth/invite", response);
     }

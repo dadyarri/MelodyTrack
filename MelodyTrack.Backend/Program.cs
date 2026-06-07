@@ -276,26 +276,52 @@ try
 
     if (!hasSuperuser)
     {
-        Ulid code;
+        InviteCode bootstrapInvite;
         if (inviteCode is null)
         {
-            code = Ulid.NewUlid();
-            await db.InviteCodes.AddAsync(new InviteCode
+            bootstrapInvite = new InviteCode
             {
                 Id = Ulid.NewUlid(),
-                Code = code,
+                Code = Ulid.NewUlid(),
                 Role = superuserRole!,
                 ValidUntil = DateTime.UtcNow.AddDays(2)
-            });
+            };
+            await db.InviteCodes.AddAsync(bootstrapInvite);
             await db.SaveChangesAsync();
         }
         else
         {
-            code = inviteCode.Code;
+            bootstrapInvite = inviteCode;
         }
 
-        var url = UserUtils.GetInviteUrl(code);
-        Log.Warning("Superuser was not created yet. Use this link to create a new superuser: {Link}", url);
+        await db.AuditLogs.AddAsync(new AuditLog
+        {
+            Id = Ulid.NewUlid(),
+            CreatedAtUtc = DateTime.UtcNow,
+            Category = "security",
+            Action = "superuser_bootstrap_invite_available",
+            EntityType = "invite",
+            EntityId = bootstrapInvite.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Приглашение", UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code)),
+                AuditDetailsFormatter.DescribeContext("Действует до", bootstrapInvite.ValidUntil))
+        });
+        await db.SaveChangesAsync();
+
+        var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
+        if (startupConfiguration.LogBootstrapSecrets)
+        {
+            var url = UserUtils.GetInviteUrl(bootstrapInvite.Code);
+            Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
+        }
+        else
+        {
+            Log.Warning(
+                "Superuser was not created yet. Bootstrap invite {InviteRef} exists until {ValidUntilUtc:O}. Full link logging is disabled; enable {EnvironmentVariable}=true only for controlled recovery.",
+                inviteRef,
+                bootstrapInvite.ValidUntil,
+                "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS");
+        }
     }
 
     app.Run();

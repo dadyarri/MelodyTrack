@@ -672,6 +672,17 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
         res.ShouldNotBeNull();
         res.Url.ShouldNotBeNullOrEmpty();
+
+        var auditLog = await db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(log => log.CreatedAtUtc)
+            .FirstOrDefaultAsync(log => log.Action == "invite_created", TestContext.Current.CancellationToken);
+
+        auditLog.ShouldNotBeNull();
+        auditLog.Details.ShouldNotBeNull();
+        auditLog.Details.ShouldContain("email#");
+        auditLog.Details.ShouldNotContain("invitee@example.com");
+        auditLog.Details.ShouldNotContain(res.Url);
     }
 
     [Fact]
@@ -929,6 +940,16 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         request.ShouldNotBeNull();
         request.Token.ShouldBe(UserUtils.HashOpaqueToken(rawToken));
         request.Token.ShouldNotBe(rawToken);
+
+        var auditLog = await db.AuditLogs
+            .AsNoTracking()
+            .OrderByDescending(log => log.CreatedAtUtc)
+            .FirstOrDefaultAsync(log => log.Action == "password_reset_link_created", TestContext.Current.CancellationToken);
+
+        auditLog.ShouldNotBeNull();
+        auditLog.Details.ShouldNotBeNull();
+        auditLog.Details.ShouldContain("email#");
+        auditLog.Details.ShouldNotContain(target.Email);
     }
 
     [Fact]
