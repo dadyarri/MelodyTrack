@@ -1,14 +1,18 @@
 ﻿using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.ValueConverters;
+using MelodyTrack.Backend.Services;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Data;
 
 public class AppDbContext : DbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
+    private readonly IPersonalDataProtector? _personalDataProtector;
+
+    public AppDbContext(DbContextOptions<AppDbContext> options, IPersonalDataProtector? personalDataProtector = null) : base(options)
     {
+        _personalDataProtector = personalDataProtector;
     }
 
     public DbSet<User> Users { get; set; }
@@ -46,6 +50,17 @@ public class AppDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        if (_personalDataProtector is not null)
+        {
+            modelBuilder.Entity<User>().Property(e => e.Phone).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+            modelBuilder.Entity<User>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+            modelBuilder.Entity<User>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+
+            modelBuilder.Entity<ClientContacts>().Property(e => e.Phone).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+            modelBuilder.Entity<ClientContacts>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+            modelBuilder.Entity<ClientContacts>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+        }
 
         modelBuilder.HasPostgresExtension("fuzzystrmatch");
 

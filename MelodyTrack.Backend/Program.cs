@@ -102,7 +102,8 @@ try
     // Database configuration
 
     var connectionString = startupConfiguration.DatabaseUrl;
-    builder.Services.AddDbContextPool<AppDbContext>(opts => opts.UseNpgsql(connectionString)
+    builder.Services.AddSingleton<IPersonalDataProtector>(_ => new PersonalDataProtector(startupConfiguration.PiiMasterKey));
+    builder.Services.AddDbContext<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
     Log.Information("Using PostgreSQL database");
 
@@ -113,6 +114,7 @@ try
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
+    builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
@@ -249,6 +251,8 @@ try
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
     await db.Database.MigrateAsync();
+    var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
+    await personalDataBackfillService.BackfillAsync(CancellationToken.None);
 
     if (environment != "Test")
     {

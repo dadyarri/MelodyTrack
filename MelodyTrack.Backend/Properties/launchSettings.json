@@ -10,7 +10,8 @@
         "ASPNETCORE_ENVIRONMENT": "Development",
         "MELODY_TRACK_APP_DOMAIN": "http://localhost:5173",
         "MELODY_TRACK_DATABASE_URL": "Server=127.0.0.1;Port=5432;Database=melodytrack;UserId=postgres;Password=postgres;",
-        "MELODY_TRACK_JWT_SIGNING_KEY": "5L62Vvke1KOZTrwnuhk28/pw9iYffga/oVBYDFimqw0VigSGpP6VRROrEE2tw+p4 i+44Pj1Y9dMO3BdvRbaSRQ=="
+        "MELODY_TRACK_JWT_SIGNING_KEY": "5L62Vvke1KOZTrwnuhk28/pw9iYffga/oVBYDFimqw0VigSGpP6VRROrEE2tw+p4 i+44Pj1Y9dMO3BdvRbaSRQ==",
+        "MELODY_TRACK_PII_MASTER_KEY": "c5qFQ5Vnu/y8MzOokDh0FQ15fkUQdA48C3RykBABtIvUHeDOnHZCAsMX3xqvWew8hPmcW0mVbQLPw3oJIqANYZU0yZB6OeL2+KA44HfdSglpBMM6/TngpPler15nyesBmgApF0ZdCcubN3V9tRI+QosLJB/JdARlocWOs/AgVAw="
       }
     }
   }

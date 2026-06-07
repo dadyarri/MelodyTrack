@@ -5,17 +5,20 @@ namespace MelodyTrack.Backend.Utils;
 public static class StartupConfigurationValidator
 {
     private const int MinimumJwtSigningKeyLength = 32;
+    private const int MinimumPiiMasterKeyLength = 32;
 
     public static StartupConfiguration LoadAndValidate(string contentRootPath)
     {
         var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
         var jwtSigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+        var piiMasterKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY");
         var databaseUrl = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_DATABASE_URL");
         var quartzSqlPath = Path.Combine(contentRootPath, "quartz.sql");
 
         ValidateAppDomain(appDomain);
         ValidateJwtSigningKey(jwtSigningKey);
+        ValidatePiiMasterKey(piiMasterKey);
         ValidateRequiredFile(quartzSqlPath, environment);
 
         return new StartupConfiguration
@@ -23,6 +26,7 @@ public static class StartupConfigurationValidator
             Environment = environment,
             AppDomain = appDomain,
             JwtSigningKey = jwtSigningKey,
+            PiiMasterKey = piiMasterKey,
             DatabaseUrl = databaseUrl,
             QuartzSqlPath = quartzSqlPath
         };
@@ -48,6 +52,16 @@ public static class StartupConfigurationValidator
             throw new InvalidEnvironmentVariableException(
                 "MELODY_TRACK_JWT_SIGNING_KEY",
                 $"must be at least {MinimumJwtSigningKeyLength} characters long");
+        }
+    }
+
+    private static void ValidatePiiMasterKey(string piiMasterKey)
+    {
+        if (piiMasterKey.Length < MinimumPiiMasterKeyLength)
+        {
+            throw new InvalidEnvironmentVariableException(
+                "MELODY_TRACK_PII_MASTER_KEY",
+                $"must be at least {MinimumPiiMasterKeyLength} characters long");
         }
     }
 
