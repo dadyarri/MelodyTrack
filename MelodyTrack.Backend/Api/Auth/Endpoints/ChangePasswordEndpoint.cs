@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -27,11 +28,11 @@ public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogSe
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email, ct);
+        var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.CurrentPassword))
         {
-            Logger.LogWarning("Password change failed for user {Email}: invalid current password", email);
+            Logger.LogWarning("Password change failed for {EmailRef}: invalid current password", UserUtils.DescribeEmailForLogs(email));
             return TypedResults.Unauthorized();
         }
 
@@ -43,7 +44,7 @@ public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogSe
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("auth.password_changed user {Email}", email);
+        Logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

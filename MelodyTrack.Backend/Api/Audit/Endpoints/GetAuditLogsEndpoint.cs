@@ -31,7 +31,7 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
         }
 
         var user = await db.Users
-            .Where(u => u.Email == login.Value)
+            .WhereEmailMatches(login.Value)
             .Include(u => u.Role)
             .FirstOrDefaultAsync(ct);
 

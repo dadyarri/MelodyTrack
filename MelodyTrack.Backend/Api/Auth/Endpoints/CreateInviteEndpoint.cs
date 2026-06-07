@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -23,7 +24,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
-        var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : req.Email.Trim();
+        var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
         var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
 
         if (login is null)
@@ -35,11 +36,12 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         var caller = await db.Users
             .AsNoTracking()
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email == login.Value, ct);
+            .WhereEmailMatches(login.Value)
+            .FirstOrDefaultAsync(ct);
 
         if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Invite creation attempt without admin access by {Email}", login.Value);
+            Logger.LogWarning("Invite creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(login.Value));
             return TypedResults.Forbid();
         }
 
@@ -54,8 +56,8 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         if (role.RoleName.IsSuperuser() && !caller.Role.RoleName.IsSuperuser())
         {
             Logger.LogWarning(
-                "Admin {Email} attempted to create superuser invite without sufficient privileges",
-                caller.Email);
+                "Admin {EmailRef} attempted to create superuser invite without sufficient privileges",
+                UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
         }
 
@@ -80,9 +82,9 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         };
 
         Logger.LogInformation(
-            "auth.invite_created actor {ActorEmail} target {Email} role {Role} url {Url}",
-            caller.Email,
-            inviteEmail,
+            "auth.invite_created actor {ActorEmailRef} target {TargetEmailRef} role {Role} url {Url}",
+            UserUtils.DescribeEmailForLogs(caller.Email),
+            UserUtils.DescribeEmailForLogs(inviteEmail),
             role.RoleName,
             inviteUrl);
         await auditLogService.WriteAsync(new AuditLogWriteRequest

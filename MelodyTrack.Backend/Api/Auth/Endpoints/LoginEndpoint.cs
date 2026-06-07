@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -25,15 +26,17 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
     public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
         CancellationToken ct)
     {
-        Logger.LogDebug("Attempting to authenticate user with email {Email}", req.Email);
+        var normalizedEmail = UserUtils.NormalizeEmail(req.Email);
+        Logger.LogDebug("Attempting to authenticate user {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
 
         var user = await db.Users
             .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Email == req.Email.ToLowerInvariant(), ct);
+            .WhereEmailMatches(normalizedEmail)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
         {
-            Logger.LogWarning("auth.login.failed email {Email}", req.Email);
+            Logger.LogWarning("auth.login.failed {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -45,7 +48,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
                 .AsNoTracking()
                 .AnyAsync(e => e.User.Id == user.Id && !e.WasUsed, ct);
 
-            Logger.LogInformation("auth.login.challenge_required email {Email}", req.Email);
+            Logger.LogInformation("auth.login.challenge_required {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Accepted(
                 "/auth/login",
                 new LoginChallengeResponse
@@ -65,7 +68,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
 
                 if (recoveryCode is null)
                 {
-                    Logger.LogWarning("auth.login.failed_recovery_code email {Email}", req.Email);
+                    Logger.LogWarning("auth.login.failed_recovery_code {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
                     return TypedResults.Unauthorized();
                 }
 
@@ -73,7 +76,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
             }
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
-                Logger.LogWarning("auth.login.failed_otp email {Email}", req.Email);
+                Logger.LogWarning("auth.login.failed_otp {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
                 return TypedResults.Unauthorized();
             }
         }
@@ -97,7 +100,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("auth.login.succeeded user {Email} device {DeviceInfo}", user.Email, session.DeviceInfo);
+        Logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

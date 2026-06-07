@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -30,7 +31,8 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
 
         var currentUser = await db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(user => user.Email == email, ct);
+            .WhereEmailMatches(email)
+            .FirstOrDefaultAsync(ct);
 
         if (currentUser is null)
         {

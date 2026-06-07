@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -28,17 +29,17 @@ public class Setup2FaEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+        var user = await db.Users.WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
         {
-            Logger.LogWarning("2FA setup attempt with invalid user or password for email {Email}", email.Value);
+            Logger.LogWarning("2FA setup attempt with invalid user or password for {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
         var (secret, otpUrl) = UserUtils.GenerateTotp(user.Email);
 
-        Logger.LogInformation("auth.2fa.setup_started user {Email}", user.Email);
+        Logger.LogInformation("auth.2fa.setup_started {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         return TypedResults.Ok(new Setup2FaResponse
         {
             Secret = secret,

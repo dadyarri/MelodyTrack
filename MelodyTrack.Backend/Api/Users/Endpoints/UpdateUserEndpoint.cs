@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -31,7 +32,8 @@ public class UpdateUserEndpoint(AppDbContext db, IEntityFreshnessService entityF
 
         var currentUser = await db.Users
             .Include(user => user.Role)
-            .FirstOrDefaultAsync(user => user.Email == login, ct);
+            .WhereEmailMatches(login)
+            .FirstOrDefaultAsync(ct);
 
         if (currentUser is null)
         {

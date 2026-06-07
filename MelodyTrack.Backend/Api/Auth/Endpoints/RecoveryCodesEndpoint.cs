@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -29,16 +30,16 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogDebug("Attempting to generate recovery codes for user {Email}", email.Value);
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+        Logger.LogDebug("Attempting to generate recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
+        var user = await db.Users.WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes generation attempt for non-existent user with email {Email}", email.Value);
+            Logger.LogWarning("Recovery codes generation attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogDebug("Invalidating existing unused recovery codes for user {Email}", email.Value);
+        Logger.LogDebug("Invalidating existing unused recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
         await db.RecoveryCodes
             .Where(e => !e.WasUsed && e.User == user)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasUsed, true), ct);
@@ -59,7 +60,7 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully generated {Count} new recovery codes for user {Email}", recoveryCodes.Count, email.Value);
+        Logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(email.Value));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

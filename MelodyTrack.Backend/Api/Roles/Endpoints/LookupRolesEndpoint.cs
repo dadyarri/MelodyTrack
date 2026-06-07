@@ -3,6 +3,8 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,17 +31,18 @@ public class LookupRolesEndpoint(AppDbContext db)
         var user = await db.Users
             .AsNoTracking()
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email == login.Value, ct);
+            .WhereEmailMatches(login.Value)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Role lookup request for non-existent user with email {Email}", login.Value);
+            Logger.LogWarning("Role lookup request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(login.Value));
             return TypedResults.Unauthorized();
         }
 
         if (!user.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Role lookup request denied for non-admin user {Email}", user.Email);
+            Logger.LogWarning("Role lookup request denied for non-admin {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Forbid();
         }
 
@@ -54,7 +57,7 @@ public class LookupRolesEndpoint(AppDbContext db)
             })
             .ToListAsync(ct);
 
-        Logger.LogInformation("Returned {Count} assignable roles to {Email}", roles.Count, user.Email);
+        Logger.LogInformation("Returned {Count} assignable roles to {EmailRef}", roles.Count, UserUtils.DescribeEmailForLogs(user.Email));
         return TypedResults.Ok(new LookupRolesResponse { Roles = roles });
     }
 }

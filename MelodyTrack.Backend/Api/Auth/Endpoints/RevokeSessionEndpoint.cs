@@ -3,7 +3,9 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -31,11 +33,12 @@ public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         var user = await db.Users
             .AsNoTracking()
-            .FirstOrDefaultAsync(e => e.Email == email, ct);
+            .WhereEmailMatches(email)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Session revoke attempt for non-existent user with email {Email}", email);
+            Logger.LogWarning("Session revoke attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email));
             return TypedResults.Unauthorized();
         }
 
@@ -52,7 +55,7 @@ public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 StatusCodes.Status404NotFound));
         }
 
-        Logger.LogInformation("User {Email} revoked session {SessionId}", email, req.Id);
+        Logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(email), req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

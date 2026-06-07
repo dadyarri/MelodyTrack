@@ -53,6 +53,7 @@ public class AppDbContext : DbContext
 
         if (_personalDataProtector is not null)
         {
+            modelBuilder.Entity<User>().Property(e => e.Email).HasConversion(new EncryptedRequiredStringConverter(_personalDataProtector));
             modelBuilder.Entity<User>().Property(e => e.Phone).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<User>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<User>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
@@ -61,6 +62,10 @@ public class AppDbContext : DbContext
             modelBuilder.Entity<ClientContacts>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<ClientContacts>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
         }
+
+        modelBuilder.Entity<User>()
+            .HasIndex(e => e.EmailBlindIndex)
+            .IsUnique();
 
         modelBuilder.HasPostgresExtension("fuzzystrmatch");
 

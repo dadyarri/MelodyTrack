@@ -3,6 +3,7 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -24,13 +25,14 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
         Recover2FaRequest req,
         CancellationToken ct)
     {
+        var normalizedEmail = UserUtils.NormalizeEmail(req.Email);
         var user = await db.Users
-            .Where(e => e.Email == req.Email.ToLowerInvariant())
+            .WhereEmailMatches(normalizedEmail)
             .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("2FA recovery attempt for non-existent user with email {Email}", req.Email);
+            Logger.LogWarning("2FA recovery attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -40,7 +42,7 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
 
         if (recoveryCode is null)
         {
-            Logger.LogWarning("2FA recovery attempt with invalid or used recovery code for user {Email}", req.Email);
+            Logger.LogWarning("2FA recovery attempt with invalid or used recovery code for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Forbid();
         }
 
@@ -91,8 +93,8 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "Successfully recovered 2FA for user {Email}. New session created from {DeviceInfo}",
-            user.Email,
+            "Successfully recovered 2FA for {EmailRef}. New session created from {DeviceInfo}",
+            UserUtils.DescribeEmailForLogs(user.Email),
             session.DeviceInfo
         );
         return TypedResults.Ok(response);

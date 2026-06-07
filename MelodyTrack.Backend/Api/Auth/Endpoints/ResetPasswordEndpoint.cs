@@ -3,6 +3,7 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -40,14 +41,14 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
         }
 
         var user = await db.Users
-            .Where(e => e.Email == restoreCode.Email)
+            .WhereEmailMatches(restoreCode.Email)
             .Include(e => e.Role)
             .FirstOrDefaultAsync(ct);
 
         if (user is null || (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null) &&
             req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
-            Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for user {Email}", restoreCode.Email);
+            Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for {EmailRef}", UserUtils.DescribeEmailForLogs(restoreCode.Email));
             AddError(r => r.Otp, "Для этого аккаунта нужен код 2FA или код восстановления.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 ValidationFailures,
@@ -64,7 +65,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
                 if (recoveryCode is null)
                 {
-                    Logger.LogWarning("Invalid recovery code provided during password reset for user {Email}", user.Email);
+                    Logger.LogWarning("Invalid recovery code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
                     AddError(r => r.RecoveryCode, "Код восстановления неверный или уже использован.");
                     return ApiErrorResponseFactory.CreateValidationProblemDetails(
                         ValidationFailures,
@@ -76,7 +77,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
             }
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
-                Logger.LogWarning("Invalid 2FA code provided during password reset for user {Email}", user.Email);
+                Logger.LogWarning("Invalid 2FA code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
                 AddError(r => r.Otp, "Код 2FA неверный. Проверьте код из приложения-аутентификатора и попробуйте снова.");
                 return ApiErrorResponseFactory.CreateValidationProblemDetails(
                     ValidationFailures,
@@ -93,7 +94,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
         await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("auth.password_reset.completed user {Email}", user.Email);
+        Logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

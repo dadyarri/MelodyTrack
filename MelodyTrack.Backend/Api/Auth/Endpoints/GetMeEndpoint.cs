@@ -3,7 +3,9 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -30,11 +32,12 @@ public class GetMeEndpoint(AppDbContext db, IRecordActivityService recordActivit
         var user = await db.Users
             .AsNoTracking()
             .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Email == email, ct);
+            .WhereEmailMatches(email)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Profile request for non-existent user with email {Email}", email);
+            Logger.LogWarning("Profile request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email));
             return TypedResults.Unauthorized();
         }
 

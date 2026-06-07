@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -26,7 +27,7 @@ public class GetUsersEndpoint(AppDbContext db, IRecordActivityService recordActi
         }
 
         var user = await db.Users
-            .Where(u => u.Email == login.Value)
+            .WhereEmailMatches(login.Value)
             .Include(e => e.Role)
             .FirstOrDefaultAsync(ct);
 

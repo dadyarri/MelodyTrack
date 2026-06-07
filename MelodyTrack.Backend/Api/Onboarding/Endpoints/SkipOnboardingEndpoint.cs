@@ -3,6 +3,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,7 +27,8 @@ public class SkipOnboardingEndpoint(AppDbContext db)
 
         var user = await db.Users
             .Include(e => e.OnboardingState)
-            .FirstOrDefaultAsync(e => e.Email == email, ct);
+            .WhereEmailMatches(email)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {

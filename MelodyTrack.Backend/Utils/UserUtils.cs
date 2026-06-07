@@ -103,6 +103,32 @@ public static class UserUtils
         return Convert.ToHexString(hash);
     }
 
+    public static string NormalizeEmail(string email)
+    {
+        return email.Trim().ToLowerInvariant();
+    }
+
+    public static string HashEmailBlindIndex(string email)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        var indexKey = SHA256.HashData(
+            Encoding.UTF8.GetBytes($"melodytrack:email-index:{EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY")}"));
+        var emailBytes = Encoding.UTF8.GetBytes(normalizedEmail);
+        var hash = HMACSHA256.HashData(indexKey, emailBytes);
+        return Convert.ToHexString(hash);
+    }
+
+    public static string DescribeEmailForLogs(string? email)
+    {
+        if (string.IsNullOrWhiteSpace(email))
+        {
+            return "email#unknown";
+        }
+
+        var blindIndex = HashEmailBlindIndex(email);
+        return $"email#{blindIndex[..12]}";
+    }
+
     public static string CreateAccessToken(User user, Ulid? sessionId = null)
     {
         var expireAt = DateTime.UtcNow.AddMinutes(10);

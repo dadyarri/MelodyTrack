@@ -41,8 +41,8 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         if (session.WasRevoked)
         {
             Logger.LogWarning(
-                "Revoked refresh token replay detected for user {Email}. Revoking all sessions.",
-                session.User.Email);
+                "Revoked refresh token replay detected for {EmailRef}. Revoking all sessions.",
+                UserUtils.DescribeEmailForLogs(session.User.Email));
             await db.Sessions
                 .Where(e => e.User.Id == session.User.Id && !e.WasRevoked)
                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
@@ -52,7 +52,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
 
         if (session.ValidUntil < DateTime.UtcNow)
         {
-            Logger.LogWarning("Expired refresh token used in refresh attempt for user {Email}", session.User.Email);
+            Logger.LogWarning("Expired refresh token used in refresh attempt for {EmailRef}", UserUtils.DescribeEmailForLogs(session.User.Email));
             session.WasRevoked = true;
             await db.SaveChangesAsync(ct);
 
@@ -81,7 +81,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         await db.Sessions.AddAsync(newSession, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully refreshed token for user {Email} from {DeviceInfo}", session.User.Email, newSession.DeviceInfo);
+        Logger.LogInformation("Successfully refreshed token for {EmailRef} from {DeviceInfo}", UserUtils.DescribeEmailForLogs(session.User.Email), newSession.DeviceInfo);
         var response = new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id),

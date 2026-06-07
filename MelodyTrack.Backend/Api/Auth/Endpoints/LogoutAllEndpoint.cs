@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -24,11 +26,11 @@ public class LogoutAllEndpoint(AppDbContext db, IAuditLogService auditLogService
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+        var user = await db.Users.AsNoTracking().WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Logout all attempt for non-existent user with email {Email}", email.Value);
+            Logger.LogWarning("Logout all attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
@@ -36,7 +38,7 @@ public class LogoutAllEndpoint(AppDbContext db, IAuditLogService auditLogService
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("auth.logout_all.succeeded user {Email}", email.Value);
+        Logger.LogInformation("auth.logout_all.succeeded {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

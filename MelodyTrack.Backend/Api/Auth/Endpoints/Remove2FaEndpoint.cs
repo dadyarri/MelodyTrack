@@ -2,7 +2,9 @@ using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -29,17 +31,18 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
 
         var user = await db.Users
             .Include(user => user.Role)
-            .FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+            .WhereEmailMatches(email.Value)
+            .FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("2FA removal attempt for non-existent user with email {Email}", email.Value);
+            Logger.LogWarning("2FA removal attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
         if (user.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Attempt to remove 2FA for admin user {Email} - operation not allowed", email.Value);
+            Logger.LogWarning("Attempt to remove 2FA for admin {EmailRef} - operation not allowed", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Forbid();
         }
 
@@ -54,7 +57,7 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("auth.2fa.removed user {Email}", email.Value);
+        Logger.LogInformation("auth.2fa.removed {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

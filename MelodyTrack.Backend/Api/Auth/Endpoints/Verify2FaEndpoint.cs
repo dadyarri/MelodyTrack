@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -32,7 +33,9 @@ public class Verify2FaEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        if (authenticatedEmail is not null && !string.Equals(authenticatedEmail, req.Email, StringComparison.OrdinalIgnoreCase))
+        if (authenticatedEmail is not null
+            && req.Email is not null
+            && !string.Equals(UserUtils.NormalizeEmail(authenticatedEmail), UserUtils.NormalizeEmail(req.Email), StringComparison.Ordinal))
         {
             Logger.LogWarning(
                 "Authenticated 2FA verification attempt with mismatched email claim {AuthenticatedEmail} and payload {PayloadEmail}",
@@ -41,23 +44,24 @@ public class Verify2FaEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email, ct);
+        var normalizedEmail = UserUtils.NormalizeEmail(email);
+        var user = await db.Users.WhereEmailMatches(normalizedEmail).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("2FA verification attempt for non-existent user with email {Email}", email);
+            Logger.LogWarning("2FA verification attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
         if (authenticatedEmail is null && user.TotpSecret != req.OtpSecret)
         {
-            Logger.LogWarning("Anonymous 2FA verification attempt with mismatched secret for user {Email}", email);
+            Logger.LogWarning("Anonymous 2FA verification attempt with mismatched secret for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
         if (!UserUtils.VerifyTotpCode(req.OtpSecret, req.Otp))
         {
-            Logger.LogWarning("Invalid 2FA code provided for user {Email}", email);
+            Logger.LogWarning("Invalid 2FA code provided for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -76,7 +80,7 @@ public class Verify2FaEndpoint(AppDbContext db)
         user.TotpSecret = req.OtpSecret;
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("auth.2fa.enrolled user {Email}", email);
+        Logger.LogInformation("auth.2fa.enrolled {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
         return TypedResults.Ok(new RecoveryCodesResponse
         {
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto

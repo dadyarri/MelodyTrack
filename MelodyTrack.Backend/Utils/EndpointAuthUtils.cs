@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Utils;
@@ -17,7 +18,7 @@ public static class EndpointAuthUtils
 
         return await db.Users
             .AsNoTracking()
-            .Where(user => user.Email == email)
+            .WhereEmailMatches(email)
             .Select(user => (UserRoles?)user.Role.RoleName)
             .FirstOrDefaultAsync(ct);
     }

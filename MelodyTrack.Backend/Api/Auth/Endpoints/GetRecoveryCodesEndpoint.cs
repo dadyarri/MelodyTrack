@@ -2,6 +2,8 @@ using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -25,11 +27,11 @@ public class GetRecoveryCodesEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.FirstOrDefaultAsync(e => e.Email == email, ct);
+        var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes list request for non-existent user with email {Email}", email);
+            Logger.LogWarning("Recovery codes list request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email));
             return TypedResults.Unauthorized();
         }
 

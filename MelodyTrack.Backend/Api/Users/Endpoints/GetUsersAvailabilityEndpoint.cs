@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -28,7 +29,7 @@ public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServ
 
         var currentUser = await db.Users
             .AsNoTracking()
-            .Where(user => user.Email == login)
+            .WhereEmailMatches(login)
             .Include(user => user.Role)
             .FirstOrDefaultAsync(ct);
 

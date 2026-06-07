@@ -2,6 +2,7 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -28,11 +29,11 @@ public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) :
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+        var user = await db.Users.AsNoTracking().WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Logout attempt for non-existent user with email {Email}", email.Value);
+            Logger.LogWarning("Logout attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
@@ -42,11 +43,11 @@ public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) :
 
         if (revokedCount == 0)
         {
-            Logger.LogWarning("Logout attempt by {Email} for non-owned or unknown refresh token", email.Value);
+            Logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogInformation("User {Email} successfully logged out", email.Value);
+        Logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(email.Value));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

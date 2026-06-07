@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -36,17 +37,18 @@ public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService a
         var caller = await db.Users
             .AsNoTracking()
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.Email == login, ct);
+            .WhereEmailMatches(login)
+            .FirstOrDefaultAsync(ct);
 
         if (caller is null)
         {
-            Logger.LogWarning("Password reset link creation attempt for non-existent caller {Email}", login);
+            Logger.LogWarning("Password reset link creation attempt for non-existent caller {EmailRef}", UserUtils.DescribeEmailForLogs(login));
             return TypedResults.Unauthorized();
         }
 
         if (!caller.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Password reset link creation attempt without admin access by {Email}", caller.Email);
+            Logger.LogWarning("Password reset link creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
         }
 
@@ -66,8 +68,8 @@ public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService a
         if (targetUser.Role.RoleName.IsSuperuser() && !caller.Role.RoleName.IsSuperuser())
         {
             Logger.LogWarning(
-                "Admin {Email} attempted to create a superuser password reset link without sufficient privileges",
-                caller.Email);
+                "Admin {EmailRef} attempted to create a superuser password reset link without sufficient privileges",
+                UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
         }
 
@@ -88,9 +90,9 @@ public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService a
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "auth.password_reset_link.created actor {ActorEmail} target {TargetEmail}",
-            caller.Email,
-            targetUser.Email);
+            "auth.password_reset_link.created actor {ActorEmailRef} target {TargetEmailRef}",
+            UserUtils.DescribeEmailForLogs(caller.Email),
+            UserUtils.DescribeEmailForLogs(targetUser.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

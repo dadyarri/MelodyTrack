@@ -27,6 +27,7 @@ using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -111,7 +112,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         regRes.TotpRequired.ShouldBeTrue();
         regRes.Secret.ShouldNotBeNull();
 
-        var createdUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+        var createdUser = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
         createdUser.ShouldNotBeNull();
 
         var secretBytes = Base32Encoding.ToBytes(regRes.Secret);
@@ -171,7 +172,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         regRes.TotpRequired.ShouldBeTrue();
         regRes.Secret.ShouldNotBeNull();
 
-        var createdUser = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+        var createdUser = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
         createdUser.ShouldNotBeNull();
 
         var secretBytes = Base32Encoding.ToBytes(regRes.Secret);
@@ -1990,8 +1991,49 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.ShouldNotBeNull();
 
         await db.Users
-            .FirstOrDefaultAsync(u => u.Email == "test.user@example.com", TestContext.Current.CancellationToken)
+            .WhereEmailMatches("test.user@example.com")
+            .FirstOrDefaultAsync(TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User should be created with lowercase email");
+    }
+
+    [Fact]
+    public async Task RegisterNewUser_WithTrimmedAndCaseInsensitiveEmail_Success()
+    {
+        using var scope = App.Services.CreateScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var userRole = await db.Roles
+            .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
+            .ShouldNotBeNull("User role should exist in migrations.");
+
+        var inviteCode = new InviteCode
+        {
+            Id = Ulid.NewUlid(),
+            Code = Ulid.NewUlid(),
+            Role = userRole!,
+            ValidUntil = DateTime.UtcNow.AddDays(1)
+        };
+
+        await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var (rsp, _) = await App.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
+        {
+            FirstName = "test",
+            LastName = "test",
+            Email = "  TeSt.TrimMe@ExAmPlE.CoM  ",
+            Password = "cOmp1exP@ssw0rd",
+            InviteCode = inviteCode.Code.ToString()
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var createdUser = await db.Users
+            .WhereEmailMatches("test.trimme@example.com")
+            .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
+
+        createdUser.ShouldNotBeNull("User should be created with trimmed lowercase email");
+        createdUser.Email.ShouldBe("test.trimme@example.com");
     }
 
     [Fact]
@@ -2089,7 +2131,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.ShouldNotBeNull();
 
         await db.Users
-            .FirstOrDefaultAsync(u => u.Email == presetEmail, TestContext.Current.CancellationToken)
+            .WhereEmailMatches(presetEmail)
+            .FirstOrDefaultAsync(TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User should be created with preset email from invite code");
     }
 
@@ -2132,7 +2175,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var createdUser = await db.Users
             .Include(u => u.Role)
-            .FirstAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken)
+            .WhereEmailMatches(email)
+            .FirstAsync(TestContext.Current.CancellationToken)
             .ShouldNotBeNull();
 
         createdUser.FirstName.ShouldBe(firstName);
@@ -2177,7 +2221,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var createdUser = await db.Users
             .Include(u => u.Role)
-            .FirstAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken).ShouldNotBeNull();
+            .WhereEmailMatches(email)
+            .FirstAsync(TestContext.Current.CancellationToken).ShouldNotBeNull();
 
         createdUser.Email.ShouldBe(email.ToLowerInvariant());
         createdUser.Role.RoleName.ShouldBe(UserRoles.Admin);
@@ -2344,7 +2389,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var createdUser = await db.Users
                 .Include(u => u.Role)
-                .FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+                .WhereEmailMatches(email)
+                .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
             createdUser.ShouldNotBeNull();
             createdUser.Role.RoleName.ShouldBe(UserRoles.Superuser);
             createdUser.TotpSecret.ShouldNotBeNull("Secret should be set already");
@@ -2373,7 +2419,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+            var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
             user.ShouldNotBeNull();
             user.TotpSecret.ShouldBe(totpSecret);
         }
@@ -2422,7 +2468,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var codes = await db.RecoveryCodes
-                .Where(rc => rc.User.Email == email.ToLowerInvariant() && !rc.WasUsed)
+                .Where(rc => rc.User.EmailBlindIndex == UserUtils.HashEmailBlindIndex(email) && !rc.WasUsed)
                 .ToListAsync(TestContext.Current.CancellationToken);
             codes.Count.ShouldBe(recoveryRes.AllCodes.Count);
         }
@@ -2495,7 +2541,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var allSessions = await db.Sessions
-                .Where(s => s.User.Email == email.ToLowerInvariant())
+                .Where(s => s.User.EmailBlindIndex == UserUtils.HashEmailBlindIndex(email))
                 .ToListAsync(TestContext.Current.CancellationToken);
             allSessions.ShouldAllBe(s => s.WasRevoked);
         }
@@ -2528,7 +2574,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
                 new GetEntityRequest
                 {
                     Id = await db.Users
-                        .Where(u => u.Email == email.ToLowerInvariant())
+                        .WhereEmailMatches(email)
                         .Select(u => u.Id)
                         .FirstAsync(TestContext.Current.CancellationToken)
                 });
@@ -2555,7 +2601,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-            var user = await db.Users.FirstOrDefaultAsync(u => u.Email == email.ToLowerInvariant(), TestContext.Current.CancellationToken);
+            var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(TestContext.Current.CancellationToken);
             user.ShouldNotBeNull();
             user.Password.ShouldNotBe(password);
         }
@@ -2565,7 +2611,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var sessions = await db.Sessions
-                .Where(s => s.User.Email == email.ToLowerInvariant())
+                .Where(s => s.User.EmailBlindIndex == UserUtils.HashEmailBlindIndex(email))
                 .ToListAsync(TestContext.Current.CancellationToken);
             sessions.ShouldAllBe(s => s.WasRevoked);
         }

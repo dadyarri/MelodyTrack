@@ -20,7 +20,34 @@ namespace MelodyTrack.Backend.Tests;
 public class PersonalDataEncryptionTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task UserContactFields_AreStoredEncrypted_AndReturnedDecrypted()
+    public void PersonalDataProtector_SupportsVersionedKeyRotation()
+    {
+        var previousVersionProtector = new PersonalDataProtector(
+            "v1",
+            new Dictionary<string, string>
+            {
+                ["v1"] = "super-secret-pii-key-for-testing-only-1234567890abcdef"
+            });
+        var currentVersionProtector = new PersonalDataProtector(
+            "v2",
+            new Dictionary<string, string>
+            {
+                ["v1"] = "super-secret-pii-key-for-testing-only-1234567890abcdef",
+                ["v2"] = "another-super-secret-pii-key-for-testing-only-abcdef1234567890"
+            });
+
+        var previousCiphertext = previousVersionProtector.Encrypt("rotate-me@example.com");
+        previousCiphertext.ShouldStartWith("enc:v1:");
+        currentVersionProtector.Decrypt(previousCiphertext).ShouldBe("rotate-me@example.com");
+        currentVersionProtector.ShouldReencrypt(previousCiphertext).ShouldBeTrue();
+
+        var currentCiphertext = currentVersionProtector.Encrypt("rotate-me@example.com");
+        currentCiphertext.ShouldStartWith("enc:v2:");
+        currentVersionProtector.ShouldReencrypt(currentCiphertext).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task UserPersonalFields_AreStoredEncrypted_AndReturnedDecrypted()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -31,16 +58,23 @@ public class PersonalDataEncryptionTests(MelodyTrackFixture app) : IntegrationTe
         admin.Vk = "https://vk.com/admin";
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
+        var rawEmail = await ReadScalarAsync("SELECT \"Email\" FROM public.\"Users\" WHERE \"Id\" = @id", admin.Id.ToByteArray());
+        var emailBlindIndex = await ReadScalarAsync("SELECT \"EmailBlindIndex\" FROM public.\"Users\" WHERE \"Id\" = @id", admin.Id.ToByteArray());
         var rawPhone = await ReadScalarAsync("SELECT \"Phone\" FROM public.\"Users\" WHERE \"Id\" = @id", admin.Id.ToByteArray());
         var rawTelegram = await ReadScalarAsync("SELECT \"Telegram\" FROM public.\"Users\" WHERE \"Id\" = @id", admin.Id.ToByteArray());
         var rawVk = await ReadScalarAsync("SELECT \"Vk\" FROM public.\"Users\" WHERE \"Id\" = @id", admin.Id.ToByteArray());
 
+        rawEmail.ShouldNotBeNull();
+        emailBlindIndex.ShouldNotBeNull();
         rawPhone.ShouldNotBeNull();
         rawTelegram.ShouldNotBeNull();
         rawVk.ShouldNotBeNull();
+        rawEmail.ShouldNotBe(admin.Email);
         rawPhone.ShouldNotBe(admin.Phone);
         rawTelegram.ShouldNotBe(admin.Telegram);
         rawVk.ShouldNotBe(admin.Vk);
+        rawEmail.ShouldStartWith("enc:v1:");
+        emailBlindIndex.ShouldBe(UserUtils.HashEmailBlindIndex(admin.Email));
         rawPhone.ShouldStartWith("enc:v1:");
         rawTelegram.ShouldStartWith("enc:v1:");
         rawVk.ShouldStartWith("enc:v1:");

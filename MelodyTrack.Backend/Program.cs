@@ -2,14 +2,13 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
+using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Services.Responses;
-using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
-using MelodyTrack.Backend.Exceptions;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
@@ -102,7 +101,8 @@ try
     // Database configuration
 
     var connectionString = startupConfiguration.DatabaseUrl;
-    builder.Services.AddSingleton<IPersonalDataProtector>(_ => new PersonalDataProtector(startupConfiguration.PiiMasterKey));
+    builder.Services.AddSingleton<IPersonalDataProtector>(_ =>
+        new PersonalDataProtector(startupConfiguration.PiiMasterKeyVersion, startupConfiguration.PiiMasterKeys));
     builder.Services.AddDbContext<AppDbContext>(opts => opts.UseNpgsql(connectionString)
     );
     Log.Information("Using PostgreSQL database");

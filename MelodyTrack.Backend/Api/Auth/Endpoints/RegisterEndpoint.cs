@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -52,13 +53,13 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
                 StatusCodes.Status403Forbidden);
         }
 
-        var email = (string.IsNullOrEmpty(inviteCode.Email) ? req.Email : inviteCode.Email).ToLowerInvariant();
+        var email = UserUtils.NormalizeEmail(string.IsNullOrEmpty(inviteCode.Email) ? req.Email : inviteCode.Email);
 
-        var hasUser = await db.Users.AnyAsync(u => u.Email == email, ct);
+        var hasUser = await db.Users.WhereEmailMatches(email).AnyAsync(ct);
 
         if (hasUser)
         {
-            Logger.LogWarning("Attempt to register with existing email {Email}", email);
+            Logger.LogWarning("Attempt to register with existing {EmailRef}", UserUtils.DescribeEmailForLogs(email));
             AddError(r => r.Email, "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт или попросите новую ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 ValidationFailures,
@@ -71,7 +72,7 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = email.ToLowerInvariant(),
+            Email = email,
             FirstName = req.FirstName,
             LastName = req.LastName,
             Role = inviteCode.Role,
@@ -107,8 +108,8 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "auth.invite_accepted user {Email} role {Role} twoFactorRequired {TwoFactorRequired}",
-            email,
+            "auth.invite_accepted {EmailRef} role {Role} twoFactorRequired {TwoFactorRequired}",
+            UserUtils.DescribeEmailForLogs(email),
             inviteCode.Role.RoleName,
             isTotpRequired);
         await auditLogService.WriteAsync(new AuditLogWriteRequest

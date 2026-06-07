@@ -2,6 +2,8 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,11 +30,11 @@ public class GetSessionsEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users.AsNoTracking().FirstOrDefaultAsync(e => e.Email == email.Value, ct);
+        var user = await db.Users.AsNoTracking().WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Session list request for non-existent user with email {Email}", email.Value);
+            Logger.LogWarning("Session list request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
             return TypedResults.Unauthorized();
         }
 
@@ -57,7 +59,7 @@ public class GetSessionsEndpoint(AppDbContext db)
             })
             .ToList();
 
-        Logger.LogInformation("Retrieved {Count} active sessions for user {Email}", sessions.Count, email.Value);
+        Logger.LogInformation("Retrieved {Count} active sessions for {EmailRef}", sessions.Count, UserUtils.DescribeEmailForLogs(email.Value));
         return TypedResults.Ok(new GetSessionsResponse
         {
             Data = data

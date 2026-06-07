@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Extensions;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services;
@@ -41,7 +42,7 @@ public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAc
             {
                 var actor = await db.Users
                     .AsNoTracking()
-                    .Where(user => user.Email == email)
+                    .WhereEmailMatches(email)
                     .Select(user => new
                     {
                         user.Id,
