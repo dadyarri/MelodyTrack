@@ -39,6 +39,13 @@ public class AppDbContext : DbContext
     public DbSet<RecurringTaskRule> RecurringTaskRules { get; set; }
     public DbSet<RecurringTaskExecution> RecurringTaskExecutions { get; set; }
     public DbSet<CustomTask> CustomTasks { get; set; }
+    public DbSet<Course> Courses { get; set; }
+    public DbSet<CourseBlock> CourseBlocks { get; set; }
+    public DbSet<CourseBranch> CourseBranches { get; set; }
+    public DbSet<CourseTheme> CourseThemes { get; set; }
+    public DbSet<CourseThemeDependency> CourseThemeDependencies { get; set; }
+    public DbSet<CourseEnrollment> CourseEnrollments { get; set; }
+    public DbSet<CourseEnrollmentTheme> CourseEnrollmentThemes { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -308,6 +315,93 @@ public class AppDbContext : DbContext
             .HasOne(e => e.DelayedByUser)
             .WithMany()
             .HasForeignKey(e => e.DelayedByUserId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<Course>()
+            .HasIndex(e => e.Name);
+
+        modelBuilder.Entity<CourseBlock>()
+            .HasIndex(e => new { e.CourseId, e.Order })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseBlock>()
+            .HasOne(e => e.Course)
+            .WithMany(e => e.Blocks)
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseBranch>()
+            .HasIndex(e => new { e.BlockId, e.Order })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseBranch>()
+            .HasOne(e => e.Block)
+            .WithMany(e => e.Branches)
+            .HasForeignKey(e => e.BlockId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseTheme>()
+            .HasIndex(e => new { e.BranchId, e.Order })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseTheme>()
+            .HasOne(e => e.Branch)
+            .WithMany(e => e.Themes)
+            .HasForeignKey(e => e.BranchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseThemeDependency>()
+            .HasIndex(e => new { e.ThemeId, e.DependsOnThemeId })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseThemeDependency>()
+            .HasOne(e => e.Theme)
+            .WithMany(e => e.Dependencies)
+            .HasForeignKey(e => e.ThemeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseThemeDependency>()
+            .HasOne(e => e.DependsOnTheme)
+            .WithMany(e => e.RequiredForThemes)
+            .HasForeignKey(e => e.DependsOnThemeId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CourseEnrollment>()
+            .HasIndex(e => new { e.ClientId, e.CourseId })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseEnrollment>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseEnrollment>()
+            .HasOne(e => e.Course)
+            .WithMany()
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseEnrollmentTheme>()
+            .HasIndex(e => new { e.EnrollmentId, e.CourseThemeId })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseEnrollmentTheme>()
+            .HasOne(e => e.Enrollment)
+            .WithMany(e => e.Themes)
+            .HasForeignKey(e => e.EnrollmentId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseEnrollmentTheme>()
+            .HasOne(e => e.CourseTheme)
+            .WithMany()
+            .HasForeignKey(e => e.CourseThemeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Appointment>()
+            .HasOne(e => e.CourseTheme)
+            .WithMany()
+            .HasForeignKey(e => e.CourseThemeId)
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<Expense>()
