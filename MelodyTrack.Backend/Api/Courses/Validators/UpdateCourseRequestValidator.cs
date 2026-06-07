@@ -4,10 +4,14 @@ using MelodyTrack.Backend.Api.Courses.Requests;
 
 namespace MelodyTrack.Backend.Api.Courses.Validators;
 
-public class CreateCourseRequestValidator : Validator<CreateCourseRequest>
+public class UpdateCourseRequestValidator : Validator<UpdateCourseRequest>
 {
-    public CreateCourseRequestValidator()
+    public UpdateCourseRequestValidator()
     {
+        RuleFor(x => x.Id)
+            .Must(id => id != Ulid.Empty)
+            .WithMessage("Идентификатор курса не может быть пустым.");
+
         RuleFor(x => x.Name)
             .NotEmpty()
             .WithMessage("Укажите название курса.")

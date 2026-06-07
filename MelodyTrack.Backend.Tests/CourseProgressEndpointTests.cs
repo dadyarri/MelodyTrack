@@ -289,6 +289,71 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
+    public async Task CreateCourse_ReturnsBadRequestForCyclicDependencies()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.PostAsJsonAsync(
+            "/courses",
+            new
+            {
+                name = "Cycle course",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Block",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Branch",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "theme-a",
+                                        title = "Theme A",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 0,
+                                        experiencePointsReward = 0,
+                                        dependencyKeys = new[] { "theme-b" }
+                                    },
+                                    new
+                                    {
+                                        key = "theme-b",
+                                        title = "Theme B",
+                                        order = 2,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 0,
+                                        experiencePointsReward = 0,
+                                        dependencyKeys = new[] { "theme-a" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        var payload = await response.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Errors.ShouldContain(error =>
+            error.Reason.Contains("циклическая зависимость", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
     public async Task CreateCourseEnrollment_InitializesThemeProgressAndReturnsThroughQuery()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -400,6 +465,73 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         payload.Course.Name.ShouldBe("Rhythm track");
         payload.Course.Blocks.Count.ShouldBe(1);
         payload.Course.Blocks.Single().Branches.Count.ShouldBe(2);
+    }
+
+    [Fact]
+    public async Task UpdateCourse_ReplacesStructure()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var response = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track updated",
+                description = "Updated structure",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Advanced basics",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Groove",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "groove-intro",
+                                        title = "Groove intro",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 2,
+                                        experiencePointsReward = 6,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var course = await db.Courses
+            .AsNoTracking()
+            .Include(item => item.Blocks)
+                .ThenInclude(block => block.Branches)
+                    .ThenInclude(branch => branch.Themes)
+            .FirstAsync(item => item.Id == courseId, TestContext.Current.CancellationToken);
+
+        course.Name.ShouldBe("Rhythm track updated");
+        course.Blocks.Count.ShouldBe(1);
+        course.Blocks.Single().Title.ShouldBe("Advanced basics");
+        course.Blocks.Single().Branches.Single().Themes.ShouldHaveSingleItem().Title.ShouldBe("Groove intro");
     }
 
     [Fact]
