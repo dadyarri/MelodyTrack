@@ -462,6 +462,52 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task Login_WithBothOtpAndRecoveryCode_ReturnsBadRequest()
+    {
+        var (rsp, res) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, ProblemDetails>(new LoginRequest
+        {
+            Email = "admin@example.com",
+            Password = "Password1!",
+            Otp = "123456",
+            RecoveryCode = "ABCDEFGHIJ"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        res.ShouldNotBeNull();
+        res.Detail.ShouldNotBeNull();
+        res.Detail.ShouldContain("либо код 2FA, либо код восстановления");
+    }
+
+    [Fact]
+    public async Task Refresh_WithMalformedToken_ReturnsBadRequest()
+    {
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ProblemDetails>(new RefreshRequest
+        {
+            RefreshToken = ""
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        res.ShouldNotBeNull();
+        res.Detail.ShouldNotBeNull();
+        res.Detail.ShouldContain("Refresh token");
+    }
+
+    [Fact]
+    public async Task ResetPassword_WithMalformedToken_ReturnsBadRequest()
+    {
+        var (rsp, res) = await App.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, ProblemDetails>(new ResetPasswordRequest
+        {
+            Token = "",
+            NewPassword = "Password1!"
+        });
+
+        rsp.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+        res.ShouldNotBeNull();
+        res.Detail.ShouldNotBeNull();
+        res.Detail.ShouldContain("Токен восстановления");
+    }
+
+    [Fact]
     public async Task Login_WithUsedRecoveryCode_Unauthorized()
     {
         using var scope = App.Services.CreateScope();
@@ -1206,11 +1252,12 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Codes.ShouldNotBeEmpty();
+        res.AllCodes.ShouldNotBeEmpty();
+        res.AllCodes.ShouldAllBe(code => !code.WasUsed);
 
         var codesInDb = await db.RecoveryCodes.Where(rc => rc.User == user && !rc.WasUsed).ToListAsync(TestContext.Current.CancellationToken);
         codesInDb.ShouldNotBeNull();
-        codesInDb.Count.ShouldBe(res.Codes.Count);
+        codesInDb.Count.ShouldBe(res.AllCodes.Count);
     }
 
     [Fact]
@@ -1247,8 +1294,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.AccessToken.ShouldNotBeNullOrEmpty();
         res.RefreshToken.ShouldNotBeNullOrEmpty();
         res.Secret.ShouldNotBeNull();
-        res.Codes.ShouldNotBeEmpty();
-        res.AllCodes.Count.ShouldBe(res.Codes.Count);
+        res.AllCodes.ShouldNotBeEmpty();
+        res.AllCodes.ShouldAllBe(code => !code.WasUsed);
 
         using var scope = App.Services.CreateScope();
         var assertionDb = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -1258,7 +1305,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var replacementCodes = await assertionDb.RecoveryCodes
             .Where(rc => rc.User.Id == user.Id && !rc.WasUsed)
             .ToListAsync(TestContext.Current.CancellationToken);
-        replacementCodes.Count.ShouldBe(res.Codes.Count);
+        replacementCodes.Count.ShouldBe(res.AllCodes.Count);
     }
 
     [Fact]
@@ -2174,7 +2221,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var (rsp, res) = await App.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, ProblemDetails>(new ResetPasswordRequest
         {
             Token = rawResetToken,
-            NewPassword = "new-password"
+            NewPassword = "N3w-password!"
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -2227,7 +2274,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var (rsp, res) = await App.Client.POSTAsync<ResetPasswordEndpoint, ResetPasswordRequest, ProblemDetails>(new ResetPasswordRequest
         {
             Token = rawResetToken,
-            NewPassword = "new-password"
+            NewPassword = "N3w-password!"
         });
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
@@ -2320,7 +2367,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         verify2FaRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         verify2FaRes.ShouldNotBeNull();
-        verify2FaRes.Codes.Count.ShouldBeGreaterThan(0);
+        verify2FaRes.AllCodes.Count.ShouldBeGreaterThan(0);
+        verify2FaRes.AllCodes.ShouldAllBe(code => !code.WasUsed);
 
         {
             using var scope = App.Services.CreateScope();
@@ -2366,7 +2414,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         recoveryRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         recoveryRes.ShouldNotBeNull();
-        recoveryRes.Codes.ShouldNotBeEmpty();
+        recoveryRes.AllCodes.ShouldNotBeEmpty();
+        recoveryRes.AllCodes.ShouldAllBe(code => !code.WasUsed);
 
         // Verify recovery codes were saved
         {
@@ -2375,7 +2424,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             var codes = await db.RecoveryCodes
                 .Where(rc => rc.User.Email == email.ToLowerInvariant() && !rc.WasUsed)
                 .ToListAsync(TestContext.Current.CancellationToken);
-            codes.Count.ShouldBe(recoveryRes.Codes.Count);
+            codes.Count.ShouldBe(recoveryRes.AllCodes.Count);
         }
 
         // Step 7: Refresh token
@@ -2536,7 +2585,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         loginNewPasswordRes.AccessToken.ShouldNotBeNullOrEmpty();
 
         // Step 15: Recover 2FA using recovery code
-        var recoveryCodeToUse = recoveryRes.Codes.First();
+        var recoveryCodeToUse = recoveryRes.AllCodes.First().Code;
 
         var (recover2FaRsp, recover2FaRes) = await App.Client.POSTAsync<Recover2FaEndpoint, Recover2FaRequest, Recover2FaResponse>(new Recover2FaRequest
         {
@@ -2549,8 +2598,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         recover2FaRes.AccessToken.ShouldNotBeNullOrEmpty();
         recover2FaRes.RefreshToken.ShouldNotBeNullOrEmpty();
         recover2FaRes.Secret.ShouldNotBeNull();
-        recover2FaRes.Codes.ShouldNotBeEmpty();
-        recover2FaRes.AllCodes.Count.ShouldBe(recover2FaRes.Codes.Count);
+        recover2FaRes.AllCodes.ShouldNotBeEmpty();
+        recover2FaRes.AllCodes.ShouldAllBe(code => !code.WasUsed);
 
         // Verify the recovery code was marked as used
         {

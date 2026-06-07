@@ -73,7 +73,6 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
         }, ct);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
-            Codes = recoveryCodes,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
             {
                 Code = code,

@@ -79,7 +79,6 @@ public class Verify2FaEndpoint(AppDbContext db)
         Logger.LogInformation("auth.2fa.enrolled user {Email}", email);
         return TypedResults.Ok(new RecoveryCodesResponse
         {
-            Codes = recoveryCodes,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
             {
                 Code = code,

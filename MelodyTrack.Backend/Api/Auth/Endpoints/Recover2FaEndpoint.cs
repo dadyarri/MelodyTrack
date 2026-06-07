@@ -72,7 +72,6 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector)
             RefreshToken = refreshToken,
             Secret = secret,
             OtpUrl = otpUrl,
-            Codes = recoveryCodes,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
             {
                 Code = code,

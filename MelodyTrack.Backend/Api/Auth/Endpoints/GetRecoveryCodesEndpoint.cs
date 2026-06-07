@@ -46,7 +46,6 @@ public class GetRecoveryCodesEndpoint(AppDbContext db)
 
         return TypedResults.Ok(new RecoveryCodesResponse
         {
-            Codes = codes.Where(e => !e.WasUsed).Select(e => e.Code).ToList(),
             AllCodes = codes
         });
     }
