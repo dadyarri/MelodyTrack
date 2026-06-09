@@ -82,6 +82,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
             .Include(e => e.Service)
             .Include(e => e.Provider)
                 .ThenInclude(e => e!.Role)
+            .Include(e => e.CourseTheme)
             .OrderByDescending(e => e.StartDate)
             .ThenByDescending(e => e.Id)
             .ApplyPagination(req)
@@ -94,7 +95,10 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 ProviderDisplayName = e.Provider == null
                     ? null
                     : e.Provider.FirstName + " " + e.Provider.LastName,
-                Status = e.Status.ToApiKey()
+                Status = e.Status.ToApiKey(),
+                CourseThemeId = e.CourseThemeId,
+                CourseThemeTitle = e.CourseTheme != null ? e.CourseTheme.Title : null,
+                LessonNotes = e.LessonNotes
             })
             .ToListAsync(ct);
 

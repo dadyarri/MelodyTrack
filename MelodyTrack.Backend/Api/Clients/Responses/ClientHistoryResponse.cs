@@ -44,4 +44,7 @@ public class ClientHistoryAppointmentDto
     public required string ServiceName { get; set; }
     public string? ProviderDisplayName { get; set; }
     public required string Status { get; set; }
+    public Ulid? CourseThemeId { get; set; }
+    public string? CourseThemeTitle { get; set; }
+    public string? LessonNotes { get; set; }
 }

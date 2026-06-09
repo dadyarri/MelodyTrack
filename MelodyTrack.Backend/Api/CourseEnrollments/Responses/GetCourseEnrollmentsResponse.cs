@@ -26,6 +26,9 @@ public class CourseEnrollmentThemeDto
     public required Ulid Id { get; set; }
     public required Ulid CourseThemeId { get; set; }
     public required string ThemeTitle { get; set; }
+    public string? ThemeDescription { get; set; }
+    public string? LessonContent { get; set; }
+    public string? HomeworkContent { get; set; }
     public required CourseThemeProgressState State { get; set; }
     public DateTime? UnlockedAtUtc { get; set; }
     public DateTime? StartedAtUtc { get; set; }
@@ -34,4 +37,14 @@ public class CourseEnrollmentThemeDto
     public required int SpentEvolutionPoints { get; set; }
     public required int EarnedEvolutionPoints { get; set; }
     public required int EarnedExperiencePoints { get; set; }
+    public required List<CourseEnrollmentThemeAppointmentDto> RecentAppointments { get; set; }
+}
+
+public class CourseEnrollmentThemeAppointmentDto
+{
+    public required Ulid Id { get; set; }
+    public required DateTime StartDateUtc { get; set; }
+    public string? ProviderDisplayName { get; set; }
+    public required string Status { get; set; }
+    public string? LessonNotes { get; set; }
 }

@@ -39,5 +39,9 @@ public class CreateAppointmentRequestValidator : Validator<CreateAppointmentRequ
             .Null()
             .When(x => !x.RecurrenceTypeId.HasValue)
             .WithMessage("Шаблон повторения должен быть пустым для однократной записи.");
+
+        RuleFor(x => x.LessonNotes)
+            .MaximumLength(4000)
+            .WithMessage("Заметки к уроку не должны быть длиннее 4000 символов.");
     }
 }

@@ -9,7 +9,11 @@ public class UpdateAppointmentRequest
     public Ulid? ClientId { get; set; }
     public Ulid? ServiceId { get; set; }
     public Ulid? ProviderId { get; set; }
+    public Ulid? CourseThemeId { get; set; }
+    public bool HasCourseThemeSelection { get; set; }
     public Ulid? RecurrenceTypeId { get; set; }
+    public string? LessonNotes { get; set; }
+    public bool HasLessonNotes { get; set; }
     public DateTime? StartDate { get; set; }
     public string? Timezone { get; set; }
     public string? Status { get; set; }

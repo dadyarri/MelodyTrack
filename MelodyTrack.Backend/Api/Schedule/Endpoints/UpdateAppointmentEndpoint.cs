@@ -25,12 +25,18 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             .Include(e => e.Service)
             .Include(e => e.Client)
             .Include(e => e.Provider)
+            .Include(e => e.CourseTheme)
+                .ThenInclude(item => item!.Branch)
+                    .ThenInclude(item => item!.Block)
+                        .ThenInclude(item => item!.Course)
             .Include(e => e.RecurringRule)
             .ThenInclude(rule => rule!.RecurrenceType)
             .FirstOrDefaultAsync(ct);
 
         var beforeStartDateUtc = appointment?.StartDate;
         var beforeStatus = appointment?.Status.ToDisplayName();
+        var beforeCourseTheme = appointment?.CourseTheme?.Title;
+        var beforeLessonNotes = appointment?.LessonNotes;
 
         if (appointment is null)
         {
@@ -66,6 +72,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         var serviceChanged = req.ServiceId is not null && req.ServiceId.Value != appointment.Service.Id;
         var providerChanged = req.ProviderId is not null && req.ProviderId.Value != appointment.Provider?.Id;
         var startDateChanged = req.StartDate is not null && req.StartDate.Value != appointment.StartDate;
+        var courseThemeChanged = req.HasCourseThemeSelection && req.CourseThemeId != appointment.CourseThemeId;
+        var lessonNotesChanged = req.HasLessonNotes && NormalizeLessonNotes(req.LessonNotes) != appointment.LessonNotes;
         var nextStartDate = req.StartDate ?? appointment.StartDate;
         var nextDuration = appointment.EndDate - appointment.StartDate;
         var requestedScope = ParseScope(req.Scope);
@@ -104,6 +112,47 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             }
 
             appointment.Provider = provider;
+        }
+
+        if (req.HasCourseThemeSelection)
+        {
+            if (req.CourseThemeId is null)
+            {
+                appointment.CourseTheme = null;
+                appointment.CourseThemeId = null;
+            }
+            else
+            {
+                var courseTheme = await db.CourseThemes
+                    .Include(item => item.Branch)
+                        .ThenInclude(item => item.Block)
+                            .ThenInclude(item => item.Course)
+                    .FirstOrDefaultAsync(item => item.Id == req.CourseThemeId.Value, ct);
+
+                if (courseTheme is null)
+                {
+                    AddError(r => r.CourseThemeId, "Тема курса не найдена");
+                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                }
+
+                var hasEnrollment = await db.CourseEnrollments
+                    .AsNoTracking()
+                    .AnyAsync(item => item.ClientId == appointment.Client.Id && item.CourseId == courseTheme.Branch.Block.CourseId, ct);
+
+                if (!hasEnrollment)
+                {
+                    AddError(r => r.CourseThemeId, "Эта тема недоступна для выбранного клиента.");
+                    return new ProblemDetails(ValidationFailures);
+                }
+
+                appointment.CourseTheme = courseTheme;
+                appointment.CourseThemeId = courseTheme.Id;
+            }
+        }
+
+        if (req.HasLessonNotes)
+        {
+            appointment.LessonNotes = NormalizeLessonNotes(req.LessonNotes);
         }
 
         if (appointment.Provider is not null && (providerChanged || startDateChanged))
@@ -149,7 +198,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             return TypedResults.NoContent();
         }
 
-        if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged))
+        if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged || courseThemeChanged || lessonNotesChanged))
         {
             var duration = appointment.EndDate - appointment.StartDate;
             var updatedAppointment = new Appointment
@@ -158,6 +207,9 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Client = appointment.Client,
                 Service = appointment.Service,
                 Provider = appointment.Provider,
+                CourseTheme = appointment.CourseTheme,
+                CourseThemeId = appointment.CourseThemeId,
+                LessonNotes = appointment.LessonNotes,
                 StartDate = req.StartDate ?? appointment.StartDate,
                 EndDate = (req.StartDate ?? appointment.StartDate).Add(duration),
                 Status = requestedStatus ?? appointment.Status,
@@ -178,9 +230,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                     AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(updatedAppointment.Client)),
                     AuditDetailsFormatter.DescribeContext("Услуга", updatedAppointment.Service.Name),
                     AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(updatedAppointment.Provider)),
+                    AuditDetailsFormatter.DescribeContext("Тема курса", updatedAppointment.CourseTheme?.Title),
                     AuditDetailsFormatter.DescribeContext("Начало", updatedAppointment.StartDate),
                     AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, updatedAppointment.StartDate),
-                    AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, updatedAppointment.Status.ToDisplayName())
+                    AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, updatedAppointment.Status.ToDisplayName()),
+                    AuditDetailsFormatter.DescribeChange("Тема курса", beforeCourseTheme, updatedAppointment.CourseTheme?.Title),
+                    AuditDetailsFormatter.DescribeChange("Заметки урока", beforeLessonNotes, updatedAppointment.LessonNotes)
                 )
             }, ct);
 
@@ -251,9 +306,12 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 AuditDetailsFormatter.DescribeContext("Клиент", FormatClientDisplayName(appointment.Client)),
                 AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
                 AuditDetailsFormatter.DescribeContext("Преподаватель", FormatProviderDisplayName(appointment.Provider)),
+                AuditDetailsFormatter.DescribeContext("Тема курса", appointment.CourseTheme?.Title),
                 AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
                 AuditDetailsFormatter.DescribeChange("Начало", beforeStartDateUtc, appointment.StartDate),
-                AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, appointment.Status.ToDisplayName())
+                AuditDetailsFormatter.DescribeChange("Статус", beforeStatus, appointment.Status.ToDisplayName()),
+                AuditDetailsFormatter.DescribeChange("Тема курса", beforeCourseTheme, appointment.CourseTheme?.Title),
+                AuditDetailsFormatter.DescribeChange("Заметки урока", beforeLessonNotes, appointment.LessonNotes)
             )
         }, ct);
 
@@ -274,6 +332,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         return (req.ClientId is null || req.ClientId == appointment.Client.Id)
                && (req.ServiceId is null || req.ServiceId == appointment.Service.Id)
                && (req.ProviderId is null || req.ProviderId == appointment.Provider?.Id)
+               && (!req.HasCourseThemeSelection || req.CourseThemeId == appointment.CourseThemeId)
+               && (!req.HasLessonNotes || NormalizeLessonNotes(req.LessonNotes) == appointment.LessonNotes)
                && (req.StartDate is null || req.StartDate == appointment.StartDate)
                && !statusChanged
                && !recurrenceTypeChanged
@@ -412,6 +472,11 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         }
 
         return $"{provider.LastName} {provider.FirstName}".Trim();
+    }
+
+    private static string? NormalizeLessonNotes(string? lessonNotes)
+    {
+        return string.IsNullOrWhiteSpace(lessonNotes) ? null : lessonNotes.Trim();
     }
 }
 

@@ -10,6 +10,8 @@ public partial class AppointmentDto
     public required AppointmentClientDto Client { get; set; }
     public required AppointmentServiceDto Service { get; set; }
     public AppointmentProviderDto? Provider { get; set; }
+    public AppointmentCourseThemeDto? CourseTheme { get; set; }
+    public string? LessonNotes { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
     public required string Status { get; set; }
@@ -20,6 +22,7 @@ public partial class AppointmentDto
     {
         var contacts = appointment.Client.Contacts;
         var provider = appointment.Provider;
+        var courseTheme = appointment.CourseTheme;
         var recurringRule = appointment.RecurringRule;
 
         return new AppointmentDto
@@ -55,6 +58,16 @@ public partial class AppointmentDto
                     LastName = provider.LastName,
                     RoleDisplayName = provider.Role.DisplayName
                 },
+            CourseTheme = courseTheme is null
+                ? null
+                : new AppointmentCourseThemeDto
+                {
+                    Id = courseTheme.Id,
+                    Title = courseTheme.Title,
+                    CourseId = courseTheme.Branch.Block.CourseId,
+                    CourseName = courseTheme.Branch.Block.Course.Name
+                },
+            LessonNotes = appointment.LessonNotes,
             StartDate = appointment.StartDate,
             EndDate = appointment.EndDate,
             Status = appointment.Status.ToApiKey(),
@@ -107,6 +120,14 @@ public class AppointmentProviderDto
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
     public required string RoleDisplayName { get; set; }
+}
+
+public class AppointmentCourseThemeDto
+{
+    public required Ulid Id { get; set; }
+    public required string Title { get; set; }
+    public required Ulid CourseId { get; set; }
+    public required string CourseName { get; set; }
 }
 
 public class AppointmentRecurrenceRuleDto

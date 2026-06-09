@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using MelodyTrack.Backend.Data.Models;
 using System.Net.Http.Json;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -446,6 +447,61 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
+    public async Task GetCourseEnrollments_ReturnsThemeContentAndRecentLinkedAppointments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Lina", "Rhythm", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Rhythm class", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var theme = await db.CourseThemes
+            .AsNoTracking()
+            .FirstAsync(item => item.Title == "Intro to rhythm", TestContext.Current.CancellationToken);
+
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            CourseThemeId = theme.Id,
+            LessonNotes = "Повторили базовый ритм и хлопки.",
+            StartDate = new DateTime(2026, 06, 01, 12, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 06, 01, 13, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var listResponse = await App.Client.GetAsync($"/course-enrollments?clientId={client.Id}", TestContext.Current.CancellationToken);
+        listResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetCourseEnrollmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        listPayload.ShouldNotBeNull();
+
+        var introTheme = listPayload.Enrollments.Single().Themes.Single(item => item.ThemeTitle == "Intro to rhythm");
+        introTheme.LessonContent.ShouldBe("Clap quarter notes and identify the pulse.");
+        introTheme.HomeworkContent.ShouldBe("Practice with the metronome for 5 minutes.");
+        introTheme.RecentAppointments.Count.ShouldBe(1);
+        introTheme.RecentAppointments.Single().LessonNotes.ShouldBe("Повторили базовый ритм и хлопки.");
+    }
+
+    [Fact]
     public async Task GetCourse_ReturnsNestedStructure()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -582,6 +638,8 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
+                                        lessonContent = "Clap quarter notes and identify the pulse.",
+                                        homeworkContent = "Practice with the metronome for 5 minutes.",
                                         order = 1,
                                         unlockCostPoints = 0,
                                         evolutionPointsReward = 1,
@@ -592,6 +650,8 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "pulse-clap",
                                         title = "Clap patterns",
+                                        lessonContent = "Switch between simple clap combinations.",
+                                        homeworkContent = "Record three clap patterns at home.",
                                         order = 2,
                                         unlockCostPoints = 2,
                                         evolutionPointsReward = 1,
@@ -610,6 +670,8 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "count-intro",
                                         title = "Count aloud",
+                                        lessonContent = "Count beats aloud while tapping.",
+                                        homeworkContent = "Count four bars before starting the track.",
                                         order = 1,
                                         unlockCostPoints = 1,
                                         evolutionPointsReward = 1,

@@ -82,6 +82,32 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             }
 
             var recurrenceType = await db.RecurrenceTypes.Where(e => e.Id == req.RecurrenceTypeId).FirstOrDefaultAsync(ct);
+            CourseTheme? courseTheme = null;
+
+            if (req.CourseThemeId is not null)
+            {
+                courseTheme = await db.CourseThemes
+                    .Include(item => item.Branch)
+                        .ThenInclude(item => item.Block)
+                            .ThenInclude(item => item.Course)
+                    .FirstOrDefaultAsync(item => item.Id == req.CourseThemeId.Value, ct);
+
+                if (courseTheme is null)
+                {
+                    AddError(e => e.CourseThemeId, "Тема курса не найдена");
+                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                }
+
+                var hasEnrollment = await db.CourseEnrollments
+                    .AsNoTracking()
+                    .AnyAsync(item => item.ClientId == client.Id && item.CourseId == courseTheme.Branch.Block.CourseId, ct);
+
+                if (!hasEnrollment)
+                {
+                    AddError(e => e.CourseThemeId, "Эта тема недоступна для выбранного клиента.");
+                    return new ProblemDetails(ValidationFailures);
+                }
+            }
 
             AppointmentRecurrenceRule? recurrenceRule = null;
 
@@ -106,6 +132,9 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 Client = client,
                 Service = service,
                 Provider = provider,
+                CourseTheme = courseTheme,
+                CourseThemeId = courseTheme?.Id,
+                LessonNotes = NormalizeLessonNotes(req.LessonNotes),
                 StartDate = req.StartDate.ToUniversalTime(),
                 EndDate = req.StartDate.AddHours(1).ToUniversalTime(),
                 Status = AppointmentStatus.Planned,
@@ -125,6 +154,7 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                     AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
                     AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
                     AuditDetailsFormatter.DescribeContext("Преподаватель", provider is null ? null : $"{provider.LastName} {provider.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Тема курса", courseTheme?.Title),
                     AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
                     AuditDetailsFormatter.DescribeContext("Повторение", recurrenceRule?.RecurrenceType.DisplayName)
                 )
@@ -165,5 +195,10 @@ public class CreateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
     private static bool IsUniqueViolation(DbUpdateException exception)
     {
         return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+    }
+
+    private static string? NormalizeLessonNotes(string? lessonNotes)
+    {
+        return string.IsNullOrWhiteSpace(lessonNotes) ? null : lessonNotes.Trim();
     }
 }
