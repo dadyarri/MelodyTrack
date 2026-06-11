@@ -3,13 +3,14 @@ using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class GetCourseEnrollmentsEndpoint(AppDbContext db)
+public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService courseProgressService)
     : Ep.Req<GetCourseEnrollmentsRequest>.Res<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -62,6 +63,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db)
                 CreatedAtUtc = enrollment.CreatedAtUtc,
                 EarnedEvolutionPoints = enrollment.EarnedEvolutionPoints,
                 SpentEvolutionPoints = enrollment.SpentEvolutionPoints,
+                AvailableEvolutionPoints = courseProgressService.GetAvailableEvolutionPoints(enrollment),
                 EarnedExperiencePoints = enrollment.EarnedExperiencePoints,
                 Themes = enrollment.Themes
                     .OrderBy(theme => theme.CourseTheme.Title)
@@ -73,6 +75,9 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db)
                         ThemeDescription = theme.CourseTheme.Description,
                         LessonContent = theme.CourseTheme.LessonContent,
                         HomeworkContent = theme.CourseTheme.HomeworkContent,
+                        UnlockCostPoints = theme.CourseTheme.UnlockCostPoints,
+                        EvolutionPointsReward = theme.CourseTheme.EvolutionPointsReward,
+                        ExperiencePointsReward = theme.CourseTheme.ExperiencePointsReward,
                         State = theme.State,
                         UnlockedAtUtc = theme.UnlockedAtUtc,
                         StartedAtUtc = theme.StartedAtUtc,

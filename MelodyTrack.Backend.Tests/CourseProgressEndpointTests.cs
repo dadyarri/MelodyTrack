@@ -537,6 +537,175 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
+    public async Task UpdateCourseEnrollmentThemeProgress_UnlocksThemeAndSpendsPoints()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Ira", "Unlock", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var enrollmentId = (await createResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken))!.Id;
+
+        var enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        enrollment.EarnedEvolutionPoints = 1;
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var themeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
+
+        var updateResponse = await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{themeId}/actions",
+            new
+            {
+                id = themeId,
+                action = "unlock"
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updatedEnrollment = await db.CourseEnrollments
+            .AsNoTracking()
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var unlockedTheme = updatedEnrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud");
+        unlockedTheme.State.ShouldBe(CourseThemeProgressState.Unlocked);
+        unlockedTheme.SpentEvolutionPoints.ShouldBe(1);
+        unlockedTheme.UnlockedAtUtc.ShouldNotBeNull();
+        updatedEnrollment.SpentEvolutionPoints.ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task UpdateCourseEnrollmentThemeProgress_SupportsHomeworkRetryAndDependencyUnlock()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Toma", "Progress", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var enrollmentId = (await createResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken))!.Id;
+
+        var enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var introThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Intro to rhythm").Id;
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/actions",
+            new { id = introThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/actions",
+            new { id = introThemeId, action = "return-to-progress" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/actions",
+            new { id = introThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/actions",
+            new { id = introThemeId, action = "pass-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+                    .ThenInclude(item => item.Dependencies)
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+                    .ThenInclude(item => item.Branch)
+                        .ThenInclude(item => item.Themes)
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+                    .ThenInclude(item => item.Branch)
+                        .ThenInclude(item => item.Block)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var introTheme = enrollment.Themes.Single(item => item.CourseTheme.Title == "Intro to rhythm");
+        introTheme.State.ShouldBe(CourseThemeProgressState.Completed);
+        introTheme.CompletedAtUtc.ShouldNotBeNull();
+        introTheme.EarnedEvolutionPoints.ShouldBe(1);
+        introTheme.EarnedExperiencePoints.ShouldBe(3);
+
+        enrollment.EarnedEvolutionPoints.ShouldBe(1);
+        enrollment.EarnedExperiencePoints.ShouldBe(3);
+
+        var countThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{countThemeId}/actions",
+            new { id = countThemeId, action = "unlock" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{countThemeId}/actions",
+            new { id = countThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{countThemeId}/actions",
+            new { id = countThemeId, action = "pass-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var finalEnrollment = await db.CourseEnrollments
+            .AsNoTracking()
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        finalEnrollment.Themes.Single(item => item.CourseTheme.Title == "Clap patterns").State.ShouldBe(CourseThemeProgressState.AvailableToUnlock);
+        finalEnrollment.EarnedEvolutionPoints.ShouldBe(2);
+        finalEnrollment.SpentEvolutionPoints.ShouldBe(1);
+        finalEnrollment.EarnedExperiencePoints.ShouldBe(7);
+    }
+
+    [Fact]
     public async Task GetCourse_ReturnsNestedStructure()
     {
         await using var scope = App.Services.CreateAsyncScope();

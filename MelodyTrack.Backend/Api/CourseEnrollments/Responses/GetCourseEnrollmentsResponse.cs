@@ -17,6 +17,7 @@ public class CourseEnrollmentDto
     public required DateTime CreatedAtUtc { get; set; }
     public required int EarnedEvolutionPoints { get; set; }
     public required int SpentEvolutionPoints { get; set; }
+    public required int AvailableEvolutionPoints { get; set; }
     public required int EarnedExperiencePoints { get; set; }
     public required List<CourseEnrollmentThemeDto> Themes { get; set; }
 }
@@ -29,6 +30,9 @@ public class CourseEnrollmentThemeDto
     public string? ThemeDescription { get; set; }
     public string? LessonContent { get; set; }
     public string? HomeworkContent { get; set; }
+    public required int UnlockCostPoints { get; set; }
+    public required int EvolutionPointsReward { get; set; }
+    public required int ExperiencePointsReward { get; set; }
     public required CourseThemeProgressState State { get; set; }
     public DateTime? UnlockedAtUtc { get; set; }
     public DateTime? StartedAtUtc { get; set; }
