@@ -447,6 +447,41 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
+    public async Task DeleteCourseEnrollment_RemovesEnrollment()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Nina", "Student", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var createPayload = await createResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        createPayload.ShouldNotBeNull();
+
+        var deleteResponse = await App.Client.DeleteAsync($"/course-enrollments/{createPayload.Id}", TestContext.Current.CancellationToken);
+        deleteResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var remainingCount = await db.CourseEnrollments.CountAsync(item => item.ClientId == client.Id, TestContext.Current.CancellationToken);
+        remainingCount.ShouldBe(0);
+    }
+
+    [Fact]
     public async Task GetCourseEnrollments_ReturnsThemeContentAndRecentLinkedAppointments()
     {
         await using var scope = App.Services.CreateAsyncScope();
