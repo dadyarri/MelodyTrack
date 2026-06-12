@@ -55,8 +55,6 @@ internal static class CourseStructureBuilder
                             LessonContent = themeRequest.LessonContent,
                             HomeworkContent = themeRequest.HomeworkContent,
                             Order = themeRequest.Order,
-                            UnlockCostPoints = themeRequest.UnlockCostPoints,
-                            EvolutionPointsReward = themeRequest.EvolutionPointsReward,
                             ExperiencePointsReward = themeRequest.ExperiencePointsReward
                         };
                     }
@@ -70,8 +68,6 @@ internal static class CourseStructureBuilder
                         theme.LessonContent = themeRequest.LessonContent;
                         theme.HomeworkContent = themeRequest.HomeworkContent;
                         theme.Order = themeRequest.Order;
-                        theme.UnlockCostPoints = themeRequest.UnlockCostPoints;
-                        theme.EvolutionPointsReward = themeRequest.EvolutionPointsReward;
                         theme.ExperiencePointsReward = themeRequest.ExperiencePointsReward;
                         theme.Dependencies.Clear();
                     }

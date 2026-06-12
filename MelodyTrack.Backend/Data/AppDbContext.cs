@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<RecurringTaskExecution> RecurringTaskExecutions { get; set; }
     public DbSet<CustomTask> CustomTasks { get; set; }
     public DbSet<Course> Courses { get; set; }
+    public DbSet<CourseLevel> CourseLevels { get; set; }
     public DbSet<CourseBlock> CourseBlocks { get; set; }
     public DbSet<CourseBranch> CourseBranches { get; set; }
     public DbSet<CourseTheme> CourseThemes { get; set; }
@@ -319,6 +320,16 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<Course>()
             .HasIndex(e => e.Name);
+
+        modelBuilder.Entity<CourseLevel>()
+            .HasIndex(e => new { e.CourseId, e.Order })
+            .IsUnique();
+
+        modelBuilder.Entity<CourseLevel>()
+            .HasOne(e => e.Course)
+            .WithMany(e => e.Levels)
+            .HasForeignKey(e => e.CourseId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<CourseBlock>()
             .HasIndex(e => new { e.CourseId, e.Order })

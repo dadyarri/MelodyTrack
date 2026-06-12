@@ -53,8 +53,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "intro",
                                         title = "Intro",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 0,
                                         experiencePointsReward = 0,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -147,8 +145,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "right-intro",
                                         title = "Intro to posture",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -157,8 +153,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "right-scales",
                                         title = "First scales",
                                         order = 2,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 8,
                                         dependencyKeys = new[] { "left-intro" }
                                     }
@@ -176,8 +170,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "left-intro",
                                         title = "Left hand intro",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -255,8 +247,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "duplicate-key",
                                         title = "First theme",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 0,
                                         experiencePointsReward = 0,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -265,8 +255,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "duplicate-key",
                                         title = "Second theme",
                                         order = 2,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 0,
                                         experiencePointsReward = 0,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -323,8 +311,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "theme-a",
                                         title = "Theme A",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 0,
                                         experiencePointsReward = 0,
                                         dependencyKeys = new[] { "theme-b" }
                                     },
@@ -333,8 +319,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "theme-b",
                                         title = "Theme B",
                                         order = 2,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 0,
                                         experiencePointsReward = 0,
                                         dependencyKeys = new[] { "theme-a" }
                                     }
@@ -391,7 +375,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         enrollment.Themes.Count.ShouldBe(3);
         enrollment.Themes.Single(theme => theme.CourseTheme.Title == "Intro to rhythm").State.ShouldBe(CourseThemeProgressState.Unlocked);
         enrollment.Themes.Single(theme => theme.CourseTheme.Title == "Clap patterns").State.ShouldBe(CourseThemeProgressState.BlockedByDependency);
-        enrollment.Themes.Single(theme => theme.CourseTheme.Title == "Count aloud").State.ShouldBe(CourseThemeProgressState.AvailableToUnlock);
+        enrollment.Themes.Single(theme => theme.CourseTheme.Title == "Count aloud").State.ShouldBe(CourseThemeProgressState.Unlocked);
 
         var listResponse = await App.Client.GetAsync($"/course-enrollments?clientId={client.Id}", TestContext.Current.CancellationToken);
         listResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -584,7 +568,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
-    public async Task UpdateCourseEnrollmentThemeProgress_UnlocksThemeAndSpendsPoints()
+    public async Task UpdateCourseEnrollmentThemeProgress_UnlockIsNoOpForAlreadyOpenTheme()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -612,8 +596,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             .Include(item => item.Themes)
                 .ThenInclude(item => item.CourseTheme)
             .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
-
-        enrollment.EarnedEvolutionPoints = 1;
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         var themeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
@@ -639,9 +621,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         var unlockedTheme = updatedEnrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud");
         unlockedTheme.State.ShouldBe(CourseThemeProgressState.Unlocked);
-        unlockedTheme.SpentEvolutionPoints.ShouldBe(1);
         unlockedTheme.UnlockedAtUtc.ShouldNotBeNull();
-        updatedEnrollment.SpentEvolutionPoints.ShouldBe(1);
     }
 
     [Fact]
@@ -715,18 +695,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         var introTheme = enrollment.Themes.Single(item => item.CourseTheme.Title == "Intro to rhythm");
         introTheme.State.ShouldBe(CourseThemeProgressState.Completed);
         introTheme.CompletedAtUtc.ShouldNotBeNull();
-        introTheme.EarnedEvolutionPoints.ShouldBe(1);
         introTheme.EarnedExperiencePoints.ShouldBe(3);
-
-        enrollment.EarnedEvolutionPoints.ShouldBe(1);
         enrollment.EarnedExperiencePoints.ShouldBe(3);
 
         var countThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
-
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{countThemeId}/actions",
-            new { id = countThemeId, action = "unlock" },
-            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         (await App.Client.PostAsJsonAsync(
             $"/course-enrollment-themes/{countThemeId}/actions",
@@ -746,10 +718,16 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                 .ThenInclude(item => item.CourseTheme)
             .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
 
-        finalEnrollment.Themes.Single(item => item.CourseTheme.Title == "Clap patterns").State.ShouldBe(CourseThemeProgressState.AvailableToUnlock);
-        finalEnrollment.EarnedEvolutionPoints.ShouldBe(2);
-        finalEnrollment.SpentEvolutionPoints.ShouldBe(1);
+        finalEnrollment.Themes.Single(item => item.CourseTheme.Title == "Clap patterns").State.ShouldBe(CourseThemeProgressState.Unlocked);
         finalEnrollment.EarnedExperiencePoints.ShouldBe(7);
+
+        var enrollmentsResponse = await App.Client.GetAsync($"/course-enrollments?courseId={courseId}", TestContext.Current.CancellationToken);
+        enrollmentsResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var enrollmentsPayload =
+            await enrollmentsResponse.Content.ReadFromJsonAsync<GetCourseEnrollmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        enrollmentsPayload.ShouldNotBeNull();
+        enrollmentsPayload.Enrollments.Single().CurrentLevel?.Title.ShouldBe("Ритм 2");
     }
 
     [Fact]
@@ -770,6 +748,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         var payload = await response.Content.ReadFromJsonAsync<GetCourseResponse>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Course.Name.ShouldBe("Rhythm track");
+        payload.Course.Levels.Count.ShouldBe(2);
         payload.Course.Blocks.Count.ShouldBe(1);
         payload.Course.Blocks.Single().Branches.Count.ShouldBe(2);
     }
@@ -811,8 +790,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "groove-intro",
                                         title = "Groove intro",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 2,
                                         experiencePointsReward = 6,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -913,8 +890,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         lessonContent = "Updated lesson notes.",
                                         homeworkContent = "Updated homework.",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 2,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -923,8 +898,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns updated",
                                         order = 2,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -941,8 +914,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud updated",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -968,7 +939,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         updatedIntroTheme.CourseThemeId.ShouldBe(introCourseThemeId);
         updatedIntroTheme.State.ShouldBe(CourseThemeProgressState.Completed);
         updatedIntroTheme.CourseTheme.Title.ShouldBe("Intro to rhythm updated");
-        updatedIntroTheme.EarnedEvolutionPoints.ShouldBe(1);
         updatedIntroTheme.EarnedExperiencePoints.ShouldBe(3);
     }
 
@@ -1039,8 +1009,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -1049,8 +1017,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-fill",
                                         title = "Fill the pulse",
                                         order = 2,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -1059,8 +1025,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns",
                                         order = 3,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -1077,8 +1041,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -1167,8 +1129,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = new[] { "count-intro" }
                                     },
@@ -1177,8 +1137,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns",
                                         order = 2,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -1195,8 +1153,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -1281,8 +1237,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro for linked lesson",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -1291,8 +1245,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns",
                                         order = 2,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -1309,8 +1261,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -1394,8 +1344,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns",
                                         order = 1,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -1412,8 +1360,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -1488,8 +1434,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
                                     }
@@ -1539,6 +1483,21 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             {
                 name = "Rhythm track",
                 description = "Enrollment-ready course",
+                levels = new object[]
+                {
+                    new
+                    {
+                        title = "Ритм 1",
+                        order = 1,
+                        requiredExperiencePoints = 0
+                    },
+                    new
+                    {
+                        title = "Ритм 2",
+                        order = 2,
+                        requiredExperiencePoints = 7
+                    }
+                },
                 blocks = new object[]
                 {
                     new
@@ -1560,8 +1519,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         lessonContent = "Clap quarter notes and identify the pulse.",
                                         homeworkContent = "Practice with the metronome for 5 minutes.",
                                         order = 1,
-                                        unlockCostPoints = 0,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
                                     },
@@ -1572,8 +1529,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         lessonContent = "Switch between simple clap combinations.",
                                         homeworkContent = "Record three clap patterns at home.",
                                         order = 2,
-                                        unlockCostPoints = 2,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
                                     }
@@ -1592,8 +1547,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         lessonContent = "Count beats aloud while tapping.",
                                         homeworkContent = "Count four bars before starting the track.",
                                         order = 1,
-                                        unlockCostPoints = 1,
-                                        evolutionPointsReward = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
                                     }

@@ -5,9 +5,13 @@ namespace MelodyTrack.Backend.Services;
 
 public class CourseProgressService
 {
-    public int GetAvailableEvolutionPoints(CourseEnrollment enrollment)
+    public CourseLevel? ResolveCurrentLevel(CourseEnrollment enrollment)
     {
-        return enrollment.EarnedEvolutionPoints - enrollment.SpentEvolutionPoints;
+        return enrollment.Course.Levels
+            .Where(level => level.RequiredExperiencePoints <= enrollment.EarnedExperiencePoints)
+            .OrderBy(level => level.Order)
+            .ThenBy(level => level.RequiredExperiencePoints)
+            .LastOrDefault();
     }
 
     public void RefreshAvailability(CourseEnrollment enrollment, DateTime nowUtc)
@@ -34,14 +38,8 @@ public class CourseProgressService
                 continue;
             }
 
-            if (theme.CourseTheme.UnlockCostPoints == 0)
-            {
-                theme.State = CourseThemeProgressState.Unlocked;
-                theme.UnlockedAtUtc ??= nowUtc;
-                continue;
-            }
-
-            theme.State = CourseThemeProgressState.AvailableToUnlock;
+            theme.State = CourseThemeProgressState.Unlocked;
+            theme.UnlockedAtUtc ??= nowUtc;
         }
     }
 

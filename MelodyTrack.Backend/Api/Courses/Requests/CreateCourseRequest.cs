@@ -4,7 +4,15 @@ public class CreateCourseRequest
 {
     public required string Name { get; set; }
     public string? Description { get; set; }
+    public List<CreateCourseLevelRequest> Levels { get; set; } = [];
     public List<CreateCourseBlockRequest> Blocks { get; set; } = [];
+}
+
+public class CreateCourseLevelRequest
+{
+    public required string Title { get; set; }
+    public required int Order { get; set; }
+    public required int RequiredExperiencePoints { get; set; }
 }
 
 public class CreateCourseBlockRequest
@@ -31,8 +39,6 @@ public class CreateCourseThemeRequest
     public string? LessonContent { get; set; }
     public string? HomeworkContent { get; set; }
     public required int Order { get; set; }
-    public required int UnlockCostPoints { get; set; }
-    public required int EvolutionPointsReward { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public List<string> DependencyKeys { get; set; } = [];
 }

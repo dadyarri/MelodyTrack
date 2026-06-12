@@ -22,9 +22,5 @@ public class CourseEnrollmentTheme : BaseModel
 
     public DateTime? CompletedAtUtc { get; set; }
 
-    public required int SpentEvolutionPoints { get; set; }
-
-    public required int EarnedEvolutionPoints { get; set; }
-
     public required int EarnedExperiencePoints { get; set; }
 }

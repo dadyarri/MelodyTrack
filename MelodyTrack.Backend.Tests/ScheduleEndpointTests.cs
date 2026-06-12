@@ -268,8 +268,6 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             LessonContent = "Warm up each finger separately.",
             HomeworkContent = "Repeat the warmup at home.",
             Order = 1,
-            UnlockCostPoints = 0,
-            EvolutionPointsReward = 1,
             ExperiencePointsReward = 1
         };
 
@@ -286,8 +284,6 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             CourseId = course.Id,
             CreatedAtUtc = DateTime.UtcNow,
             UpdatedAtUtc = DateTime.UtcNow,
-            EarnedEvolutionPoints = 0,
-            SpentEvolutionPoints = 0,
             EarnedExperiencePoints = 0
         };
 

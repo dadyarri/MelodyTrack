@@ -15,11 +15,17 @@ public class CourseEnrollmentDto
     public required Ulid CourseId { get; set; }
     public required string CourseName { get; set; }
     public required DateTime CreatedAtUtc { get; set; }
-    public required int EarnedEvolutionPoints { get; set; }
-    public required int SpentEvolutionPoints { get; set; }
-    public required int AvailableEvolutionPoints { get; set; }
+    public CourseEnrollmentLevelDto? CurrentLevel { get; set; }
     public required int EarnedExperiencePoints { get; set; }
     public required List<CourseEnrollmentThemeDto> Themes { get; set; }
+}
+
+public class CourseEnrollmentLevelDto
+{
+    public required Ulid Id { get; set; }
+    public required string Title { get; set; }
+    public required int Order { get; set; }
+    public required int RequiredExperiencePoints { get; set; }
 }
 
 public class CourseEnrollmentThemeDto
@@ -30,16 +36,12 @@ public class CourseEnrollmentThemeDto
     public string? ThemeDescription { get; set; }
     public string? LessonContent { get; set; }
     public string? HomeworkContent { get; set; }
-    public required int UnlockCostPoints { get; set; }
-    public required int EvolutionPointsReward { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public required CourseThemeProgressState State { get; set; }
     public DateTime? UnlockedAtUtc { get; set; }
     public DateTime? StartedAtUtc { get; set; }
     public DateTime? WaitingForHomeworkAtUtc { get; set; }
     public DateTime? CompletedAtUtc { get; set; }
-    public required int SpentEvolutionPoints { get; set; }
-    public required int EarnedEvolutionPoints { get; set; }
     public required int EarnedExperiencePoints { get; set; }
     public required List<CourseEnrollmentThemeAppointmentDto> RecentAppointments { get; set; }
 }

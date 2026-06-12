@@ -23,10 +23,6 @@ public class CourseTheme : BaseModel
 
     public required int Order { get; set; }
 
-    public required int UnlockCostPoints { get; set; }
-
-    public required int EvolutionPointsReward { get; set; }
-
     public required int ExperiencePointsReward { get; set; }
 
     public List<CourseThemeDependency> Dependencies { get; set; } = [];

@@ -102,8 +102,6 @@ public class CreateCourseEnrollmentEndpoint(AppDbContext db, IAuditLogService au
                 Course = course,
                 CreatedAtUtc = nowUtc,
                 UpdatedAtUtc = nowUtc,
-                EarnedEvolutionPoints = 0,
-                SpentEvolutionPoints = 0,
                 EarnedExperiencePoints = 0
             };
 
@@ -129,8 +127,6 @@ public class CreateCourseEnrollmentEndpoint(AppDbContext db, IAuditLogService au
                     StartedAtUtc = null,
                     WaitingForHomeworkAtUtc = null,
                     CompletedAtUtc = null,
-                    SpentEvolutionPoints = 0,
-                    EarnedEvolutionPoints = 0,
                     EarnedExperiencePoints = 0
                 });
             }
@@ -205,9 +201,7 @@ public class CreateCourseEnrollmentEndpoint(AppDbContext db, IAuditLogService au
             return CourseThemeProgressState.BlockedByDependency;
         }
 
-        return theme.UnlockCostPoints == 0
-            ? CourseThemeProgressState.Unlocked
-            : CourseThemeProgressState.AvailableToUnlock;
+        return CourseThemeProgressState.Unlocked;
     }
 
     private static bool IsUniqueViolation(DbUpdateException exception)

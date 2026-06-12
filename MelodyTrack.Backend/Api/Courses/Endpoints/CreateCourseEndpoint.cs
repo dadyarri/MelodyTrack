@@ -70,6 +70,19 @@ public class CreateCourseEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 UpdatedAtUtc = nowUtc
             };
 
+            course.Levels = req.Levels
+                .OrderBy(level => level.Order)
+                .Select(level => new CourseLevel
+                {
+                    Id = Ulid.NewUlid(),
+                    Course = course,
+                    CourseId = course.Id,
+                    Title = level.Title,
+                    Order = level.Order,
+                    RequiredExperiencePoints = level.RequiredExperiencePoints
+                })
+                .ToList();
+
             CourseStructureBuilder.PopulateCourse(course, req.Blocks);
 
             await db.Courses.AddAsync(course, ct);

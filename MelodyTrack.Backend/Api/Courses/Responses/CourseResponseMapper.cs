@@ -13,6 +13,16 @@ internal static class CourseResponseMapper
             Description = course.Description,
             CreatedAtUtc = course.CreatedAtUtc,
             UpdatedAtUtc = course.UpdatedAtUtc,
+            Levels = course.Levels
+                .OrderBy(level => level.Order)
+                .Select(level => new CourseLevelDto
+                {
+                    Id = level.Id,
+                    Title = level.Title,
+                    Order = level.Order,
+                    RequiredExperiencePoints = level.RequiredExperiencePoints
+                })
+                .ToList(),
             Blocks = course.Blocks
                 .OrderBy(block => block.Order)
                 .Select(block => new CourseBlockDto
@@ -40,8 +50,6 @@ internal static class CourseResponseMapper
                                     LessonContent = theme.LessonContent,
                                     HomeworkContent = theme.HomeworkContent,
                                     Order = theme.Order,
-                                    UnlockCostPoints = theme.UnlockCostPoints,
-                                    EvolutionPointsReward = theme.EvolutionPointsReward,
                                     ExperiencePointsReward = theme.ExperiencePointsReward,
                                     DependencyThemeIds = theme.Dependencies
                                         .OrderBy(dependency => dependency.DependsOnThemeId)

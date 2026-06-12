@@ -3,6 +3,7 @@ using System;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260612131636_ReplaceEvolutionPointsWithClientLevels")]
+    partial class ReplaceEvolutionPointsWithClientLevels
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -345,6 +348,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<int>("ClientLevel")
+                        .HasColumnType("integer");
+
                     b.Property<int>("EarnedExperiencePoints")
                         .HasColumnType("integer");
 
@@ -372,6 +378,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("CourseThemeId")
                         .IsRequired()
                         .HasColumnType("bytea");
+
+                    b.Property<int>("EarnedClientLevels")
+                        .HasColumnType("integer");
 
                     b.Property<int>("EarnedExperiencePoints")
                         .HasColumnType("integer");
@@ -402,34 +411,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("CourseEnrollmentThemes");
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseLevel", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<byte[]>("CourseId")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<int>("Order")
-                        .HasColumnType("integer");
-
-                    b.Property<int>("RequiredExperiencePoints")
-                        .HasColumnType("integer");
-
-                    b.Property<string>("Title")
-                        .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("CourseId", "Order")
-                        .IsUnique();
-
-                    b.ToTable("CourseLevels");
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseTheme", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -442,6 +423,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<string>("Description")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("ClientLevelReward")
+                        .HasColumnType("integer");
 
                     b.Property<int>("ExperiencePointsReward")
                         .HasColumnType("integer");
@@ -1414,17 +1398,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Enrollment");
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseLevel", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.Course", "Course")
-                        .WithMany("Levels")
-                        .HasForeignKey("CourseId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Course");
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseTheme", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.CourseBranch", "Branch")
@@ -1664,8 +1637,6 @@ namespace MelodyTrack.Backend.Data.Migrations
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
                 {
                     b.Navigation("Blocks");
-
-                    b.Navigation("Levels");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>

@@ -34,6 +34,7 @@ public class GetCourseEndpoint(AppDbContext db)
         var course = await db.Courses
             .AsNoTracking()
             .AsSplitQuery()
+            .Include(item => item.Levels)
             .Include(item => item.Blocks)
                 .ThenInclude(block => block.Branches)
                     .ThenInclude(branch => branch.Themes)

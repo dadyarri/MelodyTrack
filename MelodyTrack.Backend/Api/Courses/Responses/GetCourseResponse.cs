@@ -29,7 +29,16 @@ public class CourseDto
     public string? Description { get; set; }
     public required DateTime CreatedAtUtc { get; set; }
     public required DateTime UpdatedAtUtc { get; set; }
+    public required List<CourseLevelDto> Levels { get; set; }
     public required List<CourseBlockDto> Blocks { get; set; }
+}
+
+public class CourseLevelDto
+{
+    public required Ulid Id { get; set; }
+    public required string Title { get; set; }
+    public required int Order { get; set; }
+    public required int RequiredExperiencePoints { get; set; }
 }
 
 public class CourseBlockDto
@@ -59,8 +68,6 @@ public class CourseThemeDto
     public string? LessonContent { get; set; }
     public string? HomeworkContent { get; set; }
     public required int Order { get; set; }
-    public required int UnlockCostPoints { get; set; }
-    public required int EvolutionPointsReward { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public required List<Ulid> DependencyThemeIds { get; set; }
 }

@@ -66,23 +66,19 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAudit
         switch (action)
         {
             case CourseEnrollmentThemeProgressAction.Unlock:
+                if (theme.State == CourseThemeProgressState.Unlocked)
+                {
+                    break;
+                }
+
                 if (theme.State != CourseThemeProgressState.AvailableToUnlock)
                 {
                     AddError(item => item.Action, "Эту тему сейчас нельзя открыть.");
                     return new ProblemDetails(ValidationFailures);
                 }
 
-                var availablePoints = courseProgressService.GetAvailableEvolutionPoints(enrollment);
-                if (availablePoints < theme.CourseTheme.UnlockCostPoints)
-                {
-                    AddError(item => item.Action, "Недостаточно очков эволюции для открытия темы.");
-                    return new ProblemDetails(ValidationFailures);
-                }
-
                 theme.State = CourseThemeProgressState.Unlocked;
                 theme.UnlockedAtUtc ??= nowUtc;
-                theme.SpentEvolutionPoints += theme.CourseTheme.UnlockCostPoints;
-                enrollment.SpentEvolutionPoints += theme.CourseTheme.UnlockCostPoints;
                 break;
 
             case CourseEnrollmentThemeProgressAction.Start:
@@ -123,9 +119,7 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAudit
 
                 theme.State = CourseThemeProgressState.Completed;
                 theme.CompletedAtUtc = nowUtc;
-                theme.EarnedEvolutionPoints += theme.CourseTheme.EvolutionPointsReward;
                 theme.EarnedExperiencePoints += theme.CourseTheme.ExperiencePointsReward;
-                enrollment.EarnedEvolutionPoints += theme.CourseTheme.EvolutionPointsReward;
                 enrollment.EarnedExperiencePoints += theme.CourseTheme.ExperiencePointsReward;
                 courseProgressService.RefreshAvailability(enrollment, nowUtc);
                 break;

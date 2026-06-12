@@ -13,5 +13,7 @@ public class UpdateCourseRequest
 
     public string? Description { get; set; }
 
+    public List<CreateCourseLevelRequest> Levels { get; set; } = [];
+
     public List<CreateCourseBlockRequest> Blocks { get; set; } = [];
 }

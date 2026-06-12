@@ -37,6 +37,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
             .AsSplitQuery()
             .Include(item => item.Client)
             .Include(item => item.Course)
+                .ThenInclude(course => course.Levels)
             .Include(item => item.Themes)
                 .ThenInclude(theme => theme.CourseTheme)
             .AsQueryable();
@@ -67,9 +68,15 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
                 CourseId = enrollment.CourseId,
                 CourseName = enrollment.Course.Name,
                 CreatedAtUtc = enrollment.CreatedAtUtc,
-                EarnedEvolutionPoints = enrollment.EarnedEvolutionPoints,
-                SpentEvolutionPoints = enrollment.SpentEvolutionPoints,
-                AvailableEvolutionPoints = courseProgressService.GetAvailableEvolutionPoints(enrollment),
+                CurrentLevel = courseProgressService.ResolveCurrentLevel(enrollment) is { } level
+                    ? new CourseEnrollmentLevelDto
+                    {
+                        Id = level.Id,
+                        Title = level.Title,
+                        Order = level.Order,
+                        RequiredExperiencePoints = level.RequiredExperiencePoints
+                    }
+                    : null,
                 EarnedExperiencePoints = enrollment.EarnedExperiencePoints,
                 Themes = enrollment.Themes
                     .OrderBy(theme => theme.CourseTheme.Title)
@@ -81,16 +88,12 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
                         ThemeDescription = theme.CourseTheme.Description,
                         LessonContent = theme.CourseTheme.LessonContent,
                         HomeworkContent = theme.CourseTheme.HomeworkContent,
-                        UnlockCostPoints = theme.CourseTheme.UnlockCostPoints,
-                        EvolutionPointsReward = theme.CourseTheme.EvolutionPointsReward,
                         ExperiencePointsReward = theme.CourseTheme.ExperiencePointsReward,
                         State = theme.State,
                         UnlockedAtUtc = theme.UnlockedAtUtc,
                         StartedAtUtc = theme.StartedAtUtc,
                         WaitingForHomeworkAtUtc = theme.WaitingForHomeworkAtUtc,
                         CompletedAtUtc = theme.CompletedAtUtc,
-                        SpentEvolutionPoints = theme.SpentEvolutionPoints,
-                        EarnedEvolutionPoints = theme.EarnedEvolutionPoints,
                         EarnedExperiencePoints = theme.EarnedExperiencePoints,
                         RecentAppointments = linkedAppointments
                             .GetValueOrDefault((enrollment.ClientId, theme.CourseThemeId), [])

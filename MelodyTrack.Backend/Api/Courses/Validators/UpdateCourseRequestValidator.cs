@@ -23,6 +23,24 @@ public class UpdateCourseRequestValidator : Validator<UpdateCourseRequest>
             .When(x => !string.IsNullOrWhiteSpace(x.Description))
             .WithMessage("Описание курса не должно быть длиннее 2000 символов.");
 
+        RuleForEach(x => x.Levels)
+            .ChildRules(level =>
+            {
+                level.RuleFor(x => x.Title)
+                    .NotEmpty()
+                    .WithMessage("Укажите название уровня.")
+                    .MaximumLength(200)
+                    .WithMessage("Название уровня не должно быть длиннее 200 символов.");
+
+                level.RuleFor(x => x.Order)
+                    .GreaterThan(0)
+                    .WithMessage("Порядок уровня должен быть больше нуля.");
+
+                level.RuleFor(x => x.RequiredExperiencePoints)
+                    .GreaterThanOrEqualTo(0)
+                    .WithMessage("Порог опыта для уровня не может быть меньше нуля.");
+            });
+
         RuleForEach(x => x.Blocks)
             .ChildRules(block =>
             {
@@ -83,14 +101,6 @@ public class UpdateCourseRequestValidator : Validator<UpdateCourseRequest>
                                     .GreaterThan(0)
                                     .WithMessage("Порядок темы должен быть больше нуля.");
 
-                                theme.RuleFor(x => x.UnlockCostPoints)
-                                    .GreaterThanOrEqualTo(0)
-                                    .WithMessage("Стоимость разблокировки не может быть отрицательной.");
-
-                                theme.RuleFor(x => x.EvolutionPointsReward)
-                                    .GreaterThanOrEqualTo(0)
-                                    .WithMessage("Очки эволюции не могут быть меньше нуля.");
-
                                 theme.RuleFor(x => x.ExperiencePointsReward)
                                     .GreaterThanOrEqualTo(0)
                                     .WithMessage("Очки опыта не могут быть меньше нуля.");
@@ -101,6 +111,7 @@ public class UpdateCourseRequestValidator : Validator<UpdateCourseRequest>
         RuleFor(x => x)
             .Custom((request, context) =>
             {
+                CreateCourseRequestValidator.ValidateLevels(request.Levels, context.AddFailure);
                 CourseStructureValidation.ValidateBlocks(request.Blocks, context.AddFailure);
             });
     }

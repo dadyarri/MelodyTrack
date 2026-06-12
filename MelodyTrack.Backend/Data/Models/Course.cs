@@ -14,5 +14,7 @@ public class Course : BaseModel
 
     public required DateTime UpdatedAtUtc { get; set; }
 
+    public List<CourseLevel> Levels { get; set; } = [];
+
     public List<CourseBlock> Blocks { get; set; } = [];
 }

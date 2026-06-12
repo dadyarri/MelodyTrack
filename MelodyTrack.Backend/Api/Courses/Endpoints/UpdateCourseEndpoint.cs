@@ -39,6 +39,7 @@ public class UpdateCourseEndpoint(
         }
 
         var course = await db.Courses
+            .Include(item => item.Levels)
             .Include(item => item.Blocks)
                 .ThenInclude(block => block.Branches)
                     .ThenInclude(branch => branch.Themes)
@@ -65,6 +66,7 @@ public class UpdateCourseEndpoint(
 
         var beforeName = course.Name;
         var beforeDescription = course.Description;
+        var existingLevels = course.Levels.ToList();
         var existingBlocks = course.Blocks.ToList();
         var existingThemes = existingBlocks
             .SelectMany(block => block.Branches)
@@ -97,6 +99,18 @@ public class UpdateCourseEndpoint(
         course.Name = req.Name;
         course.Description = req.Description;
         course.UpdatedAtUtc = DateTime.UtcNow;
+        var nextLevels = req.Levels
+            .OrderBy(level => level.Order)
+            .Select(level => new CourseLevel
+            {
+                Id = Ulid.NewUlid(),
+                Course = course,
+                CourseId = course.Id,
+                Title = level.Title,
+                Order = level.Order,
+                RequiredExperiencePoints = level.RequiredExperiencePoints
+            })
+            .ToList();
 
         if (existingBlocks.Count > 0)
         {
@@ -124,6 +138,14 @@ public class UpdateCourseEndpoint(
         {
             db.CourseThemeDependencies.RemoveRange(existingDependencies);
         }
+
+        if (existingLevels.Count > 0)
+        {
+            course.Levels.Clear();
+            db.CourseLevels.RemoveRange(existingLevels);
+        }
+
+        course.Levels = nextLevels;
 
         CourseStructureBuilder.PopulateCourse(
             course,
@@ -208,8 +230,6 @@ public class UpdateCourseEndpoint(
                     StartedAtUtc = null,
                     WaitingForHomeworkAtUtc = null,
                     CompletedAtUtc = null,
-                    SpentEvolutionPoints = 0,
-                    EarnedEvolutionPoints = 0,
                     EarnedExperiencePoints = 0
                 });
             }
