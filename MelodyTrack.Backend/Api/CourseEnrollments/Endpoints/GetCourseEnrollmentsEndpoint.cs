@@ -34,6 +34,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
 
         var query = db.CourseEnrollments
             .AsNoTracking()
+            .AsSplitQuery()
             .Include(item => item.Client)
             .Include(item => item.Course)
             .Include(item => item.Themes)
@@ -43,6 +44,11 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
         if (req.ClientId is not null)
         {
             query = query.Where(item => item.ClientId == req.ClientId.Value);
+        }
+
+        if (req.CourseId is not null)
+        {
+            query = query.Where(item => item.CourseId == req.CourseId.Value);
         }
 
         var enrollments = await query

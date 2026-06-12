@@ -8,6 +8,9 @@ public class CourseTheme : BaseModel
 
     public required CourseBranch Branch { get; set; }
 
+    [MaxLength(100)]
+    public required string Key { get; set; }
+
     [MaxLength(200)]
     public required string Title { get; set; }
 

@@ -263,6 +263,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Id = Ulid.NewUlid(),
             Branch = branch,
             BranchId = branch.Id,
+            Key = "finger-warmup",
             Title = "Finger warmup",
             LessonContent = "Warm up each finger separately.",
             HomeworkContent = "Repeat the warmup at home.",

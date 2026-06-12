@@ -537,6 +537,53 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
     }
 
     [Fact]
+    public async Task GetCourseEnrollments_CanFilterByCourseId()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Mira", "Tempo", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var firstCourseId = await CreateCourseAsync();
+        var secondCourseId = await CreateCourseAsync();
+
+        var firstEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId = firstCourseId
+            },
+            TestContext.Current.CancellationToken);
+
+        firstEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var secondEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId = secondCourseId
+            },
+            TestContext.Current.CancellationToken);
+
+        secondEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var response = await App.Client.GetAsync(
+            $"/course-enrollments?clientId={client.Id}&courseId={firstCourseId}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var payload = await response.Content.ReadFromJsonAsync<GetCourseEnrollmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Enrollments.Count.ShouldBe(1);
+        payload.Enrollments.Single().CourseId.ShouldBe(firstCourseId);
+    }
+
+    [Fact]
     public async Task UpdateCourseEnrollmentThemeProgress_UnlocksThemeAndSpendsPoints()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -777,7 +824,8 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             },
             TestContext.Current.CancellationToken);
 
-        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        var responseBody = await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent, responseBody);
 
         db.ChangeTracker.Clear();
 
@@ -792,6 +840,673 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         course.Blocks.Count.ShouldBe(1);
         course.Blocks.Single().Title.ShouldBe("Advanced basics");
         course.Blocks.Single().Branches.Single().Themes.ShouldHaveSingleItem().Title.ShouldBe("Groove intro");
+    }
+
+    [Fact]
+    public async Task UpdateCourse_AllowsEditingWhenEnrollmentExistsAndPreservesCompletedThemeProgress()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "Enrollment", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var enrollmentId = (await createEnrollmentResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken))!.Id;
+
+        var enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
+        var introCourseThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").CourseThemeId;
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "pass-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track edited",
+                description = "Still safe for active students",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics refreshed",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-intro",
+                                        title = "Intro to rhythm updated",
+                                        lessonContent = "Updated lesson notes.",
+                                        homeworkContent = "Updated homework.",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 2,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    },
+                                    new
+                                    {
+                                        key = "pulse-clap",
+                                        title = "Clap patterns updated",
+                                        order = 2,
+                                        unlockCostPoints = 2,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Counting",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "count-intro",
+                                        title = "Count aloud updated",
+                                        order = 1,
+                                        unlockCostPoints = 1,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updatedEnrollment = await db.CourseEnrollments
+            .AsNoTracking()
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var updatedIntroTheme = updatedEnrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro");
+        updatedIntroTheme.CourseThemeId.ShouldBe(introCourseThemeId);
+        updatedIntroTheme.State.ShouldBe(CourseThemeProgressState.Completed);
+        updatedIntroTheme.CourseTheme.Title.ShouldBe("Intro to rhythm updated");
+        updatedIntroTheme.EarnedEvolutionPoints.ShouldBe(1);
+        updatedIntroTheme.EarnedExperiencePoints.ShouldBe(3);
+    }
+
+    [Fact]
+    public async Task UpdateCourse_AddsProgressRowsForNewThemesInExistingEnrollments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "NewTheme", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var enrollmentId = (await createEnrollmentResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken))!.Id;
+
+        var enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+        var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "pass-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track with new theme",
+                description = "Existing enrollments receive progress rows",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-intro",
+                                        title = "Intro to rhythm",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 3,
+                                        dependencyKeys = Array.Empty<string>()
+                                    },
+                                    new
+                                    {
+                                        key = "pulse-fill",
+                                        title = "Fill the pulse",
+                                        order = 2,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 3,
+                                        dependencyKeys = Array.Empty<string>()
+                                    },
+                                    new
+                                    {
+                                        key = "pulse-clap",
+                                        title = "Clap patterns",
+                                        order = 3,
+                                        unlockCostPoints = 2,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Counting",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "count-intro",
+                                        title = "Count aloud",
+                                        order = 1,
+                                        unlockCostPoints = 1,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updatedEnrollment = await db.CourseEnrollments
+            .AsNoTracking()
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+
+        var addedTheme = updatedEnrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-fill");
+        addedTheme.State.ShouldBe(CourseThemeProgressState.Unlocked);
+        addedTheme.UnlockedAtUtc.ShouldNotBeNull();
+    }
+
+    [Fact]
+    public async Task UpdateCourseEnrollmentThemeProgress_RejectsCompletionWhenNewDependencyIsNotCompleted()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "Dependency", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var enrollmentId = (await createEnrollmentResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken))!.Id;
+
+        var enrollment = await db.CourseEnrollments
+            .Include(item => item.Themes)
+                .ThenInclude(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
+        var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
+
+        (await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+            TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track with stricter dependency",
+                description = "Completion must respect edited dependencies",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-intro",
+                                        title = "Intro to rhythm",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 3,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    },
+                                    new
+                                    {
+                                        key = "pulse-clap",
+                                        title = "Clap patterns",
+                                        order = 2,
+                                        unlockCostPoints = 2,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Counting",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "count-intro",
+                                        title = "Count aloud",
+                                        order = 1,
+                                        unlockCostPoints = 1,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        var passResponse = await App.Client.PostAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
+            new { id = introEnrollmentThemeId, action = "pass-homework" },
+            TestContext.Current.CancellationToken);
+
+        passResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        var payload = await passResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Errors.ShouldContain(error =>
+            error.Reason.Contains("Нельзя завершить тему, пока не выполнены предыдущие темы и зависимости.", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task UpdateCourse_AllowsEditingWhenThemeIsLinkedToAppointmentAndPreservesLink()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "Appointment", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Course lesson", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var theme = await db.CourseThemes
+            .FirstAsync(item => item.Key == "pulse-intro", TestContext.Current.CancellationToken);
+
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            CourseThemeId = theme.Id,
+            LessonNotes = "Linked before course edit.",
+            StartDate = new DateTime(2026, 06, 10, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 06, 10, 11, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track edited",
+                description = "Appointments remain linked",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics refreshed",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-intro",
+                                        title = "Intro for linked lesson",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 3,
+                                        dependencyKeys = Array.Empty<string>()
+                                    },
+                                    new
+                                    {
+                                        key = "pulse-clap",
+                                        title = "Clap patterns",
+                                        order = 2,
+                                        unlockCostPoints = 2,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Counting",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "count-intro",
+                                        title = "Count aloud",
+                                        order = 1,
+                                        unlockCostPoints = 1,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updatedAppointment = await db.Appointments
+            .AsNoTracking()
+            .Include(item => item.CourseTheme)
+            .FirstAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken);
+
+        updatedAppointment.CourseThemeId.ShouldBe(theme.Id);
+        updatedAppointment.CourseTheme.ShouldNotBeNull();
+        updatedAppointment.CourseTheme.Title.ShouldBe("Intro for linked lesson");
+    }
+
+    [Fact]
+    public async Task UpdateCourse_AllowsRemovingThemeLinkedToAppointmentAndUnlinksAppointment()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "AppointmentRemoval", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Course lesson", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var theme = await db.CourseThemes
+            .FirstAsync(item => item.Key == "pulse-intro", TestContext.Current.CancellationToken);
+
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            CourseThemeId = theme.Id,
+            LessonNotes = "Theme will be removed from course.",
+            StartDate = new DateTime(2026, 06, 10, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 06, 10, 11, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track edited",
+                description = "Appointments survive removed themes",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics refreshed",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-clap",
+                                        title = "Clap patterns",
+                                        order = 1,
+                                        unlockCostPoints = 2,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = new[] { "count-intro" }
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Counting",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "count-intro",
+                                        title = "Count aloud",
+                                        order = 1,
+                                        unlockCostPoints = 1,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 4,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        db.ChangeTracker.Clear();
+
+        var updatedAppointment = await db.Appointments
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken);
+        updatedAppointment.CourseThemeId.ShouldBeNull();
+
+        var themeStillExists = await db.CourseThemes
+            .AsNoTracking()
+            .AnyAsync(item => item.Id == theme.Id, TestContext.Current.CancellationToken);
+        themeStillExists.ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task UpdateCourse_ReturnsBadRequestWhenRemovingThemeUsedInProgress()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Edit", "Removal", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var courseId = await CreateCourseAsync();
+
+        var createEnrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId
+            },
+            TestContext.Current.CancellationToken);
+
+        createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var updateResponse = await App.Client.PutAsJsonAsync(
+            $"/courses/{courseId}",
+            new
+            {
+                id = courseId,
+                name = "Rhythm track broken",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Basics",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Pulse",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse-intro",
+                                        title = "Intro to rhythm",
+                                        order = 1,
+                                        unlockCostPoints = 0,
+                                        evolutionPointsReward = 1,
+                                        experiencePointsReward = 3,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+
+        updateResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
+
+        var payload = await updateResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Errors.ShouldContain(error =>
+            error.Reason.Contains("Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов.", StringComparison.Ordinal));
     }
 
     [Fact]

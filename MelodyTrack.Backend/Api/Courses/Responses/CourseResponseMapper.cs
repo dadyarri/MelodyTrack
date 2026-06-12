@@ -34,6 +34,7 @@ internal static class CourseResponseMapper
                                 .Select(theme => new CourseThemeDto
                                 {
                                     Id = theme.Id,
+                                    Key = theme.Key,
                                     Title = theme.Title,
                                     Description = theme.Description,
                                     LessonContent = theme.LessonContent,

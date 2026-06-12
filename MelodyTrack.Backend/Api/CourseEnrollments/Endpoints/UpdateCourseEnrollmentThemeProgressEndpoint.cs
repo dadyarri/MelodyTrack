@@ -115,6 +115,12 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAudit
                     return new ProblemDetails(ValidationFailures);
                 }
 
+                if (!courseProgressService.IsEligibleForProgress(enrollment, theme))
+                {
+                    AddError(item => item.Action, "Нельзя завершить тему, пока не выполнены предыдущие темы и зависимости.");
+                    return new ProblemDetails(ValidationFailures);
+                }
+
                 theme.State = CourseThemeProgressState.Completed;
                 theme.CompletedAtUtc = nowUtc;
                 theme.EarnedEvolutionPoints += theme.CourseTheme.EvolutionPointsReward;

@@ -33,9 +33,6 @@ public class GetCoursesEndpoint(AppDbContext db)
 
         var query = db.Courses
             .AsNoTracking()
-            .Include(course => course.Blocks)
-                .ThenInclude(block => block.Branches)
-                    .ThenInclude(branch => branch.Themes)
             .AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(req.Search))
@@ -48,21 +45,23 @@ public class GetCoursesEndpoint(AppDbContext db)
 
         var courses = await query
             .OrderBy(course => course.Name)
+            .Select(course => new CourseSummaryDto
+            {
+                Id = course.Id,
+                Name = course.Name,
+                Description = course.Description,
+                BlockCount = course.Blocks.Count,
+                ThemeCount = course.Blocks
+                    .SelectMany(block => block.Branches)
+                    .SelectMany(branch => branch.Themes)
+                    .Count(),
+                UpdatedAtUtc = course.UpdatedAtUtc
+            })
             .ToListAsync(ct);
 
         return TypedResults.Ok(new GetCoursesResponse
         {
             Courses = courses
-                .Select(course => new CourseSummaryDto
-                {
-                    Id = course.Id,
-                    Name = course.Name,
-                    Description = course.Description,
-                    BlockCount = course.Blocks.Count,
-                    ThemeCount = course.Blocks.SelectMany(block => block.Branches).SelectMany(branch => branch.Themes).Count(),
-                    UpdatedAtUtc = course.UpdatedAtUtc
-                })
-                .ToList()
         });
     }
 }

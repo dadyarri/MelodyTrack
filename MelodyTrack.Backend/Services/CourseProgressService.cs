@@ -18,13 +18,18 @@ public class CourseProgressService
         {
             if (theme.State is CourseThemeProgressState.Completed
                 or CourseThemeProgressState.InProgress
-                or CourseThemeProgressState.WaitingForHomework
-                or CourseThemeProgressState.Unlocked)
+                or CourseThemeProgressState.WaitingForHomework)
             {
                 continue;
             }
 
             if (!IsEligible(theme, themesByCourseThemeId))
+            {
+                theme.State = CourseThemeProgressState.BlockedByDependency;
+                continue;
+            }
+
+            if (theme.State == CourseThemeProgressState.Unlocked)
             {
                 continue;
             }
@@ -47,6 +52,13 @@ public class CourseProgressService
             .ThenBy(item => item.CourseTheme.Branch.Order)
             .ThenBy(item => item.CourseTheme.Order)
             .ToList();
+    }
+
+    public bool IsEligibleForProgress(CourseEnrollment enrollment, CourseEnrollmentTheme theme)
+    {
+        var themesByCourseThemeId = enrollment.Themes.ToDictionary(item => item.CourseThemeId);
+
+        return IsEligible(theme, themesByCourseThemeId);
     }
 
     private static bool IsEligible(

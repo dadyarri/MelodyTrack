@@ -5,10 +5,16 @@ namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
 internal static class CourseStructureBuilder
 {
-    public static void PopulateCourse(Course course, IEnumerable<CreateCourseBlockRequest>? blocks)
+    public static void PopulateCourse(
+        Course course,
+        IEnumerable<CreateCourseBlockRequest>? blocks,
+        IReadOnlyDictionary<string, CourseTheme>? existingThemesByKey = null)
     {
         var themeByKey = new Dictionary<string, CourseTheme>(StringComparer.OrdinalIgnoreCase);
         var dependencyKeysByThemeId = new Dictionary<Ulid, List<string>>();
+        var reusableThemes = existingThemesByKey is null
+            ? new Dictionary<string, CourseTheme>(StringComparer.OrdinalIgnoreCase)
+            : new Dictionary<string, CourseTheme>(existingThemesByKey, StringComparer.OrdinalIgnoreCase);
 
         foreach (var blockRequest in (blocks ?? []).OrderBy(block => block.Order))
         {
@@ -36,20 +42,39 @@ internal static class CourseStructureBuilder
 
                 foreach (var themeRequest in (branchRequest.Themes ?? []).OrderBy(theme => theme.Order))
                 {
-                    var theme = new CourseTheme
+                    if (!reusableThemes.TryGetValue(themeRequest.Key, out var theme))
                     {
-                        Id = Ulid.NewUlid(),
-                        Branch = branch,
-                        BranchId = branch.Id,
-                        Title = themeRequest.Title,
-                        Description = themeRequest.Description,
-                        LessonContent = themeRequest.LessonContent,
-                        HomeworkContent = themeRequest.HomeworkContent,
-                        Order = themeRequest.Order,
-                        UnlockCostPoints = themeRequest.UnlockCostPoints,
-                        EvolutionPointsReward = themeRequest.EvolutionPointsReward,
-                        ExperiencePointsReward = themeRequest.ExperiencePointsReward
-                    };
+                        theme = new CourseTheme
+                        {
+                            Id = Ulid.NewUlid(),
+                            Branch = branch,
+                            BranchId = branch.Id,
+                            Key = themeRequest.Key,
+                            Title = themeRequest.Title,
+                            Description = themeRequest.Description,
+                            LessonContent = themeRequest.LessonContent,
+                            HomeworkContent = themeRequest.HomeworkContent,
+                            Order = themeRequest.Order,
+                            UnlockCostPoints = themeRequest.UnlockCostPoints,
+                            EvolutionPointsReward = themeRequest.EvolutionPointsReward,
+                            ExperiencePointsReward = themeRequest.ExperiencePointsReward
+                        };
+                    }
+                    else
+                    {
+                        theme.Branch = branch;
+                        theme.BranchId = branch.Id;
+                        theme.Key = themeRequest.Key;
+                        theme.Title = themeRequest.Title;
+                        theme.Description = themeRequest.Description;
+                        theme.LessonContent = themeRequest.LessonContent;
+                        theme.HomeworkContent = themeRequest.HomeworkContent;
+                        theme.Order = themeRequest.Order;
+                        theme.UnlockCostPoints = themeRequest.UnlockCostPoints;
+                        theme.EvolutionPointsReward = themeRequest.EvolutionPointsReward;
+                        theme.ExperiencePointsReward = themeRequest.ExperiencePointsReward;
+                        theme.Dependencies.Clear();
+                    }
 
                     branch.Themes.Add(theme);
                     themeByKey[themeRequest.Key] = theme;
@@ -64,9 +89,14 @@ internal static class CourseStructureBuilder
             course.Blocks.Add(block);
         }
 
-        foreach (var theme in course.Blocks.SelectMany(block => block.Branches).SelectMany(branch => branch.Themes))
+        foreach (var theme in themeByKey.Values)
         {
-            foreach (var dependencyKey in dependencyKeysByThemeId[theme.Id])
+            if (!dependencyKeysByThemeId.TryGetValue(theme.Id, out var dependencyKeys))
+            {
+                continue;
+            }
+
+            foreach (var dependencyKey in dependencyKeys)
             {
                 theme.Dependencies.Add(new CourseThemeDependency
                 {
