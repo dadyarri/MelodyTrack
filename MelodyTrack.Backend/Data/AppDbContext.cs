@@ -21,6 +21,7 @@ public class AppDbContext : DbContext
     public DbSet<RecoveryCode> RecoveryCodes { get; set; }
     public DbSet<Session> Sessions { get; set; }
     public DbSet<PasswordRestorationRequest> PasswordRestorationRequests { get; set; }
+    public DbSet<ClientPortalLoginLink> ClientPortalLoginLinks { get; set; }
     public DbSet<Client> Clients { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Service> Services { get; set; }
@@ -67,8 +68,11 @@ public class AppDbContext : DbContext
             modelBuilder.Entity<User>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
 
             modelBuilder.Entity<ClientContacts>().Property(e => e.Phone).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+            modelBuilder.Entity<ClientContacts>().Property(e => e.Email).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<ClientContacts>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<ClientContacts>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
+
+            modelBuilder.Entity<ClientPortalLoginLink>().Property(e => e.PinCode).HasConversion(new EncryptedStringConverter(_personalDataProtector));
         }
 
         modelBuilder.Entity<User>()
@@ -92,6 +96,11 @@ public class AppDbContext : DbContext
             Id = Ulid.Parse("01K7PVVCR9D4HJ5DH1HEYTQQG9"),
             RoleName = UserRoles.User,
             DisplayName = "Пользователь"
+        }, new Role
+        {
+            Id = Ulid.Parse("01JZQTKRQJQ2WQ3EY3P99RYJ79"),
+            RoleName = UserRoles.Client,
+            DisplayName = "Клиент"
         });
 
         modelBuilder.Entity<RecurrenceType>().HasData(new RecurrenceType
@@ -226,6 +235,27 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<RequestReplay>()
             .HasIndex(e => new { e.Endpoint, e.ReplayKey })
             .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(e => e.ClientId)
+            .IsUnique()
+            .HasFilter("\"ClientId\" IS NOT NULL");
+
+        modelBuilder.Entity<User>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<ClientPortalLoginLink>()
+            .HasIndex(e => e.Token)
+            .IsUnique();
+
+        modelBuilder.Entity<ClientPortalLoginLink>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<RecurringTaskExecution>()
             .HasIndex(e => e.DeduplicationKey)

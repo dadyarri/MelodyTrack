@@ -81,6 +81,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         var beforeLastName = client.LastName;
         var beforePatronymic = client.Patronymic;
         var beforeDateOfBirth = client.DateOfBirth;
+        var beforeEmail = client.Contacts.Email;
         var beforePhone = client.Contacts.Phone;
         var beforeTelegram = client.Contacts.Telegram;
         var beforeVk = client.Contacts.Vk;
@@ -97,6 +98,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
 
         client.Patronymic = req.Patronymic;
         client.DateOfBirth = req.DateOfBirth;
+        client.Contacts.Email = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
         client.Contacts.Phone = req.Phone;
         client.Contacts.Telegram = req.Telegram;
         client.Contacts.Vk = req.Vk;
@@ -114,6 +116,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 AuditDetailsFormatter.DescribeChange("Фамилия", beforeLastName, client.LastName),
                 AuditDetailsFormatter.DescribeChange("Отчество", beforePatronymic, client.Patronymic),
                 AuditDetailsFormatter.DescribeChange("Дата рождения", beforeDateOfBirth?.ToString("yyyy-MM-dd"), client.DateOfBirth?.ToString("yyyy-MM-dd")),
+                AuditDetailsFormatter.DescribeChange("Email", beforeEmail, client.Contacts.Email),
                 AuditDetailsFormatter.DescribeChange("Телефон", beforePhone, client.Contacts.Phone),
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
@@ -130,6 +133,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                && (req.LastName is null || req.LastName == client.LastName)
                && req.Patronymic == client.Patronymic
                && req.DateOfBirth == client.DateOfBirth
+               && (string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email)) == client.Contacts.Email
                && req.Phone == client.Contacts.Phone
                && req.Telegram == client.Contacts.Telegram
                && req.Vk == client.Contacts.Vk

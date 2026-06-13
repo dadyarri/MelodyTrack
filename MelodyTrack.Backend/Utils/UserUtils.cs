@@ -5,6 +5,7 @@ using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
 using MelodyTrack.Backend.Data.Models;
+using Microsoft.AspNetCore.WebUtilities;
 using OtpNet;
 using QRCoder;
 
@@ -209,5 +210,35 @@ public static class UserUtils
     {
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
         return $"{appDomain}/restore?code={token}";
+    }
+
+    public static string GetClientPortalAccessUrl(string token)
+    {
+        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+        return $"{appDomain}/portal/access/{token}";
+    }
+
+    public static string CreateClientPortalToken(Ulid clientId)
+    {
+        var clientIdValue = clientId.ToString();
+        var secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"));
+        var signature = HMACSHA256.HashData(secret, Encoding.UTF8.GetBytes($"client-portal:{clientIdValue}"));
+        return $"{clientIdValue}.{WebEncoders.Base64UrlEncode(signature)}";
+    }
+
+    public static bool TryReadClientPortalToken(string token, out Ulid clientId)
+    {
+        clientId = default;
+
+        var parts = token.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
+        if (parts.Length != 2 || !Ulid.TryParse(parts[0], out clientId))
+        {
+            return false;
+        }
+
+        var expectedToken = CreateClientPortalToken(clientId);
+        return CryptographicOperations.FixedTimeEquals(
+            Encoding.UTF8.GetBytes(expectedToken),
+            Encoding.UTF8.GetBytes(token));
     }
 }

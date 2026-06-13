@@ -84,6 +84,7 @@ public class
                 Contacts = new ClientContacts
                 {
                     Id = Ulid.NewUlid(),
+                    Email = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email),
                     Telegram = req.Telegram,
                     Phone = req.Phone,
                     Vk = req.Vk
@@ -112,6 +113,7 @@ public class
                     AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
                     AuditDetailsFormatter.DescribeContext("Отчество", client.Patronymic),
                     AuditDetailsFormatter.DescribeContext("Дата рождения", client.DateOfBirth?.ToString("yyyy-MM-dd")),
+                    AuditDetailsFormatter.DescribeContext("Email", client.Contacts.Email),
                     AuditDetailsFormatter.DescribeContext("Телефон", client.Contacts.Phone),
                     AuditDetailsFormatter.DescribeContext("Telegram", client.Contacts.Telegram),
                     AuditDetailsFormatter.DescribeContext("VK", client.Contacts.Vk),

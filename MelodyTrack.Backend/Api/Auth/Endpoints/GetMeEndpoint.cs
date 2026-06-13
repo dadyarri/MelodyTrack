@@ -54,6 +54,8 @@ public class GetMeEndpoint(AppDbContext db, IRecordActivityService recordActivit
             LastActivity = await recordActivityService.GetLatestActivityAsync("user", user.Id.ToString(), ct),
             IsAdmin = user.Role.RoleName.IsAnyAdmin(),
             IsSuperuser = user.Role.RoleName.IsSuperuser(),
+            IsClientPortal = user.Role.RoleName.IsClient(),
+            LinkedClientId = user.ClientId,
             IsTwoFactorEnabled = user.TotpSecret is not null,
             IsTwoFactorRequired = user.Role.RoleName.IsAnyAdmin()
         });
