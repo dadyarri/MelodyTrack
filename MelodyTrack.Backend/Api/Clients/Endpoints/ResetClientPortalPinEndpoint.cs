@@ -39,7 +39,7 @@ public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService audi
 
         if (loginLink is null)
         {
-            AddError(item => item.Id, "Клиентский кабинет для этого клиента еще не создан.");
+            AddError(item => item.Id, "Кабинет для этого клиента еще не создан.");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
                 ValidationFailures,
                 HttpContext,

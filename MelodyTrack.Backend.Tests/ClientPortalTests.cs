@@ -4,7 +4,6 @@ using System.Net.Http.Json;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Api.Clients.Responses;
-using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -41,7 +40,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         var endDate = startDate.AddHours(1);
 
         await db.Clients.AddAsync(client, TestContext.Current.CancellationToken);
-        await db.Appointments.AddAsync(new Appointment
+        var appointment = new Appointment
         {
             Id = Ulid.NewUlid(),
             Client = client,
@@ -50,7 +49,8 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             EndDate = endDate,
             Status = AppointmentStatus.Planned,
             IsDeleted = false
-        }, TestContext.Current.CancellationToken);
+        };
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
@@ -115,12 +115,12 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             $"/client-portal/schedule?timezone=UTC&startDate={Uri.EscapeDataString(startDate.AddDays(-1).ToString("O"))}&endDate={Uri.EscapeDataString(endDate.AddDays(1).ToString("O"))}";
         using var scheduleResponse = await App.Client.GetAsync(scheduleUrl, TestContext.Current.CancellationToken);
         scheduleResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var schedulePayload = await scheduleResponse.Content.ReadFromJsonAsync<GetAppointmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        var schedulePayload = await scheduleResponse.Content.ReadFromJsonAsync<GetClientPortalScheduleResponse>(cancellationToken: TestContext.Current.CancellationToken);
 
         schedulePayload.ShouldNotBeNull();
         schedulePayload.Appointments.Count.ShouldBe(1);
-        schedulePayload.Appointments[0].Client.Id.ShouldBe(client.Id);
-        schedulePayload.Appointments[0].Client.Contacts.ShouldBeNull();
+        schedulePayload.Appointments[0].Id.ShouldBe(appointment.Id);
+        schedulePayload.Appointments[0].CourseTheme.ShouldBeNull();
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 

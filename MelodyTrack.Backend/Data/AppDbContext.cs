@@ -248,10 +248,6 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.SetNull);
 
         modelBuilder.Entity<ClientPortalLoginLink>()
-            .HasIndex(e => e.Token)
-            .IsUnique();
-
-        modelBuilder.Entity<ClientPortalLoginLink>()
             .HasOne(e => e.User)
             .WithMany()
             .HasForeignKey(e => e.UserId)

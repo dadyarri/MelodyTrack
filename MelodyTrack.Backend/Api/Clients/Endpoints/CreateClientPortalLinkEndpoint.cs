@@ -118,8 +118,7 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
             {
                 Id = Ulid.NewUlid(),
                 User = existingUser,
-                UserId = existingUser.Id,
-                Token = UserUtils.HashOpaqueToken(persistentToken)
+                UserId = existingUser.Id
             };
 
             await db.ClientPortalLoginLinks.AddAsync(loginLink, ct);

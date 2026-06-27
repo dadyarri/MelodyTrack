@@ -1,7 +1,6 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
-using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -40,7 +39,7 @@ public class GetClientPortalScheduleEndpoint(AppDbContext db, IRecurringAppointm
 
         var appointments = await db.Appointments
             .AsNoTracking()
-            .Include(item => item.Client)
+            .Include(item => item.CourseTheme)
             .Where(item =>
                 !item.IsDeleted &&
                 item.Client.Id == clientId &&
