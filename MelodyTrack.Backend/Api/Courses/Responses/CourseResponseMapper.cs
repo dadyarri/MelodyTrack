@@ -2,7 +2,7 @@ using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Courses.Responses;
 
-internal static class CourseResponseMapper
+public static class CourseResponseMapper
 {
     public static CourseDto MapCourse(Course course)
     {

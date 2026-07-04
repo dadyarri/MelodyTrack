@@ -1,7 +1,9 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Auth.Responses;
+using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
@@ -156,5 +158,142 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             },
             TestContext.Current.CancellationToken);
         secondConsumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task ClientPortalCourseEnrollments_ReturnStructuredCourseBlocksAndBranches()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Nora", "Keys", TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        var courseResponse = await App.Client.PostAsJsonAsync(
+            "/courses",
+            new
+            {
+                name = "Portal structure",
+                blocks = new object[]
+                {
+                    new
+                    {
+                        title = "Foundation",
+                        order = 1,
+                        branches = new object[]
+                        {
+                            new
+                            {
+                                title = "Rhythm",
+                                order = 1,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "pulse",
+                                        title = "Feel the pulse",
+                                        order = 1,
+                                        experiencePointsReward = 5,
+                                        dependencyKeys = Array.Empty<string>()
+                                    },
+                                    new
+                                    {
+                                        key = "groove",
+                                        title = "Build a groove",
+                                        order = 2,
+                                        experiencePointsReward = 7,
+                                        dependencyKeys = Array.Empty<string>()
+                                    }
+                                }
+                            },
+                            new
+                            {
+                                title = "Melody",
+                                order = 2,
+                                themes = new object[]
+                                {
+                                    new
+                                    {
+                                        key = "motif",
+                                        title = "First motif",
+                                        order = 1,
+                                        experiencePointsReward = 6,
+                                        dependencyKeys = new[] { "pulse" }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            TestContext.Current.CancellationToken);
+        courseResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var courseId = await courseResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        courseId.ShouldNotBeNull();
+
+        var enrollmentResponse = await App.Client.PostAsJsonAsync(
+            "/course-enrollments",
+            new
+            {
+                clientId = client.Id,
+                courseId = courseId.Id
+            },
+            TestContext.Current.CancellationToken);
+        enrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var portalToken = await CreatePortalTokenAsync(client.Id);
+        await AuthenticatePortalAsync(portalToken);
+
+        var portalResponse = await App.Client.GetAsync("/client-portal/course-enrollments", TestContext.Current.CancellationToken);
+        portalResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var payload = await portalResponse.Content.ReadFromJsonAsync<GetCourseEnrollmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+
+        var enrollment = payload.Enrollments.ShouldHaveSingleItem();
+        enrollment.Course.Blocks.Count.ShouldBe(1);
+        enrollment.Course.Blocks[0].Title.ShouldBe("Foundation");
+        enrollment.Course.Blocks[0].Branches.Select(branch => branch.Title).ShouldBe(["Rhythm", "Melody"]);
+        enrollment.Course.Blocks[0].Branches[0].Themes.Select(theme => theme.Title).ShouldBe(["Feel the pulse", "Build a groove"]);
+        enrollment.Course.Blocks[0].Branches[1].Themes[0].DependencyThemeIds.Count.ShouldBe(1);
+        enrollment.Themes.Count.ShouldBe(3);
+    }
+
+    private async Task<string> CreatePortalTokenAsync(Ulid clientId)
+    {
+        App.Client.DefaultRequestHeaders.Authorization = null;
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        using var createLinkResponse = await App.Client.PostAsJsonAsync($"/clients/{clientId}/portal-link", new { }, TestContext.Current.CancellationToken);
+        createLinkResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var payload = await createLinkResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        return payload.Url.Split("/portal/access/").Last();
+    }
+
+    private async Task AuthenticatePortalAsync(string token)
+    {
+        App.Client.DefaultRequestHeaders.Authorization = null;
+        App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Tests/1.0");
+
+        using var consumeResponse = await App.Client.PostAsJsonAsync(
+            "/client-portal/auth/link",
+            new
+            {
+                token,
+                pin = "1234",
+                pinConfirmation = "1234"
+            },
+            TestContext.Current.CancellationToken);
+        consumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        consumePayload.ShouldNotBeNull();
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", consumePayload.AccessToken);
     }
 }

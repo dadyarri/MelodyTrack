@@ -1,5 +1,6 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
+using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -36,6 +37,11 @@ public class GetClientPortalCourseEnrollmentsEndpoint(AppDbContext db, CoursePro
             .Include(item => item.Client)
             .Include(item => item.Course)
                 .ThenInclude(item => item.Levels)
+            .Include(item => item.Course)
+                .ThenInclude(course => course.Blocks)
+                    .ThenInclude(block => block.Branches)
+                        .ThenInclude(branch => branch.Themes)
+                            .ThenInclude(theme => theme.Dependencies)
             .Include(item => item.Themes)
                 .ThenInclude(item => item.CourseTheme)
             .Where(item => item.ClientId == currentUser.LinkedClientId.Value)
@@ -54,6 +60,7 @@ public class GetClientPortalCourseEnrollmentsEndpoint(AppDbContext db, CoursePro
                 CourseId = enrollment.CourseId,
                 CourseName = enrollment.Course.Name,
                 CreatedAtUtc = enrollment.CreatedAtUtc,
+                Course = CourseResponseMapper.MapCourse(enrollment.Course),
                 CurrentLevel = courseProgressService.ResolveCurrentLevel(enrollment) is { } level
                     ? new CourseEnrollmentLevelDto
                     {

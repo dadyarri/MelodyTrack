@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Api.Courses.Responses;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 
@@ -15,6 +16,7 @@ public class CourseEnrollmentDto
     public required Ulid CourseId { get; set; }
     public required string CourseName { get; set; }
     public required DateTime CreatedAtUtc { get; set; }
+    public required CourseDto Course { get; set; }
     public CourseEnrollmentLevelDto? CurrentLevel { get; set; }
     public required int EarnedExperiencePoints { get; set; }
     public required List<CourseEnrollmentThemeDto> Themes { get; set; }
