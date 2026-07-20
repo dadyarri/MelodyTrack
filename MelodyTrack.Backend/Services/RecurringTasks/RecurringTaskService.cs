@@ -730,10 +730,29 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .Distinct()
             .ToList();
 
+        var laterAttendedAppointments = await db.Appointments
+            .AsNoTracking()
+            .Where(appointment =>
+                !appointment.IsDeleted
+                && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned)
+                && clientIds.Contains(appointment.Client.Id))
+            .Select(appointment => new
+            {
+                ClientId = appointment.Client.Id,
+                ServiceId = appointment.Service.Id,
+                appointment.StartDate
+            })
+            .ToListAsync(ct);
+
+        var priceServiceIds = serviceIds
+            .Concat(laterAttendedAppointments.Select(appointment => appointment.ServiceId))
+            .Distinct()
+            .ToList();
+
         var priceHistory = await db.ServicePriceHistory
             .AsNoTracking()
             .Include(entry => entry.Service)
-            .Where(entry => serviceIds.Contains(entry.Service.Id))
+            .Where(entry => priceServiceIds.Contains(entry.Service.Id))
             .OrderBy(entry => entry.EffectiveDate)
             .ToListAsync(ct);
 
@@ -786,6 +805,20 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 .FirstOrDefault();
 
             if (effectivePrice is null || effectivePrice.Price != 0)
+            {
+                continue;
+            }
+
+            var hasPaidAppointmentAfterTrial = laterAttendedAppointments.Any(laterAppointment =>
+                laterAppointment.ClientId == appointment.Client.Id
+                && laterAppointment.StartDate > appointment.StartDate
+                && pricesByServiceId.TryGetValue(laterAppointment.ServiceId, out var laterServicePrices)
+                && laterServicePrices
+                    .Where(entry => entry.EffectiveDate <= laterAppointment.StartDate)
+                    .OrderByDescending(entry => entry.EffectiveDate)
+                    .FirstOrDefault() is { Price: > 0 });
+
+            if (hasPaidAppointmentAfterTrial)
             {
                 continue;
             }
