@@ -14,5 +14,12 @@ public class UpdateClientRequest
     public string? Telegram { get; set; }
     public string? Phone { get; set; }
     public Ulid? SourceId { get; set; }
+    public List<ClientVacationRequest>? Vacations { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
+}
+
+public class ClientVacationRequest
+{
+    public required DateOnly StartDate { get; set; }
+    public required DateOnly EndDate { get; set; }
 }

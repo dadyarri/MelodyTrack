@@ -22,4 +22,6 @@ public class Client : BaseModel
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
     public required ClientContacts Contacts { get; set; } = new();
+
+    public List<ClientVacation> Vacations { get; set; } = [];
 }

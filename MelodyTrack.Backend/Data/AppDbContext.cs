@@ -31,6 +31,7 @@ public class AppDbContext : DbContext
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
     public DbSet<ClientSource> ClientSources { get; set; }
+    public DbSet<ClientVacation> ClientVacations { get; set; }
     public DbSet<UserWorkingHoursDay> UserWorkingHoursDays { get; set; }
     public DbSet<UserVacation> UserVacations { get; set; }
     public DbSet<UserOnboardingState> UserOnboardingStates { get; set; }
@@ -315,6 +316,12 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
+
+        modelBuilder.Entity<ClientVacation>()
+            .HasOne(item => item.Client)
+            .WithMany(item => item.Vacations)
+            .HasForeignKey(item => item.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Client>()
             .HasOne(e => e.Source)

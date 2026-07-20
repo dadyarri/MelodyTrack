@@ -55,7 +55,8 @@ public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMater
                 e.Status == AppointmentStatus.Planned &&
                 e.StartDate >= startUtc &&
                 e.StartDate < endUtc &&
-                e.EndDate > nowUtc)
+                e.EndDate > nowUtc &&
+                !e.Client.Vacations.Any(vacation => vacation.StartDate <= DateOnly.FromDateTime(e.StartDate) && vacation.EndDate >= DateOnly.FromDateTime(e.StartDate)))
             .Include(e => e.Client)
             .ThenInclude(e => e.Contacts)
             .Include(e => e.Service)
