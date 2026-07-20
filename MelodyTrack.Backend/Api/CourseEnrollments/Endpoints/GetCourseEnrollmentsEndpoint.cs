@@ -84,7 +84,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
                         RequiredExperiencePoints = level.RequiredExperiencePoints
                     }
                     : null,
-                EarnedExperiencePoints = enrollment.EarnedExperiencePoints,
+                EarnedExperiencePoints = courseProgressService.CalculateEarnedExperiencePoints(enrollment),
                 Themes = enrollment.Themes
                     .OrderBy(theme => theme.CourseTheme.Title)
                     .Select(theme => new CourseEnrollmentThemeDto
@@ -101,7 +101,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService
                         StartedAtUtc = theme.StartedAtUtc,
                         WaitingForHomeworkAtUtc = theme.WaitingForHomeworkAtUtc,
                         CompletedAtUtc = theme.CompletedAtUtc,
-                        EarnedExperiencePoints = theme.EarnedExperiencePoints,
+                        EarnedExperiencePoints = courseProgressService.CalculateEarnedExperiencePoints(theme),
                         RecentAppointments = linkedAppointments
                             .GetValueOrDefault((enrollment.ClientId, theme.CourseThemeId), [])
                             .Select(item => new CourseEnrollmentThemeAppointmentDto

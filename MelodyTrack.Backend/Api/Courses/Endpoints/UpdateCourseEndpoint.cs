@@ -229,8 +229,7 @@ public class UpdateCourseEndpoint(
                     UnlockedAtUtc = null,
                     StartedAtUtc = null,
                     WaitingForHomeworkAtUtc = null,
-                    CompletedAtUtc = null,
-                    EarnedExperiencePoints = 0
+                    CompletedAtUtc = null
                 });
             }
 

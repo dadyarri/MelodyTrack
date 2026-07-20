@@ -14,7 +14,5 @@ public class CourseEnrollment : BaseModel
 
     public required DateTime UpdatedAtUtc { get; set; }
 
-    public required int EarnedExperiencePoints { get; set; }
-
     public List<CourseEnrollmentTheme> Themes { get; set; } = [];
 }

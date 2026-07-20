@@ -21,6 +21,4 @@ public class CourseEnrollmentTheme : BaseModel
     public DateTime? WaitingForHomeworkAtUtc { get; set; }
 
     public DateTime? CompletedAtUtc { get; set; }
-
-    public required int EarnedExperiencePoints { get; set; }
 }

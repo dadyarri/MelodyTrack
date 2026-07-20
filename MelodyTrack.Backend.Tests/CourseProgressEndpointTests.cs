@@ -695,8 +695,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         var introTheme = enrollment.Themes.Single(item => item.CourseTheme.Title == "Intro to rhythm");
         introTheme.State.ShouldBe(CourseThemeProgressState.Completed);
         introTheme.CompletedAtUtc.ShouldNotBeNull();
-        introTheme.EarnedExperiencePoints.ShouldBe(3);
-        enrollment.EarnedExperiencePoints.ShouldBe(3);
 
         var countThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
 
@@ -719,7 +717,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
 
         finalEnrollment.Themes.Single(item => item.CourseTheme.Title == "Clap patterns").State.ShouldBe(CourseThemeProgressState.Unlocked);
-        finalEnrollment.EarnedExperiencePoints.ShouldBe(7);
 
         var enrollmentsResponse = await App.Client.GetAsync($"/course-enrollments?courseId={courseId}", TestContext.Current.CancellationToken);
         enrollmentsResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -728,6 +725,8 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             await enrollmentsResponse.Content.ReadFromJsonAsync<GetCourseEnrollmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
         enrollmentsPayload.ShouldNotBeNull();
         enrollmentsPayload.Enrollments.Single().CurrentLevel?.Title.ShouldBe("Ритм 2");
+        enrollmentsPayload.Enrollments.Single().EarnedExperiencePoints.ShouldBe(7);
+        enrollmentsPayload.Enrollments.Single().Themes.Single(item => item.ThemeTitle == "Intro to rhythm").EarnedExperiencePoints.ShouldBe(3);
     }
 
     [Fact]
@@ -939,7 +938,6 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         updatedIntroTheme.CourseThemeId.ShouldBe(introCourseThemeId);
         updatedIntroTheme.State.ShouldBe(CourseThemeProgressState.Completed);
         updatedIntroTheme.CourseTheme.Title.ShouldBe("Intro to rhythm updated");
-        updatedIntroTheme.EarnedExperiencePoints.ShouldBe(3);
     }
 
     [Fact]

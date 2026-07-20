@@ -119,8 +119,6 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAudit
 
                 theme.State = CourseThemeProgressState.Completed;
                 theme.CompletedAtUtc = nowUtc;
-                theme.EarnedExperiencePoints += theme.CourseTheme.ExperiencePointsReward;
-                enrollment.EarnedExperiencePoints += theme.CourseTheme.ExperiencePointsReward;
                 courseProgressService.RefreshAvailability(enrollment, nowUtc);
                 break;
 

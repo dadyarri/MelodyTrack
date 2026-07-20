@@ -5,10 +5,24 @@ namespace MelodyTrack.Backend.Services;
 
 public class CourseProgressService
 {
+    public int CalculateEarnedExperiencePoints(CourseEnrollment enrollment)
+    {
+        return enrollment.Themes.Sum(CalculateEarnedExperiencePoints);
+    }
+
+    public int CalculateEarnedExperiencePoints(CourseEnrollmentTheme theme)
+    {
+        return theme.State == CourseThemeProgressState.Completed
+            ? theme.CourseTheme.ExperiencePointsReward
+            : 0;
+    }
+
     public CourseLevel? ResolveCurrentLevel(CourseEnrollment enrollment)
     {
+        var earnedExperiencePoints = CalculateEarnedExperiencePoints(enrollment);
+
         return enrollment.Course.Levels
-            .Where(level => level.RequiredExperiencePoints <= enrollment.EarnedExperiencePoints)
+            .Where(level => level.RequiredExperiencePoints <= earnedExperiencePoints)
             .OrderBy(level => level.Order)
             .ThenBy(level => level.RequiredExperiencePoints)
             .LastOrDefault();

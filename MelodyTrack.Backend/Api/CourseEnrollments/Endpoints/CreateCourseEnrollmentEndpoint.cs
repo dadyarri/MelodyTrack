@@ -101,8 +101,7 @@ public class CreateCourseEnrollmentEndpoint(AppDbContext db, IAuditLogService au
                 Client = client,
                 Course = course,
                 CreatedAtUtc = nowUtc,
-                UpdatedAtUtc = nowUtc,
-                EarnedExperiencePoints = 0
+                UpdatedAtUtc = nowUtc
             };
 
             var themesById = course.Blocks
@@ -126,8 +125,7 @@ public class CreateCourseEnrollmentEndpoint(AppDbContext db, IAuditLogService au
                     UnlockedAtUtc = unlockedAtUtc,
                     StartedAtUtc = null,
                     WaitingForHomeworkAtUtc = null,
-                    CompletedAtUtc = null,
-                    EarnedExperiencePoints = 0
+                    CompletedAtUtc = null
                 });
             }
 

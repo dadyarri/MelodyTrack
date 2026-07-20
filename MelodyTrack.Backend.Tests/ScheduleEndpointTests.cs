@@ -283,8 +283,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Course = course,
             CourseId = course.Id,
             CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow,
-            EarnedExperiencePoints = 0
+            UpdatedAtUtc = DateTime.UtcNow
         };
 
         await db.Courses.AddAsync(course, TestContext.Current.CancellationToken);
