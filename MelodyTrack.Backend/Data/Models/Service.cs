@@ -9,4 +9,6 @@ public class Service : BaseModel
 
     [MaxLength(200)]
     public string? Description { get; set; }
+
+    public bool IsConsultation { get; set; }
 }

@@ -5,4 +5,5 @@ public class CreateServiceRequest
     public required string Name { get; set; }
     public string? Description { get; set; }
     public required decimal Price { get; set; }
+    public bool IsConsultation { get; set; }
 }

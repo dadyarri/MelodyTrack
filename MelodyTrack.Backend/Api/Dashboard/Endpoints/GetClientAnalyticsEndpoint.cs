@@ -2,6 +2,7 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -87,7 +88,8 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                 ClientId = e.Id,
                 ClientDisplayName = $"{e.LastName} {e.FirstName}".Trim(),
                 SourceName = e.Source != null ? e.Source.Name : null,
-                CreatedAtUtc = e.CreatedAtUtc
+                CreatedAtUtc = e.CreatedAtUtc,
+                IsLeadClosed = e.IsLeadClosed
             })
             .ToListAsync(ct);
 
@@ -100,9 +102,20 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                 ClientId = e.Client.Id,
                 ServiceId = e.Service.Id,
                 StartDateUtc = e.StartDate,
-                Status = e.Status
+                Status = e.Status,
+                IsConsultation = e.Service.IsConsultation
             })
             .ToListAsync(ct);
+
+        var futureRegularClientIds = await db.Appointments
+            .AsNoTracking()
+            .Where(e => !e.IsDeleted
+                        && e.Status == AppointmentStatus.Planned
+                        && e.StartDate >= rangeEndExclusiveUtc
+                        && !e.Service.IsConsultation)
+            .Select(e => e.Client.Id)
+            .Distinct()
+            .ToHashSetAsync(ct);
 
         var serviceIds = appointments.Select(e => e.ServiceId).Distinct().ToList();
         var servicePrices = await db.ServicePriceHistory
@@ -211,6 +224,11 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                     ? null
                     : (int?)(rangeEndLocal - lastAppointmentLocalDate.Value).TotalDays;
                 var hasHistoricalAppointments = clientAppointments.Count > 0;
+                var lifecycleStatus = ClientLifecycleResolver.Resolve(
+                    client.IsLeadClosed,
+                    futureRegularClientIds.Contains(client.ClientId),
+                    clientAppointments.Any(e => e.Status == AppointmentStatus.Completed && e.IsConsultation),
+                    clientAppointments.Any(e => e.Status == AppointmentStatus.Planned && e.IsConsultation));
                 var isNew = client.CreatedAtUtc >= rangeStartUtc && client.CreatedAtUtc < rangeEndExclusiveUtc;
                 var isLost = hasHistoricalAppointments
                     && !clientAppointments.Any(e => TimeZoneInfo.ConvertTimeFromUtc(e.StartDateUtc, timezone).Date >= rangeEndExclusiveLocal.AddDays(-LostClientWindowDays));
@@ -235,6 +253,7 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
                     ClientId = client.ClientId,
                     ClientDisplayName = client.ClientDisplayName,
                     SourceName = string.IsNullOrWhiteSpace(client.SourceName) ? NoSourceLabel : client.SourceName!,
+                    LifecycleStatus = lifecycleStatus,
                     LifetimeValue = lifetimeValue,
                     RevenueCountedAppointmentsCount = revenueCountedAppointmentsCount,
                     CompletedAppointmentsCount = completedAppointmentsCount,
@@ -259,14 +278,16 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             .ThenBy(e => e.ClientDisplayName)
             .ToList();
 
-        var clientsWithAnyAppointmentInPeriodCount = clientDtos.Count(e =>
+        var regularClientDtos = clientDtos.Where(e => e.LifecycleStatus == ClientLifecycleStatus.Client).ToList();
+        var regularClientIds = regularClientDtos.Select(e => e.ClientId).ToHashSet();
+        var clientsWithAnyAppointmentInPeriodCount = regularClientDtos.Count(e =>
             e.LastAppointmentAtUtc is not null
             && historicalAppointmentsByClient.GetValueOrDefault(e.ClientId, []).Any(a => a.StartDateUtc >= rangeStartUtc && a.StartDateUtc < rangeEndExclusiveUtc));
 
-        var historicalClients = clientDtos.Where(e => e.LastAppointmentAtUtc is not null).ToList();
+        var historicalClients = regularClientDtos.Where(e => e.LastAppointmentAtUtc is not null).ToList();
         var rfmClients = BuildRfmClients(clientDtos, historicalAppointmentsByClient, priceLookup, timezone, rangeStartUtc, rangeEndExclusiveUtc, rangeEndLocal);
 
-        var sourceDtos = clientDtos
+        var sourceDtos = regularClientDtos
             .GroupBy(e => e.SourceName)
             .Select(group =>
             {
@@ -300,9 +321,11 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             .ThenBy(e => e.SourceName)
             .ToList();
 
-        var retainedClientsCount = previousActiveClientIds.Count(currentActiveClientIds.Contains);
-        var lifetimeValueClientsAll = clientDtos.Where(e => e.LifetimeValue > 0m).ToList();
-        var returnedClientsCount = clientDtos.Count(e => e.IsReturned);
+        var previousRegularActiveClientIds = previousActiveClientIds.Where(regularClientIds.Contains).ToHashSet();
+        var currentRegularActiveClientIds = currentActiveClientIds.Where(regularClientIds.Contains).ToHashSet();
+        var retainedClientsCount = previousRegularActiveClientIds.Count(currentRegularActiveClientIds.Contains);
+        var lifetimeValueClientsAll = regularClientDtos.Where(e => e.LifetimeValue > 0m).ToList();
+        var returnedClientsCount = regularClientDtos.Count(e => e.IsReturned);
 
         return TypedResults.Ok(new GetClientAnalyticsResponse
         {
@@ -310,28 +333,31 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
             EndDate = rangeEndLocal,
             PreviousPeriodStartDate = previousRangeStartLocal,
             PreviousPeriodEndDate = previousRangeEndLocal,
-            TotalClientsCount = clientDtos.Count,
-            ActiveNowClientsCount = activeNowClientIds.Count,
-            InactiveClientsCount = clientDtos.Count - activeNowClientIds.Count,
-            ActiveClientsCount = currentActiveClientIds.Count,
-            PreviousPeriodActiveClientsCount = previousActiveClientIds.Count,
+            TotalClientsCount = regularClientDtos.Count,
+            LeadsCount = clientDtos.Count(e => e.LifecycleStatus == ClientLifecycleStatus.Lead),
+            ThinkingLeadsCount = clientDtos.Count(e => e.LifecycleStatus == ClientLifecycleStatus.ThinkingLead),
+            ClosedLeadsCount = clientDtos.Count(e => e.LifecycleStatus == ClientLifecycleStatus.ClosedLead),
+            ActiveNowClientsCount = activeNowClientIds.Count(regularClientIds.Contains),
+            InactiveClientsCount = regularClientDtos.Count - activeNowClientIds.Count(regularClientIds.Contains),
+            ActiveClientsCount = currentRegularActiveClientIds.Count,
+            PreviousPeriodActiveClientsCount = previousRegularActiveClientIds.Count,
             RetainedClientsCount = retainedClientsCount,
-            RetentionRate = previousActiveClientIds.Count == 0 ? null : retainedClientsCount / (decimal)previousActiveClientIds.Count * 100m,
-            NewClientsCount = clientDtos.Count(e => e.IsNew),
+            RetentionRate = previousRegularActiveClientIds.Count == 0 ? null : retainedClientsCount / (decimal)previousRegularActiveClientIds.Count * 100m,
+            NewClientsCount = regularClientDtos.Count(e => e.IsNew),
             ReturnedClientsCount = returnedClientsCount,
             ReturningClientsShare = clientsWithAnyAppointmentInPeriodCount == 0 ? null : returnedClientsCount / (decimal)clientsWithAnyAppointmentInPeriodCount * 100m,
-            LostClientsCount = clientDtos.Count(e => e.IsLost),
-            LostShare = historicalClients.Count == 0 ? null : clientDtos.Count(e => e.IsLost) / (decimal)historicalClients.Count * 100m,
-            AtRiskClientsCount = clientDtos.Count(e => e.IsAtRisk),
+            LostClientsCount = regularClientDtos.Count(e => e.IsLost),
+            LostShare = historicalClients.Count == 0 ? null : regularClientDtos.Count(e => e.IsLost) / (decimal)historicalClients.Count * 100m,
+            AtRiskClientsCount = regularClientDtos.Count(e => e.IsAtRisk),
             AverageIntervalDays = allAppointmentIntervalsDays.Count == 0 ? null : allAppointmentIntervalsDays.Average(),
             AverageLifetimeValue = lifetimeValueClientsAll.Count == 0 ? null : lifetimeValueClientsAll.Average(e => e.LifetimeValue),
             AverageClientLifetimeDays = historicalClients.Count == 0
                 ? null
                 : historicalClients.Average(e => e.LifetimeDays ?? 0m),
-            VipClientsCount = clientDtos.Count(e => e.IsVip),
-            RegularClientsCount = clientDtos.Count(e => e.IsRegular),
-            SingleTimeClientsCount = clientDtos.Count(e => e.IsSingleTime),
-            DebtorsCount = clientDtos.Count(e => e.IsDebtor),
+            VipClientsCount = regularClientDtos.Count(e => e.IsVip),
+            RegularClientsCount = regularClientDtos.Count(e => e.IsRegular),
+            SingleTimeClientsCount = regularClientDtos.Count(e => e.IsSingleTime),
+            DebtorsCount = regularClientDtos.Count(e => e.IsDebtor),
             Sources = sourceDtos,
             Clients = clientDtos,
             RfmClients = rfmClients
@@ -536,6 +562,7 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         public required string ClientDisplayName { get; set; }
         public string? SourceName { get; set; }
         public required DateTime CreatedAtUtc { get; set; }
+        public required bool IsLeadClosed { get; set; }
     }
 
     private sealed class AppointmentRow
@@ -545,6 +572,7 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         public required Ulid ServiceId { get; set; }
         public required DateTime StartDateUtc { get; set; }
         public required AppointmentStatus Status { get; set; }
+        public required bool IsConsultation { get; set; }
     }
 
     private sealed class ServicePriceRow

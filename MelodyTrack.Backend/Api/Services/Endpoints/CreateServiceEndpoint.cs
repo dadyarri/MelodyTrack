@@ -64,7 +64,8 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             {
                 Id = Ulid.NewUlid(),
                 Name = req.Name,
-                Description = req.Description
+                Description = req.Description,
+                IsConsultation = req.IsConsultation
             };
 
             var price = new ServicePrice
@@ -87,6 +88,7 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 Details = AuditDetailsFormatter.JoinChanges(
                     AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
                     AuditDetailsFormatter.DescribeContext("Описание", service.Description),
+                    AuditDetailsFormatter.DescribeContext("Консультация", service.IsConsultation ? "Да" : "Нет"),
                     AuditDetailsFormatter.DescribeContext("Цена", req.Price.ToString("0.##"))
                 )
             }, ct);
