@@ -16,6 +16,19 @@ internal static class ClientBalanceCalculator
                 price => price.EffectiveDateUtc,
                 price => price.Price));
     }
+
+    public static decimal ResolveServiceCost(
+        Ulid serviceId,
+        DateTime appointmentStartDateUtc,
+        IReadOnlyDictionary<Ulid, List<ServicePriceSnapshot>> priceLookup)
+    {
+        return DashboardPriceResolver.ResolveAppointmentPrice(
+            serviceId,
+            appointmentStartDateUtc,
+            priceLookup,
+            price => price.EffectiveDateUtc,
+            price => price.Price);
+    }
 }
 
 internal sealed record ServicePriceSnapshot(DateTime EffectiveDateUtc, decimal Price);

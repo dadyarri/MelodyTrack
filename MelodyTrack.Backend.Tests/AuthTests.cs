@@ -2822,7 +2822,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task GetClientHistory_ReturnsSummaryAndRecentActivity()
+    public async Task GetClientHistory_ReturnsSummaryAndFinancialEvents()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -2921,7 +2921,10 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
         var (rsp, res) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetClientHistoryRequest, ClientHistoryResponse>(
-            new GetClientHistoryRequest { Id = client.Id, Page = 1, PageSize = 8 });
+            new GetClientHistoryRequest { Id = client.Id, Page = 1, PageSize = 2 });
+
+        var (secondPageRsp, secondPage) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetClientHistoryRequest, ClientHistoryResponse>(
+            new GetClientHistoryRequest { Id = client.Id, Page = 2, PageSize = 2 });
 
         App.Client.DefaultRequestHeaders.Authorization = null;
 
@@ -2939,12 +2942,19 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.Summary.LastPaymentAtUtc.Value.ShouldBe(newPayment.Date, TimeSpan.FromSeconds(1));
         res.Summary.LastVisitAtUtc.Value.ShouldBe(burnedAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.Summary.NextAppointmentAtUtc.Value.ShouldBe(upcomingAppointment.StartDate, TimeSpan.FromSeconds(1));
-        res.RecentPayments.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
-        res.Appointments.Info.Page.ShouldBe(1);
-        res.Appointments.Info.PageSize.ShouldBe(8);
-        res.Appointments.Info.Total.ShouldBe(3);
-        res.Appointments.Data.Select(e => e.Id).ShouldBe([upcomingAppointment.Id, burnedAppointment.Id, completedAppointment.Id]);
-        res.Appointments.Data.Select(e => e.Status).ShouldBe(["planned", "burned", "completed"]);
+        res.Events.Info.Page.ShouldBe(1);
+        res.Events.Info.PageSize.ShouldBe(2);
+        res.Events.Info.Total.ShouldBe(4);
+        res.Events.Data.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
+        res.Events.Data.Select(e => e.Type).ShouldBe(["top_up", "top_up"]);
+        res.Events.Data.Select(e => e.Amount).ShouldBe([1200m, 900m]);
+        res.Events.Data.Select(e => e.AppointmentStatus).ShouldBe([null, null]);
+        secondPageRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
+        secondPage.Events.Info.Page.ShouldBe(2);
+        secondPage.Events.Data.Select(e => e.Id).ShouldBe([burnedAppointment.Id, completedAppointment.Id]);
+        secondPage.Events.Data.Select(e => e.Type).ShouldBe(["appointment", "appointment"]);
+        secondPage.Events.Data.Select(e => e.Amount).ShouldBe([-1500m, -1500m]);
+        secondPage.Events.Data.Select(e => e.AppointmentStatus).ShouldBe(["burned", "completed"]);
     }
 
     [Fact]
