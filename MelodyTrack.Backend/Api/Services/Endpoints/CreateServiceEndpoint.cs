@@ -64,6 +64,7 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             {
                 Id = Ulid.NewUlid(),
                 Name = req.Name,
+                PublicName = req.PublicName,
                 Description = req.Description,
                 IsConsultation = req.IsConsultation
             };

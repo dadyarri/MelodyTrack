@@ -48,7 +48,7 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             ct);
 
         if (conflict is not null
-            && (req.Name != service.Name || req.Description != service.Description || req.IsConsultation != service.IsConsultation))
+            && (req.Name != service.Name || req.PublicName != service.PublicName || req.Description != service.Description || req.IsConsultation != service.IsConsultation))
         {
             return TypedResults.Conflict(conflict);
         }
@@ -58,6 +58,7 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         var beforeIsConsultation = service.IsConsultation;
 
         service.Name = req.Name;
+        service.PublicName = req.PublicName;
         service.Description = req.Description;
         service.IsConsultation = req.IsConsultation;
 

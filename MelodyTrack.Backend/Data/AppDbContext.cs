@@ -40,6 +40,7 @@ public class AppDbContext : DbContext
     public DbSet<RecurringTaskRule> RecurringTaskRules { get; set; }
     public DbSet<RecurringTaskExecution> RecurringTaskExecutions { get; set; }
     public DbSet<CustomTask> CustomTasks { get; set; }
+    public DbSet<CalendarSubscription> CalendarSubscriptions { get; set; }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -67,6 +68,10 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(e => e.EmailBlindIndex)
             .IsUnique();
+
+        modelBuilder.Entity<CalendarSubscription>().HasIndex(e => e.Token).IsUnique();
+        modelBuilder.Entity<CalendarSubscription>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<CalendarSubscription>().HasOne(e => e.Client).WithMany().HasForeignKey(e => e.ClientId).OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.HasPostgresExtension("fuzzystrmatch");
 
