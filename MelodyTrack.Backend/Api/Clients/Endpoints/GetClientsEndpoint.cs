@@ -47,6 +47,50 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .ApplyFuzzySearchFilters(req)
             .ApplyClientFullNameSearch(req.Search);
 
+        if (req.LifecycleStatus is not null)
+        {
+            var now = DateTime.UtcNow;
+            clientsQuery = req.LifecycleStatus.Value switch
+            {
+                ClientLifecycleStatus.ClosedLead => clientsQuery.Where(client => client.IsLeadClosed),
+                ClientLifecycleStatus.Client => clientsQuery.Where(client => !client.IsLeadClosed
+                    && (client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Planned
+                        && appointment.StartDate >= now
+                        && !appointment.Service.IsConsultation)
+                        || (!client.Appointments.Any(appointment => !appointment.IsDeleted
+                            && appointment.Status == AppointmentStatus.Planned
+                            && appointment.StartDate >= now
+                            && !appointment.Service.IsConsultation)
+                            && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                                && appointment.Status == AppointmentStatus.Completed
+                                && appointment.Service.IsConsultation)
+                            && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                                && appointment.Status == AppointmentStatus.Planned
+                                && appointment.Service.IsConsultation)))),
+                ClientLifecycleStatus.ThinkingLead => clientsQuery.Where(client => !client.IsLeadClosed
+                    && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Planned
+                        && appointment.StartDate >= now
+                        && !appointment.Service.IsConsultation)
+                    && client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Completed
+                        && appointment.Service.IsConsultation)),
+                ClientLifecycleStatus.Lead => clientsQuery.Where(client => !client.IsLeadClosed
+                    && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Planned
+                        && appointment.StartDate >= now
+                        && !appointment.Service.IsConsultation)
+                    && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Completed
+                        && appointment.Service.IsConsultation)
+                    && client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && appointment.Status == AppointmentStatus.Planned
+                        && appointment.Service.IsConsultation)),
+                _ => clientsQuery
+            };
+        }
+
         var totalCount = await clientsQuery.CountAsync(ct);
 
         var clients = await clientsQuery
@@ -55,6 +99,7 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
             .ApplyPagination(req)
             .Include(e => e.Contacts)
             .Include(e => e.Source)
+            .Include(e => e.Vacations)
             .ToListAsync(ct);
 
         var clientsFacets = await clients.ToFacetsAsync(mapper, ct);

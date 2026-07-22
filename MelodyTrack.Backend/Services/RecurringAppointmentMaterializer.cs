@@ -27,6 +27,7 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
         var recurrenceRules = await db.RecurrenceRules
             .Include(rule => rule.Service)
             .Include(rule => rule.Client)
+            .ThenInclude(client => client.Vacations)
             .Include(rule => rule.Provider)
             .Include(rule => rule.RecurrenceType)
             .Where(rule => rule.StartDate <= endUtc && (rule.EndDate == null || rule.EndDate >= startUtc))
@@ -62,6 +63,12 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
         {
             foreach (var appointment in recurringAppointmentService.GetAppointmentsForRule(recurrenceRule, startUtc, endUtc))
             {
+                var appointmentDate = DateOnly.FromDateTime(appointment.StartDate);
+                if (recurrenceRule.Client.Vacations.Any(vacation => vacation.StartDate <= appointmentDate && vacation.EndDate >= appointmentDate))
+                {
+                    continue;
+                }
+
                 var key = GetKey(recurrenceRule.Id, appointment.StartDate);
                 if (!existingKeys.Add(key))
                 {

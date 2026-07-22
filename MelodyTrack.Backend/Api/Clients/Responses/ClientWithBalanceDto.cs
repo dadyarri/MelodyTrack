@@ -19,6 +19,7 @@ public partial class ClientWithBalanceDto
     public string? SourceName { get; set; }
     public DateTime? LastAppointmentAtUtc { get; set; }
     public DateTime? NextAppointmentAtUtc { get; set; }
+    public ClientLifecycleStatus LifecycleStatus { get; set; }
     public RecordActivityDto? LastActivity { get; set; }
 }
 
@@ -88,5 +89,21 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
             .OrderBy(e => e.StartDate)
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
+
+        var now = DateTime.UtcNow;
+        var hasFutureRegularAppointment = await db.Appointments.AnyAsync(e =>
+            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.StartDate >= now && !e.Service.IsConsultation,
+            cancellationToken);
+        var hasCompletedConsultation = await db.Appointments.AnyAsync(e =>
+            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Completed && e.Service.IsConsultation,
+            cancellationToken);
+        var hasPlannedConsultation = await db.Appointments.AnyAsync(e =>
+            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.Service.IsConsultation,
+            cancellationToken);
+        target.LifecycleStatus = ClientLifecycleResolver.Resolve(
+            source.IsLeadClosed,
+            hasFutureRegularAppointment,
+            hasCompletedConsultation,
+            hasPlannedConsultation);
     }
 }

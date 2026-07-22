@@ -96,6 +96,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return [];
         }
 
+        candidates = await ExcludeClientVacationCandidatesAsync(candidates, ct);
+        if (candidates.Count == 0)
+        {
+            return [];
+        }
+
         var deduplicationKeys = candidates
             .Select(candidate => candidate.DeduplicationKey)
             .Distinct()
@@ -135,7 +141,11 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (status == RecurringTaskStatus.Delayed)
         {
-            recurringQuery = recurringQuery.Where(execution => execution.DelayedUntilUtc != null && execution.DelayedUntilUtc > DateTime.UtcNow);
+            recurringQuery = recurringQuery.Where(execution =>
+                execution.DelayedUntilUtc != null
+                && execution.DelayedUntilUtc > DateTime.UtcNow
+                && (execution.ClientId == null || !execution.Client!.Vacations.Any(vacation =>
+                    vacation.StartDate <= execution.BusinessDate && vacation.EndDate >= execution.BusinessDate)));
         }
 
         var executions = status == RecurringTaskStatus.Delayed
@@ -730,10 +740,29 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .Distinct()
             .ToList();
 
+        var laterAttendedAppointments = await db.Appointments
+            .AsNoTracking()
+            .Where(appointment =>
+                !appointment.IsDeleted
+                && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned)
+                && clientIds.Contains(appointment.Client.Id))
+            .Select(appointment => new
+            {
+                ClientId = appointment.Client.Id,
+                ServiceId = appointment.Service.Id,
+                appointment.StartDate
+            })
+            .ToListAsync(ct);
+
+        var priceServiceIds = serviceIds
+            .Concat(laterAttendedAppointments.Select(appointment => appointment.ServiceId))
+            .Distinct()
+            .ToList();
+
         var priceHistory = await db.ServicePriceHistory
             .AsNoTracking()
             .Include(entry => entry.Service)
-            .Where(entry => serviceIds.Contains(entry.Service.Id))
+            .Where(entry => priceServiceIds.Contains(entry.Service.Id))
             .OrderBy(entry => entry.EffectiveDate)
             .ToListAsync(ct);
 
@@ -786,6 +815,20 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 .FirstOrDefault();
 
             if (effectivePrice is null || effectivePrice.Price != 0)
+            {
+                continue;
+            }
+
+            var hasPaidAppointmentAfterTrial = laterAttendedAppointments.Any(laterAppointment =>
+                laterAppointment.ClientId == appointment.Client.Id
+                && laterAppointment.StartDate > appointment.StartDate
+                && pricesByServiceId.TryGetValue(laterAppointment.ServiceId, out var laterServicePrices)
+                && laterServicePrices
+                    .Where(entry => entry.EffectiveDate <= laterAppointment.StartDate)
+                    .OrderByDescending(entry => entry.EffectiveDate)
+                    .FirstOrDefault() is { Price: > 0 });
+
+            if (hasPaidAppointmentAfterTrial)
             {
                 continue;
             }
@@ -1211,6 +1254,31 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         return tasks
             .Select(task => MapCustomTaskCandidate(task, timezone))
+            .ToList();
+    }
+
+    private async Task<List<RecurringTaskCandidate>> ExcludeClientVacationCandidatesAsync(
+        List<RecurringTaskCandidate> candidates,
+        CancellationToken ct)
+    {
+        var clientCandidates = candidates.Where(candidate => candidate.ClientId is not null).ToList();
+        if (clientCandidates.Count == 0)
+        {
+            return candidates;
+        }
+
+        var clientIds = clientCandidates.Select(candidate => candidate.ClientId!.Value).Distinct().ToList();
+        var vacations = await db.ClientVacations
+            .AsNoTracking()
+            .Where(vacation => clientIds.Contains(vacation.ClientId))
+            .Select(vacation => new { vacation.ClientId, vacation.StartDate, vacation.EndDate })
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(candidate => candidate.ClientId is null || !vacations.Any(vacation =>
+                vacation.ClientId == candidate.ClientId
+                && vacation.StartDate <= candidate.BusinessDate
+                && vacation.EndDate >= candidate.BusinessDate))
             .ToList();
     }
 

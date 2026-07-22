@@ -48,16 +48,19 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             ct);
 
         if (conflict is not null
-            && (req.Name != service.Name || req.Description != service.Description))
+            && (req.Name != service.Name || req.PublicName != service.PublicName || req.Description != service.Description || req.IsConsultation != service.IsConsultation))
         {
             return TypedResults.Conflict(conflict);
         }
 
         var beforeName = service.Name;
         var beforeDescription = service.Description;
+        var beforeIsConsultation = service.IsConsultation;
 
         service.Name = req.Name;
+        service.PublicName = req.PublicName;
         service.Description = req.Description;
+        service.IsConsultation = req.IsConsultation;
 
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
@@ -68,7 +71,8 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
                 AuditDetailsFormatter.DescribeChange("Название", beforeName, service.Name),
-                AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, service.Description)
+                AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, service.Description),
+                AuditDetailsFormatter.DescribeChange("Консультация", beforeIsConsultation ? "Да" : "Нет", service.IsConsultation ? "Да" : "Нет")
             )
         }, ct);
 

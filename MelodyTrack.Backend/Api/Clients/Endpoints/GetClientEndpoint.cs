@@ -37,6 +37,7 @@ public class GetClientEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapC
             .AsNoTracking()
             .Include(e => e.Contacts)
             .Include(e => e.Source)
+            .Include(e => e.Vacations)
             .FirstOrDefaultAsync(e => e.Id == req.Id, ct);
 
         if (client is null)

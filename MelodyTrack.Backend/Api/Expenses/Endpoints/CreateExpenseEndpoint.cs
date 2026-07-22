@@ -77,7 +77,7 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 Id = Ulid.NewUlid(),
                 Amount = req.Amount,
                 CategoryId = req.CategoryId,
-                Date = DateTime.UtcNow,
+                Date = req.Date.ToUniversalTime(),
                 Description = req.Description
             };
 

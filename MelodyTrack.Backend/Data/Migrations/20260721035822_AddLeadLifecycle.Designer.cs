@@ -3,6 +3,7 @@ using System;
 using MelodyTrack.Backend.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260721035822_AddLeadLifecycle")]
+    partial class AddLeadLifecycle
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -158,40 +161,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("AuditLogs");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CalendarSubscription", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<byte[]>("ClientId")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime?>("RevokedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("Token")
-                        .IsRequired()
-                        .HasMaxLength(128)
-                        .HasColumnType("character varying(128)");
-
-                    b.Property<byte[]>("UserId")
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.HasIndex("Token")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("CalendarSubscriptions");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>
@@ -867,10 +836,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
-                    b.Property<string>("PublicName")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)");
-
                     b.HasKey("Id");
 
                     b.ToTable("Services");
@@ -1132,23 +1097,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("RecurrenceType");
 
                     b.Navigation("Service");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CalendarSubscription", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
-                        .WithMany()
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
-
-                    b.Navigation("Client");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>

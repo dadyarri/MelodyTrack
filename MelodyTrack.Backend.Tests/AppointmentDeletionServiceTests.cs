@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -11,6 +12,45 @@ namespace MelodyTrack.Backend.Tests;
 public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
     : IntegrationTestBase(fixture)
 {
+    [Fact]
+    public async Task EnsureAppointmentsGeneratedAsync_SkipsClientVacationDates()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
+        var rule = await TestDataFactory.CreateDailyRuleAsync(
+            db,
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 11, 16, 23, 59, 59, DateTimeKind.Utc),
+            "Sofia",
+            "Ivanova",
+            "Piano",
+            TestContext.Current.CancellationToken);
+
+        await db.ClientVacations.AddAsync(new ClientVacation
+        {
+            Id = Ulid.NewUlid(),
+            ClientId = rule.Client.Id,
+            Client = rule.Client,
+            StartDate = new DateOnly(2025, 11, 15),
+            EndDate = new DateOnly(2025, 11, 15)
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await materializer.EnsureAppointmentsGeneratedAsync(
+            new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 11, 16, 23, 59, 59, DateTimeKind.Utc),
+            TestContext.Current.CancellationToken);
+
+        var dates = await db.Appointments
+            .Where(item => item.RecurringRule != null && item.RecurringRule.Id == rule.Id)
+            .Select(item => item.StartDate.Date)
+            .ToListAsync(TestContext.Current.CancellationToken);
+
+        dates.ShouldNotContain(new DateTime(2025, 11, 15));
+        dates.Count.ShouldBe(2);
+    }
+
     [Fact]
     public async Task DeleteAsync_SingleRecurringOccurrence_KeepsOccurrenceDeletedAfterRematerialization()
     {

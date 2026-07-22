@@ -48,6 +48,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             .Where(e => e.Id == req.Id)
             .Include(client => client.Contacts)
             .Include(client => client.Source)
+            .Include(client => client.Vacations)
             .FirstOrDefaultAsync(ct);
 
         if (client is null)
@@ -102,6 +103,21 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         client.Contacts.Vk = req.Vk;
         client.SourceId = req.SourceId;
 
+        if (req.Vacations is not null)
+        {
+            db.ClientVacations.RemoveRange(client.Vacations);
+            client.Vacations = req.Vacations
+                .Select(item => new Data.Models.ClientVacation
+                {
+                    Id = Ulid.NewUlid(),
+                    ClientId = client.Id,
+                    Client = client,
+                    StartDate = item.StartDate,
+                    EndDate = item.EndDate
+                })
+                .ToList();
+        }
+
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
@@ -117,7 +133,8 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 AuditDetailsFormatter.DescribeChange("Телефон", beforePhone, client.Contacts.Phone),
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
-                AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name)
+                AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name),
+                req.Vacations is null ? null : AuditDetailsFormatter.DescribeContext("Периодов отсутствия", client.Vacations.Count.ToString())
             )
         }, ct);
 
@@ -133,6 +150,10 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                && req.Phone == client.Contacts.Phone
                && req.Telegram == client.Contacts.Telegram
                && req.Vk == client.Contacts.Vk
-               && req.SourceId == client.SourceId;
+               && req.SourceId == client.SourceId
+               && (req.Vacations is null || client.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
+                   .Select(item => new { item.StartDate, item.EndDate })
+                   .SequenceEqual(req.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
+                       .Select(item => new { item.StartDate, item.EndDate })));
     }
 }

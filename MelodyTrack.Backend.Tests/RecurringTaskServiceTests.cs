@@ -14,6 +14,46 @@ namespace MelodyTrack.Backend.Tests;
 public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
+    public async Task TrialFollowUp_IsSuppressedAfterPaidAppointment_WhileInactiveReminderRemains()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Нина", "Орлова", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234560";
+
+        var inactiveReminderRule = await db.RecurringTaskRules.SingleAsync(
+            rule => rule.Type == RecurringTaskType.InactiveClientReminder,
+            TestContext.Current.CancellationToken);
+        inactiveReminderRule.IsEnabled = true;
+        inactiveReminderRule.CooldownDays = 7;
+
+        var trialService = await TestDataFactory.CreateServiceAsync(db, "Пробное занятие", TestContext.Current.CancellationToken);
+        var paidService = await TestDataFactory.CreateServiceAsync(db, "Регулярное занятие", TestContext.Current.CancellationToken);
+        var priceEffectiveAtUtc = DateTime.UtcNow.AddMonths(-2);
+        await db.ServicePriceHistory.AddRangeAsync(
+        [
+            new ServicePrice { Id = Ulid.NewUlid(), Service = trialService, Price = 0m, EffectiveDate = priceEffectiveAtUtc },
+            new ServicePrice { Id = Ulid.NewUlid(), Service = paidService, Price = 1_500m, EffectiveDate = priceEffectiveAtUtc }
+        ], TestContext.Current.CancellationToken);
+
+        var trialAtUtc = DateTime.UtcNow.AddDays(-36);
+        var paidAppointmentAtUtc = DateTime.UtcNow.AddDays(-30);
+        await db.Appointments.AddRangeAsync(
+        [
+            new Appointment { Id = Ulid.NewUlid(), Client = client, Service = trialService, StartDate = trialAtUtc, EndDate = trialAtUtc.AddHours(1), Status = AppointmentStatus.Completed, IsDeleted = false },
+            new Appointment { Id = Ulid.NewUlid(), Client = client, Service = paidService, StartDate = paidAppointmentAtUtc, EndDate = paidAppointmentAtUtc.AddHours(1), Status = AppointmentStatus.Completed, IsDeleted = false }
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var trialTasks = await recurringTaskService.GetTasksAsync("Europe/Moscow", RecurringTaskType.TrialFollowUp, RecurringTaskListStatus.Open, TestContext.Current.CancellationToken);
+        var inactiveTasks = await recurringTaskService.GetTasksAsync("Europe/Moscow", RecurringTaskType.InactiveClientReminder, RecurringTaskListStatus.Open, TestContext.Current.CancellationToken);
+
+        trialTasks.ShouldNotContain(task => task.ClientId == client.Id);
+        inactiveTasks.ShouldContain(task => task.ClientId == client.Id);
+    }
+
+    [Fact]
     public async Task AppointmentReminder_ReschedulingToSameDay_RegeneratesTaskWithNewDeduplicationKey()
     {
         await using var scope = App.Services.CreateAsyncScope();
