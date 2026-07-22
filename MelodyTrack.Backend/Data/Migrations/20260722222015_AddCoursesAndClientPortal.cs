@@ -6,16 +6,55 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     /// <inheritdoc />
-    public partial class AddCourseProgressFoundations : Migration
+    public partial class AddCoursesAndClientPortal : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<byte[]>(
+                name: "ClientId",
+                table: "Users",
+                type: "bytea",
+                nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "Email",
+                table: "ClientContacts",
+                type: "text",
+                nullable: true);
+
+            migrationBuilder.AddColumn<byte[]>(
                 name: "CourseThemeId",
                 table: "Appointments",
                 type: "bytea",
                 nullable: true);
+
+            migrationBuilder.AddColumn<string>(
+                name: "LessonNotes",
+                table: "Appointments",
+                type: "character varying(4000)",
+                maxLength: 4000,
+                nullable: true);
+
+            migrationBuilder.CreateTable(
+                name: "ClientPortalLoginLinks",
+                columns: table => new
+                {
+                    Id = table.Column<byte[]>(type: "bytea", nullable: false),
+                    UserId = table.Column<byte[]>(type: "bytea", nullable: false),
+                    PinCode = table.Column<string>(type: "text", nullable: true),
+                    PinSetAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_ClientPortalLoginLinks", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_ClientPortalLoginLinks_Users_UserId",
+                        column: x => x.UserId,
+                        principalTable: "Users",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
 
             migrationBuilder.CreateTable(
                 name: "Courses",
@@ -61,10 +100,7 @@ namespace MelodyTrack.Backend.Data.Migrations
                     ClientId = table.Column<byte[]>(type: "bytea", nullable: false),
                     CourseId = table.Column<byte[]>(type: "bytea", nullable: false),
                     CreatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
-                    EarnedEvolutionPoints = table.Column<int>(type: "integer", nullable: false),
-                    SpentEvolutionPoints = table.Column<int>(type: "integer", nullable: false),
-                    EarnedExperiencePoints = table.Column<int>(type: "integer", nullable: false)
+                    UpdatedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -77,6 +113,27 @@ namespace MelodyTrack.Backend.Data.Migrations
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
                         name: "FK_CourseEnrollments_Courses_CourseId",
+                        column: x => x.CourseId,
+                        principalTable: "Courses",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "CourseLevels",
+                columns: table => new
+                {
+                    Id = table.Column<byte[]>(type: "bytea", nullable: false),
+                    CourseId = table.Column<byte[]>(type: "bytea", nullable: false),
+                    Order = table.Column<int>(type: "integer", nullable: false),
+                    Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
+                    RequiredExperiencePoints = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_CourseLevels", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_CourseLevels_Courses_CourseId",
                         column: x => x.CourseId,
                         principalTable: "Courses",
                         principalColumn: "Id",
@@ -110,13 +167,12 @@ namespace MelodyTrack.Backend.Data.Migrations
                 {
                     Id = table.Column<byte[]>(type: "bytea", nullable: false),
                     BranchId = table.Column<byte[]>(type: "bytea", nullable: false),
+                    Key = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
                     Title = table.Column<string>(type: "character varying(200)", maxLength: 200, nullable: false),
                     Description = table.Column<string>(type: "character varying(4000)", maxLength: 4000, nullable: true),
                     LessonContent = table.Column<string>(type: "text", nullable: true),
                     HomeworkContent = table.Column<string>(type: "text", nullable: true),
                     Order = table.Column<int>(type: "integer", nullable: false),
-                    UnlockCostPoints = table.Column<int>(type: "integer", nullable: false),
-                    EvolutionPointsReward = table.Column<int>(type: "integer", nullable: false),
                     ExperiencePointsReward = table.Column<int>(type: "integer", nullable: false)
                 },
                 constraints: table =>
@@ -141,10 +197,7 @@ namespace MelodyTrack.Backend.Data.Migrations
                     UnlockedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     StartedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
                     WaitingForHomeworkAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    CompletedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
-                    SpentEvolutionPoints = table.Column<int>(type: "integer", nullable: false),
-                    EarnedEvolutionPoints = table.Column<int>(type: "integer", nullable: false),
-                    EarnedExperiencePoints = table.Column<int>(type: "integer", nullable: false)
+                    CompletedAtUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -188,10 +241,27 @@ namespace MelodyTrack.Backend.Data.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.InsertData(
+                table: "Roles",
+                columns: new[] { "Id", "DisplayName", "RoleName" },
+                values: new object[] { new byte[] { 1, 151, 239, 169, 226, 242, 184, 185, 113, 187, 195, 178, 83, 143, 72, 233 }, "Клиент", 8 });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Users_ClientId",
+                table: "Users",
+                column: "ClientId",
+                unique: true,
+                filter: "\"ClientId\" IS NOT NULL");
+
             migrationBuilder.CreateIndex(
                 name: "IX_Appointments_CourseThemeId",
                 table: "Appointments",
                 column: "CourseThemeId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_ClientPortalLoginLinks_UserId",
+                table: "ClientPortalLoginLinks",
+                column: "UserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_CourseBlocks_CourseId_Order",
@@ -228,6 +298,12 @@ namespace MelodyTrack.Backend.Data.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_CourseLevels_CourseId_Order",
+                table: "CourseLevels",
+                columns: new[] { "CourseId", "Order" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Courses_Name",
                 table: "Courses",
                 column: "Name");
@@ -256,6 +332,14 @@ namespace MelodyTrack.Backend.Data.Migrations
                 principalTable: "CourseThemes",
                 principalColumn: "Id",
                 onDelete: ReferentialAction.SetNull);
+
+            migrationBuilder.AddForeignKey(
+                name: "FK_Users_Clients_ClientId",
+                table: "Users",
+                column: "ClientId",
+                principalTable: "Clients",
+                principalColumn: "Id",
+                onDelete: ReferentialAction.SetNull);
         }
 
         /// <inheritdoc />
@@ -265,8 +349,18 @@ namespace MelodyTrack.Backend.Data.Migrations
                 name: "FK_Appointments_CourseThemes_CourseThemeId",
                 table: "Appointments");
 
+            migrationBuilder.DropForeignKey(
+                name: "FK_Users_Clients_ClientId",
+                table: "Users");
+
+            migrationBuilder.DropTable(
+                name: "ClientPortalLoginLinks");
+
             migrationBuilder.DropTable(
                 name: "CourseEnrollmentThemes");
+
+            migrationBuilder.DropTable(
+                name: "CourseLevels");
 
             migrationBuilder.DropTable(
                 name: "CourseThemeDependencies");
@@ -287,11 +381,32 @@ namespace MelodyTrack.Backend.Data.Migrations
                 name: "Courses");
 
             migrationBuilder.DropIndex(
+                name: "IX_Users_ClientId",
+                table: "Users");
+
+            migrationBuilder.DropIndex(
                 name: "IX_Appointments_CourseThemeId",
                 table: "Appointments");
 
+            migrationBuilder.DeleteData(
+                table: "Roles",
+                keyColumn: "Id",
+                keyValue: new byte[] { 1, 151, 239, 169, 226, 242, 184, 185, 113, 187, 195, 178, 83, 143, 72, 233 });
+
+            migrationBuilder.DropColumn(
+                name: "ClientId",
+                table: "Users");
+
+            migrationBuilder.DropColumn(
+                name: "Email",
+                table: "ClientContacts");
+
             migrationBuilder.DropColumn(
                 name: "CourseThemeId",
+                table: "Appointments");
+
+            migrationBuilder.DropColumn(
+                name: "LessonNotes",
                 table: "Appointments");
         }
     }

@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace MelodyTrack.Backend.Data.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    [Migration("20260625000100_RemoveUnusedClientPortalStoredToken")]
-    partial class RemoveUnusedClientPortalStoredToken
+    [Migration("20260722222015_AddCoursesAndClientPortal")]
+    partial class AddCoursesAndClientPortal
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -172,6 +172,40 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("AuditLogs");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CalendarSubscription", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ClientId")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Token")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)");
+
+                    b.Property<byte[]>("UserId")
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("Token")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("CalendarSubscriptions");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -191,6 +225,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
+
+                    b.Property<bool>("IsLeadClosed")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("LastName")
                         .IsRequired()
@@ -270,6 +307,28 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ClientSources");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.ToTable("ClientVacations");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
@@ -373,9 +432,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<int>("EarnedExperiencePoints")
-                        .HasColumnType("integer");
-
                     b.Property<DateTime>("UpdatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -400,9 +456,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("CourseThemeId")
                         .IsRequired()
                         .HasColumnType("bytea");
-
-                    b.Property<int>("EarnedExperiencePoints")
-                        .HasColumnType("integer");
 
                     b.Property<byte[]>("EnrollmentId")
                         .IsRequired()
@@ -1095,8 +1148,15 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
+                    b.Property<bool>("IsConsultation")
+                        .HasColumnType("boolean");
+
                     b.Property<string>("Name")
                         .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("PublicName")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)");
 
@@ -1309,7 +1369,7 @@ namespace MelodyTrack.Backend.Data.Migrations
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Appointment", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
-                        .WithMany()
+                        .WithMany("Appointments")
                         .HasForeignKey("ClientId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
@@ -1377,6 +1437,23 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Service");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CalendarSubscription", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Client");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.ClientContacts", "Contacts")
@@ -1404,6 +1481,17 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany("Vacations")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>
@@ -1718,6 +1806,13 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>
+                {
+                    b.Navigation("Appointments");
+
+                    b.Navigation("Vacations");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
