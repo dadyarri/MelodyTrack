@@ -19,9 +19,9 @@ public class RegenerateClientCalendarSubscriptionEndpoint(AppDbContext db)
 
     public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
-        var role = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
-        if (role is null) return TypedResults.Unauthorized();
-        if (!role.Value.IsAnyAdmin()) return TypedResults.Forbid();
+        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        if (currentUser is null) return TypedResults.Unauthorized();
+        if (!currentUser.Role.IsAnyAdmin() && (!currentUser.Role.IsClient() || currentUser.LinkedClientId != req.Id)) return TypedResults.Forbid();
         if (!await db.Clients.AnyAsync(e => e.Id == req.Id, ct))
         {
             AddError(e => e.Id, "Клиент не найден");
