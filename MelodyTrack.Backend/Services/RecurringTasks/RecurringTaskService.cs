@@ -96,6 +96,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return [];
         }
 
+        candidates = await ExcludeClientVacationCandidatesAsync(candidates, ct);
+        if (candidates.Count == 0)
+        {
+            return [];
+        }
+
         var deduplicationKeys = candidates
             .Select(candidate => candidate.DeduplicationKey)
             .Distinct()
@@ -135,7 +141,11 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (status == RecurringTaskStatus.Delayed)
         {
-            recurringQuery = recurringQuery.Where(execution => execution.DelayedUntilUtc != null && execution.DelayedUntilUtc > DateTime.UtcNow);
+            recurringQuery = recurringQuery.Where(execution =>
+                execution.DelayedUntilUtc != null
+                && execution.DelayedUntilUtc > DateTime.UtcNow
+                && (execution.ClientId == null || !execution.Client!.Vacations.Any(vacation =>
+                    vacation.StartDate <= execution.BusinessDate && vacation.EndDate >= execution.BusinessDate)));
         }
 
         var executions = status == RecurringTaskStatus.Delayed
@@ -1244,6 +1254,31 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         return tasks
             .Select(task => MapCustomTaskCandidate(task, timezone))
+            .ToList();
+    }
+
+    private async Task<List<RecurringTaskCandidate>> ExcludeClientVacationCandidatesAsync(
+        List<RecurringTaskCandidate> candidates,
+        CancellationToken ct)
+    {
+        var clientCandidates = candidates.Where(candidate => candidate.ClientId is not null).ToList();
+        if (clientCandidates.Count == 0)
+        {
+            return candidates;
+        }
+
+        var clientIds = clientCandidates.Select(candidate => candidate.ClientId!.Value).Distinct().ToList();
+        var vacations = await db.ClientVacations
+            .AsNoTracking()
+            .Where(vacation => clientIds.Contains(vacation.ClientId))
+            .Select(vacation => new { vacation.ClientId, vacation.StartDate, vacation.EndDate })
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(candidate => candidate.ClientId is null || !vacations.Any(vacation =>
+                vacation.ClientId == candidate.ClientId
+                && vacation.StartDate <= candidate.BusinessDate
+                && vacation.EndDate >= candidate.BusinessDate))
             .ToList();
     }
 
