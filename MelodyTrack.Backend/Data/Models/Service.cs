@@ -8,5 +8,10 @@ public class Service : BaseModel
     public required string Name { get; set; }
 
     [MaxLength(200)]
+    public string? PublicName { get; set; }
+
+    [MaxLength(200)]
     public string? Description { get; set; }
+
+    public bool IsConsultation { get; set; }
 }

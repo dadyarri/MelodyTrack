@@ -1,3 +1,5 @@
+using MelodyTrack.Backend.Data.Enums;
+
 namespace MelodyTrack.Backend.Api.Dashboard.Responses;
 
 public class GetClientAnalyticsResponse
@@ -7,6 +9,9 @@ public class GetClientAnalyticsResponse
     public required DateTime PreviousPeriodStartDate { get; set; }
     public required DateTime PreviousPeriodEndDate { get; set; }
     public required int TotalClientsCount { get; set; }
+    public required int LeadsCount { get; set; }
+    public required int ThinkingLeadsCount { get; set; }
+    public required int ClosedLeadsCount { get; set; }
     public required int ActiveNowClientsCount { get; set; }
     public required int InactiveClientsCount { get; set; }
     public required int ActiveClientsCount { get; set; }
@@ -52,6 +57,7 @@ public class ClientAnalyticsDto
     public required Ulid ClientId { get; set; }
     public required string ClientDisplayName { get; set; }
     public required string SourceName { get; set; }
+    public required ClientLifecycleStatus LifecycleStatus { get; set; }
     public required decimal LifetimeValue { get; set; }
     public required int RevenueCountedAppointmentsCount { get; set; }
     public required int CompletedAppointmentsCount { get; set; }

@@ -35,7 +35,8 @@ public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMater
             .ThenInclude(e => e!.Course)
             .Include(e => e.RecurringRule)
             .ThenInclude(e => e!.RecurrenceType)
-            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc)
+            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc
+                && !e.Client.Vacations.Any(vacation => vacation.StartDate <= DateOnly.FromDateTime(e.StartDate) && vacation.EndDate >= DateOnly.FromDateTime(e.StartDate)))
             .OrderBy(e => e.StartDate)
             .ToListAsync(ct);
 

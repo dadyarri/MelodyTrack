@@ -21,5 +21,11 @@ public class Client : BaseModel
 
     public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
 
+    public bool IsLeadClosed { get; set; }
+
     public required ClientContacts Contacts { get; set; } = new();
+
+    public List<ClientVacation> Vacations { get; set; } = [];
+
+    public List<Appointment> Appointments { get; set; } = [];
 }

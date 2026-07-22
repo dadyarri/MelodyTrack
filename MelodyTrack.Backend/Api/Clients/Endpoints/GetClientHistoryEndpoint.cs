@@ -57,50 +57,76 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
         var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
-        var recentPayments = await db.Payments
+        var sourceEventCount = req.Page * req.PageSize;
+        var paymentEvents = await db.Payments
             .AsNoTracking()
             .Where(e => e.Client.Id == client.Id)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.Id)
-            .Take(8)
-            .Select(e => new ClientHistoryPaymentDto
+            .Select(e => new ClientFinancialHistoryEventDto
             {
                 Id = e.Id,
+                Type = "top_up",
                 Amount = e.Amount,
                 Date = e.Date,
                 Description = e.Description,
                 ServiceName = e.Service != null ? e.Service.Name : null
             })
+            .Take(sourceEventCount)
             .ToListAsync(ct);
 
-        var appointmentsQuery = db.Appointments
+        var appointments = await db.Appointments
             .AsNoTracking()
-            .Where(e => e.Client.Id == client.Id && !e.IsDeleted);
-
-        var appointmentsTotalCount = await appointmentsQuery.CountAsync(ct);
-        var appointments = await appointmentsQuery
-            .Include(e => e.Service)
-            .Include(e => e.Provider)
-                .ThenInclude(e => e!.Role)
-            .Include(e => e.CourseTheme)
-            .OrderByDescending(e => e.StartDate)
-            .ThenByDescending(e => e.Id)
-            .ApplyPagination(req)
-            .Select(e => new ClientHistoryAppointmentDto
+            .Where(e => e.Client.Id == client.Id
+                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
+                        && !e.IsDeleted)
+            .Select(e => new
             {
                 Id = e.Id,
-                StartDate = e.StartDate,
-                EndDate = e.EndDate,
+                Date = e.StartDate,
+                ServiceId = e.Service.Id,
                 ServiceName = e.Service.Name,
                 ProviderDisplayName = e.Provider == null
                     ? null
                     : e.Provider.FirstName + " " + e.Provider.LastName,
-                Status = e.Status.ToApiKey(),
-                CourseThemeId = e.CourseThemeId,
-                CourseThemeTitle = e.CourseTheme != null ? e.CourseTheme.Title : null,
-                LessonNotes = e.LessonNotes
+                AppointmentStatus = e.Status.ToApiKey()
             })
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .Take(sourceEventCount)
             .ToListAsync(ct);
+
+        var serviceIds = appointments.Select(e => e.ServiceId).Distinct().ToList();
+        var priceLookup = await db.ServicePriceHistory
+            .AsNoTracking()
+            .Where(e => serviceIds.Contains(e.Service.Id))
+            .Select(e => new { ServiceId = e.Service.Id, e.EffectiveDate, e.Price })
+            .ToListAsync(ct);
+
+        var pricesByService = priceLookup
+            .GroupBy(e => e.ServiceId)
+            .ToDictionary(
+                group => group.Key,
+                group => group.Select(e => new ServicePriceSnapshot(e.EffectiveDate, e.Price)).ToList());
+
+        var appointmentEvents = appointments.Select(e => new ClientFinancialHistoryEventDto
+        {
+            Id = e.Id,
+            Type = "appointment",
+            Amount = -ClientBalanceCalculator.ResolveServiceCost(e.ServiceId, e.Date, pricesByService),
+            Date = e.Date,
+            ServiceName = e.ServiceName,
+            ProviderDisplayName = e.ProviderDisplayName,
+            AppointmentStatus = e.AppointmentStatus
+        }).ToList();
+
+        var eventPage = paymentEvents
+            .Concat(appointmentEvents)
+            .OrderByDescending(e => e.Date)
+            .ThenByDescending(e => e.Id)
+            .Skip(req.PageSize * (req.Page - 1))
+            .Take(req.PageSize)
+            .ToList();
 
         var totalPayments = await db.Payments
             .AsNoTracking()
@@ -156,8 +182,7 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
                 LastVisitAtUtc = lastVisitAtUtc,
                 NextAppointmentAtUtc = nextAppointmentAtUtc
             },
-            RecentPayments = recentPayments,
-            Appointments = PaginatedResponse.Create(appointments, appointmentsTotalCount, req)
+            Events = PaginatedResponse.Create(eventPage, paymentsCount + completedAppointmentsCount, req)
         });
     }
 }

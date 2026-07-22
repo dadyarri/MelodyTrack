@@ -4,9 +4,9 @@ using MelodyTrack.Backend.Api.Expenses.Requests;
 
 namespace MelodyTrack.Backend.Api.Expenses.Validators;
 
-public class CreateExpenseRequestValidator : Validator<CreateExpenseRequest>
+public class UpdateExpenseRequestValidator : Validator<UpdateExpenseRequest>
 {
-    public CreateExpenseRequestValidator()
+    public UpdateExpenseRequestValidator()
     {
         RuleFor(e => e.Amount)
             .GreaterThanOrEqualTo(0.01m)
