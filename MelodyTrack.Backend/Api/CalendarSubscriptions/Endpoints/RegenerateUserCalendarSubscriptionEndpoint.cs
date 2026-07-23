@@ -38,7 +38,7 @@ public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db)
         {
             Id = created.Id,
             Token = created.Token,
-            Url = $"{HttpContext.Request.Scheme}://{HttpContext.Request.Host}/calendar-subscriptions/{created.Token}.ics",
+            Url = UserUtils.GetCalendarSubscriptionUrl(created.Token),
             FeedType = "user"
         });
     }
