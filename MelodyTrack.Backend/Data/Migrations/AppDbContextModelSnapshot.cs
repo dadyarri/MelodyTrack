@@ -32,11 +32,18 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bytea");
 
+                    b.Property<byte[]>("CourseThemeId")
+                        .HasColumnType("bytea");
+
                     b.Property<DateTime>("EndDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean");
+
+                    b.Property<string>("LessonNotes")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
 
                     b.Property<byte[]>("ProviderId")
                         .HasColumnType("bytea");
@@ -57,6 +64,8 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("ClientId");
+
+                    b.HasIndex("CourseThemeId");
 
                     b.HasIndex("ProviderId");
 
@@ -243,6 +252,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
+                    b.Property<string>("Email")
+                        .HasColumnType("text");
+
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 
@@ -255,6 +267,28 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ClientContacts");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientPortalLoginLink", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("PinCode")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("PinSetAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("UserId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("ClientPortalLoginLinks");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientSource", b =>
@@ -292,6 +326,252 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasIndex("ClientId");
 
                     b.ToTable("ClientVacations");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Name");
+
+                    b.ToTable("Courses");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("CourseBlocks");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBranch", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("BlockId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("CourseBranches");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseEnrollment", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ClientId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("ClientId", "CourseId")
+                        .IsUnique();
+
+                    b.ToTable("CourseEnrollments");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseEnrollmentTheme", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("CompletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("CourseThemeId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("EnrollmentId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("StartedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UnlockedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("WaitingForHomeworkAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseThemeId");
+
+                    b.HasIndex("EnrollmentId", "CourseThemeId")
+                        .IsUnique();
+
+                    b.ToTable("CourseEnrollmentThemes");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseLevel", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("CourseId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("RequiredExperiencePoints")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CourseId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("CourseLevels");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseTheme", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("BranchId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<int>("ExperiencePointsReward")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("HomeworkContent")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)");
+
+                    b.Property<string>("LessonContent")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Order")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId", "Order")
+                        .IsUnique();
+
+                    b.ToTable("CourseThemes");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseThemeDependency", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("DependsOnThemeId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ThemeId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DependsOnThemeId");
+
+                    b.HasIndex("ThemeId", "DependsOnThemeId")
+                        .IsUnique();
+
+                    b.ToTable("CourseThemeDependencies");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CustomTask", b =>
@@ -847,6 +1127,12 @@ namespace MelodyTrack.Backend.Data.Migrations
                             Id = new byte[] { 1, 153, 237, 189, 179, 9, 105, 35, 34, 182, 33, 139, 189, 171, 222, 9 },
                             DisplayName = "Пользователь",
                             RoleName = 4
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 151, 239, 169, 226, 242, 184, 185, 113, 187, 195, 178, 83, 143, 72, 233 },
+                            DisplayName = "Клиент",
+                            RoleName = 8
                         });
                 });
 
@@ -933,6 +1219,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
+                    b.Property<byte[]>("ClientId")
+                        .HasColumnType("bytea");
+
                     b.Property<string>("Email")
                         .IsRequired()
                         .HasColumnType("text");
@@ -973,6 +1262,10 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ClientId")
+                        .IsUnique()
+                        .HasFilter("\"ClientId\" IS NOT NULL");
 
                     b.HasIndex("EmailBlindIndex")
                         .IsUnique();
@@ -1078,6 +1371,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseTheme", "CourseTheme")
+                        .WithMany()
+                        .HasForeignKey("CourseThemeId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MelodyTrack.Backend.Data.Models.User", "Provider")
                         .WithMany()
                         .HasForeignKey("ProviderId");
@@ -1093,6 +1391,8 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
+
+                    b.Navigation("CourseTheme");
 
                     b.Navigation("Provider");
 
@@ -1169,6 +1469,17 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Source");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientPortalLoginLink", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
@@ -1178,6 +1489,107 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Client");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Course", "Course")
+                        .WithMany("Blocks")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBranch", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseBlock", "Block")
+                        .WithMany("Branches")
+                        .HasForeignKey("BlockId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Block");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseEnrollment", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Course", "Course")
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseEnrollmentTheme", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseTheme", "CourseTheme")
+                        .WithMany()
+                        .HasForeignKey("CourseThemeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseEnrollment", "Enrollment")
+                        .WithMany("Themes")
+                        .HasForeignKey("EnrollmentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CourseTheme");
+
+                    b.Navigation("Enrollment");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseLevel", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Course", "Course")
+                        .WithMany("Levels")
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseTheme", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseBranch", "Branch")
+                        .WithMany("Themes")
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseThemeDependency", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseTheme", "DependsOnTheme")
+                        .WithMany("RequiredForThemes")
+                        .HasForeignKey("DependsOnThemeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.CourseTheme", "Theme")
+                        .WithMany("Dependencies")
+                        .HasForeignKey("ThemeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("DependsOnTheme");
+
+                    b.Navigation("Theme");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CustomTask", b =>
@@ -1344,11 +1756,18 @@ namespace MelodyTrack.Backend.Data.Migrations
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.User", b =>
                 {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
                     b.HasOne("MelodyTrack.Backend.Data.Models.Role", "Role")
                         .WithMany()
                         .HasForeignKey("RoleId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+
+                    b.Navigation("Client");
 
                     b.Navigation("Role");
                 });
@@ -1391,6 +1810,35 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Appointments");
 
                     b.Navigation("Vacations");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
+                {
+                    b.Navigation("Blocks");
+
+                    b.Navigation("Levels");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>
+                {
+                    b.Navigation("Branches");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBranch", b =>
+                {
+                    b.Navigation("Themes");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseEnrollment", b =>
+                {
+                    b.Navigation("Themes");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseTheme", b =>
+                {
+                    b.Navigation("Dependencies");
+
+                    b.Navigation("RequiredForThemes");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.User", b =>

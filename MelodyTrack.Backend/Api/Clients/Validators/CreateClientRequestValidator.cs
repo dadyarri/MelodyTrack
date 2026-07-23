@@ -15,5 +15,10 @@ public class CreateClientRequestValidator : Validator<CreateClientRequest>
         RuleFor(e => e.LastName)
             .NotEmpty()
             .WithMessage("Фамилия обязательна");
+
+        RuleFor(e => e.Email)
+            .EmailAddress()
+            .When(e => !string.IsNullOrWhiteSpace(e.Email))
+            .WithMessage("Укажите корректный email");
     }
 }

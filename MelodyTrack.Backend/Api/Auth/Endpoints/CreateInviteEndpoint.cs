@@ -61,6 +61,12 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
             return TypedResults.Forbid();
         }
 
+        if (role.RoleName.IsClient())
+        {
+            Logger.LogWarning("Attempt to create client portal user through generic invite flow by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
+            return TypedResults.Forbid();
+        }
+
         var code = Ulid.NewUlid();
         var inviteUrl = UserUtils.GetInviteUrl(code);
 

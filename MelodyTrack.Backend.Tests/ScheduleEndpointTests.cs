@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
 using FastEndpoints;
 using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -180,7 +181,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
                 item => item.Action == "appointment_updated" && item.EntityId == appointment.Id.ToString(),
                 TestContext.Current.CancellationToken);
 
-        auditLog.Details.ShouldBe("Клиент: Иванова Анна; Услуга: Вокал; Преподаватель: —; Начало: 2026-05-24T12:00:00.0000000Z; Статус: Запланировано → Завершено");
+        auditLog.Details.ShouldBe("Клиент: Иванова Анна; Услуга: Вокал; Преподаватель: —; Тема курса: —; Начало: 2026-05-24T12:00:00.0000000Z; Статус: Запланировано → Завершено");
     }
 
     [Fact]
@@ -222,5 +223,115 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
         appointment.RecurringRule.ShouldNotBeNull();
         appointment.RecurringRule!.EndDate.ShouldBeNull();
         appointment.RecurringRule.RecurrencePattern.ShouldBe(2 + 8);
+    }
+
+    [Fact]
+    public async Task CreateAppointment_AllowsLinkingCourseThemeAndLessonNotes()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Mira", "Tempo", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Piano lesson", TestContext.Current.CancellationToken);
+
+        var course = new Course
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Piano foundations",
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+        var block = new CourseBlock
+        {
+            Id = Ulid.NewUlid(),
+            Course = course,
+            CourseId = course.Id,
+            Title = "Block 1",
+            Order = 1
+        };
+        var branch = new CourseBranch
+        {
+            Id = Ulid.NewUlid(),
+            Block = block,
+            BlockId = block.Id,
+            Title = "Branch 1",
+            Order = 1
+        };
+        var theme = new CourseTheme
+        {
+            Id = Ulid.NewUlid(),
+            Branch = branch,
+            BranchId = branch.Id,
+            Key = "finger-warmup",
+            Title = "Finger warmup",
+            LessonContent = "Warm up each finger separately.",
+            HomeworkContent = "Repeat the warmup at home.",
+            Order = 1,
+            ExperiencePointsReward = 1
+        };
+
+        course.Blocks.Add(block);
+        block.Branches.Add(branch);
+        branch.Themes.Add(theme);
+
+        var enrollment = new CourseEnrollment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            ClientId = client.Id,
+            Course = course,
+            CourseId = course.Id,
+            CreatedAtUtc = DateTime.UtcNow,
+            UpdatedAtUtc = DateTime.UtcNow
+        };
+
+        await db.Courses.AddAsync(course, TestContext.Current.CancellationToken);
+        await db.CourseEnrollments.AddAsync(enrollment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var startDate = new DateTime(2026, 06, 03, 12, 0, 0, DateTimeKind.Utc);
+        var createResponse = await App.Client.PostAsJsonAsync(
+            "/appointments",
+            new
+            {
+                clientId = client.Id,
+                serviceId = service.Id,
+                courseThemeId = theme.Id,
+                lessonNotes = "Разобрали разминку и посадку.",
+                startDate,
+                timezone = "UTC"
+            },
+            TestContext.Current.CancellationToken);
+
+        createResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+
+        var createPayload = await createResponse.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        createPayload.ShouldNotBeNull();
+
+        db.ChangeTracker.Clear();
+
+        var appointment = await db.Appointments
+            .AsNoTracking()
+            .FirstAsync(item => item.Id == createPayload.Id, TestContext.Current.CancellationToken);
+
+        appointment.CourseThemeId.ShouldBe(theme.Id);
+        appointment.LessonNotes.ShouldBe("Разобрали разминку и посадку.");
+
+        var listResponse = await App.Client.GetAsync(
+            $"/appointments?timezone=UTC&startDate={startDate.AddDays(-1):O}&endDate={startDate.AddDays(1):O}",
+            TestContext.Current.CancellationToken);
+
+        listResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        var listPayload = await listResponse.Content.ReadFromJsonAsync<GetAppointmentsResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        listPayload.ShouldNotBeNull();
+
+        var linkedAppointment = listPayload.Appointments.Single(item => item.Id == createPayload.Id);
+        linkedAppointment.CourseTheme.ShouldNotBeNull();
+        linkedAppointment.CourseTheme.Title.ShouldBe("Finger warmup");
+        linkedAppointment.LessonNotes.ShouldBe("Разобрали разминку и посадку.");
     }
 }

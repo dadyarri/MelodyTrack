@@ -54,6 +54,9 @@ public class User : BaseModel
     /// </summary>
     public required Role Role { get; set; }
 
+    public Ulid? ClientId { get; set; }
+    public Client? Client { get; set; }
+
     /// <summary>
     ///     Determines, if user failed too much login attempts and is locked out for some time
     /// </summary>

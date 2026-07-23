@@ -48,7 +48,9 @@ public class LookupRolesEndpoint(AppDbContext db)
 
         var roles = await db.Roles
             .AsNoTracking()
-            .Where(role => user.Role.RoleName.IsSuperuser() || role.RoleName != UserRoles.Superuser)
+            .Where(role =>
+                role.RoleName != UserRoles.Client &&
+                (user.Role.RoleName.IsSuperuser() || role.RoleName != UserRoles.Superuser))
             .OrderBy(e => e.DisplayName)
             .Select(e => new LookupRolesDto
             {

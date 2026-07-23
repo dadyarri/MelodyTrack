@@ -4,6 +4,9 @@ namespace MelodyTrack.Backend.Data.Models;
 
 public class ClientContacts : BaseModel
 {
+    [EmailAddress]
+    public string? Email { get; set; }
+
     [Url]
     public string? Telegram { get; set; }
 

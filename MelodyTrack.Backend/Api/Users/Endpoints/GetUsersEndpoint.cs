@@ -39,7 +39,9 @@ public class GetUsersEndpoint(AppDbContext db, IRecordActivityService recordActi
         var users = await db.Users
             .AsNoTracking()
             .Include(e => e.Role)
-            .Where(e => user.Role.RoleName.IsSuperuser() || e.Role.RoleName != UserRoles.Superuser)
+            .Where(e =>
+                e.Role.RoleName != UserRoles.Client &&
+                (user.Role.RoleName.IsSuperuser() || e.Role.RoleName != UserRoles.Superuser))
             .OrderBy(e => e.LastName)
             .ThenBy(e => e.FirstName)
             .Select(e => new GetUsersDto

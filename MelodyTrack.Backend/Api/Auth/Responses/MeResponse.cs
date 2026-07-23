@@ -15,6 +15,9 @@ public class MeResponse
     public RecordActivityDto? LastActivity { get; set; }
     public bool IsAdmin { get; set; }
     public bool IsSuperuser { get; set; }
+    public bool IsClientPortal { get; set; }
+    public Ulid? LinkedClientId { get; set; }
+    public decimal? Balance { get; set; }
     public bool IsTwoFactorEnabled { get; set; }
     public bool IsTwoFactorRequired { get; set; }
 }
