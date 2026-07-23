@@ -7,12 +7,13 @@ using Ical.Net.Serialization;
 using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class GetCalendarSubscriptionEndpoint(AppDbContext db) : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
+public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService) : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
 {
     public override void Configure()
     {
@@ -38,6 +39,19 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db) : Ep.Req<CalendarS
             .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, $"{e.Service.Name} ({e.Client.LastName} {e.Client.FirstName})", null))
             .ToListAsync(ct);
+        var tasks = await recurringTaskService.GetTasksAsync("UTC", null, RecurringTaskListStatus.Open, ct);
+        appointments.AddRange(tasks
+            .Where(task => task.TeacherId == userId)
+            .Select(task =>
+            {
+                var startAtUtc = task.RelevantAtUtc ?? DateTime.SpecifyKind(task.BusinessDate.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
+                return new CalendarEvent(
+                    $"task-{task.RuleId}-{task.DeduplicationKey}",
+                    startAtUtc,
+                    startAtUtc.AddMinutes(15),
+                    $"{task.Title}: {task.RelatedPersonDisplayName}",
+                    null);
+            }));
         return appointments;
     }
 
@@ -66,7 +80,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db) : Ep.Req<CalendarS
         };
         foreach (var item in events.OrderBy(e => e.StartAtUtc))
         {
-            calendar.Events.Add(new IcalCalendarEvent
+            var calendarEvent = new IcalCalendarEvent
             {
                 Uid = $"{item.Id}@melodytrack",
                 DtStamp = new CalDateTime(DateTime.UtcNow),
@@ -74,7 +88,14 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db) : Ep.Req<CalendarS
                 DtEnd = new CalDateTime(item.EndAtUtc),
                 Summary = item.Summary,
                 Description = item.Description
+            };
+            calendarEvent.Alarms.Add(new Alarm
+            {
+                Action = "DISPLAY",
+                Description = item.Summary,
+                Trigger = new Trigger(-Duration.FromMinutes(15))
             });
+            calendar.Events.Add(calendarEvent);
         }
         return new CalendarSerializer().SerializeToString(calendar) ?? string.Empty;
     }
