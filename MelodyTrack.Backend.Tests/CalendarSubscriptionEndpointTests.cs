@@ -40,6 +40,7 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         App.Client.DefaultRequestHeaders.Authorization = null;
 
         createResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        subscription.Url.ShouldBe($"http://localhost:5000/calendar-subscriptions/{subscription.Token}.ics");
         var calendarResponse = await App.Client.GetAsync($"/calendar-subscriptions/{subscription.Token}.ics", TestContext.Current.CancellationToken);
         var calendar = await calendarResponse.Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
