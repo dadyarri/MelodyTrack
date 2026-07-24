@@ -125,6 +125,8 @@ try
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
     builder.Services.AddScoped<IRecurringTaskService, RecurringTaskService>();
+    builder.Services.AddScoped<IRecurringTaskCandidateService, RecurringTaskCandidateService>();
+    builder.Services.AddScoped<IRecurringTaskTransitionService, RecurringTaskTransitionService>();
     builder.Services.AddScoped<IRecurringTaskQueryService, RecurringTaskQueryService>();
     builder.Services.AddScoped<ICustomTaskTransitionService, CustomTaskTransitionService>();
     builder.Services.AddSingleton<IRecurringTaskTemplateRenderer, RecurringTaskTemplateRenderer>();
