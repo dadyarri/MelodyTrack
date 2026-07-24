@@ -114,11 +114,12 @@ The backend Dockerfile targets .NET 10 images:
 
 4. Backend maintenance — July 2026.
 
-   - Replace ad-hoc public URL construction with a single public-URL service and explicit configuration for the public API base URL.
-   - Consolidate claims parsing and current-user lookup behind one scoped accessor, then remove duplicate dashboard/task authorization helpers.
+   - ✅ Replace ad-hoc public URL construction with `IPublicUrlBuilder` and explicit `MELODY_TRACK_PUBLIC_API_BASE_URL` configuration. `MELODY_TRACK_APP_DOMAIN` remains the frontend origin; never infer a public API URL from request headers or deployment environment.
+   - 🟡 Consolidate claims parsing and current-user lookup behind scoped `ICurrentUserAccessor`. Dashboard, recurring-task, and calendar-user endpoints use it; migrate the remaining direct claim/database lookups incrementally.
    - Introduce `TimeProvider` for clock-sensitive application logic and tests.
    - Centralize idempotent-create handling; scope replay records to the caller, bind them to a request fingerprint, and retire polling-based duplicate handling.
    - Split recurring-task querying, rule evaluation, state transitions, and template rendering out of `RecurringTaskService`.
-   - Register request logging before endpoint execution and add tests for public URLs, authorization boundaries, idempotency, and clock-sensitive flows.
+   - ✅ Register request logging before endpoint execution. Keep `UseSerilogRequestLogging()` ahead of FastEndpoints middleware.
+   - Add tests for authorization boundaries, idempotency, and clock-sensitive flows.
 
    Startup migration and deployment orchestration are intentionally out of scope for this maintenance cycle.

@@ -4,12 +4,13 @@ using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
+public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -21,7 +22,7 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db)
         GetPaymentsAnalyticsRequest req,
         CancellationToken ct)
     {
-        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
 
         if (currentUser is null)
         {

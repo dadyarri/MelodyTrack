@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
+public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -22,7 +22,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         GetDashboardStatsRequest req,
         CancellationToken ct)
     {
-        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
 
         if (currentUser is null)
         {

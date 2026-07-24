@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessService entityFreshnessService, IAuditLogService auditLogService)
+public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessService entityFreshnessService, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -22,7 +22,7 @@ public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessSe
         UpdateRecurringTaskRuleRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

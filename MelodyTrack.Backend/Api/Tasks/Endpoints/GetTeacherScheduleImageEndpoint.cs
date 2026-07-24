@@ -1,12 +1,13 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class GetTeacherScheduleImageEndpoint(AppDbContext db, ITeacherScheduleImageGenerator teacherScheduleImageGenerator)
+public class GetTeacherScheduleImageEndpoint(ITeacherScheduleImageGenerator teacherScheduleImageGenerator, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetTeacherScheduleImageRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     private const string PngContentType = "image/png";
@@ -20,7 +21,7 @@ public class GetTeacherScheduleImageEndpoint(AppDbContext db, ITeacherScheduleIm
         GetTeacherScheduleImageRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

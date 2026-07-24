@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -23,7 +23,7 @@ public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLog
         CreateCustomTaskRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

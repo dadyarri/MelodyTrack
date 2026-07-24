@@ -111,6 +111,7 @@ try
     // Custom services
     builder.Services.AddUaDetector();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
+    builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();

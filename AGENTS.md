@@ -74,6 +74,8 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Fuzzy search depends on the PostgreSQL `fuzzystrmatch` extension and `[FuzzyPath]` for nested string properties.
 - DTO projection/mapping uses Facet in some response types. Prefer existing Facet patterns before adding manual duplicate DTO mapping.
 - Background jobs use Quartz with a persistent PostgreSQL store. `quartz.sql` is needed when preparing databases for Quartz tables.
+- Generate externally visible links through `IPublicUrlBuilder`. `MELODY_TRACK_APP_DOMAIN` is the frontend origin, while `MELODY_TRACK_PUBLIC_API_BASE_URL` is the externally reachable API base path.
+- For new dashboard, task, and client-portal endpoints that need the authenticated database user, inject `ICurrentUserAccessor`; do not parse claims and query the user directly in the endpoint.
 
 ## Authentication And Authorization
 
@@ -106,6 +108,11 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Do not introduce another database provider for app code; SQLite appears only as a referenced package and PostgreSQL is the configured runtime provider.
 - Avoid broad refactors in endpoint signatures, auth utilities, model relationships, or Quartz setup without tests.
 - Preserve Russian user-facing API messages unless the task explicitly asks to change localization.
+
+## Maintenance Conventions
+
+- `UseSerilogRequestLogging()` must stay before endpoint middleware so all API requests receive request timing and status logging.
+- Add focused tests when changing public URL generation or authenticated-user access; use `PublicUrlBuilderTests` and the relevant feature endpoint tests as examples.
 
 ## Safe Migration Process
 
