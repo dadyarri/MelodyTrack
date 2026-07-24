@@ -59,6 +59,7 @@ try
 
     builder.Services.AddAuthorization();
     builder.Services.AddHttpContextAccessor();
+    builder.Services.AddSingleton(startupConfiguration);
     builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
@@ -118,6 +119,7 @@ try
     builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
+    builder.Services.AddSingleton<IPublicUrlBuilder, PublicUrlBuilder>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();
     builder.Services.AddScoped<IRecurringTaskService, RecurringTaskService>();
@@ -159,6 +161,7 @@ try
 
     var app = builder.Build();
 
+    app.UseSerilogRequestLogging();
     app.UseCors("AllowFrontend");
     app.Use(async (context, next) =>
     {
@@ -245,11 +248,11 @@ try
 
         };
     });
-    app.UseSerilogRequestLogging();
     app.UseSwaggerGen();
 
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+    var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
 
     await db.Database.MigrateAsync();
     var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
@@ -312,7 +315,7 @@ try
         var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
         if (startupConfiguration.LogBootstrapSecrets)
         {
-            var url = UserUtils.GetInviteUrl(bootstrapInvite.Code);
+            var url = publicUrlBuilder.GetInviteUrl(bootstrapInvite.Code);
             Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
         }
         else

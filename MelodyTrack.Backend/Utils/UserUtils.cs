@@ -200,32 +200,6 @@ public static class UserUtils
         return sha512Totp.VerifyTotp(otp, out _, window);
     }
 
-    public static string GetInviteUrl(Ulid code)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/invite/{code}";
-    }
-
-    public static string GetResetPasswordUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/restore?code={token}";
-    }
-
-    public static string GetClientPortalAccessUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/portal/access/{token}";
-    }
-
-    public static string GetCalendarSubscriptionUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        var apiPath = environment is "Development" or "Test" ? string.Empty : "/api";
-        return $"{appDomain.TrimEnd('/')}{apiPath}/calendar-subscriptions/{token}.ics";
-    }
-
     public static string CreateClientPortalToken(Ulid clientId)
     {
         var clientIdValue = clientId.ToString();

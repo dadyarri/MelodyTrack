@@ -29,6 +29,7 @@ Startup currently requires these environment variables:
 
 - `ASPNETCORE_ENVIRONMENT`
 - `MELODY_TRACK_APP_DOMAIN`
+- `MELODY_TRACK_PUBLIC_API_BASE_URL`
 - `MELODY_TRACK_DATABASE_URL`
 - `MELODY_TRACK_JWT_SIGNING_KEY`
 
@@ -110,3 +111,14 @@ The backend Dockerfile targets .NET 10 images:
 3. Improve recurring appointment coverage.
 
    Expand recurrence tests around monthly boundaries, provider-specific recurrence, cancellation/completion behavior, and idempotent Quartz runs.
+
+4. Backend maintenance — July 2026.
+
+   - Replace ad-hoc public URL construction with a single public-URL service and explicit configuration for the public API base URL.
+   - Consolidate claims parsing and current-user lookup behind one scoped accessor, then remove duplicate dashboard/task authorization helpers.
+   - Introduce `TimeProvider` for clock-sensitive application logic and tests.
+   - Centralize idempotent-create handling; scope replay records to the caller, bind them to a request fingerprint, and retire polling-based duplicate handling.
+   - Split recurring-task querying, rule evaluation, state transitions, and template rendering out of `RecurringTaskService`.
+   - Register request logging before endpoint execution and add tests for public URLs, authorization boundaries, idempotency, and clock-sensitive flows.
+
+   Startup migration and deployment orchestration are intentionally out of scope for this maintenance cycle.

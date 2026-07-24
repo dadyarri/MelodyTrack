@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService auditLogService, IPublicUrlBuilder publicUrlBuilder)
     : Ep.Req<GetEntityRequest>.Res<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -109,7 +109,7 @@ public class CreatePasswordResetLinkEndpoint(AppDbContext db, IAuditLogService a
             $"/users/{req.Id}/password-reset-link",
             new CreatePasswordResetLinkResponse
             {
-                Url = UserUtils.GetResetPasswordUrl(token)
+                Url = publicUrlBuilder.GetResetPasswordUrl(token)
             });
     }
 }

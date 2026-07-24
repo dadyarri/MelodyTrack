@@ -37,6 +37,7 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         Environment.SetEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY", "super-secret-jwt-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY", "super-secret-pii-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
+        Environment.SetEnvironmentVariable("MELODY_TRACK_PUBLIC_API_BASE_URL", "http://localhost:5000");
     }
 
     protected override ValueTask SetupAsync()

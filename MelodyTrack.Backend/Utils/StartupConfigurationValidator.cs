@@ -13,6 +13,7 @@ public static class StartupConfigurationValidator
     {
         var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
         var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
+        var publicApiBaseUrl = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PUBLIC_API_BASE_URL");
         var logBootstrapSecrets = LoadLogBootstrapSecrets(environment);
         var jwtSigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
         var piiMasterKeyVersion = Environment.GetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY_VERSION") ?? DefaultPiiMasterKeyVersion;
@@ -22,6 +23,7 @@ public static class StartupConfigurationValidator
         var quartzSqlPath = Path.Combine(contentRootPath, "quartz.sql");
 
         ValidateAppDomain(appDomain, environment);
+        ValidatePublicApiBaseUrl(publicApiBaseUrl, environment);
         ValidateJwtSigningKey(jwtSigningKey);
         ValidatePiiMasterKeyVersion(piiMasterKeyVersion);
         ValidatePiiMasterKeys(piiMasterKeys);
@@ -31,6 +33,7 @@ public static class StartupConfigurationValidator
         {
             Environment = environment,
             AppDomain = appDomain,
+            PublicApiBaseUrl = publicApiBaseUrl,
             LogBootstrapSecrets = logBootstrapSecrets,
             JwtSigningKey = jwtSigningKey,
             PiiMasterKeyVersion = piiMasterKeyVersion,
@@ -56,6 +59,24 @@ public static class StartupConfigurationValidator
         if (!IsLocalOrTestEnvironment(environment) && uri.Scheme != Uri.UriSchemeHttps)
         {
             throw new InvalidEnvironmentVariableException("MELODY_TRACK_APP_DOMAIN", "must use https outside Development or Test");
+        }
+    }
+
+    private static void ValidatePublicApiBaseUrl(string publicApiBaseUrl, string environment)
+    {
+        if (!Uri.TryCreate(publicApiBaseUrl, UriKind.Absolute, out var uri))
+        {
+            throw new InvalidEnvironmentVariableException("MELODY_TRACK_PUBLIC_API_BASE_URL", "must be an absolute URI");
+        }
+
+        if (uri.Scheme is not ("http" or "https"))
+        {
+            throw new InvalidEnvironmentVariableException("MELODY_TRACK_PUBLIC_API_BASE_URL", "must use http or https");
+        }
+
+        if (!IsLocalOrTestEnvironment(environment) && uri.Scheme != Uri.UriSchemeHttps)
+        {
+            throw new InvalidEnvironmentVariableException("MELODY_TRACK_PUBLIC_API_BASE_URL", "must use https outside Development or Test");
         }
     }
 

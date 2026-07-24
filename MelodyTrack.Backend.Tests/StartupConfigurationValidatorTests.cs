@@ -20,6 +20,7 @@ public sealed class StartupConfigurationValidatorTests
         {
             ["ASPNETCORE_ENVIRONMENT"] = "Production",
             ["MELODY_TRACK_APP_DOMAIN"] = "http://example.com",
+            ["MELODY_TRACK_PUBLIC_API_BASE_URL"] = "https://example.com/api",
             ["MELODY_TRACK_DATABASE_URL"] = "Host=localhost;Database=test;Username=test;Password=test",
             ["MELODY_TRACK_JWT_SIGNING_KEY"] = "12345678901234567890123456789012",
             ["MELODY_TRACK_PII_MASTER_KEY"] = "12345678901234567890123456789012"
@@ -41,6 +42,7 @@ public sealed class StartupConfigurationValidatorTests
         {
             ["ASPNETCORE_ENVIRONMENT"] = "Production",
             ["MELODY_TRACK_APP_DOMAIN"] = "https://example.com",
+            ["MELODY_TRACK_PUBLIC_API_BASE_URL"] = "https://example.com/api",
             ["MELODY_TRACK_DATABASE_URL"] = "Host=localhost;Database=test;Username=test;Password=test",
             ["MELODY_TRACK_JWT_SIGNING_KEY"] = "12345678901234567890123456789012",
             ["MELODY_TRACK_PII_MASTER_KEY"] = "12345678901234567890123456789012",
@@ -61,6 +63,7 @@ public sealed class StartupConfigurationValidatorTests
         {
             ["ASPNETCORE_ENVIRONMENT"] = "Development",
             ["MELODY_TRACK_APP_DOMAIN"] = "http://localhost:5173",
+            ["MELODY_TRACK_PUBLIC_API_BASE_URL"] = "http://localhost:5000",
             ["MELODY_TRACK_DATABASE_URL"] = "Host=localhost;Database=test;Username=test;Password=test",
             ["MELODY_TRACK_JWT_SIGNING_KEY"] = "12345678901234567890123456789012",
             ["MELODY_TRACK_PII_MASTER_KEY"] = "12345678901234567890123456789012",
@@ -81,6 +84,7 @@ public sealed class StartupConfigurationValidatorTests
         {
             ["ASPNETCORE_ENVIRONMENT"] = "Production",
             ["MELODY_TRACK_APP_DOMAIN"] = "https://example.com",
+            ["MELODY_TRACK_PUBLIC_API_BASE_URL"] = "https://example.com/api",
             ["MELODY_TRACK_DATABASE_URL"] = "Host=localhost;Database=test;Username=test;Password=test",
             ["MELODY_TRACK_JWT_SIGNING_KEY"] = "12345678901234567890123456789012",
             ["MELODY_TRACK_PII_MASTER_KEY"] = "12345678901234567890123456789012",

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService auditLogService, IPublicUrlBuilder publicUrlBuilder)
     : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
 {
     public override void Configure()
@@ -141,7 +141,7 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
             $"/clients/{client.Id}/portal-link",
             new CreateClientPortalLinkResponse
             {
-                Url = UserUtils.GetClientPortalAccessUrl(persistentToken)
+                Url = publicUrlBuilder.GetClientPortalAccessUrl(persistentToken)
             });
     }
 

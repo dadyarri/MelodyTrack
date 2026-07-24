@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogService, IPublicUrlBuilder publicUrlBuilder)
     : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
 {
     public override void Configure()
@@ -68,7 +68,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         }
 
         var code = Ulid.NewUlid();
-        var inviteUrl = UserUtils.GetInviteUrl(code);
+        var inviteUrl = publicUrlBuilder.GetInviteUrl(code);
 
         var invite = new InviteCode
         {

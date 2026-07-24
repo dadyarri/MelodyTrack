@@ -6,13 +6,14 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class RegenerateClientCalendarSubscriptionEndpoint(AppDbContext db)
+public class RegenerateClientCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure() => Post("/calendar-subscriptions/clients/{id}/regenerate");
@@ -37,7 +38,7 @@ public class RegenerateClientCalendarSubscriptionEndpoint(AppDbContext db)
         {
             Id = created.Id,
             Token = created.Token,
-            Url = UserUtils.GetCalendarSubscriptionUrl(created.Token),
+            Url = publicUrlBuilder.GetCalendarSubscriptionUrl(created.Token),
             FeedType = "client"
         });
     }
