@@ -72,7 +72,7 @@ Current verified state:
 
 - `dotnet restore MelodyTrack.slnx -v minimal` passes.
 - Project-level builds pass with zero warnings.
-- `dotnet test MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj --no-build` passes: 59 tests.
+- `dotnet test MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj --no-build` passes: 241 tests.
 
 ## Deployment
 
@@ -108,9 +108,9 @@ The backend Dockerfile targets .NET 10 images:
    - ✅ Confirm `/users` remains admin-only.
    - ✅ Confirm payments, expenses, and schedule endpoints remain authenticated staff-facing operations after review; no extra role gate added.
 
-3. Improve recurring appointment coverage.
+3. ✅ Improve recurring appointment coverage.
 
-   Expand recurrence tests around monthly boundaries, provider-specific recurrence, cancellation/completion behavior, and idempotent Quartz runs.
+   Recurrence tests now cover month and leap-day boundaries, provider propagation, update/deletion scopes, vacation suppression, completed/deleted occurrence persistence after rematerialization, and duplicate prevention across repeated or overlapping materializer runs. The Quartz job delegates recurrence creation to this idempotent materializer.
 
 4. Backend maintenance — July 2026.
 
@@ -120,6 +120,6 @@ The backend Dockerfile targets .NET 10 images:
    - ✅ Centralize idempotent-create handling in `IRequestReplayService`. Replay records are scoped by endpoint, authenticated caller, and key; SHA-256 request fingerprints reject key reuse for a different payload. PostgreSQL `INSERT ... ON CONFLICT DO NOTHING` coordinates concurrent requests inside the entity transaction, replacing endpoint-specific unique-violation catches and polling loops. The schema migration intentionally clears legacy replay transport state because old rows cannot be safely attributed or fingerprinted.
    - ✅ Split recurring-task querying, rule evaluation, state transitions, and template rendering out of `RecurringTaskService`. The service is now a thin orchestrator over dedicated candidate/rule evaluation, processed-query, recurring-transition, custom-transition, template-rendering, and presentation-mapping components.
    - ✅ Register request logging before endpoint execution. Keep `UseSerilogRequestLogging()` ahead of FastEndpoints middleware.
-   - Add tests for authorization boundaries, idempotency, and clock-sensitive flows.
+   - ✅ Add tests for authorization boundaries, idempotency, and clock-sensitive flows. Integration coverage exercises role boundaries across staff endpoints and replay isolation, payload conflicts, completed-response replay, and concurrent coalescing. Fixed-clock coverage verifies clock-derived entity timestamps.
 
    Startup migration and deployment orchestration are intentionally out of scope for this maintenance cycle.

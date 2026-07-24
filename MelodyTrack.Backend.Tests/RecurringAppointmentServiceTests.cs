@@ -342,6 +342,24 @@ public class RecurringAppointmentServiceTests
     }
 
     [Fact]
+    public void GenerateMonthlyAppointments_LeapDay_OnlyCreatesOccurrenceInLeapYear()
+    {
+        var now = new DateTime(2024, 2, 23, 10, 0, 0, DateTimeKind.Utc);
+        var ruleStartTime = new DateTime(2024, 1, 29, 14, 0, 0, DateTimeKind.Utc);
+        var rule = CreateRule(AppointmentRecurrenceType.Monthly, ruleStartTime, null, 29);
+
+        var appointments = _service.GetAppointmentsForRule(rule, now).ToList();
+
+        appointments.ShouldHaveSingleItem();
+        appointments[0].StartDate.ShouldBe(new DateTime(2024, 2, 29, 14, 0, 0, DateTimeKind.Utc));
+
+        var nonLeapYearAppointments = _service
+            .GetAppointmentsForRule(rule, new DateTime(2025, 2, 23, 10, 0, 0, DateTimeKind.Utc))
+            .ToList();
+        nonLeapYearAppointments.ShouldBeEmpty();
+    }
+
+    [Fact]
     public void GenerateMonthlyAppointments_WithEndDate_StopsAtEndDate()
     {
         // Arrange
@@ -402,6 +420,23 @@ public class RecurringAppointmentServiceTests
             apt.StartDate.ShouldBeLessThan(apt.EndDate);
             apt.EndDate.ShouldBe(apt.StartDate.AddHours(1));
         }
+    }
+
+    [Fact]
+    public void GetAppointmentsForRule_PreservesAssignedProvider()
+    {
+        var provider = (User)System.Runtime.CompilerServices.RuntimeHelpers.GetUninitializedObject(typeof(User));
+        provider.Id = Ulid.NewUlid();
+        var now = new DateTime(2025, 11, 14, 10, 0, 0, DateTimeKind.Utc);
+        var rule = CreateRule(
+            AppointmentRecurrenceType.Daily,
+            new DateTime(2025, 11, 14, 14, 0, 0, DateTimeKind.Utc));
+        rule.Provider = provider;
+
+        var appointments = _service.GetAppointmentsForRule(rule, now).ToList();
+
+        appointments.ShouldNotBeEmpty();
+        appointments.ShouldAllBe(appointment => appointment.Provider == provider);
     }
 
     [Fact]
