@@ -12,7 +12,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService auditLogService, IPublicUrlBuilder publicUrlBuilder)
+public class CreateClientPortalLinkEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IPublicUrlBuilder publicUrlBuilder,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
 {
     public override void Configure()
@@ -24,13 +28,13 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsAnyAdmin())
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
         {
             return TypedResults.Forbid();
         }

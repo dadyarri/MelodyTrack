@@ -1,17 +1,19 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService, IRecordActivityService recordActivityService)
+public class GetUsersAvailabilityEndpoint(
+    AppDbContext db,
+    IUserAvailabilityService userAvailabilityService,
+    IRecordActivityService recordActivityService,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -21,18 +23,7 @@ public class GetUsersAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServ
 
     public override async Task<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var login = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-        if (login is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .AsNoTracking()
-            .WhereEmailMatches(login)
-            .Include(user => user.Role)
-            .FirstOrDefaultAsync(ct);
-
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null || !currentUser.Role.RoleName.IsAnyAdmin())
         {
             return TypedResults.Forbid();

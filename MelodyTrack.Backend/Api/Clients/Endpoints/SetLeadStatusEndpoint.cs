@@ -9,14 +9,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class SetLeadStatusEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class SetLeadStatusEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService)
     : Ep.Req<SetLeadStatusRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure() => Patch("/clients/{id}/lead-status");
 
     public override async Task<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(SetLeadStatusRequest req, CancellationToken ct)
     {
-        var role = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var role = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (role is null) return TypedResults.Unauthorized();
         if (!role.Value.IsAnyAdmin()) return TypedResults.Forbid();
 

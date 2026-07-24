@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.ClientSources.Endpoints;
 
 public class CreateClientSourceEndpoint(
-    AppDbContext db,
+    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
     IAuditLogService auditLogService,
     IRequestReplayService requestReplayService)
     : Ep.Req<CreateClientSourceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
@@ -28,7 +28,7 @@ public class CreateClientSourceEndpoint(
         CreateClientSourceRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

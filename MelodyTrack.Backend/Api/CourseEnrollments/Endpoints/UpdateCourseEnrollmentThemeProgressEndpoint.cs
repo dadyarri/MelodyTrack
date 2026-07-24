@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
 public class UpdateCourseEnrollmentThemeProgressEndpoint(
-    AppDbContext db,
+    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
     IAuditLogService auditLogService,
     CourseProgressService courseProgressService,
     TimeProvider timeProvider)
@@ -24,7 +24,7 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(
         UpdateCourseEnrollmentThemeProgressRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

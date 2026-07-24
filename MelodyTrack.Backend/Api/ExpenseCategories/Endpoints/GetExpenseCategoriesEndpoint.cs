@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ExpenseCategories.Endpoints;
 
-public class GetExpenseCategoriesEndpoint(AppDbContext db, IRecordActivityService recordActivityService)
+public class GetExpenseCategoriesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService)
     : Ep.NoReq.Res<Results<Ok<GetExpenseCategoriesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -20,7 +20,7 @@ public class GetExpenseCategoriesEndpoint(AppDbContext db, IRecordActivityServic
 
     public override async Task<Results<Ok<GetExpenseCategoriesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

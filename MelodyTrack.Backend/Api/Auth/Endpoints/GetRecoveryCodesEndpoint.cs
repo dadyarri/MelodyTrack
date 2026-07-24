@@ -1,15 +1,14 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetRecoveryCodesEndpoint(AppDbContext db)
+public class GetRecoveryCodesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -19,19 +18,10 @@ public class GetRecoveryCodesEndpoint(AppDbContext db)
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            Logger.LogWarning("Recovery codes list request without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes list request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email));
+            Logger.LogWarning("Recovery codes list request without a current user");
             return TypedResults.Unauthorized();
         }
 

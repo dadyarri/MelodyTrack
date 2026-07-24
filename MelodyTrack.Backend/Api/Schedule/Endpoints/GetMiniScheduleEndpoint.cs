@@ -1,11 +1,9 @@
 using System.Globalization;
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -17,7 +15,8 @@ public class GetMiniScheduleEndpoint(
     AppDbContext db,
     IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
     IRecordActivityService recordActivityService,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -27,18 +26,7 @@ public class GetMiniScheduleEndpoint(
 
     public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .AsNoTracking()
-            .WhereEmailMatches(email)
-            .FirstOrDefaultAsync(ct);
-
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
 public class CreateCourseEnrollmentEndpoint(
-    AppDbContext db,
+    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
     IAuditLogService auditLogService,
     IRequestReplayService requestReplayService,
     TimeProvider timeProvider)
@@ -28,7 +28,7 @@ public class CreateCourseEnrollmentEndpoint(
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> ExecuteAsync(
         CreateCourseEnrollmentRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

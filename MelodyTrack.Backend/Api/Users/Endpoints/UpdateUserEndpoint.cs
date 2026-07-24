@@ -1,10 +1,8 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -12,7 +10,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class UpdateUserEndpoint(AppDbContext db, IEntityFreshnessService entityFreshnessService, IAuditLogService auditLogService)
+public class UpdateUserEndpoint(
+    AppDbContext db,
+    IEntityFreshnessService entityFreshnessService,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<UpdateUserRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -24,17 +26,7 @@ public class UpdateUserEndpoint(AppDbContext db, IEntityFreshnessService entityF
         UpdateUserRequest req,
         CancellationToken ct)
     {
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-        if (login is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .Include(user => user.Role)
-            .WhereEmailMatches(login)
-            .FirstOrDefaultAsync(ct);
-
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

@@ -1,17 +1,19 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityService userAvailabilityService, IRecordActivityService recordActivityService)
+public class GetUserAvailabilityEndpoint(
+    AppDbContext db,
+    IUserAvailabilityService userAvailabilityService,
+    IRecordActivityService recordActivityService,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -21,18 +23,7 @@ public class GetUserAvailabilityEndpoint(AppDbContext db, IUserAvailabilityServi
 
     public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
     {
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-        if (login is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .AsNoTracking()
-            .Include(user => user.Role)
-            .WhereEmailMatches(login)
-            .FirstOrDefaultAsync(ct);
-
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

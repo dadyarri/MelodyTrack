@@ -1,16 +1,15 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Onboarding.Requests;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider timeProvider)
+public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider timeProvider, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<UpdateOnboardingProgressRequest>.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -20,22 +19,13 @@ public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider time
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(UpdateOnboardingProgressRequest req, CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-        if (email is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users
-            .Include(e => e.OnboardingState)
-            .WhereEmailMatches(email)
-            .FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
             return TypedResults.Unauthorized();
         }
 
+        await db.Entry(user).Reference(item => item.OnboardingState).LoadAsync(ct);
         var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user, timeProvider);
         if (user.OnboardingState is null)
         {

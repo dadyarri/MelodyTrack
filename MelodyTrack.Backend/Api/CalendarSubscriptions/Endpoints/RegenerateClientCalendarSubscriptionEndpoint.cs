@@ -13,16 +13,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class RegenerateClientCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, TimeProvider timeProvider)
+public class RegenerateClientCalendarSubscriptionEndpoint(
+    AppDbContext db,
+    IPublicUrlBuilder publicUrlBuilder,
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure() => Post("/calendar-subscriptions/clients/{id}/regenerate");
 
     public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null) return TypedResults.Unauthorized();
-        if (!currentUser.Role.IsAnyAdmin() && (!currentUser.Role.IsClient() || currentUser.LinkedClientId != req.Id)) return TypedResults.Forbid();
+        if (!currentUser.Role.RoleName.IsAnyAdmin() && (!currentUser.Role.RoleName.IsClient() || currentUser.ClientId != req.Id)) return TypedResults.Forbid();
         if (!await db.Clients.AnyAsync(e => e.Id == req.Id, ct))
         {
             AddError(e => e.Id, "Клиент не найден");

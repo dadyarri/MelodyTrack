@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Users.Responses;
@@ -6,7 +5,6 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -18,7 +16,8 @@ public class CreatePasswordResetLinkEndpoint(
     AppDbContext db,
     IAuditLogService auditLogService,
     IPublicUrlBuilder publicUrlBuilder,
-    TimeProvider timeProvider)
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -30,23 +29,10 @@ public class CreatePasswordResetLinkEndpoint(
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-
-        if (login is null)
-        {
-            Logger.LogWarning("Password reset link creation attempt without valid email claim");
-            return TypedResults.Unauthorized();
-        }
-
-        var caller = await db.Users
-            .AsNoTracking()
-            .Include(u => u.Role)
-            .WhereEmailMatches(login)
-            .FirstOrDefaultAsync(ct);
-
+        var caller = await currentUserAccessor.GetAsync(ct);
         if (caller is null)
         {
-            Logger.LogWarning("Password reset link creation attempt for non-existent caller {EmailRef}", UserUtils.DescribeEmailForLogs(login));
+            Logger.LogWarning("Password reset link creation attempt without a current user");
             return TypedResults.Unauthorized();
         }
 

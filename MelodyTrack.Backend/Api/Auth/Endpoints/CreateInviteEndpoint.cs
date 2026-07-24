@@ -1,11 +1,9 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,7 +11,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogService, IPublicUrlBuilder publicUrlBuilder, TimeProvider timeProvider)
+public class CreateInviteEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IPublicUrlBuilder publicUrlBuilder,
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
 {
     public override void Configure()
@@ -25,23 +28,11 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         CreateInviteRequest req, CancellationToken ct)
     {
         var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-
-        if (login is null)
-        {
-            Logger.LogWarning("Invite creation attempt without valid email claim");
-            return TypedResults.Forbid();
-        }
-
-        var caller = await db.Users
-            .AsNoTracking()
-            .Include(u => u.Role)
-            .WhereEmailMatches(login.Value)
-            .FirstOrDefaultAsync(ct);
+        var caller = await currentUserAccessor.GetAsync(ct);
 
         if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Invite creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(login.Value));
+            Logger.LogWarning("Invite creation attempt without admin access");
             return TypedResults.Forbid();
         }
 

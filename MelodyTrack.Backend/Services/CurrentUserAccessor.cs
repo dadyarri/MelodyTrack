@@ -9,21 +9,43 @@ namespace MelodyTrack.Backend.Services;
 
 public interface ICurrentUserAccessor
 {
+    string? Email { get; }
+    Ulid? SessionId { get; }
     Task<User?> GetAsync(CancellationToken ct);
 }
 
 public sealed class CurrentUserAccessor(IHttpContextAccessor httpContextAccessor, AppDbContext db) : ICurrentUserAccessor
 {
-    public async Task<User?> GetAsync(CancellationToken ct)
+    private Task<User?>? _currentUserTask;
+
+    public string? Email =>
+        httpContextAccessor.HttpContext?.User.Claims
+            .FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
+
+    public Ulid? SessionId
     {
-        var email = httpContextAccessor.HttpContext?.User.Claims.FirstOrDefault(e => e.Type == ClaimTypes.Name)?.Value;
+        get
+        {
+            var sessionId = httpContextAccessor.HttpContext?.User.Claims
+                .FirstOrDefault(claim => claim.Type == ClaimTypes.Sid)?.Value;
+            return Ulid.TryParse(sessionId, out var parsed) ? parsed : null;
+        }
+    }
+
+    public Task<User?> GetAsync(CancellationToken ct)
+    {
+        return _currentUserTask ??= LoadAsync(ct);
+    }
+
+    private async Task<User?> LoadAsync(CancellationToken ct)
+    {
+        var email = Email;
         if (string.IsNullOrWhiteSpace(email))
         {
             return null;
         }
 
         return await db.Users
-            .AsNoTracking()
             .Include(user => user.Role)
             .WhereEmailMatches(email)
             .FirstOrDefaultAsync(ct);

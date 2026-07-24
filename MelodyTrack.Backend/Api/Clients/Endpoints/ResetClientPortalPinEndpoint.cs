@@ -10,7 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class ResetClientPortalPinEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -22,13 +25,13 @@ public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService audi
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsAnyAdmin())
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
         {
             return TypedResults.Forbid();
         }

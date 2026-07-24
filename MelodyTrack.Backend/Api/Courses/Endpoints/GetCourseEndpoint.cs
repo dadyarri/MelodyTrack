@@ -3,13 +3,14 @@ using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class GetCourseEndpoint(AppDbContext db)
+public class GetCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<GetCourseResponse>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -20,7 +21,7 @@ public class GetCourseEndpoint(AppDbContext db)
     public override async Task<Results<Ok<GetCourseResponse>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
         GetEntityRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

@@ -1,9 +1,7 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -11,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -23,22 +21,10 @@ public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogSer
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            Logger.LogWarning("Session revoke attempt without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users
-            .AsNoTracking()
-            .WhereEmailMatches(email)
-            .FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Session revoke attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email));
+            Logger.LogWarning("Session revoke attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
@@ -55,7 +41,7 @@ public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 StatusCodes.Status404NotFound));
         }
 
-        Logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(email), req.Id);
+        Logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(user.Email), req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

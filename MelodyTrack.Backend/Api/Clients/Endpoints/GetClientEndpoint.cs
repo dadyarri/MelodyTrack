@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
+public class GetClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>>
 {
     public override void Configure()
@@ -21,7 +21,7 @@ public class GetClientEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapC
 
     public override async Task<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

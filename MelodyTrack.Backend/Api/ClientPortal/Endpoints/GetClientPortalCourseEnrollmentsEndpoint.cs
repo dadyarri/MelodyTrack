@@ -10,7 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class GetClientPortalCourseEnrollmentsEndpoint(AppDbContext db, CourseProgressService courseProgressService)
+public class GetClientPortalCourseEnrollmentsEndpoint(
+    AppDbContext db,
+    CourseProgressService courseProgressService,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -20,13 +23,13 @@ public class GetClientPortalCourseEnrollmentsEndpoint(AppDbContext db, CoursePro
 
     public override async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsClient() || currentUser.LinkedClientId is null)
+        if (!currentUser.Role.RoleName.IsClient() || currentUser.ClientId is null)
         {
             return TypedResults.Forbid();
         }
@@ -44,11 +47,11 @@ public class GetClientPortalCourseEnrollmentsEndpoint(AppDbContext db, CoursePro
                             .ThenInclude(theme => theme.Dependencies)
             .Include(item => item.Themes)
                 .ThenInclude(item => item.CourseTheme)
-            .Where(item => item.ClientId == currentUser.LinkedClientId.Value)
+            .Where(item => item.ClientId == currentUser.ClientId.Value)
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(ct);
 
-        var linkedAppointments = await LoadLinkedAppointmentsAsync(currentUser.LinkedClientId.Value, enrollments, ct);
+        var linkedAppointments = await LoadLinkedAppointmentsAsync(currentUser.ClientId.Value, enrollments, ct);
 
         return TypedResults.Ok(new GetCourseEnrollmentsResponse
         {

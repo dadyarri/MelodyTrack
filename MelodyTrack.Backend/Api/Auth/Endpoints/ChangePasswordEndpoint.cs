@@ -1,8 +1,6 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<ChangePasswordRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -20,19 +18,11 @@ public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogSe
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(ChangePasswordRequest req, CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            Logger.LogWarning("Password change request without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users.WhereEmailMatches(email).FirstOrDefaultAsync(ct);
+        var user = await currentUserAccessor.GetAsync(ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.CurrentPassword))
         {
-            Logger.LogWarning("Password change failed for {EmailRef}: invalid current password", UserUtils.DescribeEmailForLogs(email));
+            Logger.LogWarning("Password change failed for current user: invalid current password");
             return TypedResults.Unauthorized();
         }
 
@@ -44,7 +34,7 @@ public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogSe
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
-        Logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(email));
+        Logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

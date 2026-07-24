@@ -1,8 +1,5 @@
-using System.Security.Claims;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Extensions;
-using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services;
 
@@ -23,7 +20,11 @@ public interface IAuditLogService
     Task WriteAsync(AuditLogWriteRequest request, CancellationToken ct);
 }
 
-public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAccessor, TimeProvider timeProvider) : IAuditLogService
+public class AuditLogService(
+    AppDbContext db,
+    IHttpContextAccessor httpContextAccessor,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider) : IAuditLogService
 {
     public async Task WriteAsync(AuditLogWriteRequest request, CancellationToken ct)
     {
@@ -34,23 +35,11 @@ public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAc
 
         if (actorUserId is null && string.IsNullOrWhiteSpace(actorEmail))
         {
-            var email = httpContextAccessor.HttpContext?.User.Claims
-                .FirstOrDefault(claim => claim.Type == ClaimTypes.Name)
-                ?.Value;
+            var email = currentUserAccessor.Email;
 
             if (!string.IsNullOrWhiteSpace(email))
             {
-                var actor = await db.Users
-                    .AsNoTracking()
-                    .WhereEmailMatches(email)
-                    .Select(user => new
-                    {
-                        user.Id,
-                        user.Email,
-                        user.FirstName,
-                        user.LastName
-                    })
-                    .FirstOrDefaultAsync(ct);
+                var actor = await currentUserAccessor.GetAsync(ct);
 
                 if (actor is not null)
                 {
