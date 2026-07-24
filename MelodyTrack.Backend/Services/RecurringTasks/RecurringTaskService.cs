@@ -39,7 +39,13 @@ public sealed class RecurringTaskActionResult
         };
 }
 
-public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider) : IRecurringTaskService
+public class RecurringTaskService(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    TimeProvider timeProvider,
+    IRecurringTaskTemplateRenderer templateRenderer,
+    IRecurringTaskQueryService queryService,
+    ICustomTaskTransitionService customTaskTransitions) : IRecurringTaskService
 {
     private DateTime UtcNow => timeProvider.GetUtcNow().UtcDateTime;
 
@@ -48,9 +54,9 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         return status switch
         {
             RecurringTaskListStatus.Open => await GetOpenTasksAsync(timezone, filterType, ct),
-            RecurringTaskListStatus.Completed => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Completed, ct),
-            RecurringTaskListStatus.Cancelled => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Cancelled, ct),
-            RecurringTaskListStatus.Delayed => await GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Delayed, ct),
+            RecurringTaskListStatus.Completed => await queryService.GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Completed, ct),
+            RecurringTaskListStatus.Cancelled => await queryService.GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Cancelled, ct),
+            RecurringTaskListStatus.Delayed => await queryService.GetProcessedTasksAsync(timezone, filterType, RecurringTaskStatus.Delayed, ct),
             _ => []
         };
     }
@@ -121,56 +127,8 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .Where(candidate => !handledKeys.Contains(candidate.DeduplicationKey, StringComparer.Ordinal))
             .OrderBy(candidate => candidate.SortAtUtc)
             .ThenBy(candidate => candidate.Title)
-            .Select(MapCandidate)
+            .Select(RecurringTaskPresentationMapper.MapCandidate)
             .ToList();
-    }
-
-    private async Task<List<RecurringTaskDto>> GetProcessedTasksAsync(string timezone, RecurringTaskType? filterType, RecurringTaskStatus status, CancellationToken ct)
-    {
-        var recurringQuery = db.RecurringTaskExecutions
-            .AsNoTracking()
-            .Include(execution => execution.Rule)
-            .Include(execution => execution.Client)
-            .ThenInclude(client => client!.Contacts)
-            .Include(execution => execution.Teacher)
-            .Include(execution => execution.Appointment)
-            .Where(execution => execution.Status == status);
-
-        if (filterType is { } type)
-        {
-            recurringQuery = recurringQuery.Where(execution => execution.Rule.Type == type);
-        }
-
-        if (status == RecurringTaskStatus.Delayed)
-        {
-            recurringQuery = recurringQuery.Where(execution =>
-                execution.DelayedUntilUtc != null
-                && execution.DelayedUntilUtc > UtcNow
-                && (execution.ClientId == null || !execution.Client!.Vacations.Any(vacation =>
-                    vacation.StartDate <= execution.BusinessDate && vacation.EndDate >= execution.BusinessDate)));
-        }
-
-        var executions = status == RecurringTaskStatus.Delayed
-            ? await recurringQuery
-                .OrderBy(execution => execution.DelayedUntilUtc)
-                .ThenBy(execution => execution.CreatedAtUtc)
-                .ToListAsync(ct)
-            : await recurringQuery
-                .OrderByDescending(execution => execution.CompletedAtUtc ?? execution.CancelledAtUtc ?? execution.DelayedAtUtc ?? execution.CreatedAtUtc)
-                .ToListAsync(ct);
-
-        var tasks = executions
-            .Select(MapExecution)
-            .ToList();
-
-        if (filterType is null or RecurringTaskType.CustomTask)
-        {
-            tasks.AddRange(await GetProcessedCustomTasksAsync(timezone, status, ct));
-        }
-
-        return status == RecurringTaskStatus.Delayed
-            ? tasks.OrderBy(task => task.DelayedUntilUtc).ThenBy(task => task.RelevantAtUtc).ToList()
-            : tasks.OrderByDescending(task => task.DelayedUntilUtc ?? task.RelevantAtUtc).ToList();
     }
 
     public async Task<RecurringTaskActionResult> CompleteAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct)
@@ -182,7 +140,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (type == RecurringTaskType.CustomTask)
         {
-            return await CompleteCustomTaskAsync(request, actor, ct);
+            return await customTaskTransitions.CompleteAsync(request, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -263,7 +221,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (type == RecurringTaskType.CustomTask)
         {
-            return await CancelCustomTaskAsync(request, actor, ct);
+            return await customTaskTransitions.CancelAsync(request, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -356,7 +314,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
         if (type == RecurringTaskType.CustomTask)
         {
-            return await DelayCustomTaskAsync(request, delayUntilUtc, actor, ct);
+            return await customTaskTransitions.DelayAsync(request, delayUntilUtc, actor, ct);
         }
 
         var existingExecution = await db.RecurringTaskExecutions
@@ -419,132 +377,6 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             EntityId = execution.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
                 BuildRecurringTaskAuditDetails(candidate),
-                AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc))
-        }, ct);
-
-        return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
-    }
-
-    private async Task<RecurringTaskActionResult> CompleteCustomTaskAsync(CompleteRecurringTaskRequest request, User actor, CancellationToken ct)
-    {
-        var task = await db.CustomTasks
-            .Include(item => item.Client)
-            .ThenInclude(client => client!.Contacts)
-            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
-
-        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
-        {
-            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
-        }
-
-        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
-        {
-            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
-        }
-
-        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > UtcNow)
-        {
-            return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
-        }
-
-        task.CompletedAtUtc = UtcNow;
-        task.CompletedByUserId = actor.Id;
-        task.CancelledAtUtc = null;
-        task.CancelledByUserId = null;
-        task.DelayedAtUtc = null;
-        task.DelayedByUserId = null;
-        task.DelayedUntilUtc = null;
-
-        await db.SaveChangesAsync(ct);
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_completed",
-            EntityType = "custom_task",
-            EntityId = task.Id.ToString(),
-            Details = BuildCustomTaskAuditDetails(task)
-        }, ct);
-
-        return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
-    }
-
-    private async Task<RecurringTaskActionResult> CancelCustomTaskAsync(CancelRecurringTaskRequest request, User actor, CancellationToken ct)
-    {
-        var task = await db.CustomTasks
-            .Include(item => item.Client)
-            .ThenInclude(client => client!.Contacts)
-            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
-
-        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
-        {
-            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
-        }
-
-        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
-        {
-            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
-        }
-
-        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > UtcNow)
-        {
-            return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
-        }
-
-        task.CompletedAtUtc = null;
-        task.CompletedByUserId = null;
-        task.CancelledAtUtc = UtcNow;
-        task.CancelledByUserId = actor.Id;
-        task.DelayedAtUtc = null;
-        task.DelayedByUserId = null;
-        task.DelayedUntilUtc = null;
-
-        await db.SaveChangesAsync(ct);
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_cancelled",
-            EntityType = "custom_task",
-            EntityId = task.Id.ToString(),
-            Details = BuildCustomTaskAuditDetails(task)
-        }, ct);
-
-        return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
-    }
-
-    private async Task<RecurringTaskActionResult> DelayCustomTaskAsync(DelayRecurringTaskRequest request, DateTime delayUntilUtc, User actor, CancellationToken ct)
-    {
-        var task = await db.CustomTasks
-            .Include(item => item.Client)
-            .ThenInclude(client => client!.Contacts)
-            .FirstOrDefaultAsync(item => item.Id == request.RuleId, ct);
-
-        if (task is null || BuildCustomTaskDeduplicationKey(task.Id) != request.DeduplicationKey)
-        {
-            return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
-        }
-
-        if (task.CompletedAtUtc is not null || task.CancelledAtUtc is not null)
-        {
-            return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
-        }
-
-        task.CompletedAtUtc = null;
-        task.CompletedByUserId = null;
-        task.CancelledAtUtc = null;
-        task.CancelledByUserId = null;
-        task.DelayedAtUtc = UtcNow;
-        task.DelayedByUserId = actor.Id;
-        task.DelayedUntilUtc = delayUntilUtc;
-
-        await db.SaveChangesAsync(ct);
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_delayed",
-            EntityType = "custom_task",
-            EntityId = task.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
-                BuildCustomTaskAuditDetails(task),
                 AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc))
         }, ct);
 
@@ -645,20 +477,23 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 ClientId = appointment.Client.Id,
                 AppointmentId = appointment.Id,
                 Title = "Напомнить о записи",
-                RelatedPersonDisplayName = FormatClientName(appointment.Client),
+                RelatedPersonDisplayName = RecurringTaskPresentationMapper.FormatClientName(appointment.Client),
                 RelevantAtUtc = appointment.StartDate,
                 BusinessDate = DateOnly.FromDateTime(localAppointmentDate),
                 Phone = appointment.Client.Contacts.Phone,
                 Telegram = appointment.Client.Contacts.Telegram,
                 Vk = appointment.Client.Contacts.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    clientFirstName: appointment.Client.FirstName,
-                    clientLastName: appointment.Client.LastName,
-                    clientPatronymic: appointment.Client.Patronymic,
-                    whenWord: whenWord,
-                    appointmentStartTime: localAppointmentDate.ToString("HH:mm"),
-                    appointmentDate: localAppointmentDate.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        ClientFirstName = appointment.Client.FirstName,
+                        ClientLastName = appointment.Client.LastName,
+                        ClientPatronymic = appointment.Client.Patronymic,
+                        WhenWord = whenWord,
+                        AppointmentStartTime = localAppointmentDate.ToString("HH:mm"),
+                        AppointmentDate = localAppointmentDate.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = appointment.StartDate
             });
         }
@@ -692,18 +527,21 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 ClientId = client.Id,
                 AppointmentId = null,
                 Title = "Поздравить с днём рождения",
-                RelatedPersonDisplayName = FormatClientName(client),
+                RelatedPersonDisplayName = RecurringTaskPresentationMapper.FormatClientName(client),
                 RelevantAtUtc = null,
                 BusinessDate = todayLocal,
                 Phone = client.Contacts.Phone,
                 Telegram = client.Contacts.Telegram,
                 Vk = client.Contacts.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    clientFirstName: client.FirstName,
-                    clientLastName: client.LastName,
-                    clientPatronymic: client.Patronymic,
-                    date: todayLocal.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        ClientFirstName = client.FirstName,
+                        ClientLastName = client.LastName,
+                        ClientPatronymic = client.Patronymic,
+                        Date = todayLocal.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = UtcNow
             })
             .ToList();
@@ -852,18 +690,21 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 ClientId = appointment.Client.Id,
                 AppointmentId = appointment.Id,
                 Title = "Связаться после пробного занятия",
-                RelatedPersonDisplayName = FormatClientName(appointment.Client),
+                RelatedPersonDisplayName = RecurringTaskPresentationMapper.FormatClientName(appointment.Client),
                 RelevantAtUtc = appointment.StartDate,
                 BusinessDate = businessDate,
                 Phone = appointment.Client.Contacts.Phone,
                 Telegram = appointment.Client.Contacts.Telegram,
                 Vk = appointment.Client.Contacts.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    clientFirstName: appointment.Client.FirstName,
-                    clientLastName: appointment.Client.LastName,
-                    clientPatronymic: appointment.Client.Patronymic,
-                    date: businessDate.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        ClientFirstName = appointment.Client.FirstName,
+                        ClientLastName = appointment.Client.LastName,
+                        ClientPatronymic = appointment.Client.Patronymic,
+                        Date = businessDate.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = appointment.StartDate
             });
         }
@@ -952,18 +793,21 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 ClientId = attendance.Client.Id,
                 AppointmentId = null,
                 Title = "Напомнить о занятиях",
-                RelatedPersonDisplayName = FormatClientName(attendance.Client),
+                RelatedPersonDisplayName = RecurringTaskPresentationMapper.FormatClientName(attendance.Client),
                 RelevantAtUtc = attendance.StartDate,
                 BusinessDate = periodStartDate,
                 Phone = attendance.Client.Contacts.Phone,
                 Telegram = attendance.Client.Contacts.Telegram,
                 Vk = attendance.Client.Contacts.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    clientFirstName: attendance.Client.FirstName,
-                    clientLastName: attendance.Client.LastName,
-                    clientPatronymic: attendance.Client.Patronymic,
-                    date: periodStartDate.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        ClientFirstName = attendance.Client.FirstName,
+                        ClientLastName = attendance.Client.LastName,
+                        ClientPatronymic = attendance.Client.Patronymic,
+                        Date = periodStartDate.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = attendance.StartDate
             });
         }
@@ -1027,11 +871,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Phone = group.Key.Phone,
                 Telegram = group.Key.Telegram,
                 Vk = group.Key.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    teacherFirstName: group.Key.FirstName,
-                    teacherLastName: group.Key.LastName,
-                    date: todayLocal.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        TeacherFirstName = group.Key.FirstName,
+                        TeacherLastName = group.Key.LastName,
+                        Date = todayLocal.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = group.Min(item => item.StartDate)
             })
             .OrderBy(candidate => candidate.RelatedPersonDisplayName)
@@ -1217,18 +1064,21 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 ClientId = client.Id,
                 AppointmentId = firstOutstandingLedger.AppointmentId,
                 Title = "Напомнить о долге",
-                RelatedPersonDisplayName = FormatClientName(client),
+                RelatedPersonDisplayName = RecurringTaskPresentationMapper.FormatClientName(client),
                 RelevantAtUtc = firstOutstandingLedger.StartDate,
                 BusinessDate = businessDate,
                 Phone = client.Contacts.Phone,
                 Telegram = client.Contacts.Telegram,
                 Vk = client.Contacts.Vk,
-                PreparedMessage = RenderMessageTemplate(
+                PreparedMessage = templateRenderer.Render(
                     rule.MessageTemplate,
-                    clientFirstName: client.FirstName,
-                    clientLastName: client.LastName,
-                    clientPatronymic: client.Patronymic,
-                    date: businessDate.ToString("dd.MM.yyyy")),
+                    new RecurringTaskTemplateValues
+                    {
+                        ClientFirstName = client.FirstName,
+                        ClientLastName = client.LastName,
+                        ClientPatronymic = client.Patronymic,
+                        Date = businessDate.ToString("dd.MM.yyyy")
+                    }),
                 SortAtUtc = firstOutstandingLedger.StartDate
             });
         }
@@ -1255,7 +1105,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToListAsync(ct);
 
         return tasks
-            .Select(task => MapCustomTaskCandidate(task, timezone))
+            .Select(task => RecurringTaskPresentationMapper.MapCustomTaskCandidate(task, timezone))
             .ToList();
     }
 
@@ -1284,29 +1134,6 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .ToList();
     }
 
-    private async Task<List<RecurringTaskDto>> GetProcessedCustomTasksAsync(string timezone, RecurringTaskStatus status, CancellationToken ct)
-    {
-        var query = db.CustomTasks
-            .AsNoTracking()
-            .Include(item => item.Client)
-            .ThenInclude(client => client!.Contacts)
-            .AsQueryable();
-
-        query = status switch
-        {
-            RecurringTaskStatus.Completed => query.Where(item => item.CompletedAtUtc != null),
-            RecurringTaskStatus.Cancelled => query.Where(item => item.CancelledAtUtc != null),
-            RecurringTaskStatus.Delayed => query.Where(item => item.DelayedUntilUtc != null && item.DelayedUntilUtc > UtcNow),
-            _ => query.Where(_ => false)
-        };
-
-        var tasks = status == RecurringTaskStatus.Delayed
-            ? await query.OrderBy(item => item.DelayedUntilUtc).ThenBy(item => item.DueAtUtc).ToListAsync(ct)
-            : await query.OrderByDescending(item => item.CompletedAtUtc ?? item.CancelledAtUtc ?? item.DelayedAtUtc ?? item.CreatedAtUtc).ToListAsync(ct);
-
-        return tasks.Select(task => MapCustomTaskExecution(task, timezone)).ToList();
-    }
-
     private static string BuildRecurringTaskAuditDetails(RecurringTaskCandidate candidate)
     {
         return AuditDetailsFormatter.JoinChanges(
@@ -1317,55 +1144,11 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             candidate.RelevantAtUtc is null ? null : AuditDetailsFormatter.DescribeContext("Время", candidate.RelevantAtUtc));
     }
 
-    private static string BuildCustomTaskAuditDetails(CustomTask task)
-    {
-        return AuditDetailsFormatter.JoinChanges(
-            AuditDetailsFormatter.DescribeContext("Тип", RecurringTaskType.CustomTask.ToDisplayLabel()),
-            AuditDetailsFormatter.DescribeContext("Задача", task.Title),
-            AuditDetailsFormatter.DescribeContext("Получатель", task.RecipientName),
-            AuditDetailsFormatter.DescribeContext("Дата", task.DueAtUtc));
-    }
-
-    private static string RenderMessageTemplate(
-        string template,
-        string? clientFirstName = null,
-        string? clientLastName = null,
-        string? clientPatronymic = null,
-        string? teacherFirstName = null,
-        string? teacherLastName = null,
-        string? whenWord = null,
-        string? appointmentStartTime = null,
-        string? appointmentDate = null,
-        string? date = null)
-    {
-        return template
-            .Replace("{Client.FirstName}", clientFirstName ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Client.LastName}", clientLastName ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Client.Patronymic}", clientPatronymic ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Teacher.FirstName}", teacherFirstName ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Teacher.LastName}", teacherLastName ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{When}", whenWord ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Appointment.StartTime}", appointmentStartTime ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Appointment.Date}", appointmentDate ?? string.Empty, StringComparison.Ordinal)
-            .Replace("{Date}", date ?? appointmentDate ?? string.Empty, StringComparison.Ordinal);
-    }
-
     private static bool HasAnyClientContact(Client client)
     {
         return !string.IsNullOrWhiteSpace(client.Contacts.Phone)
                || !string.IsNullOrWhiteSpace(client.Contacts.Telegram)
                || !string.IsNullOrWhiteSpace(client.Contacts.Vk);
-    }
-
-    private static string FormatClientName(Client? client)
-    {
-        if (client is null)
-        {
-            return "Клиент";
-        }
-
-        return string.Join(' ', new[] { client.LastName, client.FirstName, client.Patronymic }
-            .Where(value => !string.IsNullOrWhiteSpace(value)));
     }
 
     private static string BuildAppointmentReminderDeduplicationKey(Ulid ruleId, Ulid appointmentId, DateTime appointmentStartUtc, int offsetMinutes)
@@ -1375,161 +1158,6 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             : DateTime.SpecifyKind(appointmentStartUtc, DateTimeKind.Utc);
 
         return $"appointment-reminder:{ruleId}:{appointmentId}:{normalizedStartUtc:yyyyMMddHHmmss}:{offsetMinutes}";
-    }
-
-    private static RecurringTaskDto MapCandidate(RecurringTaskCandidate candidate)
-    {
-        return new RecurringTaskDto
-        {
-            RuleId = candidate.RuleId,
-            Type = candidate.Type.ToApiKey(),
-            RecipientType = candidate.RecipientType switch
-            {
-                RecurringTaskRecipientType.Teacher => "teacher",
-                RecurringTaskRecipientType.External => "external",
-                _ => "client"
-            },
-            DeduplicationKey = candidate.DeduplicationKey,
-            ClientId = candidate.ClientId,
-            TeacherId = candidate.TeacherId,
-            AppointmentId = candidate.AppointmentId,
-            Title = candidate.Title,
-            RelatedPersonDisplayName = candidate.RelatedPersonDisplayName,
-            RelevantAtUtc = candidate.RelevantAtUtc,
-            DelayedUntilUtc = null,
-            BusinessDate = candidate.BusinessDate,
-            Phone = candidate.Phone,
-            Telegram = candidate.Telegram,
-            Vk = candidate.Vk,
-            PreparedMessage = candidate.PreparedMessage
-        };
-    }
-
-    private static RecurringTaskDto MapExecution(RecurringTaskExecution execution)
-    {
-        var type = execution.Rule.Type;
-        var relatedPersonDisplayName = execution.RecipientType == RecurringTaskRecipientType.Teacher
-            ? FormatTeacherName(execution.Teacher)
-            : FormatClientName(execution.Client);
-
-        return new RecurringTaskDto
-        {
-            RuleId = execution.RuleId,
-            Type = type.ToApiKey(),
-            RecipientType = execution.RecipientType switch
-            {
-                RecurringTaskRecipientType.Teacher => "teacher",
-                RecurringTaskRecipientType.External => "external",
-                _ => "client"
-            },
-            DeduplicationKey = execution.DeduplicationKey,
-            ClientId = execution.ClientId,
-            TeacherId = execution.TeacherId,
-            AppointmentId = execution.AppointmentId,
-            Title = GetTaskTitle(type),
-            RelatedPersonDisplayName = relatedPersonDisplayName,
-            RelevantAtUtc = execution.Appointment?.StartDate,
-            DelayedUntilUtc = execution.DelayedUntilUtc,
-            BusinessDate = execution.BusinessDate,
-            Phone = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Phone : execution.Client?.Contacts.Phone,
-            Telegram = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Telegram : execution.Client?.Contacts.Telegram,
-            Vk = execution.RecipientType == RecurringTaskRecipientType.Teacher ? execution.Teacher?.Vk : execution.Client?.Contacts.Vk,
-            PreparedMessage = execution.GeneratedText ?? string.Empty
-        };
-    }
-
-    private static RecurringTaskCandidate MapCustomTaskCandidate(CustomTask task, string timezone)
-    {
-        var localDueAt = DateTimeUtils.ConvertDateToTimezone(task.DelayedUntilUtc ?? task.DueAtUtc, timezone);
-        return new RecurringTaskCandidate
-        {
-            RuleId = task.Id,
-            Type = RecurringTaskType.CustomTask,
-            RecipientType = task.ClientId.HasValue ? RecurringTaskRecipientType.Client : RecurringTaskRecipientType.External,
-            DeduplicationKey = BuildCustomTaskDeduplicationKey(task.Id),
-            ClientId = task.ClientId,
-            TeacherId = null,
-            AppointmentId = null,
-            Title = task.Title,
-            RelatedPersonDisplayName = task.Client is not null ? FormatClientName(task.Client) : task.RecipientName,
-            RelevantAtUtc = task.DueAtUtc,
-            BusinessDate = DateOnly.FromDateTime(localDueAt),
-            Phone = task.Client?.Contacts.Phone ?? task.Phone,
-            Telegram = task.Client?.Contacts.Telegram ?? task.Telegram,
-            Vk = task.Client?.Contacts.Vk ?? task.Vk,
-            PreparedMessage = task.MessageText,
-            SortAtUtc = task.DelayedUntilUtc ?? task.DueAtUtc
-        };
-    }
-
-    private static RecurringTaskDto MapCustomTaskExecution(CustomTask task, string timezone)
-    {
-        var localRelevantAt = DateTimeUtils.ConvertDateToTimezone(task.DueAtUtc, timezone);
-        return new RecurringTaskDto
-        {
-            RuleId = task.Id,
-            Type = RecurringTaskType.CustomTask.ToApiKey(),
-            RecipientType = task.ClientId.HasValue ? "client" : "external",
-            DeduplicationKey = BuildCustomTaskDeduplicationKey(task.Id),
-            ClientId = task.ClientId,
-            TeacherId = null,
-            AppointmentId = null,
-            Title = task.Title,
-            RelatedPersonDisplayName = task.Client is not null ? FormatClientName(task.Client) : task.RecipientName,
-            RelevantAtUtc = task.DueAtUtc,
-            DelayedUntilUtc = task.DelayedUntilUtc,
-            BusinessDate = DateOnly.FromDateTime(localRelevantAt),
-            Phone = task.Client?.Contacts.Phone ?? task.Phone,
-            Telegram = task.Client?.Contacts.Telegram ?? task.Telegram,
-            Vk = task.Client?.Contacts.Vk ?? task.Vk,
-            PreparedMessage = task.MessageText
-        };
-    }
-
-    private static string GetTaskTitle(RecurringTaskType type)
-    {
-        return type switch
-        {
-            RecurringTaskType.AppointmentReminder => "Напомнить о записи",
-            RecurringTaskType.BirthdayGreeting => "Поздравить с днём рождения",
-            RecurringTaskType.TrialFollowUp => "Связаться после пробного занятия",
-            RecurringTaskType.InactiveClientReminder => "Напомнить о занятиях",
-            RecurringTaskType.TeacherDailySchedule => "Отправить расписание",
-            RecurringTaskType.DebtorReminder => "Напомнить о долге",
-            RecurringTaskType.CustomTask => "Пользовательская задача",
-            _ => "Задача"
-        };
-    }
-
-    private static string FormatTeacherName(User? teacher)
-    {
-        if (teacher is null)
-        {
-            return "Преподаватель";
-        }
-
-        return string.Join(' ', new[] { teacher.LastName, teacher.FirstName }
-            .Where(value => !string.IsNullOrWhiteSpace(value)));
-    }
-
-    private sealed class RecurringTaskCandidate
-    {
-        public required Ulid RuleId { get; init; }
-        public required RecurringTaskType Type { get; init; }
-        public required RecurringTaskRecipientType RecipientType { get; init; }
-        public required string DeduplicationKey { get; init; }
-        public Ulid? ClientId { get; init; }
-        public Ulid? TeacherId { get; init; }
-        public Ulid? AppointmentId { get; init; }
-        public required string Title { get; init; }
-        public required string RelatedPersonDisplayName { get; init; }
-        public DateTime? RelevantAtUtc { get; init; }
-        public required DateOnly BusinessDate { get; init; }
-        public string? Phone { get; init; }
-        public string? Telegram { get; init; }
-        public string? Vk { get; init; }
-        public required string PreparedMessage { get; init; }
-        public required DateTime SortAtUtc { get; init; }
     }
 
     private sealed class DebtorAppointmentLedger
@@ -1564,8 +1192,4 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         return initialDelayDays + (repeatEveryDays is > 0 ? repeatEveryDays.Value : 0);
     }
 
-    private static string BuildCustomTaskDeduplicationKey(Ulid taskId)
-    {
-        return $"custom-task:{taskId}";
-    }
 }

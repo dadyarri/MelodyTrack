@@ -82,6 +82,7 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - FastEndpoints preprocessors that are not constructor-injected may resolve `TimeProvider` from `HttpContext.RequestServices`. Startup seeding resolves it from the startup scope; Quartz jobs and application services receive it through constructor injection.
 - Idempotent create endpoints use `IRequestReplayService` and the `Idempotency-Key` header. Replay identity is scoped by endpoint and authenticated caller, and the stored SHA-256 request fingerprint prevents reusing a key for a different payload.
 - Keep request replay acquisition and completion inside the same database transaction as entity creation. The acquisition service uses PostgreSQL `ON CONFLICT DO NOTHING`, so concurrent duplicates wait on the database constraint and replay the committed response without application polling.
+- Recurring-task responsibilities live under `Services/RecurringTasks`: keep message token replacement in `IRecurringTaskTemplateRenderer`, response shaping in `RecurringTaskPresentationMapper`, processed-list queries in `IRecurringTaskQueryService`, and custom-task mutations in `ICustomTaskTransitionService`. Do not move these concerns back into the orchestration service.
 
 ## Authentication And Authorization
 
