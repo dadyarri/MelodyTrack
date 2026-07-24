@@ -4,12 +4,12 @@ using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
-using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 

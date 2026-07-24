@@ -1,5 +1,5 @@
-using MelodyTrack.Backend.Data.Enums;
 using System.ComponentModel.DataAnnotations;
+using MelodyTrack.Backend.Data.Enums;
 
 namespace MelodyTrack.Backend.Data.Models;
 

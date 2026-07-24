@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using MelodyTrack.Backend.Data.Models;
 using System.Net.Http.Json;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -8,6 +7,7 @@ using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;

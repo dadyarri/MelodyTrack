@@ -1,5 +1,5 @@
-using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Api.Courses.Responses;
+using MelodyTrack.Backend.Data.Enums;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 
