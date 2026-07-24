@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class ResetOnboardingEndpoint(AppDbContext db)
+public class ResetOnboardingEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.NoReq.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -35,7 +35,7 @@ public class ResetOnboardingEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user);
+        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user, timeProvider);
         if (user.OnboardingState is null)
         {
             user.OnboardingState = state;
@@ -44,7 +44,7 @@ public class ResetOnboardingEndpoint(AppDbContext db)
         state.Status = OnboardingStatus.Active;
         state.CurrentStep = OnboardingDefaults.InitialStep;
         state.CurrentPath = OnboardingDefaults.InitialPath;
-        state.UpdatedAtUtc = DateTime.UtcNow;
+        state.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         state.CompletedAtUtc = null;
 
         await db.SaveChangesAsync(ct);

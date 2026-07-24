@@ -10,7 +10,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
+public class GetDashboardStatsEndpoint(
+    AppDbContext db,
+    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
     : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -45,7 +49,8 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
             return new ProblemDetails(ValidationFailures);
         }
 
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timezone).Date;
         var tomorrow = today.AddDays(1);
         var dayAfterTomorrow = today.AddDays(2);
         var monthStart = new DateTime(today.Year, today.Month, 1);
@@ -81,7 +86,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         var appointmentsTomorrow = await appointmentsQuery
             .CountAsync(e => e.StartDate >= tomorrowStartUtc
                              && e.StartDate < dayAfterTomorrowStartUtc
-                             && e.EndDate > DateTime.UtcNow, ct);
+                             && e.EndDate > nowUtc, ct);
 
         var incomeAppointmentsThisMonth = await db.Appointments
             .AsNoTracking()

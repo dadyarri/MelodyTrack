@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class GetOnboardingStateEndpoint(AppDbContext db)
+public class GetOnboardingStateEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.NoReq.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -34,7 +34,7 @@ public class GetOnboardingStateEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user);
+        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user, timeProvider);
         if (user.OnboardingState is null)
         {
             user.OnboardingState = state;

@@ -13,7 +13,7 @@ using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService) : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
+public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService, TimeProvider timeProvider) : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
 {
     public override void Configure()
     {
@@ -57,7 +57,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
 
     private async Task<List<CalendarEvent>> GetClientEventsAsync(Ulid clientId, CancellationToken ct)
     {
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         var history = await db.Appointments.AsNoTracking()
             .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled && e.StartDate <= now)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, e.Service.PublicName ?? e.Service.Name, null))
@@ -71,7 +71,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
         return history;
     }
 
-    private static string BuildCalendar(IEnumerable<CalendarEvent> events)
+    private string BuildCalendar(IEnumerable<CalendarEvent> events)
     {
         var calendar = new Calendar
         {
@@ -83,7 +83,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
             var calendarEvent = new IcalCalendarEvent
             {
                 Uid = $"{item.Id}@melodytrack",
-                DtStamp = new CalDateTime(DateTime.UtcNow),
+                DtStamp = new CalDateTime(timeProvider.GetUtcNow().UtcDateTime),
                 DtStart = new CalDateTime(item.StartAtUtc),
                 DtEnd = new CalDateTime(item.EndAtUtc),
                 Summary = item.Summary,

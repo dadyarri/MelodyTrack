@@ -8,9 +8,9 @@ public static class OnboardingDefaults
     public const string InitialStep = "welcome";
     public const string InitialPath = "/";
 
-    public static UserOnboardingState CreateState(User user)
+    public static UserOnboardingState CreateState(User user, TimeProvider timeProvider)
     {
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         return new UserOnboardingState
         {

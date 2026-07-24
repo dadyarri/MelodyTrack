@@ -146,9 +146,9 @@ public static class UserUtils
         return DescribeOpaqueValueForLogs("invite", code.ToString());
     }
 
-    public static string CreateAccessToken(User user, Ulid? sessionId = null)
+    public static string CreateAccessToken(User user, Ulid? sessionId = null, TimeProvider? timeProvider = null)
     {
-        var expireAt = DateTime.UtcNow.AddMinutes(10);
+        var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
         return JwtBearer.CreateToken(opts =>
         {
             opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");

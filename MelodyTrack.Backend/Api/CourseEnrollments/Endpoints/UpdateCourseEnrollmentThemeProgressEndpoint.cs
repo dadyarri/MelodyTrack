@@ -9,7 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAuditLogService auditLogService, CourseProgressService courseProgressService)
+public class UpdateCourseEnrollmentThemeProgressEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    CourseProgressService courseProgressService,
+    TimeProvider timeProvider)
     : Ep.Req<UpdateCourseEnrollmentThemeProgressRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
 {
     public override void Configure()
@@ -60,7 +64,7 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(AppDbContext db, IAudit
             return new ProblemDetails(ValidationFailures);
         }
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         courseProgressService.RefreshAvailability(enrollment, nowUtc);
 
         switch (action)

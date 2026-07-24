@@ -13,7 +13,7 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService)
+public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService, TimeProvider timeProvider)
     : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -83,9 +83,10 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
 
         var refreshToken = UserUtils.GenerateRandomString(32);
         var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         await db.Sessions
-            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow && e.DeviceInfo == deviceInfo)
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= nowUtc && e.DeviceInfo == deviceInfo)
             .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
 
         var session = new Session
@@ -94,7 +95,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
             User = user,
             RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = deviceInfo,
-            ValidUntil = DateTime.UtcNow.AddDays(7)
+            ValidUntil = nowUtc.AddDays(7)
         };
 
         await db.Sessions.AddAsync(session, ct);
@@ -114,7 +115,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         }, ct);
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user, session.Id),
+            AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
             RefreshToken = refreshToken,
             FirstName = user.FirstName,
             LastName = user.LastName

@@ -39,8 +39,10 @@ public sealed class RecurringTaskActionResult
         };
 }
 
-public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogService) : IRecurringTaskService
+public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider) : IRecurringTaskService
 {
+    private DateTime UtcNow => timeProvider.GetUtcNow().UtcDateTime;
+
     public async Task<List<RecurringTaskDto>> GetTasksAsync(string timezone, RecurringTaskType? filterType, RecurringTaskListStatus status, CancellationToken ct)
     {
         return status switch
@@ -107,7 +109,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             .Distinct()
             .ToList();
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var handledKeys = await db.RecurringTaskExecutions
             .AsNoTracking()
             .Where(execution => deduplicationKeys.Contains(execution.DeduplicationKey))
@@ -143,7 +145,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         {
             recurringQuery = recurringQuery.Where(execution =>
                 execution.DelayedUntilUtc != null
-                && execution.DelayedUntilUtc > DateTime.UtcNow
+                && execution.DelayedUntilUtc > UtcNow
                 && (execution.ClientId == null || !execution.Client!.Vacations.Any(vacation =>
                     vacation.StartDate <= execution.BusinessDate && vacation.EndDate >= execution.BusinessDate)));
         }
@@ -191,7 +193,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        if (existingExecution is { Status: RecurringTaskStatus.Delayed, DelayedUntilUtc: { } delayedUntilUtc } && delayedUntilUtc > DateTime.UtcNow)
+        if (existingExecution is { Status: RecurringTaskStatus.Delayed, DelayedUntilUtc: { } delayedUntilUtc } && delayedUntilUtc > UtcNow)
         {
             return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
         }
@@ -202,7 +204,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
         }
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var execution = existingExecution ?? new RecurringTaskExecution
         {
             Id = Ulid.NewUlid(),
@@ -272,7 +274,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        if (existingExecution is { Status: RecurringTaskStatus.Delayed, DelayedUntilUtc: { } delayedUntilUtc } && delayedUntilUtc > DateTime.UtcNow)
+        if (existingExecution is { Status: RecurringTaskStatus.Delayed, DelayedUntilUtc: { } delayedUntilUtc } && delayedUntilUtc > UtcNow)
         {
             return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
         }
@@ -283,7 +285,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
         }
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var execution = existingExecution ?? new RecurringTaskExecution
         {
             Id = Ulid.NewUlid(),
@@ -347,7 +349,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             _ => DateTime.SpecifyKind(request.DelayUntilUtc, DateTimeKind.Utc)
         };
 
-        if (delayUntilUtc <= DateTime.UtcNow)
+        if (delayUntilUtc <= UtcNow)
         {
             return RecurringTaskActionResult.Failure("Дата и время переноса должны быть в будущем.");
         }
@@ -371,7 +373,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача больше не актуальна.");
         }
 
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var execution = existingExecution ?? new RecurringTaskExecution
         {
             Id = Ulid.NewUlid(),
@@ -440,12 +442,12 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > DateTime.UtcNow)
+        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > UtcNow)
         {
             return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
         }
 
-        task.CompletedAtUtc = DateTime.UtcNow;
+        task.CompletedAtUtc = UtcNow;
         task.CompletedByUserId = actor.Id;
         task.CancelledAtUtc = null;
         task.CancelledByUserId = null;
@@ -483,14 +485,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
             return RecurringTaskActionResult.Failure("Задача уже обработана другим пользователем.");
         }
 
-        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > DateTime.UtcNow)
+        if (task.DelayedUntilUtc is { } delayedUntilUtc && delayedUntilUtc > UtcNow)
         {
             return RecurringTaskActionResult.Failure("Задача уже отложена на более позднее время.");
         }
 
         task.CompletedAtUtc = null;
         task.CompletedByUserId = null;
-        task.CancelledAtUtc = DateTime.UtcNow;
+        task.CancelledAtUtc = UtcNow;
         task.CancelledByUserId = actor.Id;
         task.DelayedAtUtc = null;
         task.DelayedByUserId = null;
@@ -530,7 +532,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         task.CompletedByUserId = null;
         task.CancelledAtUtc = null;
         task.CancelledByUserId = null;
-        task.DelayedAtUtc = DateTime.UtcNow;
+        task.DelayedAtUtc = UtcNow;
         task.DelayedByUserId = actor.Id;
         task.DelayedUntilUtc = delayUntilUtc;
 
@@ -594,14 +596,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                 Telegram = dto.Telegram,
                 Vk = dto.Vk,
                 PreparedMessage = dto.PreparedMessage,
-                SortAtUtc = dto.RelevantAtUtc ?? DateTime.UtcNow
+                SortAtUtc = dto.RelevantAtUtc ?? UtcNow
             })
             .FirstOrDefault();
     }
 
     private async Task<List<RecurringTaskCandidate>> BuildAppointmentReminderCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var offsetMinutes = rule.OffsetMinutes ?? 24 * 60;
         var windowEndUtc = nowUtc.AddMinutes(offsetMinutes);
 
@@ -666,7 +668,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     private async Task<List<RecurringTaskCandidate>> BuildBirthdayCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(DateTime.UtcNow, timezone));
+        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(UtcNow, timezone));
 
         var clients = await db.Clients
             .AsNoTracking()
@@ -702,14 +704,14 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
                     clientLastName: client.LastName,
                     clientPatronymic: client.Patronymic,
                     date: todayLocal.ToString("dd.MM.yyyy")),
-                SortAtUtc = DateTime.UtcNow
+                SortAtUtc = UtcNow
             })
             .ToList();
     }
 
     private async Task<List<RecurringTaskCandidate>> BuildTrialFollowUpCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var followUpAfterMinutes = rule.OffsetMinutes ?? 24 * 60;
         var latestAllowedStartUtc = nowUtc.AddMinutes(-followUpAfterMinutes);
 
@@ -871,7 +873,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     private async Task<List<RecurringTaskCandidate>> BuildInactiveClientCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(nowUtc, timezone));
         var cooldownDays = rule.CooldownDays ?? 7;
 
@@ -971,7 +973,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     private async Task<List<RecurringTaskCandidate>> BuildTeacherDailyScheduleCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(DateTime.UtcNow, timezone));
+        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(UtcNow, timezone));
         var dayStartUtc = DateTimeUtils.ConvertLocalDateToUtc(todayLocal, TimeOnly.MinValue, timezone);
         var nextDayStartUtc = DateTimeUtils.ConvertLocalDateToUtc(todayLocal.AddDays(1), TimeOnly.MinValue, timezone);
 
@@ -1038,7 +1040,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     private async Task<List<RecurringTaskCandidate>> BuildDebtorReminderCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(nowUtc, timezone));
         var initialDelayDays = Math.Max(1, (rule.OffsetMinutes ?? 24 * 60) / (24 * 60));
         var repeatEveryDays = rule.CooldownDays;
@@ -1239,7 +1241,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
 
     private async Task<List<RecurringTaskCandidate>> BuildCustomTaskCandidatesAsync(string timezone, CancellationToken ct)
     {
-        var nowUtc = DateTime.UtcNow;
+        var nowUtc = UtcNow;
         var tasks = await db.CustomTasks
             .AsNoTracking()
             .Include(item => item.Client)
@@ -1294,7 +1296,7 @@ public class RecurringTaskService(AppDbContext db, IAuditLogService auditLogServ
         {
             RecurringTaskStatus.Completed => query.Where(item => item.CompletedAtUtc != null),
             RecurringTaskStatus.Cancelled => query.Where(item => item.CancelledAtUtc != null),
-            RecurringTaskStatus.Delayed => query.Where(item => item.DelayedUntilUtc != null && item.DelayedUntilUtc > DateTime.UtcNow),
+            RecurringTaskStatus.Delayed => query.Where(item => item.DelayedUntilUtc != null && item.DelayedUntilUtc > UtcNow),
             _ => query.Where(_ => false)
         };
 

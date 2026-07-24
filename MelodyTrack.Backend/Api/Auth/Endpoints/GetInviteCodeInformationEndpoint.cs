@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetInviteCodeInformationEndpoint(AppDbContext db)
+public class GetInviteCodeInformationEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>>
 {
     public override void Configure()
@@ -35,8 +35,9 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db)
                 StatusCodes.Status403Forbidden);
         }
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var invite = await db.InviteCodes
-            .Where(e => e.Code == ulid && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow)
+            .Where(e => e.Code == ulid && !e.WasUsed && e.ValidUntil >= nowUtc)
             .FirstOrDefaultAsync(ct);
 
         if (invite is null)

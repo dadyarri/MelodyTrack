@@ -23,7 +23,7 @@ public partial class ClientWithBalanceDto
     public RecordActivityDto? LastActivity { get; set; }
 }
 
-public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
+public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider timeProvider)
     : IFacetMapConfigurationAsyncInstance<Client, ClientWithBalanceDto>
 {
     public async Task MapAsync(Client source, ClientWithBalanceDto target,
@@ -81,18 +81,18 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db)
             .OrderByDescending(e => e.StartDate)
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         target.NextAppointmentAtUtc = await db.Appointments
             .Where(e => e.Client.Id == source.Id
                         && e.Status == AppointmentStatus.Planned
                         && !e.IsDeleted
-                        && e.StartDate >= DateTime.UtcNow)
+                        && e.StartDate >= nowUtc)
             .OrderBy(e => e.StartDate)
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(cancellationToken);
 
-        var now = DateTime.UtcNow;
         var hasFutureRegularAppointment = await db.Appointments.AnyAsync(e =>
-            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.StartDate >= now && !e.Service.IsConsultation,
+            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.StartDate >= nowUtc && !e.Service.IsConsultation,
             cancellationToken);
         var hasCompletedConsultation = await db.Appointments.AnyAsync(e =>
             e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Completed && e.Service.IsConsultation,

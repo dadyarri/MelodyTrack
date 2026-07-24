@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetSessionsEndpoint(AppDbContext db)
+public class GetSessionsEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.NoReq.Res<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -38,9 +38,10 @@ public class GetSessionsEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var sessions = await db.Sessions
             .AsNoTracking()
-            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow)
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= nowUtc)
             .OrderByDescending(e => e.Id)
             .ToListAsync(ct);
 

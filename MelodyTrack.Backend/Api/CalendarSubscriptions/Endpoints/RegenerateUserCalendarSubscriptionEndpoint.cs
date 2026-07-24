@@ -14,7 +14,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, ICurrentUserAccessor currentUserAccessor)
+public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure() => Post("/calendar-subscriptions/users/{id}/regenerate");
@@ -31,8 +31,9 @@ public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublic
         }
 
         var active = await db.CalendarSubscriptions.Where(e => e.UserId == req.Id && e.RevokedAtUtc == null).ToListAsync(ct);
-        foreach (var subscription in active) subscription.RevokedAtUtc = DateTime.UtcNow;
-        var created = new CalendarSubscription { Id = Ulid.NewUlid(), UserId = req.Id, Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), CreatedAtUtc = DateTime.UtcNow };
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        foreach (var subscription in active) subscription.RevokedAtUtc = nowUtc;
+        var created = new CalendarSubscription { Id = Ulid.NewUlid(), UserId = req.Id, Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), CreatedAtUtc = nowUtc };
         await db.CalendarSubscriptions.AddAsync(created, ct);
         await db.SaveChangesAsync(ct);
         return TypedResults.Ok(new CalendarSubscriptionResponse

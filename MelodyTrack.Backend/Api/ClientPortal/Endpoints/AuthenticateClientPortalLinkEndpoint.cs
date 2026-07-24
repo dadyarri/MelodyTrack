@@ -11,7 +11,7 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector uaDetector)
+public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvider timeProvider)
     : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<LoginResponse>, ProblemDetails>>
 {
     public override void Configure()
@@ -23,6 +23,7 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
 
     public override async Task<Results<Ok<LoginResponse>, ProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
     {
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var link = await LoadActiveLinkAsync(req.Token, ct);
         if (link is null)
         {
@@ -63,7 +64,7 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
             }
 
             link.PinCode = req.Pin;
-            link.PinSetAtUtc = DateTime.UtcNow;
+            link.PinSetAtUtc = nowUtc;
         }
         else if (!string.Equals(link.PinCode, req.Pin, StringComparison.Ordinal))
         {
@@ -85,7 +86,7 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
             User = link.User,
             RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
-            ValidUntil = DateTime.UtcNow.AddDays(30)
+            ValidUntil = nowUtc.AddDays(30)
         };
 
         await db.Sessions.AddAsync(session, ct);
@@ -93,7 +94,7 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
 
         return TypedResults.Ok(new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(link.User, session.Id),
+            AccessToken = UserUtils.CreateAccessToken(link.User, session.Id, timeProvider),
             RefreshToken = refreshToken,
             FirstName = link.User.FirstName,
             LastName = link.User.LastName

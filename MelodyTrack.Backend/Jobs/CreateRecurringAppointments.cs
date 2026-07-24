@@ -11,13 +11,13 @@ namespace MelodyTrack.Backend.Jobs;
 ///     <see cref="AppointmentRecurrenceRule.RecurrenceType" /> and
 ///     <see cref="AppointmentRecurrenceRule.RecurrencePattern" />.
 /// </summary>
-public class CreateRecurringAppointments(IRecurringAppointmentMaterializer materializer) : IJob
+public class CreateRecurringAppointments(IRecurringAppointmentMaterializer materializer, TimeProvider timeProvider) : IJob
 {
     public static readonly JobKey Key = new("CreateRecurringAppointments");
 
     public async Task Execute(IJobExecutionContext context)
     {
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
         await materializer.EnsureAppointmentsGeneratedAsync(now, now.AddDays(7), context.CancellationToken);
     }
 }

@@ -12,7 +12,11 @@ using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
+public class CreateServiceEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IRequestReplayService requestReplayService,
+    TimeProvider timeProvider)
     : Ep.Req<CreateServiceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ReplayEndpoint = "services:create";
@@ -73,7 +77,7 @@ public class CreateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             {
                 Id = Ulid.NewUlid(),
                 Service = service,
-                EffectiveDate = DateTime.UtcNow,
+                EffectiveDate = timeProvider.GetUtcNow().UtcDateTime,
                 Price = req.Price
             };
 

@@ -11,7 +11,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
     : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ProblemDetails>>
 {
     public override void Configure()
@@ -30,7 +30,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
             .Where(e => !e.WasUsed && e.Token == tokenHash)
             .FirstOrDefaultAsync(ct);
 
-        if (restoreCode is null || restoreCode.ValidUntil < DateTime.UtcNow)
+        if (restoreCode is null || restoreCode.ValidUntil < timeProvider.GetUtcNow().UtcDateTime)
         {
             Logger.LogWarning("Password reset attempt with invalid, used or expired token");
             AddError(r => r.Token, "Ссылка восстановления больше не действует. Запросите новую ссылку.");

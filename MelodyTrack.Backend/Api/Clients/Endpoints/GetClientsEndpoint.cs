@@ -13,7 +13,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
+public class GetClientsEndpoint(
+    AppDbContext db,
+    ClientToClientWithBalanceDtoMapConfig mapper,
+    IRecordActivityService recordActivityService,
+    TimeProvider timeProvider)
     : Ep.Req<GetClientsPaginatedRequest>.Res<
         Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
@@ -49,7 +53,7 @@ public class GetClientsEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMap
 
         if (req.LifecycleStatus is not null)
         {
-            var now = DateTime.UtcNow;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
             clientsQuery = req.LifecycleStatus.Value switch
             {
                 ClientLifecycleStatus.ClosedLead => clientsQuery.Where(client => client.IsLeadClosed),

@@ -11,7 +11,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
+public class UpdateServicePriceEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IEntityFreshnessService entityFreshnessService,
+    TimeProvider timeProvider)
+    : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
@@ -61,7 +66,7 @@ public class UpdateServicePriceEndpoint(AppDbContext db, IAuditLogService auditL
         var price = new ServicePrice
         {
             Id = Ulid.NewUlid(),
-            EffectiveDate = DateTime.UtcNow,
+            EffectiveDate = timeProvider.GetUtcNow().UtcDateTime,
             Price = req.Price,
             Service = service
         };

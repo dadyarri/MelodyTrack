@@ -10,7 +10,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessService entityFreshnessService, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
+public class UpdateRecurringTaskRuleEndpoint(
+    AppDbContext db,
+    IEntityFreshnessService entityFreshnessService,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
     : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -67,7 +72,7 @@ public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessSe
         rule.MessageTemplate = req.MessageTemplate;
         rule.OffsetMinutes = SupportsOffsetMinutes(rule.Type) ? req.OffsetMinutes : null;
         rule.CooldownDays = SupportsCooldownDays(rule.Type) ? req.CooldownDays : null;
-        rule.UpdatedAtUtc = DateTime.UtcNow;
+        rule.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest

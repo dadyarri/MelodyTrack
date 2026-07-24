@@ -11,7 +11,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
+public class CreateCustomTaskEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
     : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -69,7 +73,7 @@ public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLog
             Title = req.Title.Trim(),
             MessageText = req.MessageText.Trim(),
             DueAtUtc = dueAtUtc,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
             CreatedByUserId = currentUser.Id
         };
 

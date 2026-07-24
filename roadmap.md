@@ -116,7 +116,7 @@ The backend Dockerfile targets .NET 10 images:
 
    - ✅ Replace ad-hoc public URL construction with `IPublicUrlBuilder` and explicit `MELODY_TRACK_PUBLIC_API_BASE_URL` configuration. `MELODY_TRACK_APP_DOMAIN` remains the frontend origin; never infer a public API URL from request headers or deployment environment.
    - 🟡 Consolidate claims parsing and current-user lookup behind scoped `ICurrentUserAccessor`. Dashboard, recurring-task, and calendar-user endpoints use it; migrate the remaining direct claim/database lookups incrementally.
-   - Introduce `TimeProvider` for clock-sensitive application logic and tests.
+   - ✅ Replace direct application clock reads with injected `TimeProvider`. Authentication/session expiry, invites and password resets, client lifecycle queries, courses and enrollments, dashboard/schedule queries, exports, onboarding, recurring tasks and appointments, calendar feeds, audit/replay timestamps, startup seeding, and Quartz jobs now share the injectable clock. Clock-dependent entity defaults were removed so creation flows assign timestamps explicitly. Capture one UTC instant per multi-step operation and before EF queries.
    - Centralize idempotent-create handling; scope replay records to the caller, bind them to a request fingerprint, and retire polling-based duplicate handling.
    - Split recurring-task querying, rule evaluation, state transitions, and template rendering out of `RecurringTaskService`.
    - ✅ Register request logging before endpoint execution. Keep `UseSerilogRequestLogging()` ahead of FastEndpoints middleware.

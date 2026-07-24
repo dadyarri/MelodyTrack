@@ -23,7 +23,7 @@ public interface IAuditLogService
     Task WriteAsync(AuditLogWriteRequest request, CancellationToken ct);
 }
 
-public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAccessor) : IAuditLogService
+public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAccessor, TimeProvider timeProvider) : IAuditLogService
 {
     public async Task WriteAsync(AuditLogWriteRequest request, CancellationToken ct)
     {
@@ -68,7 +68,7 @@ public class AuditLogService(AppDbContext db, IHttpContextAccessor httpContextAc
         var auditLog = new AuditLog
         {
             Id = Ulid.NewUlid(),
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
             Category = request.Category,
             Action = request.Action,
             EntityType = request.EntityType,

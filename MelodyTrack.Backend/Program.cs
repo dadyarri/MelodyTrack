@@ -60,6 +60,7 @@ try
     builder.Services.AddAuthorization();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddSingleton(startupConfiguration);
+    builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();
     builder.Services.SwaggerDocument(o =>
@@ -254,6 +255,7 @@ try
     await using var scope = app.Services.CreateAsyncScope();
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
+    var nowUtc = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
 
     await db.Database.MigrateAsync();
     var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
@@ -277,7 +279,7 @@ try
     var inviteCode = await db.InviteCodes
         .AsNoTracking()
         .Include(e => e.Role)
-        .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow);
+        .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= nowUtc);
 
     if (!hasSuperuser)
     {
@@ -289,7 +291,7 @@ try
                 Id = Ulid.NewUlid(),
                 Code = Ulid.NewUlid(),
                 Role = superuserRole!,
-                ValidUntil = DateTime.UtcNow.AddDays(2)
+                ValidUntil = nowUtc.AddDays(2)
             };
             await db.InviteCodes.AddAsync(bootstrapInvite);
             await db.SaveChangesAsync();
@@ -302,7 +304,7 @@ try
         await db.AuditLogs.AddAsync(new AuditLog
         {
             Id = Ulid.NewUlid(),
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = nowUtc,
             Category = "security",
             Action = "superuser_bootstrap_invite_available",
             EntityType = "invite",

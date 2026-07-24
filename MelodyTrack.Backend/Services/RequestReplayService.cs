@@ -14,7 +14,7 @@ public interface IRequestReplayService
     Task<Ulid?> WaitForResponseEntityIdAsync(string endpoint, string replayKey, CancellationToken ct);
 }
 
-public class RequestReplayService(AppDbContext db) : IRequestReplayService
+public class RequestReplayService(AppDbContext db, TimeProvider timeProvider) : IRequestReplayService
 {
     public string? GetReplayKey(IHeaderDictionary headers)
     {
@@ -43,7 +43,7 @@ public class RequestReplayService(AppDbContext db) : IRequestReplayService
             Id = Ulid.NewUlid(),
             Endpoint = endpoint,
             ReplayKey = replayKey,
-            CreatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime
         };
 
         await db.RequestReplays.AddAsync(replay, ct);

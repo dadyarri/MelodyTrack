@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class SkipOnboardingEndpoint(AppDbContext db)
+public class SkipOnboardingEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.NoReq.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -35,14 +35,14 @@ public class SkipOnboardingEndpoint(AppDbContext db)
             return TypedResults.Unauthorized();
         }
 
-        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user);
+        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user, timeProvider);
         if (user.OnboardingState is null)
         {
             user.OnboardingState = state;
         }
 
         state.Status = OnboardingStatus.Skipped;
-        state.UpdatedAtUtc = DateTime.UtcNow;
+        state.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         state.CompletedAtUtc = null;
 
         await db.SaveChangesAsync(ct);

@@ -12,7 +12,11 @@ using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class CreateCourseEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
+public class CreateCourseEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IRequestReplayService requestReplayService,
+    TimeProvider timeProvider)
     : Ep.Req<CreateCourseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ReplayEndpoint = "courses:create";
@@ -60,7 +64,7 @@ public class CreateCourseEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
             }
 
-            var nowUtc = DateTime.UtcNow;
+            var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
             var course = new Course
             {
                 Id = Ulid.NewUlid(),

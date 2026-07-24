@@ -76,6 +76,10 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Background jobs use Quartz with a persistent PostgreSQL store. `quartz.sql` is needed when preparing databases for Quartz tables.
 - Generate externally visible links through `IPublicUrlBuilder`. `MELODY_TRACK_APP_DOMAIN` is the frontend origin, while `MELODY_TRACK_PUBLIC_API_BASE_URL` is the externally reachable API base path.
 - For new dashboard, task, and client-portal endpoints that need the authenticated database user, inject `ICurrentUserAccessor`; do not parse claims and query the user directly in the endpoint.
+- Inject `TimeProvider` for all clock-sensitive application logic. Use `timeProvider.GetUtcNow().UtcDateTime` rather than `DateTime.UtcNow` or `DateTimeOffset.UtcNow`.
+- Capture the injected clock once before an operation that performs multiple comparisons, writes, or EF queries so every step observes the same instant and EF receives a parameterized value.
+- Do not put live-clock initializers on entity properties. Require creation flows to assign timestamps explicitly from their injected `TimeProvider`.
+- FastEndpoints preprocessors that are not constructor-injected may resolve `TimeProvider` from `HttpContext.RequestServices`. Startup seeding resolves it from the startup scope; Quartz jobs and application services receive it through constructor injection.
 
 ## Authentication And Authorization
 

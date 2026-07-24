@@ -26,10 +26,11 @@ public sealed class ActiveSessionPreProcessor : GlobalPreProcessor<ActiveSession
         var services = context.HttpContext.RequestServices;
         var db = services.GetRequiredService<AppDbContext>();
         var logger = services.GetRequiredService<ILogger<ActiveSessionPreProcessor>>();
+        var nowUtc = services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
 
         var isSessionActive = await db.Sessions
             .AsNoTracking()
-            .AnyAsync(e => e.Id == sessionId && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow, ct);
+            .AnyAsync(e => e.Id == sessionId && !e.WasRevoked && e.ValidUntil >= nowUtc, ct);
 
         if (isSessionActive)
         {

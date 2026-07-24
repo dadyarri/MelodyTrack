@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
     : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ProblemDetails>>
 {
     public override void Configure()
@@ -38,10 +38,11 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
                 StatusCodes.Status403Forbidden);
         }
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var inviteCode = await db.InviteCodes
             .Include(inviteCode => inviteCode.Role)
             .FirstOrDefaultAsync(e =>
-                e.Code == code && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, ct);
+                e.Code == code && !e.WasUsed && e.ValidUntil >= nowUtc, ct);
 
         if (inviteCode == null)
         {

@@ -13,7 +13,7 @@ using Npgsql;
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
-    CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
+    CreateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService, TimeProvider timeProvider)
     : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     private const string ReplayEndpoint = "clients:create";
@@ -80,7 +80,7 @@ public class
                 Patronymic = req.Patronymic,
                 DateOfBirth = req.DateOfBirth,
                 Source = source,
-                CreatedAtUtc = DateTime.UtcNow,
+                CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
                 Contacts = new ClientContacts
                 {
                     Id = Ulid.NewUlid(),

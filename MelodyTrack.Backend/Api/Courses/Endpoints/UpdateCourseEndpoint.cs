@@ -15,7 +15,8 @@ public class UpdateCourseEndpoint(
     AppDbContext db,
     IAuditLogService auditLogService,
     IEntityFreshnessService entityFreshnessService,
-    CourseProgressService courseProgressService)
+    CourseProgressService courseProgressService,
+    TimeProvider timeProvider)
     : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
@@ -98,7 +99,7 @@ public class UpdateCourseEndpoint(
 
         course.Name = req.Name;
         course.Description = req.Description;
-        course.UpdatedAtUtc = DateTime.UtcNow;
+        course.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         var nextLevels = req.Levels
             .OrderBy(level => level.Order)
             .Select(level => new CourseLevel

@@ -10,7 +10,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class ExportExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
+public class ExportExpensesEndpoint(AppDbContext db, TimeProvider timeProvider)
+    : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
@@ -76,7 +77,7 @@ public class ExportExpensesEndpoint(AppDbContext db) : Ep.Req<GetExpensesPaginat
         await using var stream = new MemoryStream();
         workbook.SaveAs(stream);
 
-        var fileName = $"expenses_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+        var fileName = $"expenses_{timeProvider.GetUtcNow().UtcDateTime:yyyyMMdd_HHmmss}.xlsx";
         return TypedResults.File(stream.ToArray(), ExcelContentType, fileName);
     }
 }

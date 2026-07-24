@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ExportClientsInDebtEndpoint(AppDbContext db)
+public class ExportClientsInDebtEndpoint(AppDbContext db, TimeProvider timeProvider)
     : Ep.NoReq.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
@@ -129,7 +129,7 @@ public class ExportClientsInDebtEndpoint(AppDbContext db)
         await using var stream = new MemoryStream();
         workbook.SaveAs(stream);
 
-        var fileName = $"debtors_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+        var fileName = $"debtors_{timeProvider.GetUtcNow().UtcDateTime:yyyyMMdd_HHmmss}.xlsx";
         return TypedResults.File(stream.ToArray(), ExcelContentType, fileName);
     }
 }

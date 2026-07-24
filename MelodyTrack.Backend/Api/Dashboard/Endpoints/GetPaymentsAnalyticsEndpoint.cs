@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
+public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
     : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
 {
     public override void Configure()
@@ -96,7 +96,7 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor 
         {
             appointments.Select(e => (DateTime?)e.StartDate).DefaultIfEmpty().Max(),
             payments.Select(e => (DateTime?)e.Date).DefaultIfEmpty().Max()
-        }.Max() ?? DateTime.UtcNow;
+        }.Max() ?? timeProvider.GetUtcNow().UtcDateTime;
 
         var servicePrices = await db.ServicePriceHistory
             .AsNoTracking()

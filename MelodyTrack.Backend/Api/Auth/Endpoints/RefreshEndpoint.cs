@@ -10,7 +10,7 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
+public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvider timeProvider)
     : Ep.Req<RefreshRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -30,6 +30,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
             .Where(e => e.RefreshToken == refreshTokenHash)
             .Include(e => e.User)
             .FirstOrDefaultAsync(ct);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
 
         if (session is null)
@@ -50,7 +51,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
             return TypedResults.Unauthorized();
         }
 
-        if (session.ValidUntil < DateTime.UtcNow)
+        if (session.ValidUntil < nowUtc)
         {
             Logger.LogWarning("Expired refresh token used in refresh attempt for {EmailRef}", UserUtils.DescribeEmailForLogs(session.User.Email));
             session.WasRevoked = true;
@@ -66,7 +67,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
 
         await db.Sessions
-            .Where(e => e.User.Id == session.User.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow && e.DeviceInfo == deviceInfo)
+            .Where(e => e.User.Id == session.User.Id && !e.WasRevoked && e.ValidUntil >= nowUtc && e.DeviceInfo == deviceInfo)
             .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
 
         var newSession = new Session
@@ -75,7 +76,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
             User = session.User,
             RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = deviceInfo,
-            ValidUntil = DateTime.UtcNow.AddDays(7)
+            ValidUntil = nowUtc.AddDays(7)
         };
 
         await db.Sessions.AddAsync(newSession, ct);
@@ -84,7 +85,7 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector)
         Logger.LogInformation("Successfully refreshed token for {EmailRef} from {DeviceInfo}", UserUtils.DescribeEmailForLogs(session.User.Email), newSession.DeviceInfo);
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id),
+            AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id, timeProvider),
             RefreshToken = refreshToken,
             FirstName = session.User.FirstName,
             LastName = session.User.LastName

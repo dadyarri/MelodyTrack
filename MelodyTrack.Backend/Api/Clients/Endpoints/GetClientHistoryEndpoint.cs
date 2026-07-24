@@ -14,7 +14,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
+public class GetClientHistoryEndpoint(
+    AppDbContext db,
+    ClientToClientWithBalanceDtoMapConfig mapper,
+    IRecordActivityService recordActivityService,
+    TimeProvider timeProvider)
     : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     public override void Configure()
@@ -149,12 +153,13 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(ct);
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var upcomingAppointmentsQuery = db.Appointments
             .AsNoTracking()
             .Where(e => e.Client.Id == client.Id
                         && e.Status == AppointmentStatus.Planned
                         && !e.IsDeleted
-                        && e.StartDate >= DateTime.UtcNow);
+                        && e.StartDate >= nowUtc);
 
         var upcomingAppointmentsCount = await upcomingAppointmentsQuery.CountAsync(ct);
         var nextAppointmentAtUtc = await upcomingAppointmentsQuery
