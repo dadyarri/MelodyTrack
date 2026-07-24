@@ -239,7 +239,7 @@ public class AppDbContext : DbContext
             });
 
         modelBuilder.Entity<RequestReplay>()
-            .HasIndex(e => new { e.Endpoint, e.ReplayKey })
+            .HasIndex(e => new { e.Endpoint, e.CallerId, e.ReplayKey })
             .IsUnique();
 
         modelBuilder.Entity<User>()

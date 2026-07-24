@@ -8,7 +8,6 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
@@ -41,146 +40,120 @@ public class CreateCourseEnrollmentEndpoint(
         }
 
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
+        Ulid? reservationId = null;
         if (replayKey is not null)
         {
-            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (existingId is not null)
+            var decision = await requestReplayService.AcquireAsync(ReplayEndpoint, replayKey, req, ct);
+            if (decision.Status == RequestReplayStatus.Completed)
             {
-                return TypedResults.Created($"/course-enrollments/{existingId}", new CreateEntityResponse
+                return TypedResults.Created($"/course-enrollments/{decision.ResponseEntityId}", new CreateEntityResponse
                 {
-                    Id = existingId.Value
+                    Id = decision.ResponseEntityId!.Value
                 });
             }
+
+            reservationId = decision.ReservationId;
         }
 
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        RequestReplay? replay = null;
+        var client = await db.Clients
+            .FirstOrDefaultAsync(item => item.Id == req.ClientId, ct);
 
-        try
+        if (client is null)
         {
-            if (replayKey is not null)
-            {
-                transaction = await db.Database.BeginTransactionAsync(ct);
-                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
-            }
+            AddError(item => item.ClientId, "Клиент не найден");
+            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
 
-            var client = await db.Clients
-                .FirstOrDefaultAsync(item => item.Id == req.ClientId, ct);
+        var course = await db.Courses
+            .Include(item => item.Blocks)
+                .ThenInclude(block => block.Branches)
+                    .ThenInclude(branch => branch.Themes)
+                        .ThenInclude(theme => theme.Dependencies)
+            .FirstOrDefaultAsync(item => item.Id == req.CourseId, ct);
 
-            if (client is null)
-            {
-                AddError(item => item.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
+        if (course is null)
+        {
+            AddError(item => item.CourseId, "Курс не найден");
+            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+        }
 
-            var course = await db.Courses
-                .Include(item => item.Blocks)
-                    .ThenInclude(block => block.Branches)
-                        .ThenInclude(branch => branch.Themes)
-                            .ThenInclude(theme => theme.Dependencies)
-                .FirstOrDefaultAsync(item => item.Id == req.CourseId, ct);
+        var existingEnrollment = await db.CourseEnrollments
+            .AsNoTracking()
+            .FirstOrDefaultAsync(item => item.ClientId == req.ClientId && item.CourseId == req.CourseId, ct);
 
-            if (course is null)
-            {
-                AddError(item => item.CourseId, "Курс не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
+        if (existingEnrollment is not null)
+        {
+            AddError(item => item.CourseId, "Клиент уже записан на этот курс.");
+            return TypedResults.Conflict(new ProblemDetails(ValidationFailures));
+        }
 
-            var existingEnrollment = await db.CourseEnrollments
-                .AsNoTracking()
-                .FirstOrDefaultAsync(item => item.ClientId == req.ClientId && item.CourseId == req.CourseId, ct);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var enrollment = new CourseEnrollment
+        {
+            Id = Ulid.NewUlid(),
+            ClientId = req.ClientId,
+            CourseId = course.Id,
+            Client = client,
+            Course = course,
+            CreatedAtUtc = nowUtc,
+            UpdatedAtUtc = nowUtc
+        };
 
-            if (existingEnrollment is not null)
-            {
-                AddError(item => item.CourseId, "Клиент уже записан на этот курс.");
-                return TypedResults.Conflict(new ProblemDetails(ValidationFailures));
-            }
+        var themesById = course.Blocks
+            .SelectMany(block => block.Branches.OrderBy(branch => branch.Order))
+            .SelectMany(branch => branch.Themes.OrderBy(theme => theme.Order))
+            .ToDictionary(theme => theme.Id);
 
-            var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-            var enrollment = new CourseEnrollment
+        foreach (var theme in themesById.Values)
+        {
+            var state = ResolveInitialState(course, theme);
+            DateTime? unlockedAtUtc = state is CourseThemeProgressState.Unlocked ? nowUtc : null;
+
+            enrollment.Themes.Add(new CourseEnrollmentTheme
             {
                 Id = Ulid.NewUlid(),
-                ClientId = req.ClientId,
-                CourseId = course.Id,
-                Client = client,
-                Course = course,
-                CreatedAtUtc = nowUtc,
-                UpdatedAtUtc = nowUtc
-            };
-
-            var themesById = course.Blocks
-                .SelectMany(block => block.Branches.OrderBy(branch => branch.Order))
-                .SelectMany(branch => branch.Themes.OrderBy(theme => theme.Order))
-                .ToDictionary(theme => theme.Id);
-
-            foreach (var theme in themesById.Values)
-            {
-                var state = ResolveInitialState(course, theme);
-                DateTime? unlockedAtUtc = state is CourseThemeProgressState.Unlocked ? nowUtc : null;
-
-                enrollment.Themes.Add(new CourseEnrollmentTheme
-                {
-                    Id = Ulid.NewUlid(),
-                    Enrollment = enrollment,
-                    EnrollmentId = enrollment.Id,
-                    CourseTheme = theme,
-                    CourseThemeId = theme.Id,
-                    State = state,
-                    UnlockedAtUtc = unlockedAtUtc,
-                    StartedAtUtc = null,
-                    WaitingForHomeworkAtUtc = null,
-                    CompletedAtUtc = null
-                });
-            }
-
-            await db.CourseEnrollments.AddAsync(enrollment, ct);
-            await db.SaveChangesAsync(ct);
-
-            await auditLogService.WriteAsync(new AuditLogWriteRequest
-            {
-                Category = "course_enrollments",
-                Action = "course_enrollment_created",
-                EntityType = "course_enrollment",
-                EntityId = enrollment.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
-                    AuditDetailsFormatter.DescribeContext("Курс", course.Name),
-                    AuditDetailsFormatter.DescribeContext("Тем", enrollment.Themes.Count.ToString()))
-            }, ct);
-
-            if (replay is not null)
-            {
-                await requestReplayService.CompleteAsync(replay, enrollment.Id, ct);
-            }
-
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(ct);
-            }
-
-            return TypedResults.Created($"/course-enrollments/{enrollment.Id}", new CreateEntityResponse
-            {
-                Id = enrollment.Id
+                Enrollment = enrollment,
+                EnrollmentId = enrollment.Id,
+                CourseTheme = theme,
+                CourseThemeId = theme.Id,
+                State = state,
+                UnlockedAtUtc = unlockedAtUtc,
+                StartedAtUtc = null,
+                WaitingForHomeworkAtUtc = null,
+                CompletedAtUtc = null
             });
         }
-        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
+
+        await db.CourseEnrollments.AddAsync(enrollment, ct);
+        await db.SaveChangesAsync(ct);
+
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            if (transaction is not null)
-            {
-                await transaction.RollbackAsync(ct);
-            }
+            Category = "course_enrollments",
+            Action = "course_enrollment_created",
+            EntityType = "course_enrollment",
+            EntityId = enrollment.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
+                AuditDetailsFormatter.DescribeContext("Курс", course.Name),
+                AuditDetailsFormatter.DescribeContext("Тем", enrollment.Themes.Count.ToString()))
+        }, ct);
 
-            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (completedId is not null)
-            {
-                return TypedResults.Created($"/course-enrollments/{completedId}", new CreateEntityResponse
-                {
-                    Id = completedId.Value
-                });
-            }
-
-            throw;
+        if (reservationId is not null)
+        {
+            await requestReplayService.CompleteAsync(reservationId.Value, enrollment.Id, ct);
         }
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
+
+        return TypedResults.Created($"/course-enrollments/{enrollment.Id}", new CreateEntityResponse
+        {
+            Id = enrollment.Id
+        });
     }
 
     private static CourseThemeProgressState ResolveInitialState(Course course, CourseTheme theme)
@@ -206,8 +179,4 @@ public class CreateCourseEnrollmentEndpoint(
         return CourseThemeProgressState.Unlocked;
     }
 
-    private static bool IsUniqueViolation(DbUpdateException exception)
-    {
-        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
-    }
 }

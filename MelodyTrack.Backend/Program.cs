@@ -195,6 +195,18 @@ try
         {
             var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
 
+            if (exception is RequestReplayConflictException replayConflict)
+            {
+                context.Response.StatusCode = StatusCodes.Status409Conflict;
+                context.Response.ContentType = "application/problem+json";
+                var conflictDetails = ApiErrorResponseFactory.CreateProblemDetails(
+                    context,
+                    StatusCodes.Status409Conflict,
+                    replayConflict.Message);
+                await context.Response.WriteAsJsonAsync(conflictDetails);
+                return;
+            }
+
             if (exception is not null)
             {
                 Log.Error(exception, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);

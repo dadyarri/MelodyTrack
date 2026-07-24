@@ -80,6 +80,8 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Capture the injected clock once before an operation that performs multiple comparisons, writes, or EF queries so every step observes the same instant and EF receives a parameterized value.
 - Do not put live-clock initializers on entity properties. Require creation flows to assign timestamps explicitly from their injected `TimeProvider`.
 - FastEndpoints preprocessors that are not constructor-injected may resolve `TimeProvider` from `HttpContext.RequestServices`. Startup seeding resolves it from the startup scope; Quartz jobs and application services receive it through constructor injection.
+- Idempotent create endpoints use `IRequestReplayService` and the `Idempotency-Key` header. Replay identity is scoped by endpoint and authenticated caller, and the stored SHA-256 request fingerprint prevents reusing a key for a different payload.
+- Keep request replay acquisition and completion inside the same database transaction as entity creation. The acquisition service uses PostgreSQL `ON CONFLICT DO NOTHING`, so concurrent duplicates wait on the database constraint and replay the committed response without application polling.
 
 ## Authentication And Authorization
 

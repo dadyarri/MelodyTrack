@@ -1,3 +1,5 @@
+using System.Security.Cryptography;
+using System.Text.Json;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using Microsoft.AspNetCore.Http;
@@ -5,16 +7,34 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services;
 
+public enum RequestReplayStatus
+{
+    Reserved,
+    Completed
+}
+
+public sealed record RequestReplayDecision(
+    RequestReplayStatus Status,
+    Ulid? ReservationId = null,
+    Ulid? ResponseEntityId = null);
+
+public sealed class RequestReplayConflictException(string message) : Exception(message);
+
 public interface IRequestReplayService
 {
     string? GetReplayKey(IHeaderDictionary headers);
-    Task<Ulid?> TryGetResponseEntityIdAsync(string endpoint, string replayKey, CancellationToken ct);
-    Task<RequestReplay> ReserveAsync(string endpoint, string replayKey, CancellationToken ct);
-    Task CompleteAsync(RequestReplay replay, Ulid responseEntityId, CancellationToken ct);
-    Task<Ulid?> WaitForResponseEntityIdAsync(string endpoint, string replayKey, CancellationToken ct);
+    Task<RequestReplayDecision> AcquireAsync<TRequest>(
+        string endpoint,
+        string replayKey,
+        TRequest request,
+        CancellationToken ct);
+    Task CompleteAsync(Ulid reservationId, Ulid responseEntityId, CancellationToken ct);
 }
 
-public class RequestReplayService(AppDbContext db, TimeProvider timeProvider) : IRequestReplayService
+public class RequestReplayService(
+    AppDbContext db,
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor) : IRequestReplayService
 {
     public string? GetReplayKey(IHeaderDictionary headers)
     {
@@ -27,49 +47,72 @@ public class RequestReplayService(AppDbContext db, TimeProvider timeProvider) : 
         return string.IsNullOrWhiteSpace(key) ? null : key;
     }
 
-    public Task<Ulid?> TryGetResponseEntityIdAsync(string endpoint, string replayKey, CancellationToken ct)
+    public async Task<RequestReplayDecision> AcquireAsync<TRequest>(
+        string endpoint,
+        string replayKey,
+        TRequest request,
+        CancellationToken ct)
     {
-        return db.RequestReplays
-            .AsNoTracking()
-            .Where(item => item.Endpoint == endpoint && item.ReplayKey == replayKey)
-            .Select(item => item.ResponseEntityId)
-            .FirstOrDefaultAsync(ct);
-    }
+        var caller = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("An authenticated caller is required for idempotent requests.");
+        var reservationId = Ulid.NewUlid();
+        var reservationIdBytes = reservationId.ToByteArray();
+        var callerIdBytes = caller.Id.ToByteArray();
+        var fingerprint = CreateFingerprint(request);
+        var createdAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
-    public async Task<RequestReplay> ReserveAsync(string endpoint, string replayKey, CancellationToken ct)
-    {
-        var replay = new RequestReplay
+        var rowsInserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
+            INSERT INTO "RequestReplays" ("Id", "Endpoint", "ReplayKey", "CallerId", "RequestFingerprint", "CreatedAtUtc")
+            VALUES ({reservationIdBytes}, {endpoint}, {replayKey}, {callerIdBytes}, {fingerprint}, {createdAtUtc})
+            ON CONFLICT ("Endpoint", "CallerId", "ReplayKey") DO NOTHING
+            """, ct);
+
+        if (rowsInserted == 1)
         {
-            Id = Ulid.NewUlid(),
-            Endpoint = endpoint,
-            ReplayKey = replayKey,
-            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime
-        };
-
-        await db.RequestReplays.AddAsync(replay, ct);
-        await db.SaveChangesAsync(ct);
-        return replay;
-    }
-
-    public async Task CompleteAsync(RequestReplay replay, Ulid responseEntityId, CancellationToken ct)
-    {
-        replay.ResponseEntityId = responseEntityId;
-        await db.SaveChangesAsync(ct);
-    }
-
-    public async Task<Ulid?> WaitForResponseEntityIdAsync(string endpoint, string replayKey, CancellationToken ct)
-    {
-        for (var attempt = 0; attempt < 60; attempt++)
-        {
-            var responseEntityId = await TryGetResponseEntityIdAsync(endpoint, replayKey, ct);
-            if (responseEntityId is not null)
-            {
-                return responseEntityId;
-            }
-
-            await Task.Delay(100, ct);
+            return new RequestReplayDecision(RequestReplayStatus.Reserved, ReservationId: reservationId);
         }
 
-        return null;
+        var existing = await db.RequestReplays
+            .AsNoTracking()
+            .SingleAsync(item =>
+                item.Endpoint == endpoint
+                && item.CallerId == caller.Id
+                && item.ReplayKey == replayKey, ct);
+
+        if (!CryptographicOperations.FixedTimeEquals(
+                Convert.FromHexString(existing.RequestFingerprint),
+                Convert.FromHexString(fingerprint)))
+        {
+            throw new RequestReplayConflictException(
+                "Этот ключ идемпотентности уже использован для другого запроса.");
+        }
+
+        if (existing.ResponseEntityId is not { } responseEntityId)
+        {
+            throw new RequestReplayConflictException(
+                "Запрос с этим ключом идемпотентности уже выполняется. Повторите попытку позже.");
+        }
+
+        return new RequestReplayDecision(RequestReplayStatus.Completed, ResponseEntityId: responseEntityId);
+    }
+
+    public async Task CompleteAsync(Ulid reservationId, Ulid responseEntityId, CancellationToken ct)
+    {
+        var rowsUpdated = await db.RequestReplays
+            .Where(item => item.Id == reservationId)
+            .ExecuteUpdateAsync(
+                setters => setters.SetProperty(item => item.ResponseEntityId, responseEntityId),
+                ct);
+
+        if (rowsUpdated != 1)
+        {
+            throw new InvalidOperationException($"Request replay reservation {reservationId} was not found.");
+        }
+    }
+
+    private static string CreateFingerprint<TRequest>(TRequest request)
+    {
+        var payload = JsonSerializer.SerializeToUtf8Bytes(request);
+        return Convert.ToHexString(SHA256.HashData(payload));
     }
 }

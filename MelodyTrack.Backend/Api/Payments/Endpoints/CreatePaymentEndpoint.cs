@@ -8,11 +8,14 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class CreatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService) : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+public class CreatePaymentEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IRequestReplayService requestReplayService)
+    : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
 {
     private const string ReplayEndpoint = "payments:create";
 
@@ -35,118 +38,87 @@ public class CreatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
         }
 
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
+        Ulid? reservationId = null;
         if (replayKey is not null)
         {
-            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (existingId is not null)
+            var decision = await requestReplayService.AcquireAsync(ReplayEndpoint, replayKey, req, ct);
+            if (decision.Status == RequestReplayStatus.Completed)
             {
-                return TypedResults.Created($"/payments/{existingId}", new CreateEntityResponse
+                return TypedResults.Created($"/payments/{decision.ResponseEntityId}", new CreateEntityResponse
                 {
-                    Id = existingId.Value
+                    Id = decision.ResponseEntityId!.Value
                 });
             }
+
+            reservationId = decision.ReservationId;
         }
 
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        RequestReplay? replay = null;
-
-        try
+        Service? service = null;
+        if (req.ServiceId.HasValue)
         {
-            if (replayKey is not null)
-            {
-                transaction = await db.Database.BeginTransactionAsync(ct);
-                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
-            }
-
-            Service? service = null;
-            if (req.ServiceId.HasValue)
-            {
-                service = await db.Services
-                    .Where(e => e.Id == req.ServiceId.Value)
-                    .FirstOrDefaultAsync(ct);
-
-                if (service is null)
-                {
-                    AddError(r => r.ServiceId, "Сервис не найден");
-                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-                }
-            }
-
-            var client = await db.Clients.Where(e => e.Id == req.ClientId)
+            service = await db.Services
+                .Where(e => e.Id == req.ServiceId.Value)
                 .FirstOrDefaultAsync(ct);
 
-            if (client is null)
+            if (service is null)
             {
-                AddError(r => r.ClientId, "Клиент не найден");
+                AddError(r => r.ServiceId, "Сервис не найден");
                 return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
             }
-
-            var payment = new Payment
-            {
-                Id = Ulid.NewUlid(),
-                Amount = req.Amount,
-                Client = client,
-                Date = req.Date,
-                Description = req.Description ?? string.Empty,
-                Service = service
-            };
-
-            await db.Payments.AddAsync(payment, ct);
-            await db.SaveChangesAsync(ct);
-
-            Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
-            await auditLogService.WriteAsync(new AuditLogWriteRequest
-            {
-                Category = "payments",
-                Action = "payment_created",
-                EntityType = "payment",
-                EntityId = payment.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
-                    AuditDetailsFormatter.DescribeContext("Услуга", service?.Name),
-                    AuditDetailsFormatter.DescribeContext("Сумма", payment.Amount.ToString("0.##")),
-                    AuditDetailsFormatter.DescribeContext("Дата", payment.Date),
-                    AuditDetailsFormatter.DescribeContext("Описание", payment.Description)
-                )
-            }, ct);
-
-            if (replay is not null)
-            {
-                await requestReplayService.CompleteAsync(replay, payment.Id, ct);
-            }
-
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(ct);
-            }
-
-            return TypedResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
-            {
-                Id = payment.Id
-            });
         }
-        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
+
+        var client = await db.Clients.Where(e => e.Id == req.ClientId)
+            .FirstOrDefaultAsync(ct);
+
+        if (client is null)
         {
-            if (transaction is not null)
-            {
-                await transaction.RollbackAsync(ct);
-            }
-
-            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (completedId is not null)
-            {
-                return TypedResults.Created($"/payments/{completedId}", new CreateEntityResponse
-                {
-                    Id = completedId.Value
-                });
-            }
-
-            throw;
+            AddError(r => r.ClientId, "Клиент не найден");
+            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
         }
-    }
 
-    private static bool IsUniqueViolation(DbUpdateException exception)
-    {
-        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+        var payment = new Payment
+        {
+            Id = Ulid.NewUlid(),
+            Amount = req.Amount,
+            Client = client,
+            Date = req.Date,
+            Description = req.Description ?? string.Empty,
+            Service = service
+        };
+
+        await db.Payments.AddAsync(payment, ct);
+        await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "payments",
+            Action = "payment_created",
+            EntityType = "payment",
+            EntityId = payment.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
+                AuditDetailsFormatter.DescribeContext("Услуга", service?.Name),
+                AuditDetailsFormatter.DescribeContext("Сумма", payment.Amount.ToString("0.##")),
+                AuditDetailsFormatter.DescribeContext("Дата", payment.Date),
+                AuditDetailsFormatter.DescribeContext("Описание", payment.Description)
+            )
+        }, ct);
+
+        if (reservationId is not null)
+        {
+            await requestReplayService.CompleteAsync(reservationId.Value, payment.Id, ct);
+        }
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
+
+        return TypedResults.Created($"/payments/{payment.Id}", new CreateEntityResponse
+        {
+            Id = payment.Id
+        });
     }
 }

@@ -40,6 +40,7 @@ public static class ApiErrorResponseFactory
             StatusCodes.Status401Unauthorized => "Требуется авторизация",
             StatusCodes.Status403Forbidden => "Доступ запрещён",
             StatusCodes.Status404NotFound => "Не найдено",
+            StatusCodes.Status409Conflict => "Конфликт запроса",
             StatusCodes.Status500InternalServerError => "Внутренняя ошибка сервера",
             _ => "Ошибка обработки запроса"
         };
@@ -51,6 +52,7 @@ public static class ApiErrorResponseFactory
             StatusCodes.Status401Unauthorized => "Для выполнения этого запроса нужно войти в систему.",
             StatusCodes.Status403Forbidden => "У вас нет прав для выполнения этого действия.",
             StatusCodes.Status404NotFound => "Запрошенный ресурс не найден.",
+            StatusCodes.Status409Conflict => "Запрос конфликтует с текущим состоянием ресурса.",
             StatusCodes.Status500InternalServerError => "При обработке запроса произошла ошибка.",
             _ => "Не удалось обработать запрос."
         };

@@ -8,7 +8,6 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
@@ -41,108 +40,77 @@ public class CreateCourseEndpoint(
         }
 
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
+        Ulid? reservationId = null;
         if (replayKey is not null)
         {
-            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (existingId is not null)
+            var decision = await requestReplayService.AcquireAsync(ReplayEndpoint, replayKey, req, ct);
+            if (decision.Status == RequestReplayStatus.Completed)
             {
-                return TypedResults.Created($"/courses/{existingId}", new CreateEntityResponse
+                return TypedResults.Created($"/courses/{decision.ResponseEntityId}", new CreateEntityResponse
                 {
-                    Id = existingId.Value
+                    Id = decision.ResponseEntityId!.Value
                 });
             }
+
+            reservationId = decision.ReservationId;
         }
 
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        RequestReplay? replay = null;
-
-        try
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var course = new Course
         {
-            if (replayKey is not null)
-            {
-                transaction = await db.Database.BeginTransactionAsync(ct);
-                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
-            }
+            Id = Ulid.NewUlid(),
+            Name = req.Name,
+            Description = req.Description,
+            CreatedAtUtc = nowUtc,
+            UpdatedAtUtc = nowUtc
+        };
 
-            var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-            var course = new Course
+        course.Levels = req.Levels
+            .OrderBy(level => level.Order)
+            .Select(level => new CourseLevel
             {
                 Id = Ulid.NewUlid(),
-                Name = req.Name,
-                Description = req.Description,
-                CreatedAtUtc = nowUtc,
-                UpdatedAtUtc = nowUtc
-            };
+                Course = course,
+                CourseId = course.Id,
+                Title = level.Title,
+                Order = level.Order,
+                RequiredExperiencePoints = level.RequiredExperiencePoints
+            })
+            .ToList();
 
-            course.Levels = req.Levels
-                .OrderBy(level => level.Order)
-                .Select(level => new CourseLevel
-                {
-                    Id = Ulid.NewUlid(),
-                    Course = course,
-                    CourseId = course.Id,
-                    Title = level.Title,
-                    Order = level.Order,
-                    RequiredExperiencePoints = level.RequiredExperiencePoints
-                })
-                .ToList();
+        CourseStructureBuilder.PopulateCourse(course, req.Blocks);
 
-            CourseStructureBuilder.PopulateCourse(course, req.Blocks);
+        await db.Courses.AddAsync(course, ct);
+        await db.SaveChangesAsync(ct);
 
-            await db.Courses.AddAsync(course, ct);
-            await db.SaveChangesAsync(ct);
-
-            await auditLogService.WriteAsync(new AuditLogWriteRequest
-            {
-                Category = "courses",
-                Action = "course_created",
-                EntityType = "course",
-                EntityId = course.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Курс", course.Name),
-                    AuditDetailsFormatter.DescribeContext("Блоков", course.Blocks.Count.ToString()),
-                    AuditDetailsFormatter.DescribeContext(
-                        "Тем",
-                        course.Blocks.SelectMany(block => block.Branches).SelectMany(branch => branch.Themes).Count().ToString()))
-            }, ct);
-
-            if (replay is not null)
-            {
-                await requestReplayService.CompleteAsync(replay, course.Id, ct);
-            }
-
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(ct);
-            }
-
-            return TypedResults.Created($"/courses/{course.Id}", new CreateEntityResponse
-            {
-                Id = course.Id
-            });
-        }
-        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            if (transaction is not null)
-            {
-                await transaction.RollbackAsync(ct);
-            }
+            Category = "courses",
+            Action = "course_created",
+            EntityType = "course",
+            EntityId = course.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Курс", course.Name),
+                AuditDetailsFormatter.DescribeContext("Блоков", course.Blocks.Count.ToString()),
+                AuditDetailsFormatter.DescribeContext(
+                    "Тем",
+                    course.Blocks.SelectMany(block => block.Branches).SelectMany(branch => branch.Themes).Count().ToString()))
+        }, ct);
 
-            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (completedId is not null)
-            {
-                return TypedResults.Created($"/courses/{completedId}", new CreateEntityResponse
-                {
-                    Id = completedId.Value
-                });
-            }
-
-            throw;
+        if (reservationId is not null)
+        {
+            await requestReplayService.CompleteAsync(reservationId.Value, course.Id, ct);
         }
-    }
 
-    private static bool IsUniqueViolation(DbUpdateException exception)
-    {
-        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
+
+        return TypedResults.Created($"/courses/{course.Id}", new CreateEntityResponse
+        {
+            Id = course.Id
+        });
     }
 }
