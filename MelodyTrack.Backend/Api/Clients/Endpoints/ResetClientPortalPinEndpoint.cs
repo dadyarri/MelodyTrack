@@ -66,7 +66,7 @@ public class ResetClientPortalPinEndpoint(
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
             ActorEmail = currentUser.Email,
-            Details = $"Сброшен PIN клиентского кабинета для клиента {loginLink.User.LastName} {loginLink.User.FirstName}".Trim()
+            Details = AuditDetailsFormatter.DescribeContext("Клиент", $"{loginLink.User.LastName} {loginLink.User.FirstName}".Trim())
         }, ct);
 
         return TypedResults.NoContent();

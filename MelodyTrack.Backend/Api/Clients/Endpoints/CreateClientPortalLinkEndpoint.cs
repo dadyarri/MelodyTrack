@@ -138,7 +138,7 @@ public class CreateClientPortalLinkEndpoint(
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
             ActorEmail = currentUser.Email,
-            Details = $"Создана ссылка в портал для клиента {client.LastName} {client.FirstName}".Trim()
+            Details = AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim())
         }, ct);
 
         return TypedResults.Created(

@@ -89,6 +89,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Расход", expense.Description),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, expense.Description),
                 AuditDetailsFormatter.DescribeChange("Сумма", beforeAmount.ToString("0.##"), expense.Amount.ToString("0.##")),
                 AuditDetailsFormatter.DescribeChange("Категория", beforeCategoryName, categoryName),

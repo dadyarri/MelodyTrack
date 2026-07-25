@@ -87,6 +87,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         var beforeTelegram = client.Contacts.Telegram;
         var beforeVk = client.Contacts.Vk;
         var beforeSourceName = client.Source?.Name;
+        var beforeVacations = FormatVacationPeriods(client.Vacations.Select(item => (item.StartDate, item.EndDate)));
 
         if (req.FirstName != null)
         {
@@ -124,10 +125,11 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",
-            Action = "client_updated",
+            Action = req.Vacations is null ? "client_updated" : "client_vacations_updated",
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Имя", beforeFirstName, client.FirstName),
                 AuditDetailsFormatter.DescribeChange("Фамилия", beforeLastName, client.LastName),
                 AuditDetailsFormatter.DescribeChange("Отчество", beforePatronymic, client.Patronymic),
@@ -137,11 +139,27 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
                 AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name),
-                req.Vacations is null ? null : AuditDetailsFormatter.DescribeContext("Периодов отсутствия", client.Vacations.Count.ToString())
+                req.Vacations is null
+                    ? null
+                    : AuditDetailsFormatter.DescribeChange(
+                        "Периоды отсутствия",
+                        beforeVacations,
+                        FormatVacationPeriods(client.Vacations.Select(item => (item.StartDate, item.EndDate))))
             )
         }, ct);
 
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
+    }
+
+    private static string? FormatVacationPeriods(IEnumerable<(DateOnly StartDate, DateOnly EndDate)> vacations)
+    {
+        var periods = vacations
+            .OrderBy(item => item.StartDate)
+            .ThenBy(item => item.EndDate)
+            .Select(item => $"{item.StartDate:yyyy-MM-dd}–{item.EndDate:yyyy-MM-dd}")
+            .ToArray();
+
+        return periods.Length == 0 ? null : string.Join(", ", periods);
     }
 
     private static bool IsNoOp(Data.Models.Client client, UpdateClientRequest req)

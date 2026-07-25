@@ -103,7 +103,7 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.Action == "service_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Details.ShouldBe("Название: Old name → New name; Описание: — → Updated description");
+        auditLog.Details.ShouldBe("Услуга: New name; Название: Old name → New name; Описание: — → Updated description");
     }
 
     [Fact]

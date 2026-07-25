@@ -70,6 +70,7 @@ public class UpdateServiceEndpoint(AppDbContext db, ICurrentUserAccessor current
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
                 AuditDetailsFormatter.DescribeChange("Название", beforeName, service.Name),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, service.Description),
                 AuditDetailsFormatter.DescribeChange("Консультация", beforeIsConsultation ? "Да" : "Нет", service.IsConsultation ? "Да" : "Нет")

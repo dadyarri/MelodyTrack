@@ -166,6 +166,7 @@ public class UpdateCourseEndpoint(
             EntityType = "course",
             EntityId = course.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Курс", course.Name),
                 AuditDetailsFormatter.DescribeChange("Название", beforeName, course.Name),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, course.Description),
                 AuditDetailsFormatter.DescribeContext("Блоков", course.Blocks.Count.ToString()),

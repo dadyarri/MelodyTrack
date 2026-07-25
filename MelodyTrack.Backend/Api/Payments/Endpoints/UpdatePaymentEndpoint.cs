@@ -95,6 +95,7 @@ public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor current
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Платеж клиента", $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, service?.Name),
                 AuditDetailsFormatter.DescribeChange("Сумма", beforeAmount.ToString("0.##"), payment.Amount.ToString("0.##")),
