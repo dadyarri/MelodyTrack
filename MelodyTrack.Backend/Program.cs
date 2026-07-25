@@ -1,3 +1,4 @@
+using System.IO.Compression;
 using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
@@ -14,6 +15,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.EntityFrameworkCore;
 using NSwag;
 using Quartz;
@@ -63,6 +65,22 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();
+    builder.Services.AddResponseCompression(options =>
+    {
+        options.EnableForHttps = true;
+        options.Providers.Add<BrotliCompressionProvider>();
+        options.Providers.Add<GzipCompressionProvider>();
+        options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
+            ["application/problem+json"]);
+    });
+    builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
+    {
+        options.Level = CompressionLevel.Fastest;
+    });
+    builder.Services.Configure<GzipCompressionProviderOptions>(options =>
+    {
+        options.Level = CompressionLevel.Fastest;
+    });
     builder.Services.SwaggerDocument(o =>
     {
         o.DocumentSettings = s =>
@@ -169,6 +187,7 @@ try
     var app = builder.Build();
 
     app.UseSerilogRequestLogging();
+    app.UseResponseCompression();
     app.UseCors("AllowFrontend");
     app.Use(async (context, next) =>
     {

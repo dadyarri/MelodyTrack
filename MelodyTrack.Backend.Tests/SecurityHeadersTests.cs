@@ -90,6 +90,27 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         response.Content.Headers.Contains("Expires").ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData("br")]
+    [InlineData("gzip")]
+    public async Task JsonResponse_UsesRequestedCompression(string encoding)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/services?page=1&page_size=50");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        request.Headers.AcceptEncoding.ParseAdd(encoding);
+
+        var response = await App.Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentEncoding.ShouldContain(encoding);
+        response.Headers.Vary.ShouldContain("Accept-Encoding");
+    }
+
     private static void AssertSecurityHeaders(HttpResponseMessage response)
     {
         response.Headers.GetValues("X-Content-Type-Options").Single().ShouldBe("nosniff");
