@@ -9,14 +9,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/appointments");
     }
 
-    public override async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
     {
         var startUtc = DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc);
         var endUtc = DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc);

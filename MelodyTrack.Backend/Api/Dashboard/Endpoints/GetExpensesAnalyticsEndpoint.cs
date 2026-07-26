@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetExpensesAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetExpensesAnalyticsRequest>.Res<Results<Ok<GetExpensesAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
+    : Ep.Req<GetExpensesAnalyticsRequest>.Res<Results<Ok<GetExpensesAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/expenses");
     }
 
-    public override async Task<Results<Ok<GetExpensesAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetExpensesAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetExpensesAnalyticsRequest req,
         CancellationToken ct)
     {
@@ -42,24 +42,24 @@ public class GetExpensesAnalyticsEndpoint(AppDbContext db, IRecurringAppointment
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (req.End < req.Start)
         {
             AddError(r => r.End, "Дата окончания не может быть раньше даты начала.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (!TryParseGroupBy(req.GroupBy, out var groupBy))
         {
             AddError(r => r.GroupBy, "Некорректная группировка. Доступно: day, week, month, year.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var rangeStartLocal = req.Start.Date;

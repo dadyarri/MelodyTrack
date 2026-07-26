@@ -18,11 +18,11 @@ public class RegenerateClientCalendarSubscriptionEndpoint(
     IPublicUrlBuilder publicUrlBuilder,
     TimeProvider timeProvider,
     ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure() => Post("/calendar-subscriptions/clients/{id}/regenerate");
 
-    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null) return TypedResults.Unauthorized();

@@ -16,7 +16,7 @@ public class CreateCourseEnrollmentEndpoint(
     IAuditLogService auditLogService,
     IRequestReplayService requestReplayService,
     TimeProvider timeProvider)
-    : Ep.Req<CreateCourseEnrollmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<ProblemDetails>>>
+    : Ep.Req<CreateCourseEnrollmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>>
 {
     private const string ReplayEndpoint = "course-enrollments:create";
 
@@ -25,7 +25,7 @@ public class CreateCourseEnrollmentEndpoint(
         Post("/course-enrollments");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> ExecuteAsync(
         CreateCourseEnrollmentRequest req, CancellationToken ct)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
@@ -62,7 +62,7 @@ public class CreateCourseEnrollmentEndpoint(
         if (client is null)
         {
             AddError(item => item.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var course = await db.Courses
@@ -75,7 +75,7 @@ public class CreateCourseEnrollmentEndpoint(
         if (course is null)
         {
             AddError(item => item.CourseId, "Курс не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var existingEnrollment = await db.CourseEnrollments
@@ -85,7 +85,7 @@ public class CreateCourseEnrollmentEndpoint(
         if (existingEnrollment is not null)
         {
             AddError(item => item.CourseId, "Клиент уже записан на этот курс.");
-            return TypedResults.Conflict(new ProblemDetails(ValidationFailures));
+            return TypedResults.Conflict(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status409Conflict));
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

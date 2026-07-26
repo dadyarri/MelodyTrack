@@ -18,7 +18,8 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector, TimePro
     {
         Post("/auth/2fa/recover");
         AllowAnonymous();
-        Throttle(10, 300);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.RecoverTwoFactor));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(

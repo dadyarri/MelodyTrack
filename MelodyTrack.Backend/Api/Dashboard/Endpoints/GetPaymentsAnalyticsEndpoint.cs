@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
-    : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
+    : Ep.Req<GetPaymentsAnalyticsRequest>.Res<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/payments");
     }
 
-    public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetPaymentsAnalyticsRequest req,
         CancellationToken ct)
     {
@@ -42,18 +42,18 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor 
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (req.End < req.Start)
         {
             AddError(r => r.End, "Дата окончания не может быть раньше даты начала.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var rangeStartLocal = req.Start.Date;

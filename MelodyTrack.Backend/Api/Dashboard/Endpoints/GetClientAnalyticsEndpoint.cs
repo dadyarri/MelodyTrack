@@ -12,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetClientAnalyticsRequest>.Res<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
+    : Ep.Req<GetClientAnalyticsRequest>.Res<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
 {
     private const int LostClientWindowDays = 30;
     private const int ActiveClientRecentAppointmentWindowDays = 7;
@@ -27,7 +27,7 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         Get("/dashboard/clients");
     }
 
-    public override async Task<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetClientAnalyticsRequest req,
         CancellationToken ct)
     {
@@ -51,18 +51,18 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (req.End < req.Start)
         {
             AddError(r => r.End, "Дата окончания не может быть раньше даты начала.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var rangeStartLocal = req.Start.Date;

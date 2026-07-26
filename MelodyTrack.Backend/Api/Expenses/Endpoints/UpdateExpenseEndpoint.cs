@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
 public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateExpenseRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateExpenseRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/expenses/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateExpenseRequest req,
         CancellationToken ct)
     {
@@ -40,7 +40,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
         if (expense is null)
         {
             AddError(item => item.Id, "Расход не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         string? categoryName = null;
@@ -54,7 +54,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
             if (categoryName is null)
             {
                 AddError(item => item.CategoryId, "Категория расхода не найдена");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 

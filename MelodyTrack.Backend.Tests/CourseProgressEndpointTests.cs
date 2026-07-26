@@ -8,6 +8,7 @@ using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -268,7 +269,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        var payload = await response.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        var payload = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Errors.ShouldContain(error =>
             error.Reason.Contains("duplicate-key", StringComparison.Ordinal));
@@ -332,7 +333,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         response.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        var payload = await response.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        var payload = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Errors.ShouldContain(error =>
             error.Reason.Contains("циклическая зависимость", StringComparison.OrdinalIgnoreCase));
@@ -420,7 +421,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         secondResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
 
-        var payload = await secondResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        var payload = await secondResponse.Content.ReadFromJsonAsync<ApiProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Errors.ShouldContain(error =>
             error.Reason.Contains("Клиент уже записан на этот курс.", StringComparison.Ordinal));
@@ -1171,7 +1172,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         passResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        var payload = await passResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        var payload = await passResponse.Content.ReadFromJsonAsync<ApiProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Errors.ShouldContain(error =>
             error.Reason.Contains("Нельзя завершить тему, пока не выполнены предыдущие темы и зависимости.", StringComparison.Ordinal));
@@ -1445,7 +1446,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
 
-        var payload = await updateResponse.Content.ReadFromJsonAsync<ProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
+        var payload = await updateResponse.Content.ReadFromJsonAsync<ApiProblemDetails>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
         payload.Errors.ShouldContain(error =>
             error.Reason.Contains("Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов.", StringComparison.Ordinal));

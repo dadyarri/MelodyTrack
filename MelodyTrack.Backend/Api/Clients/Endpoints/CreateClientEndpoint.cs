@@ -13,7 +13,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
     CreateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService, TimeProvider timeProvider)
-    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     private const string ReplayEndpoint = "clients:create";
 
@@ -22,7 +22,7 @@ public class
         Post("/clients");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
@@ -60,7 +60,7 @@ public class
             if (source is null)
             {
                 AddError(e => e.SourceId, "Источник не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 

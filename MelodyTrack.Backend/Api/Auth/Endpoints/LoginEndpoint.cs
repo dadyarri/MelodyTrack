@@ -20,7 +20,8 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
     {
         Post("/auth/login");
         AllowAnonymous();
-        Throttle(10, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Login));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,

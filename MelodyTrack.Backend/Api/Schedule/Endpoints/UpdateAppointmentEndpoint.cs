@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService, IUserAvailabilityService userAvailabilityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
+public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService, IUserAvailabilityService userAvailabilityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Patch("/appointments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
     {
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id && !e.IsDeleted)
@@ -41,7 +41,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         if (appointment is null)
         {
             AddError(r => r.Id, "Встреча не найдена");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -62,7 +62,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (!AppointmentStatusExtensions.TryParseApiKey(req.Status, out var parsedStatus))
             {
                 AddError(r => r.Status, "Некорректный статус записи");
-                return new ProblemDetails(ValidationFailures);
+                return new ApiProblemDetails(ValidationFailures);
             }
 
             requestedStatus = parsedStatus;
@@ -84,7 +84,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (client is null)
             {
                 AddError(r => r.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             appointment.Client = client;
@@ -96,7 +96,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (service is null)
             {
                 AddError(r => r.ServiceId, "Услуга не найдена");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             appointment.Service = service;
@@ -108,7 +108,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (provider is null)
             {
                 AddError(r => r.ProviderId, "Пользователь не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             appointment.Provider = provider;
@@ -132,7 +132,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 if (courseTheme is null)
                 {
                     AddError(r => r.CourseThemeId, "Тема курса не найдена");
-                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                    return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
                 }
 
                 var hasEnrollment = await db.CourseEnrollments
@@ -142,7 +142,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 if (!hasEnrollment)
                 {
                     AddError(r => r.CourseThemeId, "Эта тема недоступна для выбранного клиента.");
-                    return new ProblemDetails(ValidationFailures);
+                    return new ApiProblemDetails(ValidationFailures);
                 }
 
                 appointment.CourseTheme = courseTheme;
@@ -160,7 +160,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (string.IsNullOrWhiteSpace(req.Timezone))
             {
                 AddError(r => r.Timezone, "Нужно указать таймзону.");
-                return new ProblemDetails(ValidationFailures);
+                return new ApiProblemDetails(ValidationFailures);
             }
 
             var isAvailable = await userAvailabilityService.IsAvailableAsync(
@@ -173,7 +173,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (!isAvailable)
             {
                 AddError(r => r.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
-                return new ProblemDetails(ValidationFailures);
+                return new ApiProblemDetails(ValidationFailures);
             }
         }
 
@@ -258,20 +258,20 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             if (req.RecurrencePattern is null)
             {
                 AddError(r => r.RecurrencePattern, "Паттерн повторения не указан");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             if (req.StartDate is null)
             {
                 AddError(r => r.StartDate, "Дата начала не задана");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             var recurrenceType = await db.RecurrenceTypes.FirstOrDefaultAsync(e => e.Id == req.RecurrenceTypeId.Value, ct);
             if (recurrenceType is null)
             {
                 AddError(r => r.ProviderId, "Тип повторения не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
 
             var recurrenceRule = appointment.RecurringRule ?? new AppointmentRecurrenceRule

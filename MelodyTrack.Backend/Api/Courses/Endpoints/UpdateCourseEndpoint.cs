@@ -17,14 +17,14 @@ public class UpdateCourseEndpoint(
     IEntityFreshnessService entityFreshnessService,
     CourseProgressService courseProgressService,
     TimeProvider timeProvider)
-    : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/courses/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateCourseRequest req,
         CancellationToken ct)
     {
@@ -50,7 +50,7 @@ public class UpdateCourseEndpoint(
         if (course is null)
         {
             AddError(item => item.Id, "Курс не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -93,7 +93,7 @@ public class UpdateCourseEndpoint(
             if (hasLinkedProgress)
             {
                 AddError(item => item.Id, "Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов. Измените существующую тему вместо удаления.");
-                return new ProblemDetails(ValidationFailures);
+                return new ApiProblemDetails(ValidationFailures);
             }
         }
 

@@ -15,11 +15,11 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
 public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure() => Post("/calendar-subscriptions/users/{id}/regenerate");
 
-    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null) return TypedResults.Unauthorized();

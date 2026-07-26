@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
 public class GetServiceEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/services/{id}");
     }
 
-    public override async Task<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -38,7 +38,7 @@ public class GetServiceEndpoint(AppDbContext db, ICurrentUserAccessor currentUse
         if (service is null)
         {
             AddError(item => item.Id, "Сервис не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var latestPrice = await db.ServicePriceHistory

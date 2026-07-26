@@ -17,14 +17,14 @@ public class GetMiniScheduleEndpoint(
     IRecordActivityService recordActivityService,
     TimeProvider timeProvider,
     ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
+    : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/appointments/mini");
     }
 
-    public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)

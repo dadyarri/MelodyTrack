@@ -14,14 +14,14 @@ public class GetUserAvailabilityEndpoint(
     IUserAvailabilityService userAvailabilityService,
     IRecordActivityService recordActivityService,
     ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
         Get("/users/{id}/availability");
     }
 
-    public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -43,7 +43,7 @@ public class GetUserAvailabilityEndpoint(
         if (userExists is null)
         {
             AddError(r => r.Id, "Пользователь не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         if (userExists.RoleName == UserRoles.Superuser && !currentUser.Role.RoleName.IsSuperuser())

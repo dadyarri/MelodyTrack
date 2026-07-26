@@ -19,14 +19,14 @@ public class GetClientHistoryEndpoint(
     ClientToClientWithBalanceDtoMapConfig mapper,
     IRecordActivityService recordActivityService,
     TimeProvider timeProvider)
-    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
         Get("/clients/{id}/history");
     }
 
-    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         GetClientHistoryRequest req,
         CancellationToken ct)
     {

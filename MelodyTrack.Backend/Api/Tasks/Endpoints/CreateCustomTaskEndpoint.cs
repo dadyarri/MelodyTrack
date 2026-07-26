@@ -16,14 +16,14 @@ public class CreateCustomTaskEndpoint(
     IAuditLogService auditLogService,
     ICurrentUserAccessor currentUserAccessor,
     TimeProvider timeProvider)
-    : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
         Post("/tasks/custom");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         CreateCustomTaskRequest req,
         CancellationToken ct)
     {
@@ -48,7 +48,7 @@ public class CreateCustomTaskEndpoint(
             if (client is null)
             {
                 AddError(item => item.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 

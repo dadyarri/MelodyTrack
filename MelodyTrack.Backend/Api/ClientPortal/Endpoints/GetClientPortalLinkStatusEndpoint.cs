@@ -11,16 +11,17 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
 public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
-    : Ep.Req<GetClientPortalLinkStatusRequest>.Res<Results<Ok<GetClientPortalLinkStatusResponse>, ProblemDetails>>
+    : Ep.Req<GetClientPortalLinkStatusRequest>.Res<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/client-portal/auth/link");
         AllowAnonymous();
-        Throttle(60, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalLinkStatus));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
     {
         if (!UserUtils.TryReadClientPortalToken(req.Token, out var clientId))
         {

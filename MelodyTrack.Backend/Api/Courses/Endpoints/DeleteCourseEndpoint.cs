@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
 public class DeleteCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Delete("/courses/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)
     {
@@ -62,7 +62,7 @@ public class DeleteCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         if (hasEnrollments || hasLinkedAppointments)
         {
             AddError(item => item.Id, "Нельзя удалить курс, который уже назначен клиентам или связан с занятиями.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var themeIds = await db.CourseThemes

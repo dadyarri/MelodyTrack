@@ -9,16 +9,17 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class GetInviteCodeInformationEndpoint(AppDbContext db, TimeProvider timeProvider)
-    : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>>
+    : Ep.Req<GetInviteCodeInformationRequest>.Res<Results<Ok<GetInviteCodeInformationResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/auth/invite");
         AllowAnonymous();
-        Throttle(30, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.InviteInformation));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetInviteCodeInformationResponse>, ApiProblemDetails>> ExecuteAsync(
         GetInviteCodeInformationRequest req,
         CancellationToken ct)
     {

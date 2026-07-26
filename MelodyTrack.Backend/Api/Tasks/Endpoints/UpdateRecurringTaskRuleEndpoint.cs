@@ -16,14 +16,14 @@ public class UpdateRecurringTaskRuleEndpoint(
     IAuditLogService auditLogService,
     ICurrentUserAccessor currentUserAccessor,
     TimeProvider timeProvider)
-    : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/tasks/rules/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateRecurringTaskRuleRequest req,
         CancellationToken ct)
     {
@@ -42,13 +42,13 @@ public class UpdateRecurringTaskRuleEndpoint(
         if (rule is null)
         {
             AddError(item => item.Id, "Правило не найдено");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         if (!IsTimingSupported(rule.Type, req))
         {
             AddError(item => item.OffsetMinutes, "Это поле недоступно для данного правила.");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(

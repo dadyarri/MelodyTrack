@@ -12,16 +12,17 @@ using UaDetector;
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
 public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvider timeProvider)
-    : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<LoginResponse>, ProblemDetails>>
+    : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<LoginResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Post("/client-portal/auth/link");
         AllowAnonymous();
-        Throttle(20, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalAuthentication));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Ok<LoginResponse>, ProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<LoginResponse>, ApiProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
     {
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var link = await LoadActiveLinkAsync(req.Token, ct);

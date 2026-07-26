@@ -15,7 +15,7 @@ public class CreatePaymentEndpoint(
     AppDbContext db, ICurrentUserAccessor currentUserAccessor,
     IAuditLogService auditLogService,
     IRequestReplayService requestReplayService)
-    : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     private const string ReplayEndpoint = "payments:create";
 
@@ -24,7 +24,7 @@ public class CreatePaymentEndpoint(
         Post("/payments");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(CreatePaymentRequest req, CancellationToken ct)
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(CreatePaymentRequest req, CancellationToken ct)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -64,7 +64,7 @@ public class CreatePaymentEndpoint(
             if (service is null)
             {
                 AddError(r => r.ServiceId, "Сервис не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -74,7 +74,7 @@ public class CreatePaymentEndpoint(
         if (client is null)
         {
             AddError(r => r.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var payment = new Payment

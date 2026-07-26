@@ -15,14 +15,14 @@ public class UpdateUserEndpoint(
     IEntityFreshnessService entityFreshnessService,
     IAuditLogService auditLogService,
     ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<UpdateUserRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<UpdateUserRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Put("/users/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateUserRequest req,
         CancellationToken ct)
     {
@@ -44,7 +44,7 @@ public class UpdateUserEndpoint(
         if (user is null)
         {
             AddError(item => item.Id, "Пользователь не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         if (user.Role.RoleName.IsSuperuser() && !currentUser.Role.RoleName.IsSuperuser())

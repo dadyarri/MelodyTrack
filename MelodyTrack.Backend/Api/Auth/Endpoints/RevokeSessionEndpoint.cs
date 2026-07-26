@@ -10,14 +10,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>>>
+    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
         Delete("/auth/sessions/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)
     {

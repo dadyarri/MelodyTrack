@@ -14,16 +14,17 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
-    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ProblemDetails>>
+    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Post("/auth/register");
         AllowAnonymous();
-        Throttle(10, 300);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Register));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Created<RegisterResponse>, ProblemDetails>> ExecuteAsync(RegisterRequest req,
+    public override async Task<Results<Created<RegisterResponse>, ApiProblemDetails>> ExecuteAsync(RegisterRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);

@@ -17,7 +17,8 @@ public class RefreshEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvid
     {
         Post("/auth/refresh");
         AllowAnonymous();
-        Throttle(30, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Refresh));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult>> ExecuteAsync(RefreshRequest req,

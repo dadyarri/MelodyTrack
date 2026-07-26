@@ -11,14 +11,14 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
 public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetAppointmentsAnalyticsRequest>.Res<Results<Ok<GetAppointmentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
+    : Ep.Req<GetAppointmentsAnalyticsRequest>.Res<Results<Ok<GetAppointmentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/appointments");
     }
 
-    public override async Task<Results<Ok<GetAppointmentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetAppointmentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetAppointmentsAnalyticsRequest req,
         CancellationToken ct)
     {
@@ -42,18 +42,18 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (req.End < req.Start)
         {
             AddError(r => r.End, "Дата окончания не может быть раньше даты начала.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var rangeStartLocal = req.Start.Date;

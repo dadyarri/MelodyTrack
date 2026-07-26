@@ -15,14 +15,14 @@ public class GetDashboardStatsEndpoint(
     IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
     ICurrentUserAccessor currentUserAccessor,
     TimeProvider timeProvider)
-    : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+    : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/dashboard/stats");
     }
 
-    public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetDashboardStatsRequest req,
         CancellationToken ct)
     {
@@ -41,12 +41,12 @@ public class GetDashboardStatsEndpoint(
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

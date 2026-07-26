@@ -18,7 +18,8 @@ public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
     {
         Post("/auth/2fa/verify");
         AllowAnonymous();
-        Throttle(10, 300);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.VerifyTwoFactor));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(

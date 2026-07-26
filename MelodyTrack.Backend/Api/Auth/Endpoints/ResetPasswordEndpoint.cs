@@ -12,16 +12,17 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
 public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
-    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ProblemDetails>>
+    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Post("/auth/resetPassword");
         AllowAnonymous();
-        Throttle(10, 600);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.ResetPassword));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<NoContent, ApiProblemDetails>> ExecuteAsync(
         ResetPasswordRequest req,
         CancellationToken ct)
     {
