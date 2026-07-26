@@ -6,6 +6,7 @@ using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -13,8 +14,16 @@ using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService, TimeProvider timeProvider) : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
+public class GetCalendarSubscriptionEndpoint(
+    AppDbContext db,
+    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+    IRecurringTaskService recurringTaskService,
+    TimeProvider timeProvider)
+    : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
 {
+    private const int ClientMaterializationHorizonDays = 14;
+    private const int UserMaterializationHorizonDays = 31;
+
     public override void Configure()
     {
         Get("/calendar-subscriptions/{token}.ics");
@@ -27,10 +36,28 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
         var subscription = await db.CalendarSubscriptions.AsNoTracking().FirstOrDefaultAsync(e => e.Token == req.Token && e.RevokedAtUtc == null, ct);
         if (subscription is null) return TypedResults.NotFound();
 
+        var now = timeProvider.GetUtcNow().UtcDateTime;
+        if (subscription.UserId is { } subscribedUserId)
+        {
+            await recurringAppointmentMaterializer.EnsureProviderAppointmentsGeneratedAsync(
+                subscribedUserId,
+                now,
+                now.AddDays(UserMaterializationHorizonDays),
+                ct);
+        }
+        else
+        {
+            await recurringAppointmentMaterializer.EnsureClientAppointmentsGeneratedAsync(
+                subscription.ClientId!.Value,
+                now,
+                now.AddDays(ClientMaterializationHorizonDays),
+                ct);
+        }
+
         var events = subscription.UserId is { } userId
             ? await GetUserEventsAsync(userId, ct)
             : await GetClientEventsAsync(subscription.ClientId!.Value, ct);
-        var calendar = BuildCalendar(events);
+        var calendar = BuildCalendar(events, now);
         return TypedResults.File(Encoding.UTF8.GetBytes(calendar), "text/calendar; charset=utf-8", "melodytrack.ics");
     }
 
@@ -58,21 +85,14 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
 
     private async Task<List<CalendarEvent>> GetClientEventsAsync(Ulid clientId, CancellationToken ct)
     {
-        var now = timeProvider.GetUtcNow().UtcDateTime;
-        var history = await db.Appointments.AsNoTracking()
-            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled && e.StartDate <= now)
-            .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, e.Service.PublicName ?? e.Service.Name, null))
-            .ToListAsync(ct);
-        var next = await db.Appointments.AsNoTracking()
-            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.StartDate > now)
+        return await db.Appointments.AsNoTracking()
+            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
             .OrderBy(e => e.StartDate)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, e.Service.PublicName ?? e.Service.Name, null))
-            .FirstOrDefaultAsync(ct);
-        if (next is not null) history.Add(next);
-        return history;
+            .ToListAsync(ct);
     }
 
-    private string BuildCalendar(IEnumerable<CalendarEvent> events)
+    private static string BuildCalendar(IEnumerable<CalendarEvent> events, DateTime generatedAtUtc)
     {
         var calendar = new Calendar
         {
@@ -84,7 +104,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
             var calendarEvent = new IcalCalendarEvent
             {
                 Uid = $"{item.Id}@melodytrack",
-                DtStamp = new CalDateTime(timeProvider.GetUtcNow().UtcDateTime),
+                DtStamp = new CalDateTime(generatedAtUtc),
                 DtStart = new CalDateTime(item.StartAtUtc),
                 DtEnd = new CalDateTime(item.EndAtUtc),
                 Summary = item.Summary,
