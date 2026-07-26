@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Net;
 using System.Threading.RateLimiting;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.ErrorHandling;
@@ -68,8 +70,29 @@ public static class ApiRateLimitPolicies
             });
     }
 
-    private static string GetPartitionKey(HttpContext context) =>
-        context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor)
-            ? forwardedFor.ToString()
-            : context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    private static string GetPartitionKey(HttpContext context)
+    {
+        var configuration = context.RequestServices.GetRequiredService<StartupConfiguration>();
+        if (configuration.Environment == "Test"
+            && context.Request.Headers.TryGetValue("X-Forwarded-For", out var testIdentity))
+        {
+            return testIdentity.ToString();
+        }
+
+        return GetClientAddressPartitionKey(context);
+    }
+
+    internal static string GetClientAddressPartitionKey(HttpContext context)
+    {
+        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
+        {
+            var lastProxyValue = forwardedFor.ToString().Split(',')[^1].Trim();
+            if (IPAddress.TryParse(lastProxyValue, out var clientAddress))
+            {
+                return clientAddress.ToString();
+            }
+        }
+
+        return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
+    }
 }
