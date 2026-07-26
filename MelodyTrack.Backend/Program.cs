@@ -315,82 +315,84 @@ try
     app.UseRateLimiter();
     app.UseSwaggerGen();
 
-    await using var scope = app.Services.CreateAsyncScope();
-    var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
-    var nowUtc = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-
-    await db.Database.MigrateAsync();
-    var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
-    await personalDataBackfillService.BackfillAsync(CancellationToken.None);
-
-    if (environment != "Test")
     {
-        var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);
-        await db.Database.ExecuteSqlRawAsync(sql);
-    }
+        await using var scope = app.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
+        var nowUtc = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
 
-    await StartupSeedDataValidator.ValidateAsync(db);
+        await db.Database.MigrateAsync();
+        var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
+        await personalDataBackfillService.BackfillAsync(CancellationToken.None);
 
-    var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
-
-    var hasSuperuser = await db.Users
-        .AsNoTracking()
-        .Include(e => e.Role)
-        .AnyAsync(e => e.Role == superuserRole!);
-
-    var inviteCode = await db.InviteCodes
-        .AsNoTracking()
-        .Include(e => e.Role)
-        .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= nowUtc);
-
-    if (!hasSuperuser)
-    {
-        InviteCode bootstrapInvite;
-        if (inviteCode is null)
+        if (environment != "Test")
         {
-            bootstrapInvite = new InviteCode
+            var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);
+            await db.Database.ExecuteSqlRawAsync(sql);
+        }
+
+        await StartupSeedDataValidator.ValidateAsync(db);
+
+        var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
+
+        var hasSuperuser = await db.Users
+            .AsNoTracking()
+            .Include(e => e.Role)
+            .AnyAsync(e => e.Role == superuserRole!);
+
+        var inviteCode = await db.InviteCodes
+            .AsNoTracking()
+            .Include(e => e.Role)
+            .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= nowUtc);
+
+        if (!hasSuperuser)
+        {
+            InviteCode bootstrapInvite;
+            if (inviteCode is null)
+            {
+                bootstrapInvite = new InviteCode
+                {
+                    Id = Ulid.NewUlid(),
+                    Code = Ulid.NewUlid(),
+                    Role = superuserRole!,
+                    ValidUntil = nowUtc.AddDays(2)
+                };
+                await db.InviteCodes.AddAsync(bootstrapInvite);
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                bootstrapInvite = inviteCode;
+            }
+
+            await db.AuditLogs.AddAsync(new AuditLog
             {
                 Id = Ulid.NewUlid(),
-                Code = Ulid.NewUlid(),
-                Role = superuserRole!,
-                ValidUntil = nowUtc.AddDays(2)
-            };
-            await db.InviteCodes.AddAsync(bootstrapInvite);
+                CreatedAtUtc = nowUtc,
+                Category = "security",
+                Action = "superuser_bootstrap_invite_available",
+                EntityType = "invite",
+                EntityId = bootstrapInvite.Id.ToString(),
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Приглашение", UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code)),
+                    AuditDetailsFormatter.DescribeContext("Действует до", bootstrapInvite.ValidUntil))
+            });
             await db.SaveChangesAsync();
-        }
-        else
-        {
-            bootstrapInvite = inviteCode;
-        }
 
-        await db.AuditLogs.AddAsync(new AuditLog
-        {
-            Id = Ulid.NewUlid(),
-            CreatedAtUtc = nowUtc,
-            Category = "security",
-            Action = "superuser_bootstrap_invite_available",
-            EntityType = "invite",
-            EntityId = bootstrapInvite.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
-                AuditDetailsFormatter.DescribeContext("Приглашение", UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code)),
-                AuditDetailsFormatter.DescribeContext("Действует до", bootstrapInvite.ValidUntil))
-        });
-        await db.SaveChangesAsync();
-
-        var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
-        if (startupConfiguration.LogBootstrapSecrets)
-        {
-            var url = publicUrlBuilder.GetInviteUrl(bootstrapInvite.Code);
-            Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
-        }
-        else
-        {
-            Log.Warning(
-                "Superuser was not created yet. Bootstrap invite {InviteRef} exists until {ValidUntilUtc:O}. Full link logging is disabled; enable {EnvironmentVariable}=true only for controlled recovery.",
-                inviteRef,
-                bootstrapInvite.ValidUntil,
-                "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS");
+            var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
+            if (startupConfiguration.LogBootstrapSecrets)
+            {
+                var url = publicUrlBuilder.GetInviteUrl(bootstrapInvite.Code);
+                Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
+            }
+            else
+            {
+                Log.Warning(
+                    "Superuser was not created yet. Bootstrap invite {InviteRef} exists until {ValidUntilUtc:O}. Full link logging is disabled; enable {EnvironmentVariable}=true only for controlled recovery.",
+                    inviteRef,
+                    bootstrapInvite.ValidUntil,
+                    "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS");
+            }
         }
     }
 
