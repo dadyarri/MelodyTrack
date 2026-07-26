@@ -18,7 +18,7 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
 {
     public override void Configure()
     {
-        Post("/course-enrollment-themes/{id}/actions");
+        Patch("/course-enrollment-themes/{id}/progress");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(

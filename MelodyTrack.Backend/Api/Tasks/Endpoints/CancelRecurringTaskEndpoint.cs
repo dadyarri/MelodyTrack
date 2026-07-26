@@ -14,7 +14,7 @@ public class CancelRecurringTaskEndpoint(IRecurringTaskService recurringTaskServ
 {
     public override void Configure()
     {
-        Post("/tasks/cancel");
+        Post("/tasks/{taskId}/cancellation");
     }
 
     public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(

@@ -14,7 +14,7 @@ public class GetTeacherScheduleImageEndpoint(ITeacherScheduleImageGenerator teac
 
     public override void Configure()
     {
-        Get("/tasks/teacher-schedule-image");
+        Get("/exports/teacher-schedule");
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: PngContentType));
     }
 

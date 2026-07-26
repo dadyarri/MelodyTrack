@@ -15,7 +15,7 @@ public class UpdateServiceEndpoint(AppDbContext db, ICurrentUserAccessor current
 {
     public override void Configure()
     {
-        Put("/services/{id}");
+        Patch("/services/{id}");
     }
 
     public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(

@@ -13,7 +13,7 @@ public class CompleteOnboardingEndpoint(AppDbContext db, TimeProvider timeProvid
 {
     public override void Configure()
     {
-        Post("/onboarding/state/complete");
+        Post("/onboarding/completion");
     }
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

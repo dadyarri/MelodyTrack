@@ -14,7 +14,7 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
 {
     public override void Configure()
     {
-        Post("/auth/recoveryCodes");
+        Post("/auth/recovery-codes");
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(

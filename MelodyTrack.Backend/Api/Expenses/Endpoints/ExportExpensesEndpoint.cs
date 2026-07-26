@@ -18,7 +18,7 @@ public class ExportExpensesEndpoint(AppDbContext db, ICurrentUserAccessor curren
 
     public override void Configure()
     {
-        Get("/expenses/export");
+        Get("/exports/expenses");
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 

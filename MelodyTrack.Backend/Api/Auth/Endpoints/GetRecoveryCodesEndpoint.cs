@@ -13,7 +13,7 @@ public class GetRecoveryCodesEndpoint(AppDbContext db, ICurrentUserAccessor curr
 {
     public override void Configure()
     {
-        Get("/auth/recoveryCodes");
+        Get("/auth/recovery-codes");
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

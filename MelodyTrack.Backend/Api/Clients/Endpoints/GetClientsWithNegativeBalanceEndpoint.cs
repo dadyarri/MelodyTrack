@@ -15,7 +15,7 @@ public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db, ICurrentUser
 {
     public override void Configure()
     {
-        Get("/clients/inDebt");
+        Get("/client-debts");
     }
 
     public override async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)

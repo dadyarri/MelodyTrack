@@ -13,7 +13,7 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
 {
     public override void Configure()
     {
-        Delete("/auth/2fa/delete");
+        Delete("/auth/2fa");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(

@@ -12,7 +12,7 @@ public class LogoutAllEndpoint(AppDbContext db, IAuditLogService auditLogService
 {
     public override void Configure()
     {
-        Post("/auth/logoutAll");
+        Post("/auth/logout-all");
     }
 
     public override async Task<Results<UnauthorizedHttpResult, NoContent>> ExecuteAsync(CancellationToken ct)

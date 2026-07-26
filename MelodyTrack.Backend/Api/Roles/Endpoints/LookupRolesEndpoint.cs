@@ -14,7 +14,7 @@ public class LookupRolesEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
 {
     public override void Configure()
     {
-        Get("/roles/lookup");
+        Get("/roles/options");
     }
 
     public override async Task<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)

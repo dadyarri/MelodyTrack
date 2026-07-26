@@ -21,7 +21,7 @@ public class CreateInviteEndpoint(
 {
     public override void Configure()
     {
-        Post("/auth/invite");
+        Post("/auth/invites");
     }
 
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
@@ -95,6 +95,6 @@ public class CreateInviteEndpoint(
                 ? $"Приглашение {inviteRef} без привязки к email с ролью {role.DisplayName}"
                 : $"Приглашение {inviteRef} для {UserUtils.DescribeEmailForLogs(inviteEmail)} с ролью {role.DisplayName}"
         }, ct);
-        return TypedResults.Created("/auth/invite", response);
+        return TypedResults.Created("/auth/invites", response);
     }
 }

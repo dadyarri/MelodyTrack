@@ -66,7 +66,7 @@ public class ExpenseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
 
         var updatedDate = new DateTime(2026, 7, 2, 0, 0, 0, DateTimeKind.Utc);
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/expenses/{expense.Id}",
             new UpdateExpenseRequest
             {
@@ -103,7 +103,7 @@ public class ExpenseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/expenses/{expense.Id}",
             new UpdateExpenseRequest
             {

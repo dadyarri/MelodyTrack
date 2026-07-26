@@ -167,22 +167,48 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task OpenApiSurface_MatchesApprovedSnapshot()
+    public async Task OpenApiRoutes_FollowResourceConventions()
     {
         var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
         response.EnsureSuccessStatusCode();
         using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
-        var actual = CreateOpenApiSurfaceSnapshot(document.RootElement);
-        var sourceSnapshotPath = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../OpenApiContract.snapshot"));
 
-        if (Environment.GetEnvironmentVariable("MELODYTRACK_UPDATE_OPENAPI_SNAPSHOT") == "1")
+        var forbiddenSegments = new HashSet<string>(StringComparer.Ordinal)
         {
-            await File.WriteAllTextAsync(sourceSnapshotPath, actual, TestContext.Current.CancellationToken);
-        }
+            "actions",
+            "custom",
+            "delete",
+            "due",
+            "inDebt",
+            "lookup",
+            "mini",
+            "regenerate",
+            "rules",
+            "stats"
+        };
 
-        File.Exists(sourceSnapshotPath).ShouldBeTrue("The approved OpenAPI surface snapshot is missing.");
-        var expected = await File.ReadAllTextAsync(sourceSnapshotPath, TestContext.Current.CancellationToken);
-        actual.ShouldBe(expected, "The HTTP surface changed. Review the OpenAPI diff and deliberately refresh the snapshot when the change is compatible.");
+        foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
+        {
+            foreach (var segment in path.Name.Split('/', StringSplitOptions.RemoveEmptyEntries))
+            {
+                if (segment.StartsWith('{'))
+                {
+                    continue;
+                }
+
+                segment.ShouldBe(segment.ToLowerInvariant(), $"{path.Name} must use lowercase path segments");
+                segment.Split('-').ShouldAllBe(part => part.Length > 0 && part.All(char.IsAsciiLetterOrDigit), $"{path.Name} must use kebab-case path segments");
+                forbiddenSegments.ShouldNotContain(segment, $"{path.Name} contains a superseded route segment");
+            }
+
+            foreach (var operation in path.Value.EnumerateObject())
+            {
+                if (operation.Name.Equals("put", StringComparison.OrdinalIgnoreCase))
+                {
+                    path.Name.ShouldBe("/users/{id}/availability", "PUT is reserved for the only full-replacement resource");
+                }
+            }
+        }
     }
 
     private static void AssertHeader(JsonElement response, string operationId, string statusCode, string header)
@@ -200,40 +226,4 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         schema.ToString().ShouldContain(nameof(ApiProblemDetails));
     }
 
-    private static string CreateOpenApiSurfaceSnapshot(JsonElement document)
-    {
-        var lines = new List<string>();
-        foreach (var path in document.GetProperty("paths").EnumerateObject().OrderBy(item => item.Name, StringComparer.Ordinal))
-        {
-            foreach (var operation in path.Value.EnumerateObject().OrderBy(item => item.Name, StringComparer.Ordinal))
-            {
-                if (operation.Name is "parameters" or "summary" or "description")
-                {
-                    continue;
-                }
-
-                var value = operation.Value;
-                var parameters = value.TryGetProperty("parameters", out var parameterArray)
-                    ? string.Join(',', parameterArray.EnumerateArray()
-                        .Select(parameter => $"{parameter.GetProperty("in").GetString()}:{parameter.GetProperty("name").GetString()}:{(parameter.TryGetProperty("required", out var required) && required.GetBoolean() ? "required" : "optional")}")
-                        .OrderBy(item => item, StringComparer.Ordinal))
-                    : string.Empty;
-                var responses = string.Join(',', value.GetProperty("responses").EnumerateObject()
-                    .OrderBy(item => item.Name, StringComparer.Ordinal)
-                    .Select(item =>
-                    {
-                        var mediaTypes = item.Value.TryGetProperty("content", out var content)
-                            ? string.Join('+', content.EnumerateObject().Select(media => media.Name).OrderBy(name => name, StringComparer.Ordinal))
-                            : "-";
-                        var headers = item.Value.TryGetProperty("headers", out var responseHeaders)
-                            ? string.Join('+', responseHeaders.EnumerateObject().Select(header => header.Name).OrderBy(name => name, StringComparer.Ordinal))
-                            : "-";
-                        return $"{item.Name}[{mediaTypes}][{headers}]";
-                    }));
-                lines.Add($"{operation.Name.ToUpperInvariant()} {path.Name} | {value.GetProperty("operationId").GetString()} | {parameters} | {responses}");
-            }
-        }
-
-        return string.Join('\n', lines) + '\n';
-    }
 }

@@ -16,7 +16,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
 {
     public override void Configure()
     {
-        Post("/auth/resetPassword");
+        Post("/auth/password-reset");
         AllowAnonymous();
         Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.ResetPassword));
         Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));

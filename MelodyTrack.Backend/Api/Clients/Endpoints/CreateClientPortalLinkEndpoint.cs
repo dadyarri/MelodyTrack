@@ -21,7 +21,7 @@ public class CreateClientPortalLinkEndpoint(
 {
     public override void Configure()
     {
-        Post("/clients/{id}/portal-link");
+        Post("/clients/{id}/portal-links");
     }
 
     public override async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(
@@ -142,7 +142,7 @@ public class CreateClientPortalLinkEndpoint(
         }, ct);
 
         return TypedResults.Created(
-            $"/clients/{client.Id}/portal-link",
+            $"/clients/{client.Id}/portal-links",
             new CreateClientPortalLinkResponse
             {
                 Url = publicUrlBuilder.GetClientPortalAccessUrl(persistentToken)

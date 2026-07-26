@@ -17,7 +17,7 @@ public class ExportClientsInDebtEndpoint(AppDbContext db, ICurrentUserAccessor c
 
     public override void Configure()
     {
-        Get("/clients/inDebt/export");
+        Get("/exports/client-debts");
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 

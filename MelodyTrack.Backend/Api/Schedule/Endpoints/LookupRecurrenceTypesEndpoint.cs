@@ -12,7 +12,7 @@ public class LookupRecurrenceTypesEndpoint(AppDbContext db)
 {
     public override void Configure()
     {
-        Get("/appointments/recurrenceTypes");
+        Get("/appointment-recurrence-types/options");
     }
 
     public override async Task<Results<Ok<LookupRecurrenceTypesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

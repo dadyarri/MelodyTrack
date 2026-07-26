@@ -601,11 +601,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         var themeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
 
-        var updateResponse = await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{themeId}/actions",
+        var updateResponse = await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{themeId}/progress",
             new
             {
-                id = themeId,
                 action = "unlock"
             },
             TestContext.Current.CancellationToken);
@@ -657,24 +656,24 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         var introThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Intro to rhythm").Id;
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introThemeId}/actions",
-            new { id = introThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introThemeId}/actions",
-            new { id = introThemeId, action = "return-to-progress" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/progress",
+            new { action = "return-to-progress" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introThemeId}/actions",
-            new { id = introThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introThemeId}/actions",
-            new { id = introThemeId, action = "pass-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introThemeId}/progress",
+            new { action = "pass-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         db.ChangeTracker.Clear();
@@ -699,14 +698,14 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         var countThemeId = enrollment.Themes.Single(item => item.CourseTheme.Title == "Count aloud").Id;
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{countThemeId}/actions",
-            new { id = countThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{countThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{countThemeId}/actions",
-            new { id = countThemeId, action = "pass-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{countThemeId}/progress",
+            new { action = "pass-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         db.ChangeTracker.Clear();
@@ -764,11 +763,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
         var courseId = await CreateCourseAsync();
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track updated",
                 description = "Updated structure",
                 blocks = new object[]
@@ -852,21 +850,20 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
         var introCourseThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").CourseThemeId;
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "pass-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "pass-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track edited",
                 description = "Still safe for active students",
                 blocks = new object[]
@@ -972,21 +969,20 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
         var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "pass-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "pass-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track with new theme",
                 description = "Existing enrollments receive progress rows",
                 blocks = new object[]
@@ -1097,16 +1093,15 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
             .FirstAsync(item => item.Id == enrollmentId, TestContext.Current.CancellationToken);
         var introEnrollmentThemeId = enrollment.Themes.Single(item => item.CourseTheme.Key == "pulse-intro").Id;
 
-        (await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "send-to-homework" },
+        (await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "send-to-homework" },
             TestContext.Current.CancellationToken)).StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track with stricter dependency",
                 description = "Completion must respect edited dependencies",
                 blocks = new object[]
@@ -1165,9 +1160,9 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var passResponse = await App.Client.PostAsJsonAsync(
-            $"/course-enrollment-themes/{introEnrollmentThemeId}/actions",
-            new { id = introEnrollmentThemeId, action = "pass-homework" },
+        var passResponse = await App.Client.PatchAsJsonAsync(
+            $"/course-enrollment-themes/{introEnrollmentThemeId}/progress",
+            new { action = "pass-homework" },
             TestContext.Current.CancellationToken);
 
         passResponse.StatusCode.ShouldBe(HttpStatusCode.BadRequest);
@@ -1210,11 +1205,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track edited",
                 description = "Appointments remain linked",
                 blocks = new object[]
@@ -1317,11 +1311,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track edited",
                 description = "Appointments survive removed themes",
                 blocks = new object[]
@@ -1408,11 +1401,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         createEnrollmentResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
+        var updateResponse = await App.Client.PatchAsJsonAsync(
             $"/courses/{courseId}",
             new
             {
-                id = courseId,
                 name = "Rhythm track broken",
                 blocks = new object[]
                 {

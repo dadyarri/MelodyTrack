@@ -13,7 +13,7 @@ public class ResetOnboardingEndpoint(AppDbContext db, TimeProvider timeProvider,
 {
     public override void Configure()
     {
-        Post("/onboarding/state/reset");
+        Delete("/onboarding");
     }
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

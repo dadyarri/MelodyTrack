@@ -159,7 +159,7 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/payments/{payment.Id}",
             new UpdatePaymentRequest
             {
@@ -225,7 +225,7 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/payments/{payment.Id}",
             new UpdatePaymentRequest
             {

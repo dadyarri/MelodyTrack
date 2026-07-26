@@ -58,7 +58,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
         using var createLinkResponse = await App.Client.PostAsJsonAsync(
-            $"/clients/{client.Id}/portal-link",
+            $"/clients/{client.Id}/portal-links",
             new { },
             TestContext.Current.CancellationToken);
         createLinkResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
@@ -127,7 +127,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
         using var resetPinResponse = await App.Client.PostAsJsonAsync(
-            $"/clients/{client.Id}/portal-pin/reset",
+            $"/clients/{client.Id}/portal-pin-resets",
             new { },
             TestContext.Current.CancellationToken);
         resetPinResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
@@ -270,7 +270,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        using var createLinkResponse = await App.Client.PostAsJsonAsync($"/clients/{clientId}/portal-link", new { }, TestContext.Current.CancellationToken);
+        using var createLinkResponse = await App.Client.PostAsJsonAsync($"/clients/{clientId}/portal-links", new { }, TestContext.Current.CancellationToken);
         createLinkResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
         var payload = await createLinkResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();

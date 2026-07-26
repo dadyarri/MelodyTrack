@@ -13,7 +13,7 @@ public class GetInviteCodeInformationEndpoint(AppDbContext db, TimeProvider time
 {
     public override void Configure()
     {
-        Get("/auth/invite");
+        Get("/auth/invites");
         AllowAnonymous();
         Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.InviteInformation));
         Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));

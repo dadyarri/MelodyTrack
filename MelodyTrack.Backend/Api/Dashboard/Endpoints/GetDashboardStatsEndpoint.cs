@@ -19,7 +19,7 @@ public class GetDashboardStatsEndpoint(
 {
     public override void Configure()
     {
-        Get("/dashboard/stats");
+        Get("/dashboard");
     }
 
     public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(

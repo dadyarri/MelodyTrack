@@ -15,7 +15,7 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor 
 {
     public override void Configure()
     {
-        Get("/dashboard/payments");
+        Get("/reports/payments");
     }
 
     public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

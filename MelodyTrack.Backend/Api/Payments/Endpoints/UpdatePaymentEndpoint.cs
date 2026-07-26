@@ -16,7 +16,7 @@ public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor current
 {
     public override void Configure()
     {
-        Put("/payments/{id}");
+        Patch("/payments/{id}");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(

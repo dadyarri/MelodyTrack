@@ -2,6 +2,19 @@
 
 This document is the default contract for every endpoint. OpenAPI and the integration tests enforce the mechanically checkable parts.
 
+## Resource URIs and methods
+
+- Path segments use lowercase kebab-case. Collections use plural nouns, and a resource identifier follows its collection: `/clients/{id}` and `/course-enrollments/{id}`.
+- Filters, search, sorting, pagination, ranges, and optional projections are query parameters. A filtered collection is not encoded as a camel-cased path.
+- Lightweight selector projections consistently use `/options`, for example `/clients/options`, `/services/options`, and `/roles/options`.
+- Spreadsheet and image downloads live below `/exports`; report reads live below `/reports`. The dashboard summary is `GET /dashboard`.
+- `GET` is safe, `POST` creates a resource or invokes a non-idempotent domain command, `PATCH` applies a partial update, `PUT` replaces a full resource, and `DELETE` removes it. User availability is a full replacement and therefore remains `PUT`.
+- A workflow transition is a named subresource of the affected identity, such as `/tasks/{taskId}/completion` or `/course-enrollment-themes/{id}/progress`. Generic `/actions` and collection commands that hide the identity are not allowed.
+- Resource identity comes from the path and is not repeated in JSON request bodies. Calendar feed URLs intentionally retain the `.ics` suffix because they are directly subscribed document URLs.
+- Authentication remains command-oriented where appropriate, but its segments still use lowercase kebab-case. Old routes are removed in place; the co-deployed frontend and backend change together without aliases or redirects.
+
+The generated document at `http://localhost:5000/swagger/v2/swagger.json` is the authoritative development contract. Do not commit a second hand-maintained route snapshot.
+
 ## Success responses
 
 - A single-resource read returns its DTO directly with `200 OK`.

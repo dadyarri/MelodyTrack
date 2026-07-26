@@ -14,7 +14,7 @@ public class GetDueRecurringTasksEndpoint(IRecurringTaskService recurringTaskSer
 {
     public override void Configure()
     {
-        Get("/tasks/due");
+        Get("/tasks");
     }
 
     public override async Task<Results<Ok<GetDueRecurringTasksResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(

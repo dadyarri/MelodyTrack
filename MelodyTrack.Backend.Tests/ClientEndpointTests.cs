@@ -34,7 +34,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/clients/{client.Id}",
             new
             {

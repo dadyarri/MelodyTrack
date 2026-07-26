@@ -21,7 +21,7 @@ public class GetMiniScheduleEndpoint(
 {
     public override void Configure()
     {
-        Get("/appointments/mini");
+        Get("/appointments/agenda");
     }
 
     public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)

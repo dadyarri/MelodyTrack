@@ -15,7 +15,7 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
 {
     public override void Configure()
     {
-        Get("/dashboard/revenue");
+        Get("/reports/revenue");
     }
 
     public override async Task<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

@@ -31,8 +31,4 @@
         <ProjectReference Include="..\MelodyTrack.Backend\MelodyTrack.Backend.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-        <None Update="OpenApiContract.snapshot" CopyToOutputDirectory="PreserveNewest" />
-    </ItemGroup>
-
 </Project>

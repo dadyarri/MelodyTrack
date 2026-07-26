@@ -15,7 +15,7 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
 {
     public override void Configure()
     {
-        Get("/dashboard/price-changes");
+        Get("/reports/price-changes");
     }
 
     public override async Task<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

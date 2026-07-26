@@ -13,7 +13,7 @@ public class ChangePasswordEndpoint(AppDbContext db, IAuditLogService auditLogSe
 {
     public override void Configure()
     {
-        Post("/auth/changePassword");
+        Post("/auth/password-change");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(ChangePasswordRequest req, CancellationToken ct)

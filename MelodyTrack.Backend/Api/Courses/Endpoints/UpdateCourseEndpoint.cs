@@ -21,7 +21,7 @@ public class UpdateCourseEndpoint(
 {
     public override void Configure()
     {
-        Put("/courses/{id}");
+        Patch("/courses/{id}");
     }
 
     public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(

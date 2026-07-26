@@ -1,3 +1,5 @@
+using FastEndpoints;
+
 namespace MelodyTrack.Backend.Api.Tasks.Requests;
 
 public class DelayRecurringTaskRequest
@@ -5,6 +7,7 @@ public class DelayRecurringTaskRequest
     public required string Timezone { get; set; }
     public required Ulid RuleId { get; set; }
     public required string Type { get; set; }
+    [BindFrom("taskId")]
     public required string DeduplicationKey { get; set; }
     public required DateTime DelayUntilUtc { get; set; }
     public Ulid? ClientId { get; set; }

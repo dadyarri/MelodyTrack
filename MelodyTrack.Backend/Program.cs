@@ -420,7 +420,7 @@ static bool ShouldDisableCaching(PathString path)
     }
 
     return path.StartsWithSegments("/users", out var remainingPath)
-           && remainingPath.Value?.EndsWith("/password-reset-link", StringComparison.OrdinalIgnoreCase) == true;
+           && remainingPath.Value?.EndsWith("/password-reset-links", StringComparison.OrdinalIgnoreCase) == true;
 }
 
 static void ConfigureOpenApiContract(OpenApiDocument document)
@@ -597,9 +597,9 @@ static bool SupportsIdempotency(string path) => path is
 
 static string? GetDownloadMediaType(string path) => path switch
 {
-    "/clients/inDebt/export" or "/expenses/export" or "/payments/export" =>
+    "/exports/client-debts" or "/exports/expenses" or "/exports/payments" =>
         "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "/tasks/teacher-schedule-image" => "image/png",
+    "/exports/teacher-schedule" => "image/png",
     "/calendar-subscriptions/{token}.ics" => "text/calendar",
     _ => null
 };

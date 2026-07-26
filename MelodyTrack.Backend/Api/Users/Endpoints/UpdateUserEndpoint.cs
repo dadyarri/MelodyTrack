@@ -19,7 +19,7 @@ public class UpdateUserEndpoint(
 {
     public override void Configure()
     {
-        Put("/users/{id}");
+        Patch("/users/{id}");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(

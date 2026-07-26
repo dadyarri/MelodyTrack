@@ -15,7 +15,7 @@ public class LookupClientsEndpoint(AppDbContext db, ICurrentUserAccessor current
 {
     public override void Configure()
     {
-        Get("/clients/lookup");
+        Get("/clients/options");
     }
 
     public override async Task<Results<Ok<LookupClientsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(LookupClientsRequest req, CancellationToken ct)

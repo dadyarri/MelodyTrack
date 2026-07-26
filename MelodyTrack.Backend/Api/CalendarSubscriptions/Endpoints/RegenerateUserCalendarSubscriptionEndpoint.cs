@@ -17,7 +17,7 @@ namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
     : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
-    public override void Configure() => Post("/calendar-subscriptions/users/{id}/regenerate");
+    public override void Configure() => Post("/users/{id}/calendar-subscriptions");
 
     public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {

@@ -18,7 +18,7 @@ public class ResetClientPortalPinEndpoint(
 {
     public override void Configure()
     {
-        Post("/clients/{id}/portal-pin/reset");
+        Post("/clients/{id}/portal-pin-resets");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(

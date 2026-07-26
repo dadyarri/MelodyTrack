@@ -24,7 +24,7 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
 
     public override void Configure()
     {
-        Get("/dashboard/clients");
+        Get("/reports/clients");
     }
 
     public override async Task<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

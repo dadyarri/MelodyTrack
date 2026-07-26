@@ -60,7 +60,7 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
         var response = await App.Client.PostAsJsonAsync(
-            $"/users/{user.Id}/password-reset-link",
+            $"/users/{user.Id}/password-reset-links",
             new { },
             TestContext.Current.CancellationToken);
 
@@ -98,7 +98,7 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.GetAsync("/payments/export", TestContext.Current.CancellationToken);
+        var response = await App.Client.GetAsync("/exports/payments", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         response.Content.Headers.ContentType?.MediaType.ShouldBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");

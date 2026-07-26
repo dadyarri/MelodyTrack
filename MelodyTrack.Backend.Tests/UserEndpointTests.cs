@@ -26,7 +26,7 @@ public class UserEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app
         var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/users/{user.Id}",
             new
             {
@@ -58,7 +58,7 @@ public class UserEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(currentUser));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/users/{otherUser.Id}",
             new
             {
@@ -138,7 +138,7 @@ public class UserEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/users/{superuser.Id}",
             new
             {

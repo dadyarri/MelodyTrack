@@ -18,7 +18,7 @@ public class ExportPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor curren
 
     public override void Configure()
     {
-        Get("/payments/export");
+        Get("/exports/payments");
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 

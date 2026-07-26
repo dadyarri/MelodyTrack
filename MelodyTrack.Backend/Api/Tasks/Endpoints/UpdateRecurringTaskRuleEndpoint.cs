@@ -20,7 +20,7 @@ public class UpdateRecurringTaskRuleEndpoint(
 {
     public override void Configure()
     {
-        Put("/tasks/rules/{id}");
+        Patch("/recurring-task-rules/{id}");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(

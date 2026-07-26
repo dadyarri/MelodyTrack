@@ -22,7 +22,7 @@ public class CreatePasswordResetLinkEndpoint(
 {
     public override void Configure()
     {
-        Post("/users/{id}/password-reset-link");
+        Post("/users/{id}/password-reset-links");
     }
 
     public override async Task<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
@@ -96,7 +96,7 @@ public class CreatePasswordResetLinkEndpoint(
         }, ct);
 
         return TypedResults.Created(
-            $"/users/{req.Id}/password-reset-link",
+            $"/users/{req.Id}/password-reset-links",
             new CreatePasswordResetLinkResponse
             {
                 Url = publicUrlBuilder.GetResetPasswordUrl(token)

@@ -13,7 +13,7 @@ public class SkipOnboardingEndpoint(AppDbContext db, TimeProvider timeProvider, 
 {
     public override void Configure()
     {
-        Post("/onboarding/state/skip");
+        Post("/onboarding/skip");
     }
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

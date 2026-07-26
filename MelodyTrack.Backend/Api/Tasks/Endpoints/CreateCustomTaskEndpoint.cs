@@ -20,7 +20,7 @@ public class CreateCustomTaskEndpoint(
 {
     public override void Configure()
     {
-        Post("/tasks/custom");
+        Post("/tasks");
     }
 
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
@@ -94,7 +94,7 @@ public class CreateCustomTaskEndpoint(
                 AuditDetailsFormatter.DescribeContext("Текст", task.MessageText))
         }, ct);
 
-        return TypedResults.Created($"/tasks/custom/{task.Id}", new CreateEntityResponse
+        return TypedResults.Created($"/tasks/{task.Id}", new CreateEntityResponse
         {
             Id = task.Id
         });

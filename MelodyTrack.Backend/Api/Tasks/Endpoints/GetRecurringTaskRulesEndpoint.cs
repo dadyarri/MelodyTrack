@@ -13,7 +13,7 @@ public class GetRecurringTaskRulesEndpoint(AppDbContext db, IRecordActivityServi
 {
     public override void Configure()
     {
-        Get("/tasks/rules");
+        Get("/recurring-task-rules");
     }
 
     public override async Task<Results<Ok<GetRecurringTaskRulesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)

@@ -12,7 +12,7 @@ public class GetOnboardingStateEndpoint(AppDbContext db, TimeProvider timeProvid
 {
     public override void Configure()
     {
-        Get("/onboarding/state");
+        Get("/onboarding");
     }
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)

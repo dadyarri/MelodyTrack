@@ -14,7 +14,7 @@ public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider time
 {
     public override void Configure()
     {
-        Post("/onboarding/state/progress");
+        Patch("/onboarding");
     }
 
     public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(UpdateOnboardingProgressRequest req, CancellationToken ct)

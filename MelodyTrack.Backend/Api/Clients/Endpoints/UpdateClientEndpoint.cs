@@ -15,7 +15,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 {
     public override void Configure()
     {
-        Put("/clients/{id}");
+        Patch("/clients/{id}");
     }
 
     public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,

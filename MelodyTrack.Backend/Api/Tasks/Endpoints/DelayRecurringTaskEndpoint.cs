@@ -14,7 +14,7 @@ public class DelayRecurringTaskEndpoint(IRecurringTaskService recurringTaskServi
 {
     public override void Configure()
     {
-        Post("/tasks/delay");
+        Post("/tasks/{taskId}/deferral");
     }
 
     public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(

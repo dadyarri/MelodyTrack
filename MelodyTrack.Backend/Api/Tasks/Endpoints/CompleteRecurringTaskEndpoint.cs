@@ -14,7 +14,7 @@ public class CompleteRecurringTaskEndpoint(IRecurringTaskService recurringTaskSe
 {
     public override void Configure()
     {
-        Post("/tasks/complete");
+        Post("/tasks/{taskId}/completion");
     }
 
     public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(

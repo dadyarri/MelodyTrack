@@ -14,7 +14,7 @@ public class LookupServicesEndpoint(AppDbContext db, ICurrentUserAccessor curren
 {
     public override void Configure()
     {
-        Get("/services/lookup");
+        Get("/services/options");
     }
 
     public override async Task<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
