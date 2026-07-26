@@ -19,6 +19,7 @@ public class ExportExpensesEndpoint(AppDbContext db, ICurrentUserAccessor curren
     public override void Configure()
     {
         Get("/expenses/export");
+        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 
     public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetExpensesPaginatedRequest req, CancellationToken ct)

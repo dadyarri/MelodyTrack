@@ -90,6 +90,23 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         response.Content.Headers.Contains("Expires").ShouldBeFalse();
     }
 
+    [Fact]
+    public async Task GeneratedDownload_DeclaresFilenameTypeAndNoStorePolicy()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/payments/export", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.Content.Headers.ContentDisposition?.DispositionType.ShouldBe("attachment");
+        response.Content.Headers.ContentDisposition?.FileNameStar.ShouldNotBeNullOrWhiteSpace();
+        AssertSensitiveCacheHeaders(response);
+    }
+
     [Theory]
     [InlineData("br")]
     [InlineData("gzip")]

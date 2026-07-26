@@ -19,6 +19,7 @@ public class GetCalendarSubscriptionEndpoint(AppDbContext db, IRecurringTaskServ
     {
         Get("/calendar-subscriptions/{token}.ics");
         AllowAnonymous();
+        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: "text/calendar"));
     }
 
     public override async Task<Results<FileContentHttpResult, NotFound>> ExecuteAsync(CalendarSubscriptionRequest req, CancellationToken ct)

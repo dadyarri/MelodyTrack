@@ -36,6 +36,8 @@ public class RequestReplayService(
     TimeProvider timeProvider,
     ICurrentUserAccessor currentUserAccessor) : IRequestReplayService
 {
+    internal static readonly TimeSpan Retention = TimeSpan.FromHours(24);
+
     public string? GetReplayKey(IHeaderDictionary headers)
     {
         if (!headers.TryGetValue("Idempotency-Key", out var replayKey))
@@ -60,6 +62,13 @@ public class RequestReplayService(
         var callerIdBytes = caller.Id.ToByteArray();
         var fingerprint = CreateFingerprint(request);
         var createdAtUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var expiresBeforeUtc = createdAtUtc - Retention;
+
+        await db.RequestReplays
+            .Where(item => item.Endpoint == endpoint
+                           && item.CallerId == caller.Id
+                           && item.CreatedAtUtc < expiresBeforeUtc)
+            .ExecuteDeleteAsync(ct);
 
         var rowsInserted = await db.Database.ExecuteSqlInterpolatedAsync($"""
             INSERT INTO "RequestReplays" ("Id", "Endpoint", "ReplayKey", "CallerId", "RequestFingerprint", "CreatedAtUtc")

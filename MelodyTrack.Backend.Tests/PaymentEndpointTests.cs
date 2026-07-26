@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
@@ -40,6 +41,8 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         first.ShouldNotBeNull();
         second.ShouldNotBeNull();
         second.Id.ShouldBe(first.Id);
+        firstResponse.Headers.Location?.ToString().ShouldBe($"/payments/{first.Id}");
+        secondResponse.Headers.Location?.ToString().ShouldBe($"/payments/{first.Id}");
 
         await using var verificationScope = App.Services.CreateAsyncScope();
         var verificationDb = verificationScope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -95,6 +98,12 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         firstResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
         secondResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        secondResponse.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
+        var problem = await secondResponse.Content.ReadFromJsonAsync<ApiProblemDetails>(TestContext.Current.CancellationToken);
+        problem.ShouldNotBeNull();
+        problem.Status.ShouldBe((int)HttpStatusCode.Conflict);
+        problem.Type.ShouldBe(ApiProblemTypes.IdempotencyConflict);
+        problem.Code.ShouldBe(ApiProblemCodes.IdempotencyConflict);
     }
 
     [Fact]
@@ -233,6 +242,11 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         var payload = await response.Content.ReadFromJsonAsync<StaleEntityConflictResponse>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
+        response.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
+        payload.Status.ShouldBe((int)HttpStatusCode.Conflict);
+        payload.Type.ShouldBe(ApiProblemTypes.StaleEntity);
+        payload.Code.ShouldBe("stale_entity");
+        payload.TraceId.ShouldNotBeNullOrWhiteSpace();
         payload.EntityType.ShouldBe("payment");
         payload.CurrentActivity.ShouldNotBeNull();
         payload.CurrentActivity.Id.ShouldBe(latestActivityId);

@@ -19,6 +19,7 @@ public class ExportPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor curren
     public override void Configure()
     {
         Get("/payments/export");
+        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 
     public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)

@@ -80,7 +80,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, ICurrentUserAccessor
             await transaction.CommitAsync(ct);
         }
 
-        return TypedResults.Created($"/expenses/{expenseCategory.Id}", new CreateEntityResponse
+        return TypedResults.Created($"/expense-categories/{expenseCategory.Id}", new CreateEntityResponse
         {
             Id = expenseCategory.Id
         });
