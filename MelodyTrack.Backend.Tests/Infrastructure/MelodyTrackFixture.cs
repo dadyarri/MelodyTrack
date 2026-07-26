@@ -11,6 +11,7 @@ namespace MelodyTrack.Backend.Tests.Infrastructure;
 
 public sealed class MelodyTrackFixture : AppFixture<Program>
 {
+    private const string PostgreSqlImage = "postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50";
     private const string ThrottleBypassHeaderName = "X-Forwarded-For";
     private static readonly SemaphoreSlim ResetLock = new(1, 1);
     private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
@@ -25,7 +26,7 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
         var quartzScriptPath = new FileInfo(Path.Combine(projectDir, "MelodyTrack.Backend", "quartz.sql")).FullName;
 
-        _dbContainer = new PostgreSqlBuilder("postgres:16-alpine")
+        _dbContainer = new PostgreSqlBuilder(PostgreSqlImage)
             .WithDatabase("testdb")
             .WithResourceMapping(quartzScriptPath, "/docker-entrypoint-initdb.d")
             .Build();
