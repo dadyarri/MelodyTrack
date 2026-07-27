@@ -490,5 +490,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<UserOnboardingState>()
             .HasIndex(e => e.UserId)
             .IsUnique();
+
+        modelBuilder.Entity<UserOnboardingState>()
+            .Property(e => e.DefinitionVersion)
+            .HasDefaultValue(1);
     }
 }

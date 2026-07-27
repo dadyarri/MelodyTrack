@@ -5,6 +5,7 @@ using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Api.Clients.Responses;
+using MelodyTrack.Backend.Api.Onboarding;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -139,6 +140,7 @@ try
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<CourseProgressService>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
+    builder.Services.AddScoped<OnboardingStateService>();
     builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();

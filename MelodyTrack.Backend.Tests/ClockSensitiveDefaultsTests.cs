@@ -19,6 +19,7 @@ public class ClockSensitiveDefaultsTests
 
         state.CreatedAtUtc.ShouldBe(now.UtcDateTime);
         state.UpdatedAtUtc.ShouldBe(now.UtcDateTime);
+        state.DefinitionVersion.ShouldBe(OnboardingDefaults.CurrentDefinitionVersion);
     }
 
     private sealed class FixedTimeProvider(DateTimeOffset utcNow) : TimeProvider

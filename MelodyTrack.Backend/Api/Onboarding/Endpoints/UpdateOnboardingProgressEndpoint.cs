@@ -1,15 +1,12 @@
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Onboarding.Requests;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider timeProvider, ICurrentUserAccessor currentUserAccessor)
+public class UpdateOnboardingProgressEndpoint(OnboardingStateService stateService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<UpdateOnboardingProgressRequest>.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -25,20 +22,7 @@ public class UpdateOnboardingProgressEndpoint(AppDbContext db, TimeProvider time
             return TypedResults.Unauthorized();
         }
 
-        await db.Entry(user).Reference(item => item.OnboardingState).LoadAsync(ct);
-        var state = user.OnboardingState ?? OnboardingDefaults.CreateState(user, timeProvider);
-        if (user.OnboardingState is null)
-        {
-            user.OnboardingState = state;
-        }
-
-        state.Status = OnboardingStatus.Active;
-        state.CurrentStep = string.IsNullOrWhiteSpace(req.CurrentStep) ? state.CurrentStep : req.CurrentStep.Trim();
-        state.CurrentPath = string.IsNullOrWhiteSpace(req.CurrentPath) ? state.CurrentPath : req.CurrentPath.Trim();
-        state.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
-        state.CompletedAtUtc = null;
-
-        await db.SaveChangesAsync(ct);
+        var state = await stateService.UpdateProgressAsync(user, req.CurrentStep, req.CurrentPath, ct);
         return TypedResults.Ok(OnboardingStateMapper.ToResponse(state));
     }
 }
