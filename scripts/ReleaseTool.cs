@@ -181,7 +181,14 @@ static void PublishRelease(string backend, ReleaseEntry current)
     }
     else
     {
-        Run("git", ["tag", "--annotate", tag, commit, "--message", title], backend);
+        Run(
+            "git",
+            [
+                "-c", "user.name=github-actions[bot]",
+                "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com",
+                "tag", "--annotate", tag, commit, "--message", title
+            ],
+            backend);
         Run("git", ["push", "origin", tag], backend);
     }
 
