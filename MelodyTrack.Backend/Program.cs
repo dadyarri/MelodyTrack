@@ -33,6 +33,7 @@ using UaDetector;
 var logLevelSwitch = new LoggingLevelSwitch();
 
 var startupConfiguration = StartupConfigurationValidator.LoadAndValidate(Directory.GetCurrentDirectory());
+var releaseChangelog = ReleaseChangelog.Load(Path.Combine(Directory.GetCurrentDirectory(), "changelog.json"));
 var environment = startupConfiguration.Environment;
 logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
@@ -50,6 +51,7 @@ using var listener = new ActivityListenerConfiguration()
     .TraceToSharedLogger();
 
 Log.Information("Starting up");
+Log.Information("Product release {ReleaseVersion} ({ReleaseCodename})", releaseChangelog.Current.Version, releaseChangelog.Current.ResolvedCodename);
 
 try
 {
@@ -65,6 +67,7 @@ try
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApiRateLimiting();
     builder.Services.AddSingleton(startupConfiguration);
+    builder.Services.AddSingleton(releaseChangelog);
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
     builder.Services.AddSerilog();

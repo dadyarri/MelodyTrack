@@ -6,6 +6,7 @@ EXPOSE 8081
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS publish
 ARG BUILD_CONFIGURATION=Release
+ARG RELEASE_VERSION=dev
 WORKDIR /src
 COPY ["global.json", "."]
 COPY ["MelodyTrack.slnx", "."]
@@ -13,9 +14,11 @@ COPY ["MelodyTrack.Backend/MelodyTrack.Backend.csproj", "MelodyTrack.Backend/"]
 RUN dotnet restore "MelodyTrack.Backend/MelodyTrack.Backend.csproj"
 COPY ["MelodyTrack.Backend/", "MelodyTrack.Backend/"]
 WORKDIR "/src/MelodyTrack.Backend"
-RUN dotnet publish "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false
+RUN dotnet publish "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false /p:InformationalVersion=$RELEASE_VERSION
 
 FROM base AS final
+ARG RELEASE_VERSION=dev
+LABEL org.opencontainers.image.version=$RELEASE_VERSION
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "MelodyTrack.Backend.dll"]
