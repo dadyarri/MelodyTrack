@@ -65,7 +65,7 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
             repository.RemoteExists = HasRemoteRef(repository.Path, branch);
             repository.PullRequest = FindPullRequest(repository.Path, branch);
             if (repository.PullRequest is not null
-                && (repository.PullRequest.Title != current.Version || repository.PullRequest.Body.Trim() != expectedBody))
+                && (repository.PullRequest.Title != current.Version || NormalizeBody(repository.PullRequest.Body) != expectedBody))
             {
                 throw new InvalidOperationException($"{repository.Name}: existing pull request conflicts with the changelog.");
             }
@@ -105,7 +105,7 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
         }
 
         var bodyFile = Path.Combine(Path.GetTempPath(), $"melodytrack-release-{Guid.NewGuid():N}.md");
-        File.WriteAllText(bodyFile, $"{expectedBody}\n", Encoding.UTF8);
+        File.WriteAllText(bodyFile, $"{expectedBody}\n", new UTF8Encoding(false));
         try
         {
             foreach (var repository in repositories)
@@ -163,7 +163,7 @@ static void PublishRelease(string backend, ReleaseEntry current)
     var expectedBody = Changelog.Render(current).Trim();
     if (pull.GetProperty("title").GetString()?.Trim() != current.Version
         || pull.GetProperty("head").GetProperty("ref").GetString() != $"release/{current.Version}"
-        || pull.GetProperty("body").GetString()?.Trim() != expectedBody)
+        || NormalizeBody(pull.GetProperty("body").GetString() ?? string.Empty) != expectedBody)
     {
         throw new InvalidOperationException("Release pull request does not match the current changelog entry.");
     }
@@ -191,7 +191,7 @@ static void PublishRelease(string backend, ReleaseEntry current)
         var root = release.RootElement;
         if (root.GetProperty("tagName").GetString() != tag
             || root.GetProperty("name").GetString() != title
-            || root.GetProperty("body").GetString()?.Trim() != expectedBody)
+            || NormalizeBody(root.GetProperty("body").GetString() ?? string.Empty) != expectedBody)
         {
             throw new InvalidOperationException($"{tag} GitHub Release metadata conflicts with the changelog.");
         }
@@ -200,7 +200,7 @@ static void PublishRelease(string backend, ReleaseEntry current)
     }
 
     var notesFile = Path.Combine(Path.GetTempPath(), $"melodytrack-release-notes-{Guid.NewGuid():N}.md");
-    File.WriteAllText(notesFile, $"{expectedBody}\n", Encoding.UTF8);
+    File.WriteAllText(notesFile, $"{expectedBody}\n", new UTF8Encoding(false));
     try
     {
         Run("gh", ["release", "create", tag, "--verify-tag", "--title", title, "--notes-file", notesFile], backend);
@@ -226,6 +226,8 @@ static string FindBackendRoot()
 
     throw new DirectoryNotFoundException("Run this application from the backend repository.");
 }
+
+static string NormalizeBody(string value) => value.Trim().TrimStart('\uFEFF');
 
 static void EnsureCleanSource(Repository repository)
 {
