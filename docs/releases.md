@@ -10,8 +10,11 @@ An actual release uses `yyyy.mm.releaseNumber` and has a manually chosen `codena
 2. Make both source worktrees clean and ensure they merge into current `origin/master` without conflicts.
 3. From the backend repository run `dotnet run scripts/ReleaseTool.cs -- prepare`. It validates both repositories, creates and tests `release/<version>` branches, pushes them, and opens matching pull requests. It never chooses a codename or publishes a release.
 4. Review and merge both pull requests normally. Their title must be the exact version and their body must remain the generated changelog.
+5. After both pull requests are merged, check out `develop` in both repositories and run `dotnet run scripts/ReleaseTool.cs -- finalize`. It fetches `origin/master`, fast-forwards local `master` and then `develop`, and deletes merged local `release/*` branches.
 
 Backend tests and frontend `npm run verify` run before anything is pushed. If local verification fails, the script restores both source branches and removes only local release branches created by that run. If a remote operation partially succeeds, inspect the printed state before retrying; never delete a published tag or reuse its version.
+
+Finalization is deliberately fast-forward-only. It refuses dirty worktrees, a local `master` that diverged from `origin/master`, a `develop` branch not contained in the merged remote master, or any unmerged local release branch. It leaves both repositories on `develop` at the same commit as `master` and never deletes remote branches.
 
 After a release PR reaches `master`, each repository verifies and publishes its own image. Only then does its workflow create the annotated `v<version>` tag and GitHub Release. Ordinary master changes produce no release. Re-running a completed workflow accepts only a tag at the same merge commit; conflicting tags fail.
 
