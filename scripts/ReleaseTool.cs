@@ -55,14 +55,23 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
             EnsureCleanSource(repository);
             repository.OriginalBranch = Output("git", ["branch", "--show-current"], repository.Path);
             repository.SourceCommit = Output("git", ["rev-parse", "HEAD"], repository.Path);
-            Run("git", ["fetch", "origin", "master"], repository.Path);
+            Console.WriteLine($"{repository.Name}: checking {repository.OriginalBranch} against the remote...");
+            Run(
+                "git",
+                [
+                    "fetch", "--prune", "origin",
+                    "+refs/heads/master:refs/remotes/origin/master",
+                    "+refs/heads/release/*:refs/remotes/origin/release/*"
+                ],
+                repository.Path);
             Run("git", ["merge-tree", "--write-tree", "--quiet", "origin/master", "HEAD"], repository.Path);
             if (HasRef(repository.Path, $"refs/heads/{branch}"))
             {
                 throw new InvalidOperationException($"{repository.Name}: local {branch} already exists.");
             }
 
-            repository.RemoteExists = HasRemoteRef(repository.Path, branch);
+            repository.RemoteExists = HasRef(repository.Path, $"refs/remotes/origin/{branch}");
+            Console.WriteLine($"{repository.Name}: checking for an existing release pull request...");
             repository.PullRequest = FindPullRequest(repository.Path, branch);
             if (repository.PullRequest is not null
                 && (repository.PullRequest.Title != current.Version || NormalizeBody(repository.PullRequest.Body) != expectedBody))
@@ -75,14 +84,13 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
         {
             if (repository.RemoteExists)
             {
-                Run("git", ["fetch", "origin", $"{branch}:refs/remotes/origin/{branch}"], repository.Path);
                 EnsureAncestor(repository.Path, repository.SourceCommit!, $"origin/{branch}", "source commit");
                 EnsureAncestor(repository.Path, "origin/master", $"origin/{branch}", "master");
                 Run("git", ["switch", "--create", branch, $"origin/{branch}"], repository.Path);
             }
             else
             {
-                Run("git", ["switch", "--create", branch, "origin/master"], repository.Path);
+                Run("git", ["switch", "--no-track", "--create", branch, "origin/master"], repository.Path);
                 Run("git", ["merge", "--no-ff", "--no-edit", repository.SourceCommit!], repository.Path);
             }
 
@@ -286,9 +294,6 @@ static void EnsureAncestor(string workingDirectory, string ancestor, string desc
 static bool HasRef(string workingDirectory, string reference) =>
     RunForExitCode("git", ["show-ref", "--verify", "--quiet", reference], workingDirectory) == 0;
 
-static bool HasRemoteRef(string workingDirectory, string branch) =>
-    RunForExitCode("git", ["ls-remote", "--exit-code", "--heads", "origin", branch], workingDirectory) == 0;
-
 static string RequiredEnvironment(string name) =>
     Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
         ? value
@@ -326,6 +331,8 @@ static int RunForExitCode(string command, IReadOnlyList<string> arguments, strin
 static ProcessResult Execute(string command, IReadOnlyList<string> arguments, string workingDirectory, bool captureOutput)
 {
     var startInfo = new ProcessStartInfo(command) { WorkingDirectory = workingDirectory, UseShellExecute = false };
+    startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
+    startInfo.Environment["GH_PROMPT_DISABLED"] = "1";
     foreach (var argument in arguments)
     {
         startInfo.ArgumentList.Add(argument);
