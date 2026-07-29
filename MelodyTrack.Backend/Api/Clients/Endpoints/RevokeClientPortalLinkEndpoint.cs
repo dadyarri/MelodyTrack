@@ -10,15 +10,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ResetClientPortalPinEndpoint(
+public class RevokeClientPortalLinkEndpoint(
     AppDbContext db,
     IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor)
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
     : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
-        Post("/clients/{id}/portal-pin-resets");
+        Delete("/clients/{id}/portal-links");
     }
 
     public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
@@ -49,25 +50,24 @@ public class ResetClientPortalPinEndpoint(
                 StatusCodes.Status404NotFound));
         }
 
-        loginLink.PinHash = null;
-        loginLink.PinSetAtUtc = null;
+        loginLink.RevokedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         loginLink.FailedPinAttempts = 0;
         loginLink.LastFailedPinAttemptAtUtc = null;
 
         await db.Sessions
             .Where(item => item.User.Id == loginLink.User.Id && !item.WasRevoked)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
-
         await db.SaveChangesAsync(ct);
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",
-            Action = "client_portal_pin_reset",
+            Action = "client_portal_link_revoked",
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
             ActorEmail = currentUser.Email,
+            ActorDisplayName = $"{currentUser.LastName} {currentUser.FirstName}".Trim(),
             Details = AuditDetailsFormatter.DescribeContext("Клиент", $"{loginLink.User.LastName} {loginLink.User.FirstName}".Trim())
         }, ct);
 

@@ -18,6 +18,7 @@ public class ExportClientsInDebtEndpoint(AppDbContext db, ICurrentUserAccessor c
     public override void Configure()
     {
         Get("/exports/client-debts");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 

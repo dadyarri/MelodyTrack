@@ -15,6 +15,7 @@ public class GetTeacherScheduleImageEndpoint(ITeacherScheduleImageGenerator teac
     public override void Configure()
     {
         Get("/exports/teacher-schedule");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: PngContentType));
     }
 

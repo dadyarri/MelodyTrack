@@ -16,6 +16,7 @@ public class GetPriceChangeAnalyticsEndpoint(AppDbContext db, IRecurringAppointm
     public override void Configure()
     {
         Get("/reports/price-changes");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetPriceChangeAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

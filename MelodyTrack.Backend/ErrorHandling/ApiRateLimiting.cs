@@ -18,6 +18,7 @@ public static class ApiRateLimitPolicies
     public const string PortalLinkStatus = "portal-link-status";
     public const string PortalAuthentication = "portal-authentication";
     public const string Releases = "public-releases";
+    public const string ExpensiveRead = "expensive-read";
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
     {
@@ -26,6 +27,15 @@ public static class ApiRateLimitPolicies
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
+                var logger = context.HttpContext.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("MelodyTrack.RateLimiting");
+                logger.LogWarning(
+                    "api.rate_limit.rejected {Method} {Path} from {ClientAddress}",
+                    context.HttpContext.Request.Method,
+                    context.HttpContext.Request.Path,
+                    GetClientAddressPartitionKey(context.HttpContext));
+
                 if (context.Lease.TryGetMetadata(MetadataName.RetryAfter, out var retryAfter))
                 {
                     context.HttpContext.Response.Headers.RetryAfter = Math.Ceiling(retryAfter.TotalSeconds)
@@ -48,6 +58,12 @@ public static class ApiRateLimitPolicies
             AddPolicy(options, PortalLinkStatus, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalAuthentication, 20, TimeSpan.FromMinutes(1));
             AddPolicy(options, Releases, 120, TimeSpan.FromMinutes(1));
+            options.AddConcurrencyLimiter(ExpensiveRead, limiterOptions =>
+            {
+                limiterOptions.PermitLimit = 8;
+                limiterOptions.QueueLimit = 4;
+                limiterOptions.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+            });
         });
 
         return services;

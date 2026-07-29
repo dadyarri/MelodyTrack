@@ -9,7 +9,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
+public class RevokeSessionEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    RefreshSessionCookieService refreshCookieService)
     : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
@@ -39,6 +43,11 @@ public class RevokeSessionEndpoint(AppDbContext db, IAuditLogService auditLogSer
                 ValidationFailures,
                 HttpContext,
                 StatusCodes.Status404NotFound));
+        }
+
+        if (currentUserAccessor.SessionId == req.Id)
+        {
+            refreshCookieService.Clear(HttpContext.Response);
         }
 
         Logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(user.Email), req.Id);

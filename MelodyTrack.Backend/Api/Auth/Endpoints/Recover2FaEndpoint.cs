@@ -11,7 +11,11 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvider timeProvider)
+public class Recover2FaEndpoint(
+    AppDbContext db,
+    IUaDetector uaDetector,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
     : Ep.Req<Recover2FaRequest>.Res<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -72,7 +76,6 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector, TimePro
         var response = new Recover2FaResponse
         {
             AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
-            RefreshToken = refreshToken,
             Secret = secret,
             OtpUrl = otpUrl,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
@@ -92,6 +95,7 @@ public class Recover2FaEndpoint(AppDbContext db, IUaDetector uaDetector, TimePro
         }), ct);
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
+        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
 
         Logger.LogInformation(
             "Successfully recovered 2FA for {EmailRef}. New session created from {DeviceInfo}",

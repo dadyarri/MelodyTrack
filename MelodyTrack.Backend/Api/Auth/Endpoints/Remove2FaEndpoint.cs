@@ -8,7 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
+public class Remove2FaEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    RefreshSessionCookieService refreshCookieService)
     : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -42,6 +46,7 @@ public class Remove2FaEndpoint(AppDbContext db, IAuditLogService auditLogService
 
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
+        refreshCookieService.Clear(HttpContext.Response);
 
         Logger.LogInformation("auth.2fa.removed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest

@@ -16,6 +16,7 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
     public override void Configure()
     {
         Get("/reports/appointments");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetAppointmentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
@@ -107,7 +108,7 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
                 var localStart = TimeZoneInfo.ConvertTimeFromUtc(appointment.StartDateUtc, timezone);
                 var localEnd = TimeZoneInfo.ConvertTimeFromUtc(appointment.EndDateUtc, timezone);
 
-                return new AppointmentValue
+                return new AppointmentAnalyticsAggregator.AppointmentValue
                 {
                     AppointmentId = appointment.AppointmentId,
                     ClientId = appointment.ClientId,
@@ -195,6 +196,64 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
                 workingHoursLookup.GetValueOrDefault(userId, UserAvailabilityService.GetDefaultWorkingHours()),
                 vacationsLookup.GetValueOrDefault(userId, [])));
 
+        return TypedResults.Ok(AppointmentAnalyticsAggregator.Aggregate(
+            appointmentValues,
+            teacherAvailability,
+            rangeStartLocal,
+            rangeEndExclusiveLocal,
+            req.End.Date));
+    }
+
+    private sealed class AppointmentRow
+    {
+        public required Ulid AppointmentId { get; set; }
+        public required Ulid ClientId { get; set; }
+        public required string ClientFirstName { get; set; }
+        public required string ClientLastName { get; set; }
+        public required Ulid ServiceId { get; set; }
+        public required string ServiceName { get; set; }
+        public Ulid? ProviderId { get; set; }
+        public string? ProviderFirstName { get; set; }
+        public string? ProviderLastName { get; set; }
+        public required DateTime StartDateUtc { get; set; }
+        public required DateTime EndDateUtc { get; set; }
+        public required AppointmentStatus Status { get; set; }
+    }
+
+    private sealed class ServicePriceRow
+    {
+        public required Ulid ServiceId { get; set; }
+        public required DateTime EffectiveDate { get; set; }
+        public required decimal Price { get; set; }
+    }
+
+    private sealed class WorkingHoursRow
+    {
+        public required Ulid UserId { get; set; }
+        public required DayOfWeek DayOfWeek { get; set; }
+        public required bool IsWorkingDay { get; set; }
+        public required int StartMinuteOfDay { get; set; }
+        public required int EndMinuteOfDay { get; set; }
+    }
+
+    private sealed class VacationRow
+    {
+        public required Ulid UserId { get; set; }
+        public required DateOnly StartDate { get; set; }
+        public required DateOnly EndDate { get; set; }
+    }
+}
+
+internal static class AppointmentAnalyticsAggregator
+{
+    public static GetAppointmentsAnalyticsResponse Aggregate(
+        IReadOnlyCollection<AppointmentValue> appointmentValues,
+        IReadOnlyDictionary<Ulid, UserAvailabilitySnapshot> teacherAvailability,
+        DateTime rangeStartLocal,
+        DateTime rangeEndExclusiveLocal,
+        DateTime responseEndDate)
+    {
+
         var dailyAvailableHours = new Dictionary<DateTime, decimal>();
         var hourlyAvailableHours = new Dictionary<int, decimal>();
         var teacherAvailableHours = new Dictionary<Ulid, decimal>();
@@ -262,10 +321,10 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
         var burnedClients = BuildBurnedClients(appointmentValues);
         var averageGapBetweenServicesHours = CalculateAverageGapBetweenServicesHours(appointmentValues.Where(e => e.ProviderId is not null));
 
-        return TypedResults.Ok(new GetAppointmentsAnalyticsResponse
+        return new GetAppointmentsAnalyticsResponse
         {
             StartDate = rangeStartLocal,
-            EndDate = req.End.Date,
+            EndDate = responseEndDate,
             TotalAppointmentsCount = totalAppointmentsCount,
             PlannedAppointmentsCount = plannedAppointmentsCount,
             CompletedAppointmentsCount = completedAppointmentsCount,
@@ -287,7 +346,7 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
             Hours = hours,
             Teachers = teachers,
             BurnedClients = burnedClients
-        });
+        };
     }
 
     private static List<AppointmentStatusCountDto> BuildStatuses(IReadOnlyCollection<AppointmentValue> appointments, int totalAppointmentsCount)
@@ -568,23 +627,7 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
         return denominator == 0 ? null : numerator / denominator * 100m;
     }
 
-    private sealed class AppointmentRow
-    {
-        public required Ulid AppointmentId { get; set; }
-        public required Ulid ClientId { get; set; }
-        public required string ClientFirstName { get; set; }
-        public required string ClientLastName { get; set; }
-        public required Ulid ServiceId { get; set; }
-        public required string ServiceName { get; set; }
-        public Ulid? ProviderId { get; set; }
-        public string? ProviderFirstName { get; set; }
-        public string? ProviderLastName { get; set; }
-        public required DateTime StartDateUtc { get; set; }
-        public required DateTime EndDateUtc { get; set; }
-        public required AppointmentStatus Status { get; set; }
-    }
-
-    private sealed class AppointmentValue
+    internal sealed class AppointmentValue
     {
         public required Ulid AppointmentId { get; set; }
         public required Ulid ClientId { get; set; }
@@ -602,26 +645,5 @@ public class GetAppointmentsAnalyticsEndpoint(AppDbContext db, IRecurringAppoint
         public required decimal Price { get; set; }
     }
 
-    private sealed class ServicePriceRow
-    {
-        public required Ulid ServiceId { get; set; }
-        public required DateTime EffectiveDate { get; set; }
-        public required decimal Price { get; set; }
-    }
 
-    private sealed class WorkingHoursRow
-    {
-        public required Ulid UserId { get; set; }
-        public required DayOfWeek DayOfWeek { get; set; }
-        public required bool IsWorkingDay { get; set; }
-        public required int StartMinuteOfDay { get; set; }
-        public required int EndMinuteOfDay { get; set; }
-    }
-
-    private sealed class VacationRow
-    {
-        public required Ulid UserId { get; set; }
-        public required DateOnly StartDate { get; set; }
-        public required DateOnly EndDate { get; set; }
-    }
 }

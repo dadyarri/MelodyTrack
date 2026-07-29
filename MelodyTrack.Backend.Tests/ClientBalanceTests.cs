@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
+using ClosedXML.Excel;
 using FastEndpoints;
 using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Clients.Endpoints;
@@ -17,6 +18,54 @@ namespace MelodyTrack.Backend.Tests;
 [Collection(IntegrationTestCollection.Name)]
 public class ClientBalanceTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
+    [Fact]
+    public async Task ExportClientsInDebt_ContainsOnlyDebtorsWithResolvedBalance()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var debtor = await TestDataFactory.CreateClientAsync(db, "Anna", "Debtor", TestContext.Current.CancellationToken);
+        await TestDataFactory.CreateClientAsync(db, "Boris", "Clear", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Debt lesson", TestContext.Current.CancellationToken);
+        var date = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(), Service = service, Price = 175m, EffectiveDate = date.AddDays(-1)
+        }, TestContext.Current.CancellationToken);
+        await db.Appointments.AddAsync(new Appointment
+        {
+            Id = Ulid.NewUlid(), Client = debtor, Service = service, Provider = admin,
+            StartDate = date, EndDate = date.AddHours(1), Status = AppointmentStatus.Burned, IsDeleted = false
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        using var response = await App.Client.GetAsync("/exports/client-debts", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        await using var content = await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken);
+        using var workbook = new XLWorkbook(content);
+        var sheet = workbook.Worksheet("Debtors");
+        sheet.LastRowUsed()!.RowNumber().ShouldBe(2);
+        sheet.Cell(2, 1).GetString().ShouldBe("Debtor");
+        sheet.Cell(2, 2).GetString().ShouldBe("Anna");
+        sheet.Cell(2, 7).GetValue<decimal>().ShouldBe(-175m);
+    }
+
+    [Fact]
+    public async Task ExportClientsInDebt_RegularUser_IsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.GetAsync("/exports/client-debts", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
     [Fact]
     public async Task GetClientsWithNegativeBalance_UsesResolvedPricePerAppointment()
     {

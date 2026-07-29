@@ -1,9 +1,11 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
@@ -11,7 +13,12 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector uaDetector, TimeProvider timeProvider)
+public class AuthenticateClientPortalLinkEndpoint(
+    AppDbContext db,
+    IUaDetector uaDetector,
+    IAuditLogService auditLogService,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
     : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<LoginResponse>, ApiProblemDetails>>
 {
     public override void Configure()
@@ -44,7 +51,7 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
                 StatusCodes.Status403Forbidden);
         }
 
-        if (string.IsNullOrWhiteSpace(link.PinCode))
+        if (string.IsNullOrWhiteSpace(link.PinHash))
         {
             if (string.IsNullOrWhiteSpace(req.PinConfirmation))
             {
@@ -64,17 +71,35 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
                     StatusCodes.Status400BadRequest);
             }
 
-            link.PinCode = req.Pin;
+            UserUtils.HashPassword(req.Pin, out var pinHash);
+            link.PinHash = pinHash;
             link.PinSetAtUtc = nowUtc;
         }
-        else if (!string.Equals(link.PinCode, req.Pin, StringComparison.Ordinal))
+        else if (!UserUtils.IsValidPassword(link.PinHash, req.Pin))
         {
+            link.FailedPinAttempts++;
+            link.LastFailedPinAttemptAtUtc = nowUtc;
+            await db.SaveChangesAsync(ct);
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Category = "security",
+                Action = link.FailedPinAttempts >= 3 ? "portal_pin_repeated_failures" : "portal_pin_failed",
+                EntityType = "client_portal_link",
+                EntityId = link.Id.ToString(),
+                ActorUserId = link.User.Id,
+                ActorEmail = link.User.Email,
+                ActorDisplayName = $"{link.User.LastName} {link.User.FirstName}".Trim(),
+                Details = $"Неудачных попыток с момента последнего успешного входа: {link.FailedPinAttempts}"
+            }, ct);
             AddError(item => item.Pin, "PIN-код неверный.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 ValidationFailures,
                 HttpContext,
                 StatusCodes.Status401Unauthorized);
         }
+
+        link.FailedPinAttempts = 0;
+        link.LastFailedPinAttemptAtUtc = null;
 
         await db.Sessions
             .Where(item => item.User.Id == link.User.Id && !item.WasRevoked)
@@ -92,11 +117,11 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
 
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
+        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
 
         return TypedResults.Ok(new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(link.User, session.Id, timeProvider),
-            RefreshToken = refreshToken,
             FirstName = link.User.FirstName,
             LastName = link.User.LastName
         });
@@ -104,14 +129,10 @@ public class AuthenticateClientPortalLinkEndpoint(AppDbContext db, IUaDetector u
 
     private async Task<Data.Models.ClientPortalLoginLink?> LoadActiveLinkAsync(string token, CancellationToken ct)
     {
-        if (!UserUtils.TryReadClientPortalToken(token, out var clientId))
-        {
-            return null;
-        }
-
+        var tokenHash = UserUtils.HashOpaqueToken(token);
         return await db.ClientPortalLoginLinks
             .Include(item => item.User)
                 .ThenInclude(item => item.Role)
-            .FirstOrDefaultAsync(item => item.User.ClientId == clientId, ct);
+            .FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.RevokedAtUtc == null, ct);
     }
 }

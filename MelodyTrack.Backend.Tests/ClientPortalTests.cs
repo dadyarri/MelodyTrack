@@ -11,6 +11,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -103,6 +104,14 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: TestContext.Current.CancellationToken);
 
         consumePayload.ShouldNotBeNull();
+
+        var storedCredentials = db.ClientPortalLoginLinks
+            .AsNoTracking()
+            .Single(item => item.User.ClientId == client.Id);
+        storedCredentials.TokenHash.ShouldBe(UserUtils.HashOpaqueToken(token));
+        storedCredentials.TokenHash.ShouldNotBe(token);
+        storedCredentials.PinHash.ShouldNotBe("1234");
+        UserUtils.IsValidPassword(storedCredentials.PinHash.ShouldNotBeNull(), "1234").ShouldBeTrue();
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", consumePayload.AccessToken);
 
         using var meResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
@@ -158,6 +167,62 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             },
             TestContext.Current.CancellationToken);
         secondConsumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var secondConsumePayload = await secondConsumeResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
+        secondConsumePayload.ShouldNotBeNull();
+
+        for (var attempt = 0; attempt < 3; attempt++)
+        {
+            using var failedPinResponse = await App.Client.PostAsJsonAsync(
+                "/client-portal/auth/link",
+                new { token, pin = "9999" },
+                TestContext.Current.CancellationToken);
+            failedPinResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        }
+
+        var failedLink = db.ClientPortalLoginLinks.AsNoTracking().Single(item => item.User.ClientId == client.Id);
+        failedLink.FailedPinAttempts.ShouldBe(3);
+        db.AuditLogs.AsNoTracking()
+            .Any(item => item.EntityId == failedLink.Id.ToString() && item.Action == "portal_pin_repeated_failures")
+            .ShouldBeTrue();
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+        using var rotateResponse = await App.Client.PostAsJsonAsync(
+            $"/clients/{client.Id}/portal-links",
+            new { },
+            TestContext.Current.CancellationToken);
+        rotateResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var rotatePayload = await rotateResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(TestContext.Current.CancellationToken);
+        rotatePayload.ShouldNotBeNull();
+        var rotatedToken = rotatePayload.Url.Split("/portal/access/").Last();
+        rotatedToken.ShouldNotBe(token);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+        using var oldLinkStatus = await App.Client.GetAsync(
+            $"/client-portal/auth/link?token={Uri.EscapeDataString(token)}",
+            TestContext.Current.CancellationToken);
+        oldLinkStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        using var rotatedLinkStatus = await App.Client.GetAsync(
+            $"/client-portal/auth/link?token={Uri.EscapeDataString(rotatedToken)}",
+            TestContext.Current.CancellationToken);
+        rotatedLinkStatus.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var rotatedStatusPayload = await rotatedLinkStatus.Content.ReadFromJsonAsync<GetClientPortalLinkStatusResponse>(TestContext.Current.CancellationToken);
+        rotatedStatusPayload.ShouldNotBeNull();
+        rotatedStatusPayload.HasPin.ShouldBeTrue();
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondConsumePayload.AccessToken);
+        using var rotatedSessionResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        rotatedSessionResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+        using var revokeResponse = await App.Client.DeleteAsync($"/clients/{client.Id}/portal-links", TestContext.Current.CancellationToken);
+        revokeResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+
+        App.Client.DefaultRequestHeaders.Authorization = null;
+        using var revokedLinkStatus = await App.Client.GetAsync(
+            $"/client-portal/auth/link?token={Uri.EscapeDataString(rotatedToken)}",
+            TestContext.Current.CancellationToken);
+        revokedLinkStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
     [Fact]

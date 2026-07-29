@@ -7,7 +7,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LogoutAllEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
+public class LogoutAllEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    RefreshSessionCookieService refreshCookieService)
     : Ep.NoReq.Res<Results<UnauthorizedHttpResult, NoContent>>
 {
     public override void Configure()
@@ -27,6 +31,7 @@ public class LogoutAllEndpoint(AppDbContext db, IAuditLogService auditLogService
         await db.Sessions
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+        refreshCookieService.Clear(HttpContext.Response);
 
         Logger.LogInformation("auth.logout_all.succeeded {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest

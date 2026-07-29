@@ -170,6 +170,7 @@ static void PublishRelease(string backend, ReleaseEntry current)
 
     var tag = $"v{current.Version}";
     var title = $"{current.Version} — {current.ResolvedCodename}";
+    Run("gh", ["auth", "setup-git"], backend);
     Run("git", ["fetch", "--tags", "origin"], backend);
     if (HasRef(backend, $"refs/tags/{tag}"))
     {

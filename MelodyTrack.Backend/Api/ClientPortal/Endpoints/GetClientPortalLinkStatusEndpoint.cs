@@ -23,20 +23,12 @@ public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
 
     public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
     {
-        if (!UserUtils.TryReadClientPortalToken(req.Token, out var clientId))
-        {
-            AddError(item => item.Token, "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
-            return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
-                StatusCodes.Status403Forbidden);
-        }
-
+        var tokenHash = UserUtils.HashOpaqueToken(req.Token);
         var link = await db.ClientPortalLoginLinks
             .AsNoTracking()
             .Include(item => item.User)
                 .ThenInclude(item => item.Role)
-            .FirstOrDefaultAsync(item => item.User.ClientId == clientId, ct);
+            .FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.RevokedAtUtc == null, ct);
 
         if (link is null || !link.User.Role.RoleName.IsClient() || link.User.ClientId is null)
         {
@@ -50,7 +42,7 @@ public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
         return TypedResults.Ok(new GetClientPortalLinkStatusResponse
         {
             FirstName = link.User.FirstName,
-            HasPin = !string.IsNullOrWhiteSpace(link.PinCode)
+            HasPin = !string.IsNullOrWhiteSpace(link.PinHash)
         });
     }
 }

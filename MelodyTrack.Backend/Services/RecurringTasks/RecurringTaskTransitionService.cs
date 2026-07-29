@@ -141,16 +141,7 @@ internal sealed class RecurringTaskTransitionService(
             await db.RecurringTaskExecutions.AddAsync(execution, ct);
         }
 
-        await db.SaveChangesAsync(ct);
-
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_completed",
-            EntityType = "recurring_task",
-            EntityId = execution.Id.ToString(),
-            Details = BuildRecurringTaskAuditDetails(candidate)
-        }, ct);
+        await SaveAndAuditAsync(execution, "task_completed", BuildRecurringTaskAuditDetails(candidate), ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
     }
@@ -230,16 +221,7 @@ internal sealed class RecurringTaskTransitionService(
             await db.RecurringTaskExecutions.AddAsync(execution, ct);
         }
 
-        await db.SaveChangesAsync(ct);
-
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_cancelled",
-            EntityType = "recurring_task",
-            EntityId = execution.Id.ToString(),
-            Details = BuildRecurringTaskAuditDetails(candidate)
-        }, ct);
+        await SaveAndAuditAsync(execution, "task_cancelled", BuildRecurringTaskAuditDetails(candidate), ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
     }
@@ -326,18 +308,13 @@ internal sealed class RecurringTaskTransitionService(
             await db.RecurringTaskExecutions.AddAsync(execution, ct);
         }
 
-        await db.SaveChangesAsync(ct);
-
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Category = "recurring_tasks",
-            Action = "task_delayed",
-            EntityType = "recurring_task",
-            EntityId = execution.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
+        await SaveAndAuditAsync(
+            execution,
+            "task_delayed",
+            AuditDetailsFormatter.JoinChanges(
                 BuildRecurringTaskAuditDetails(candidate),
-                AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc))
-        }, ct);
+                AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc)),
+            ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
     }
@@ -350,6 +327,25 @@ internal sealed class RecurringTaskTransitionService(
             AuditDetailsFormatter.DescribeContext("Получатель", candidate.RelatedPersonDisplayName),
             AuditDetailsFormatter.DescribeContext("Дата", candidate.BusinessDate.ToString("dd.MM.yyyy")),
             candidate.RelevantAtUtc is null ? null : AuditDetailsFormatter.DescribeContext("Время", candidate.RelevantAtUtc));
+    }
+
+    private async Task SaveAndAuditAsync(
+        RecurringTaskExecution execution,
+        string action,
+        string details,
+        CancellationToken ct)
+    {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await db.SaveChangesAsync(ct);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "recurring_tasks",
+            Action = action,
+            EntityType = "recurring_task",
+            EntityId = execution.Id.ToString(),
+            Details = details
+        }, ct);
+        await transaction.CommitAsync(ct);
     }
 
 }

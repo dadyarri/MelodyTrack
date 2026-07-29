@@ -20,6 +20,7 @@ public class GetDashboardStatsEndpoint(
     public override void Configure()
     {
         Get("/dashboard");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(

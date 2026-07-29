@@ -1,4 +1,5 @@
 using FastEndpoints;
+using FluentValidation.Results;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -13,7 +14,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 public class
     CreateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService, TimeProvider timeProvider)
-    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>>
 {
     private const string ReplayEndpoint = "clients:create";
 
@@ -22,7 +23,7 @@ public class
         Post("/clients");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> ExecuteAsync(
         CreateClientRequest req, CancellationToken ct)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
@@ -64,6 +65,13 @@ public class
             }
         }
 
+        var duplicateContactField = await FindDuplicateContactFieldAsync(req, ct);
+        if (duplicateContactField is not null)
+        {
+            ValidationFailures.Add(new ValidationFailure(duplicateContactField, "Этот контакт уже указан у другого клиента."));
+            return TypedResults.Conflict(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status409Conflict));
+        }
+
         var client = new Client
         {
             Id = Ulid.NewUlid(),
@@ -87,13 +95,14 @@ public class
         await db.SaveChangesAsync(ct);
 
         Logger.LogInformation(
-            "Created new client: {FirstName} {LastName} (ID: {ClientId}) with contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+            "Created new client: {FirstName} {LastName} (ID: {ClientId}); contact presence email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             client.FirstName,
             client.LastName,
             client.Id,
-            client.Contacts.Phone ?? "not provided",
-            client.Contacts.Telegram ?? "not provided",
-            client.Contacts.Vk ?? "not provided"
+            client.Contacts.Email is not null,
+            client.Contacts.Phone is not null,
+            client.Contacts.Telegram is not null,
+            client.Contacts.Vk is not null
         );
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
@@ -127,5 +136,55 @@ public class
         {
             Id = client.Id
         });
+    }
+
+    private async Task<string?> FindDuplicateContactFieldAsync(CreateClientRequest request, CancellationToken ct)
+    {
+        if (new[] { request.Email, request.Phone, request.Telegram, request.Vk }.All(string.IsNullOrWhiteSpace))
+        {
+            return null;
+        }
+
+        var contacts = await db.Clients
+            .AsNoTracking()
+            .Select(client => client.Contacts)
+            .ToListAsync(ct);
+        var email = NormalizeContact(request.Email);
+        var phone = NormalizePhone(request.Phone);
+        var telegram = NormalizeContact(request.Telegram);
+        var vk = NormalizeContact(request.Vk);
+
+        if (email is not null && contacts.Any(contact => NormalizeContact(contact.Email) == email))
+        {
+            return nameof(request.Email);
+        }
+
+        if (phone is not null && contacts.Any(contact => NormalizePhone(contact.Phone) == phone))
+        {
+            return nameof(request.Phone);
+        }
+
+        if (telegram is not null && contacts.Any(contact => NormalizeContact(contact.Telegram) == telegram))
+        {
+            return nameof(request.Telegram);
+        }
+
+        return vk is not null && contacts.Any(contact => NormalizeContact(contact.Vk) == vk)
+            ? nameof(request.Vk)
+            : null;
+    }
+
+    private static string? NormalizeContact(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim().ToLowerInvariant();
+
+    private static string? NormalizePhone(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        var digits = new string(value.Where(char.IsDigit).ToArray());
+        return digits.Length == 0 ? null : digits;
     }
 }

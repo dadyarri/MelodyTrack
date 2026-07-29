@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -33,15 +34,16 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         }
 
         Logger.LogInformation(
-            "Updating client {ClientId} with new data - FirstName: {FirstName}, LastName: {LastName}, Patronymic: {Patronymic}, DateOfBirth: {DateOfBirth}, Contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+            "Updating client {ClientId}; fields present firstName={HasFirstName} lastName={HasLastName} patronymic={HasPatronymic} dateOfBirth={HasDateOfBirth} email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             req.Id,
-            req.FirstName,
-            req.LastName,
-            req.Patronymic,
-            req.DateOfBirth?.ToString("yyyy-MM-dd") ?? "not provided",
-            req.Phone ?? "not provided",
-            req.Telegram ?? "not provided",
-            req.Vk ?? "not provided"
+            req.FirstName is not null,
+            req.LastName is not null,
+            req.Patronymic is not null,
+            req.DateOfBirth is not null,
+            req.Email is not null,
+            req.Phone is not null,
+            req.Telegram is not null,
+            req.Vk is not null
         );
 
         var client = await db.Clients
@@ -73,7 +75,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             "Клиент был изменен другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
             ct);
 
-        if (conflict is not null && !IsNoOp(client, req))
+        if (conflict is not null && !ClientUpdateComparer.IsNoOp(client, req))
         {
             return TypedResults.Conflict(conflict);
         }
@@ -100,7 +102,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 
         client.Patronymic = req.Patronymic;
         client.DateOfBirth = req.DateOfBirth;
-        client.Contacts.Email = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
+        client.Contacts.Email = ClientUpdateComparer.NormalizeEmail(req.Email);
         client.Contacts.Phone = req.Phone;
         client.Contacts.Telegram = req.Telegram;
         client.Contacts.Vk = req.Vk;
@@ -162,20 +164,4 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         return periods.Length == 0 ? null : string.Join(", ", periods);
     }
 
-    private static bool IsNoOp(Data.Models.Client client, UpdateClientRequest req)
-    {
-        return (req.FirstName is null || req.FirstName == client.FirstName)
-               && (req.LastName is null || req.LastName == client.LastName)
-               && req.Patronymic == client.Patronymic
-               && req.DateOfBirth == client.DateOfBirth
-               && (string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email)) == client.Contacts.Email
-               && req.Phone == client.Contacts.Phone
-               && req.Telegram == client.Contacts.Telegram
-               && req.Vk == client.Contacts.Vk
-               && req.SourceId == client.SourceId
-               && (req.Vacations is null || client.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
-                   .Select(item => new { item.StartDate, item.EndDate })
-                   .SequenceEqual(req.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
-                       .Select(item => new { item.StartDate, item.EndDate })));
-    }
 }

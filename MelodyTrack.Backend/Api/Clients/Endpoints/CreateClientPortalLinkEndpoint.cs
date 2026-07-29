@@ -54,7 +54,7 @@ public class CreateClientPortalLinkEndpoint(
 
         var desiredEmail = BuildClientPortalEmail(client);
         var hasRealEmail = !string.IsNullOrWhiteSpace(client.Contacts.Email);
-        var persistentToken = UserUtils.CreateClientPortalToken(client.Id);
+        var portalToken = UserUtils.GenerateRandomString(48);
 
         var clientRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Client, ct);
 
@@ -115,6 +115,7 @@ public class CreateClientPortalLinkEndpoint(
 
         var loginLink = await db.ClientPortalLoginLinks
             .FirstOrDefaultAsync(item => item.UserId == existingUser.Id, ct);
+        var isRotation = loginLink is not null;
 
         if (loginLink is null)
         {
@@ -122,10 +123,22 @@ public class CreateClientPortalLinkEndpoint(
             {
                 Id = Ulid.NewUlid(),
                 User = existingUser,
-                UserId = existingUser.Id
+                UserId = existingUser.Id,
+                TokenHash = UserUtils.HashOpaqueToken(portalToken)
             };
 
             await db.ClientPortalLoginLinks.AddAsync(loginLink, ct);
+        }
+        else
+        {
+            loginLink.TokenHash = UserUtils.HashOpaqueToken(portalToken);
+            loginLink.RevokedAtUtc = null;
+            loginLink.FailedPinAttempts = 0;
+            loginLink.LastFailedPinAttemptAtUtc = null;
+
+            await db.Sessions
+                .Where(item => item.User.Id == existingUser.Id && !item.WasRevoked)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -133,7 +146,7 @@ public class CreateClientPortalLinkEndpoint(
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",
-            Action = "client_portal_link_created",
+            Action = isRotation ? "client_portal_link_rotated" : "client_portal_link_created",
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
@@ -145,7 +158,7 @@ public class CreateClientPortalLinkEndpoint(
             $"/clients/{client.Id}/portal-links",
             new CreateClientPortalLinkResponse
             {
-                Url = publicUrlBuilder.GetClientPortalAccessUrl(persistentToken)
+                Url = publicUrlBuilder.GetClientPortalAccessUrl(portalToken)
             });
     }
 

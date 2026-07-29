@@ -16,6 +16,7 @@ public class GetRevenueAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentM
     public override void Configure()
     {
         Get("/reports/revenue");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetRevenueAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

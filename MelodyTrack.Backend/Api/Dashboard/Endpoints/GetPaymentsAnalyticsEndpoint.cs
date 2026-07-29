@@ -16,6 +16,7 @@ public class GetPaymentsAnalyticsEndpoint(AppDbContext db, ICurrentUserAccessor 
     public override void Configure()
     {
         Get("/reports/payments");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetPaymentsAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

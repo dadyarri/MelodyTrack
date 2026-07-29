@@ -19,6 +19,7 @@ public class ExportPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor curren
     public override void Configure()
     {
         Get("/exports/payments");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
         Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 

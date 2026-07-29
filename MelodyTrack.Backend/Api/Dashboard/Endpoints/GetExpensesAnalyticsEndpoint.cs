@@ -16,6 +16,7 @@ public class GetExpensesAnalyticsEndpoint(AppDbContext db, IRecurringAppointment
     public override void Configure()
     {
         Get("/reports/expenses");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
     public override async Task<Results<Ok<GetExpensesAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(

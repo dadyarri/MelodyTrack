@@ -137,6 +137,7 @@ internal sealed class CustomTaskTransitionService(
         string? extraDetails,
         CancellationToken ct)
     {
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
@@ -148,6 +149,7 @@ internal sealed class CustomTaskTransitionService(
                 BuildAuditDetails(task),
                 extraDetails)
         }, ct);
+        await transaction.CommitAsync(ct);
     }
 
     private static void ClearDelay(CustomTask task)

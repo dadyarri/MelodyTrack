@@ -13,7 +13,13 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService, TimeProvider timeProvider)
+public class LoginEndpoint(
+    AppDbContext db,
+    IUaDetector uaDetector,
+    IAuditLogService auditLogService,
+    SessionSecurityMonitor sessionSecurityMonitor,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
     : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -101,6 +107,8 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
 
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
+        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
+        await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(user, ct);
 
         Logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
@@ -117,7 +125,6 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         var response = new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
-            RefreshToken = refreshToken,
             FirstName = user.FirstName,
             LastName = user.LastName
         };

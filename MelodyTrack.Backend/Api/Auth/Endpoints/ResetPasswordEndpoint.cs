@@ -11,7 +11,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
+public class ResetPasswordEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
     : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ApiProblemDetails>>
 {
     public override void Configure()
@@ -94,6 +98,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+        refreshCookieService.Clear(HttpContext.Response);
 
         Logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
