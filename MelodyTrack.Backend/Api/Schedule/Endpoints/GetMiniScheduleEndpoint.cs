@@ -1,11 +1,9 @@
 using System.Globalization;
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,35 +11,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetMiniScheduleEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetMiniScheduleEndpoint(
+    AppDbContext db,
+    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+    IRecordActivityService recordActivityService,
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<BaseGetAppointmentsRequest>.Res<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
-        Get("/appointments/mini");
+        Get("/appointments/agenda");
     }
 
-    public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetMiniScheduleResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(BaseGetAppointmentsRequest req, CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(claim => claim.Type == ClaimTypes.Name)?.Value;
-
-        if (email is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        var currentUser = await db.Users
-            .AsNoTracking()
-            .WhereEmailMatches(email)
-            .FirstOrDefaultAsync(ct);
-
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
         var timezone = TimeZoneInfo.FindSystemTimeZoneById(req.Timezone);
-        var nowUtc = DateTime.UtcNow;
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timezone).Date;
         var startUtc = TimeZoneInfo.ConvertTimeToUtc(today, timezone);
         var endUtc = TimeZoneInfo.ConvertTimeToUtc(today.AddDays(2), timezone);
         await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, ct);

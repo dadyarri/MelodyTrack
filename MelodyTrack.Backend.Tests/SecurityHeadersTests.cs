@@ -60,7 +60,7 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
         var response = await App.Client.PostAsJsonAsync(
-            $"/users/{user.Id}/password-reset-link",
+            $"/users/{user.Id}/password-reset-links",
             new { },
             TestContext.Current.CancellationToken);
 
@@ -88,6 +88,44 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
         response.Headers.Contains("Cache-Control").ShouldBeFalse();
         response.Headers.Contains("Pragma").ShouldBeFalse();
         response.Content.Headers.Contains("Expires").ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task GeneratedDownload_DeclaresFilenameTypeAndNoStorePolicy()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        var response = await App.Client.GetAsync("/exports/payments", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        response.Content.Headers.ContentDisposition?.DispositionType.ShouldBe("attachment");
+        response.Content.Headers.ContentDisposition?.FileNameStar.ShouldNotBeNullOrWhiteSpace();
+        AssertSensitiveCacheHeaders(response);
+    }
+
+    [Theory]
+    [InlineData("br")]
+    [InlineData("gzip")]
+    public async Task JsonResponse_UsesRequestedCompression(string encoding)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/services?page=1&page_size=50");
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        request.Headers.AcceptEncoding.ParseAdd(encoding);
+
+        var response = await App.Client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        response.Content.Headers.ContentEncoding.ShouldContain(encoding);
+        response.Headers.Vary.ShouldContain("Accept-Encoding");
     }
 
     private static void AssertSecurityHeaders(HttpResponseMessage response)

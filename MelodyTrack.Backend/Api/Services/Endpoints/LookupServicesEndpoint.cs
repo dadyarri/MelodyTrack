@@ -2,24 +2,25 @@ using FastEndpoints;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class LookupServicesEndpoint(AppDbContext db)
+public class LookupServicesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
-        Get("/services/lookup");
+        Get("/services/options");
     }
 
     public override async Task<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

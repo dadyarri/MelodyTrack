@@ -10,20 +10,20 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
 public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService, AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<DeleteAppointmentRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
+    : Ep.Req<DeleteAppointmentRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
         Delete("/appointments/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(DeleteAppointmentRequest req, CancellationToken ct)
+    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(DeleteAppointmentRequest req, CancellationToken ct)
     {
         Logger.LogDebug("Attempting to delete appointment with ID: {AppointmentId}", req.Id);
         if (!TryParseScope(req.Scope, out var scope))
         {
             AddError(r => r.Scope, "Некорректная область удаления");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var appointment = await db.Appointments

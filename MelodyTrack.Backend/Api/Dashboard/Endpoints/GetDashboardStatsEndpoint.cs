@@ -10,19 +10,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
-    : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>>
+public class GetDashboardStatsEndpoint(
+    AppDbContext db,
+    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
+    : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
 {
     public override void Configure()
     {
-        Get("/dashboard/stats");
+        Get("/dashboard");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
-    public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetDashboardStatsRequest req,
         CancellationToken ct)
     {
-        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
 
         if (currentUser is null)
         {
@@ -37,15 +42,16 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        var today = TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timezone).Date;
         var tomorrow = today.AddDays(1);
         var dayAfterTomorrow = today.AddDays(2);
         var monthStart = new DateTime(today.Year, today.Month, 1);
@@ -81,7 +87,7 @@ public class GetDashboardStatsEndpoint(AppDbContext db, IRecurringAppointmentMat
         var appointmentsTomorrow = await appointmentsQuery
             .CountAsync(e => e.StartDate >= tomorrowStartUtc
                              && e.StartDate < dayAfterTomorrowStartUtc
-                             && e.EndDate > DateTime.UtcNow, ct);
+                             && e.EndDate > nowUtc, ct);
 
         var incomeAppointmentsThisMonth = await db.Appointments
             .AsNoTracking()

@@ -4,8 +4,8 @@ using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,17 +13,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ProblemDetails>>
+public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
+    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Post("/auth/register");
         AllowAnonymous();
-        Throttle(10, 300);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Register));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Created<RegisterResponse>, ProblemDetails>> ExecuteAsync(RegisterRequest req,
+    public override async Task<Results<Created<RegisterResponse>, ApiProblemDetails>> ExecuteAsync(RegisterRequest req,
         CancellationToken ct)
     {
         Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
@@ -38,10 +39,11 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService)
                 StatusCodes.Status403Forbidden);
         }
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var inviteCode = await db.InviteCodes
             .Include(inviteCode => inviteCode.Role)
             .FirstOrDefaultAsync(e =>
-                e.Code == code && !e.WasUsed && e.ValidUntil >= DateTime.UtcNow, ct);
+                e.Code == code && !e.WasUsed && e.ValidUntil >= nowUtc, ct);
 
         if (inviteCode == null)
         {

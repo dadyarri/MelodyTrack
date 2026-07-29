@@ -1,8 +1,5 @@
-﻿using System.Security.Claims;
-using FastEndpoints;
-using MelodyTrack.Backend.Api.Auth.Requests;
+﻿using FastEndpoints;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -10,32 +7,41 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) : Ep.Req<LogoutRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
+public class LogoutEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    RefreshSessionCookieService refreshCookieService)
+    : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/logout");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(LogoutRequest req,
-        CancellationToken ct)
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var refreshTokenHash = UserUtils.HashOpaqueToken(req.RefreshToken);
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-
-        if (email is null)
-        {
-            Logger.LogWarning("Logout attempt without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users.AsNoTracking().WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Logout attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
+            Logger.LogWarning("Logout attempt without a current user");
             return TypedResults.Unauthorized();
         }
+
+        var refreshToken = refreshCookieService.ReadRefreshToken(HttpContext.Request);
+        if (refreshToken is null)
+        {
+            refreshCookieService.Clear(HttpContext.Response);
+            return TypedResults.Unauthorized();
+        }
+
+        if (!refreshCookieService.HasValidCsrfToken(HttpContext.Request, refreshToken))
+        {
+            Logger.LogWarning("auth.logout.csrf_rejected {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+            return TypedResults.Forbid();
+        }
+
+        var refreshTokenHash = UserUtils.HashOpaqueToken(refreshToken);
 
         var revokedCount = await db.Sessions
             .Where(e => e.RefreshToken == refreshTokenHash && e.User.Id == user.Id)
@@ -43,11 +49,14 @@ public class LogoutEndpoint(AppDbContext db, IAuditLogService auditLogService) :
 
         if (revokedCount == 0)
         {
-            Logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(email.Value));
+            refreshCookieService.Clear(HttpContext.Response);
+            Logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(email.Value));
+        refreshCookieService.Clear(HttpContext.Response);
+
+        Logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

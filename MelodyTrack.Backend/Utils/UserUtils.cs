@@ -5,7 +5,6 @@ using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
 using MelodyTrack.Backend.Data.Models;
-using Microsoft.AspNetCore.WebUtilities;
 using OtpNet;
 using QRCoder;
 
@@ -146,9 +145,9 @@ public static class UserUtils
         return DescribeOpaqueValueForLogs("invite", code.ToString());
     }
 
-    public static string CreateAccessToken(User user, Ulid? sessionId = null)
+    public static string CreateAccessToken(User user, Ulid? sessionId = null, TimeProvider? timeProvider = null)
     {
-        var expireAt = DateTime.UtcNow.AddMinutes(10);
+        var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
         return JwtBearer.CreateToken(opts =>
         {
             opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
@@ -200,53 +199,4 @@ public static class UserUtils
         return sha512Totp.VerifyTotp(otp, out _, window);
     }
 
-    public static string GetInviteUrl(Ulid code)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/invite/{code}";
-    }
-
-    public static string GetResetPasswordUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/restore?code={token}";
-    }
-
-    public static string GetClientPortalAccessUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        return $"{appDomain}/portal/access/{token}";
-    }
-
-    public static string GetCalendarSubscriptionUrl(string token)
-    {
-        var appDomain = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_APP_DOMAIN");
-        var environment = EnvironmentUtils.GetRequiredEnvironmentVariable("ASPNETCORE_ENVIRONMENT");
-        var apiPath = environment is "Development" or "Test" ? string.Empty : "/api";
-        return $"{appDomain.TrimEnd('/')}{apiPath}/calendar-subscriptions/{token}.ics";
-    }
-
-    public static string CreateClientPortalToken(Ulid clientId)
-    {
-        var clientIdValue = clientId.ToString();
-        var secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"));
-        var signature = HMACSHA256.HashData(secret, Encoding.UTF8.GetBytes($"client-portal:{clientIdValue}"));
-        return $"{clientIdValue}.{WebEncoders.Base64UrlEncode(signature)}";
-    }
-
-    public static bool TryReadClientPortalToken(string token, out Ulid clientId)
-    {
-        clientId = default;
-
-        var parts = token.Split('.', 2, StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length != 2 || !Ulid.TryParse(parts[0], out clientId))
-        {
-            return false;
-        }
-
-        var expectedToken = CreateClientPortalToken(clientId);
-        return CryptographicOperations.FixedTimeEquals(
-            Encoding.UTF8.GetBytes(expectedToken),
-            Encoding.UTF8.GetBytes(token));
-    }
 }

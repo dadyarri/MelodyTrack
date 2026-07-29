@@ -10,7 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class GetClientPortalScheduleEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
+public class GetClientPortalScheduleEndpoint(
+    AppDbContext db,
+    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
@@ -20,18 +23,18 @@ public class GetClientPortalScheduleEndpoint(AppDbContext db, IRecurringAppointm
 
     public override async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsClient() || currentUser.LinkedClientId is null)
+        if (!currentUser.Role.RoleName.IsClient() || currentUser.ClientId is null)
         {
             return TypedResults.Forbid();
         }
 
-        var clientId = currentUser.LinkedClientId.Value;
+        var clientId = currentUser.ClientId.Value;
 
         var startUtc = DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc);
         var endUtc = DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc);

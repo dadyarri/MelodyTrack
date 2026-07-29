@@ -10,25 +10,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+public class ResetClientPortalPinEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
-        Post("/clients/{id}/portal-pin/reset");
+        Post("/clients/{id}/portal-pin-resets");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsAnyAdmin())
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
         {
             return TypedResults.Forbid();
         }
@@ -46,8 +49,10 @@ public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService audi
                 StatusCodes.Status404NotFound));
         }
 
-        loginLink.PinCode = null;
+        loginLink.PinHash = null;
         loginLink.PinSetAtUtc = null;
+        loginLink.FailedPinAttempts = 0;
+        loginLink.LastFailedPinAttemptAtUtc = null;
 
         await db.Sessions
             .Where(item => item.User.Id == loginLink.User.Id && !item.WasRevoked)
@@ -63,7 +68,7 @@ public class ResetClientPortalPinEndpoint(AppDbContext db, IAuditLogService audi
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
             ActorEmail = currentUser.Email,
-            Details = $"Сброшен PIN клиентского кабинета для клиента {loginLink.User.LastName} {loginLink.User.FirstName}".Trim()
+            Details = AuditDetailsFormatter.DescribeContext("Клиент", $"{loginLink.User.LastName} {loginLink.User.FirstName}".Trim())
         }, ct);
 
         return TypedResults.NoContent();

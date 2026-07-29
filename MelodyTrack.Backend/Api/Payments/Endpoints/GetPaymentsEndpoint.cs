@@ -13,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class GetPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
@@ -22,7 +22,7 @@ public class GetPaymentsEndpoint(AppDbContext db, IRecordActivityService recordA
 
     public override async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();

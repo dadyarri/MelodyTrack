@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
@@ -19,7 +20,7 @@ namespace MelodyTrack.Backend.Tests;
 public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task ClientSubscription_ReturnsPastAndNearestUpcomingAppointment()
+    public async Task ClientSubscription_ReturnsAllConcreteAppointments()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -47,7 +48,55 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         calendarResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         calendarResponse.Content.Headers.ContentType!.MediaType.ShouldBe("text/calendar");
         calendar.ShouldContain("BEGIN:VCALENDAR");
-        calendar.Split("BEGIN:VEVENT").Length.ShouldBe(3);
+        calendar.Split("BEGIN:VEVENT").Length.ShouldBe(4);
+    }
+
+    [Fact]
+    public async Task ClientSubscription_MaterializesOnlySubscribedClientsRecurringAppointments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
+        var otherClient = await TestDataFactory.CreateClientAsync(db, "Ирина", "Петрова", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Вокал", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(
+            type => type.Type == AppointmentRecurrenceType.Daily,
+            TestContext.Current.CancellationToken);
+        var nowUtc = DateTime.UtcNow;
+        var firstStartUtc = nowUtc.Date.AddDays(2).AddHours(11);
+        var withinHorizonStartUtc = nowUtc.Date.AddDays(10).AddHours(11);
+        var outsideHorizonStartUtc = nowUtc.Date.AddDays(15).AddHours(11);
+
+        await db.RecurrenceRules.AddRangeAsync([
+            CreateDailyRule(client, service, recurrenceType, firstStartUtc, firstStartUtc.AddDays(2)),
+            CreateDailyRule(client, service, recurrenceType, withinHorizonStartUtc, withinHorizonStartUtc),
+            CreateDailyRule(client, service, recurrenceType, outsideHorizonStartUtc, outsideHorizonStartUtc),
+            CreateDailyRule(otherClient, service, recurrenceType, firstStartUtc, firstStartUtc.AddDays(2))
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+        var (_, subscription) = await App.Client.POSTAsync<RegenerateClientCalendarSubscriptionEndpoint, GetEntityRequest, CalendarSubscriptionResponse>(
+            new GetEntityRequest { Id = client.Id });
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        var calendar = await (await App.Client.GetAsync($"/calendar-subscriptions/{subscription.Token}.ics", TestContext.Current.CancellationToken))
+            .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        calendar.Split("BEGIN:VEVENT").Length.ShouldBe(5);
+        calendar.ShouldContain(ToCalendarStart(firstStartUtc));
+        calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(1)));
+        calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(2)));
+        calendar.ShouldContain(ToCalendarStart(withinHorizonStartUtc));
+        calendar.ShouldNotContain(ToCalendarStart(outsideHorizonStartUtc));
+        calendar.ShouldNotContain("RRULE:");
+
+        var generatedClientIds = await db.Appointments
+            .Select(appointment => appointment.Client.Id)
+            .Distinct()
+            .ToListAsync(TestContext.Current.CancellationToken);
+        generatedClientIds.ShouldBe([client.Id]);
     }
 
     [Fact]
@@ -106,8 +155,77 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         calendar.ShouldContain("TRIGGER:-PT15M");
     }
 
+    [Fact]
+    public async Task UserSubscription_MaterializesOnlyAssignedRecurringAppointments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var subscribedUser = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var otherProvider = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Мария", "Соколова", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Фортепиано", TestContext.Current.CancellationToken);
+        var recurrenceType = await db.RecurrenceTypes.FirstAsync(
+            type => type.Type == AppointmentRecurrenceType.Daily,
+            TestContext.Current.CancellationToken);
+        var nowUtc = DateTime.UtcNow;
+        var firstStartUtc = nowUtc.Date.AddDays(2).AddHours(11);
+        var withinHorizonStartUtc = nowUtc.Date.AddDays(20).AddHours(11);
+        var outsideHorizonStartUtc = nowUtc.Date.AddDays(32).AddHours(11);
+
+        await db.RecurrenceRules.AddRangeAsync([
+            CreateDailyRule(client, service, recurrenceType, firstStartUtc, firstStartUtc.AddDays(2), subscribedUser),
+            CreateDailyRule(client, service, recurrenceType, withinHorizonStartUtc, withinHorizonStartUtc, subscribedUser),
+            CreateDailyRule(client, service, recurrenceType, outsideHorizonStartUtc, outsideHorizonStartUtc, subscribedUser),
+            CreateDailyRule(client, service, recurrenceType, firstStartUtc, firstStartUtc.AddDays(2), otherProvider)
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(subscribedUser));
+        var (_, subscription) = await App.Client.POSTAsync<RegenerateUserCalendarSubscriptionEndpoint, GetEntityRequest, CalendarSubscriptionResponse>(
+            new GetEntityRequest { Id = subscribedUser.Id });
+        App.Client.DefaultRequestHeaders.Authorization = null;
+
+        var calendar = await (await App.Client.GetAsync($"/calendar-subscriptions/{subscription.Token}.ics", TestContext.Current.CancellationToken))
+            .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
+
+        calendar.ShouldContain(ToCalendarStart(firstStartUtc));
+        calendar.ShouldContain(ToCalendarStart(withinHorizonStartUtc));
+        calendar.ShouldNotContain(ToCalendarStart(outsideHorizonStartUtc));
+        calendar.ShouldContain("SUMMARY:Фортепиано (Соколова Мария)");
+        calendar.ShouldNotContain("RRULE:");
+
+        var generatedProviderIds = await db.Appointments
+            .Select(appointment => appointment.Provider!.Id)
+            .Distinct()
+            .ToListAsync(TestContext.Current.CancellationToken);
+        generatedProviderIds.ShouldBe([subscribedUser.Id]);
+    }
+
     private static Appointment CreateAppointment(Client client, Service service, DateTime startDate, User? provider = null) => new()
     {
         Id = Ulid.NewUlid(), Client = client, Service = service, Provider = provider, StartDate = startDate, EndDate = startDate.AddHours(1), Status = AppointmentStatus.Planned, IsDeleted = false
     };
+
+    private static AppointmentRecurrenceRule CreateDailyRule(
+        Client client,
+        Service service,
+        RecurrenceType recurrenceType,
+        DateTime startDate,
+        DateTime endDate,
+        User? provider = null) => new()
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = provider,
+            StartDate = startDate,
+            EndDate = endDate,
+            RecurrenceType = recurrenceType,
+            RecurrencePattern = 1
+        };
+
+    private static string ToCalendarStart(DateTime startDate)
+    {
+        return $"DTSTART:{startDate:yyyyMMdd'T'HHmmss'Z'}";
+    }
 }

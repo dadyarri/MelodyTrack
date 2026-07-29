@@ -1,4 +1,5 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,18 +11,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
     : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/clients/{id}");
+        Patch("/clients/{id}");
     }
 
     public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -33,15 +34,16 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         }
 
         Logger.LogInformation(
-            "Updating client {ClientId} with new data - FirstName: {FirstName}, LastName: {LastName}, Patronymic: {Patronymic}, DateOfBirth: {DateOfBirth}, Contacts - Phone: {Phone}, Telegram: {Telegram}, VK: {Vk}",
+            "Updating client {ClientId}; fields present firstName={HasFirstName} lastName={HasLastName} patronymic={HasPatronymic} dateOfBirth={HasDateOfBirth} email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             req.Id,
-            req.FirstName,
-            req.LastName,
-            req.Patronymic,
-            req.DateOfBirth?.ToString("yyyy-MM-dd") ?? "not provided",
-            req.Phone ?? "not provided",
-            req.Telegram ?? "not provided",
-            req.Vk ?? "not provided"
+            req.FirstName is not null,
+            req.LastName is not null,
+            req.Patronymic is not null,
+            req.DateOfBirth is not null,
+            req.Email is not null,
+            req.Phone is not null,
+            req.Telegram is not null,
+            req.Vk is not null
         );
 
         var client = await db.Clients
@@ -73,7 +75,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
             "Клиент был изменен другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
             ct);
 
-        if (conflict is not null && !IsNoOp(client, req))
+        if (conflict is not null && !ClientUpdateComparer.IsNoOp(client, req))
         {
             return TypedResults.Conflict(conflict);
         }
@@ -87,6 +89,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         var beforeTelegram = client.Contacts.Telegram;
         var beforeVk = client.Contacts.Vk;
         var beforeSourceName = client.Source?.Name;
+        var beforeVacations = FormatVacationPeriods(client.Vacations.Select(item => (item.StartDate, item.EndDate)));
 
         if (req.FirstName != null)
         {
@@ -99,7 +102,7 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
 
         client.Patronymic = req.Patronymic;
         client.DateOfBirth = req.DateOfBirth;
-        client.Contacts.Email = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
+        client.Contacts.Email = ClientUpdateComparer.NormalizeEmail(req.Email);
         client.Contacts.Phone = req.Phone;
         client.Contacts.Telegram = req.Telegram;
         client.Contacts.Vk = req.Vk;
@@ -124,10 +127,11 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",
-            Action = "client_updated",
+            Action = req.Vacations is null ? "client_updated" : "client_vacations_updated",
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Имя", beforeFirstName, client.FirstName),
                 AuditDetailsFormatter.DescribeChange("Фамилия", beforeLastName, client.LastName),
                 AuditDetailsFormatter.DescribeChange("Отчество", beforePatronymic, client.Patronymic),
@@ -137,27 +141,27 @@ public class UpdateClientEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
                 AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name),
-                req.Vacations is null ? null : AuditDetailsFormatter.DescribeContext("Периодов отсутствия", client.Vacations.Count.ToString())
+                req.Vacations is null
+                    ? null
+                    : AuditDetailsFormatter.DescribeChange(
+                        "Периоды отсутствия",
+                        beforeVacations,
+                        FormatVacationPeriods(client.Vacations.Select(item => (item.StartDate, item.EndDate))))
             )
         }, ct);
 
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
     }
 
-    private static bool IsNoOp(Data.Models.Client client, UpdateClientRequest req)
+    private static string? FormatVacationPeriods(IEnumerable<(DateOnly StartDate, DateOnly EndDate)> vacations)
     {
-        return (req.FirstName is null || req.FirstName == client.FirstName)
-               && (req.LastName is null || req.LastName == client.LastName)
-               && req.Patronymic == client.Patronymic
-               && req.DateOfBirth == client.DateOfBirth
-               && (string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email)) == client.Contacts.Email
-               && req.Phone == client.Contacts.Phone
-               && req.Telegram == client.Contacts.Telegram
-               && req.Vk == client.Contacts.Vk
-               && req.SourceId == client.SourceId
-               && (req.Vacations is null || client.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
-                   .Select(item => new { item.StartDate, item.EndDate })
-                   .SequenceEqual(req.Vacations.OrderBy(item => item.StartDate).ThenBy(item => item.EndDate)
-                       .Select(item => new { item.StartDate, item.EndDate })));
+        var periods = vacations
+            .OrderBy(item => item.StartDate)
+            .ThenBy(item => item.EndDate)
+            .Select(item => $"{item.StartDate:yyyy-MM-dd}–{item.EndDate:yyyy-MM-dd}")
+            .ToArray();
+
+        return periods.Length == 0 ? null : string.Join(", ", periods);
     }
+
 }

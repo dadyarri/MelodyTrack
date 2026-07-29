@@ -26,7 +26,7 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        var response = await App.Client.GetAsync("/tasks/rules", TestContext.Current.CancellationToken);
+        var response = await App.Client.GetAsync("/recurring-task-rules", TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var payload = await response.Content.ReadFromJsonAsync<GetRecurringTaskRulesResponse>(cancellationToken: TestContext.Current.CancellationToken);
@@ -46,7 +46,7 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.GetAsync("/tasks/rules", TestContext.Current.CancellationToken);
+        var response = await App.Client.GetAsync("/recurring-task-rules", TestContext.Current.CancellationToken);
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
@@ -60,8 +60,8 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        var response = await App.Client.PutAsJsonAsync(
-            $"/tasks/rules/{rule.Id}",
+        var response = await App.Client.PatchAsJsonAsync(
+            $"/recurring-task-rules/{rule.Id}",
             new
             {
                 isEnabled = false,
@@ -106,8 +106,8 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        var response = await App.Client.PutAsJsonAsync(
-            $"/tasks/rules/{rule.Id}",
+        var response = await App.Client.PatchAsJsonAsync(
+            $"/recurring-task-rules/{rule.Id}",
             new
             {
                 isEnabled = rule.IsEnabled,
@@ -155,8 +155,8 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 
-        var updateResponse = await App.Client.PutAsJsonAsync(
-            $"/tasks/rules/{rule.Id}",
+        var updateResponse = await App.Client.PatchAsJsonAsync(
+            $"/recurring-task-rules/{rule.Id}",
             new
             {
                 isEnabled = rule.IsEnabled,
@@ -168,7 +168,7 @@ public class RecurringTaskRuleEndpointTests(MelodyTrackFixture app) : Integratio
 
         updateResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        var dueResponse = await App.Client.GetAsync("/tasks/due?timezone=Europe/Moscow&type=appointment-reminder&status=open", TestContext.Current.CancellationToken);
+        var dueResponse = await App.Client.GetAsync("/tasks?timezone=Europe/Moscow&type=appointment-reminder&status=open", TestContext.Current.CancellationToken);
         dueResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
 
         var payload = await dueResponse.Content.ReadFromJsonAsync<GetDueRecurringTasksResponse>(cancellationToken: TestContext.Current.CancellationToken);

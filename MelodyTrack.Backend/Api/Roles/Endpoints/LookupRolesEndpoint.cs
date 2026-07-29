@@ -1,42 +1,28 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Roles.Endpoints;
 
-public class LookupRolesEndpoint(AppDbContext db)
+public class LookupRolesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
-        Get("/roles/lookup");
+        Get("/roles/options");
     }
 
     public override async Task<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-
-        if (login is null)
-        {
-            Logger.LogWarning("Role lookup request without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users
-            .AsNoTracking()
-            .Include(u => u.Role)
-            .WhereEmailMatches(login.Value)
-            .FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Role lookup request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(login.Value));
+            Logger.LogWarning("Role lookup request without a current user");
             return TypedResults.Unauthorized();
         }
 

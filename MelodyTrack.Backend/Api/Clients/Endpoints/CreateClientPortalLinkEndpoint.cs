@@ -12,25 +12,29 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>>
+public class CreateClientPortalLinkEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IPublicUrlBuilder publicUrlBuilder,
+    ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>>
 {
     public override void Configure()
     {
-        Post("/clients/{id}/portal-link");
+        Post("/clients/{id}/portal-links");
     }
 
-    public override async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(
         GetEntityRequest req,
         CancellationToken ct)
     {
-        var currentUser = await EndpointAuthUtils.GetCurrentUserContextAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!currentUser.Role.IsAnyAdmin())
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
         {
             return TypedResults.Forbid();
         }
@@ -50,7 +54,7 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
 
         var desiredEmail = BuildClientPortalEmail(client);
         var hasRealEmail = !string.IsNullOrWhiteSpace(client.Contacts.Email);
-        var persistentToken = UserUtils.CreateClientPortalToken(client.Id);
+        var portalToken = UserUtils.GenerateRandomString(48);
 
         var clientRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Client, ct);
 
@@ -111,6 +115,7 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
 
         var loginLink = await db.ClientPortalLoginLinks
             .FirstOrDefaultAsync(item => item.UserId == existingUser.Id, ct);
+        var isRotation = loginLink is not null;
 
         if (loginLink is null)
         {
@@ -118,10 +123,22 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
             {
                 Id = Ulid.NewUlid(),
                 User = existingUser,
-                UserId = existingUser.Id
+                UserId = existingUser.Id,
+                TokenHash = UserUtils.HashOpaqueToken(portalToken)
             };
 
             await db.ClientPortalLoginLinks.AddAsync(loginLink, ct);
+        }
+        else
+        {
+            loginLink.TokenHash = UserUtils.HashOpaqueToken(portalToken);
+            loginLink.RevokedAtUtc = null;
+            loginLink.FailedPinAttempts = 0;
+            loginLink.LastFailedPinAttemptAtUtc = null;
+
+            await db.Sessions
+                .Where(item => item.User.Id == existingUser.Id && !item.WasRevoked)
+                .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
         }
 
         await db.SaveChangesAsync(ct);
@@ -129,19 +146,19 @@ public class CreateClientPortalLinkEndpoint(AppDbContext db, IAuditLogService au
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",
-            Action = "client_portal_link_created",
+            Action = isRotation ? "client_portal_link_rotated" : "client_portal_link_created",
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,
             ActorEmail = currentUser.Email,
-            Details = $"Создана ссылка в портал для клиента {client.LastName} {client.FirstName}".Trim()
+            Details = AuditDetailsFormatter.DescribeContext("Клиент", $"{client.LastName} {client.FirstName}".Trim())
         }, ct);
 
         return TypedResults.Created(
-            $"/clients/{client.Id}/portal-link",
+            $"/clients/{client.Id}/portal-links",
             new CreateClientPortalLinkResponse
             {
-                Url = UserUtils.GetClientPortalAccessUrl(persistentToken)
+                Url = publicUrlBuilder.GetClientPortalAccessUrl(portalToken)
             });
     }
 

@@ -1,3 +1,5 @@
+using FastEndpoints;
+
 namespace MelodyTrack.Backend.Api.Tasks.Requests;
 
 public class CompleteRecurringTaskRequest
@@ -5,6 +7,7 @@ public class CompleteRecurringTaskRequest
     public required string Timezone { get; set; }
     public required Ulid RuleId { get; set; }
     public required string Type { get; set; }
+    [BindFrom("taskId")]
     public required string DeduplicationKey { get; set; }
     public Ulid? ClientId { get; set; }
     public Ulid? TeacherId { get; set; }

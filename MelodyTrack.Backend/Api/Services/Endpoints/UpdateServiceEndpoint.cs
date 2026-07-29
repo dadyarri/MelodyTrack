@@ -10,19 +10,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateServiceRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+public class UpdateServiceEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+    : Ep.Req<UpdateServiceRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/services/{id}");
+        Patch("/services/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateServiceRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -37,7 +37,7 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
         if (service is null)
         {
             AddError(item => item.Id, "Услуга не найдена");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -70,6 +70,7 @@ public class UpdateServiceEndpoint(AppDbContext db, IAuditLogService auditLogSer
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Услуга", service.Name),
                 AuditDetailsFormatter.DescribeChange("Название", beforeName, service.Name),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, service.Description),
                 AuditDetailsFormatter.DescribeChange("Консультация", beforeIsConsultation ? "Да" : "Нет", service.IsConsultation ? "Да" : "Нет")

@@ -11,19 +11,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+public class CreateCustomTaskEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
+    : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
-        Post("/tasks/custom");
+        Post("/tasks");
     }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         CreateCustomTaskRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
@@ -44,7 +48,7 @@ public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLog
             if (client is null)
             {
                 AddError(item => item.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -69,7 +73,7 @@ public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLog
             Title = req.Title.Trim(),
             MessageText = req.MessageText.Trim(),
             DueAtUtc = dueAtUtc,
-            CreatedAtUtc = DateTime.UtcNow,
+            CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
             CreatedByUserId = currentUser.Id
         };
 
@@ -90,7 +94,7 @@ public class CreateCustomTaskEndpoint(AppDbContext db, IAuditLogService auditLog
                 AuditDetailsFormatter.DescribeContext("Текст", task.MessageText))
         }, ct);
 
-        return TypedResults.Created($"/tasks/custom/{task.Id}", new CreateEntityResponse
+        return TypedResults.Created($"/tasks/{task.Id}", new CreateEntityResponse
         {
             Id = task.Id
         });

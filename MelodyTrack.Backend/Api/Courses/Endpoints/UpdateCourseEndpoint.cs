@@ -12,22 +12,23 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
 public class UpdateCourseEndpoint(
-    AppDbContext db,
+    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
     IAuditLogService auditLogService,
     IEntityFreshnessService entityFreshnessService,
-    CourseProgressService courseProgressService)
-    : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+    CourseProgressService courseProgressService,
+    TimeProvider timeProvider)
+    : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/courses/{id}");
+        Patch("/courses/{id}");
     }
 
-    public override async Task<Results<NoContent, NotFound<ProblemDetails>, ProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateCourseRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -49,7 +50,7 @@ public class UpdateCourseEndpoint(
         if (course is null)
         {
             AddError(item => item.Id, "Курс не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -92,13 +93,13 @@ public class UpdateCourseEndpoint(
             if (hasLinkedProgress)
             {
                 AddError(item => item.Id, "Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов. Измените существующую тему вместо удаления.");
-                return new ProblemDetails(ValidationFailures);
+                return new ApiProblemDetails(ValidationFailures);
             }
         }
 
         course.Name = req.Name;
         course.Description = req.Description;
-        course.UpdatedAtUtc = DateTime.UtcNow;
+        course.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
         var nextLevels = req.Levels
             .OrderBy(level => level.Order)
             .Select(level => new CourseLevel
@@ -165,6 +166,7 @@ public class UpdateCourseEndpoint(
             EntityType = "course",
             EntityId = course.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Курс", course.Name),
                 AuditDetailsFormatter.DescribeChange("Название", beforeName, course.Name),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, course.Description),
                 AuditDetailsFormatter.DescribeContext("Блоков", course.Blocks.Count.ToString()),

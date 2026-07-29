@@ -4,24 +4,28 @@ using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class ExportPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
+public class ExportPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
+    : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
     public override void Configure()
     {
-        Get("/payments/export");
+        Get("/exports/payments");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
+        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
     }
 
     public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -96,7 +100,7 @@ public class ExportPaymentsEndpoint(AppDbContext db) : Ep.Req<GetPaymentsPaginat
         await using var stream = new MemoryStream();
         workbook.SaveAs(stream);
 
-        var fileName = $"payments_{DateTime.UtcNow:yyyyMMdd_HHmmss}.xlsx";
+        var fileName = $"payments_{timeProvider.GetUtcNow().UtcDateTime:yyyyMMdd_HHmmss}.xlsx";
         return TypedResults.File(stream.ToArray(), ExcelContentType, fileName);
     }
 }

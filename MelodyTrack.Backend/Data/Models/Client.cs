@@ -19,7 +19,7 @@ public class Client : BaseModel
 
     public ClientSource? Source { get; set; }
 
-    public required DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
+    public required DateTime CreatedAtUtc { get; set; }
 
     public bool IsLeadClosed { get; set; }
 

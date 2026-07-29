@@ -1,9 +1,7 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -11,35 +9,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
-        Post("/auth/recoveryCodes");
+        Post("/auth/recovery-codes");
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-
-        if (email is null)
-        {
-            Logger.LogWarning("Recovery codes generation attempt without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        Logger.LogDebug("Attempting to generate recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
-        var user = await db.Users.WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
+        var user = await currentUserAccessor.GetAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes generation attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
+            Logger.LogWarning("Recovery codes generation attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogDebug("Invalidating existing unused recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
+        Logger.LogDebug("Invalidating existing unused recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await db.RecoveryCodes
             .Where(e => !e.WasUsed && e.User == user)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasUsed, true), ct);
@@ -60,7 +49,7 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(email.Value));
+        Logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

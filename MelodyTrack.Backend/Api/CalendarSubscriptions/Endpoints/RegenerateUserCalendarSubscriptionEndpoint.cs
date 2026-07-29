@@ -1,26 +1,27 @@
 using System.Security.Cryptography;
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.CalendarSubscriptions.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db, IPublicUrlBuilder publicUrlBuilder, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
-    public override void Configure() => Post("/calendar-subscriptions/users/{id}/regenerate");
+    public override void Configure() => Post("/users/{id}/calendar-subscriptions");
 
-    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
     {
-        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null) return TypedResults.Unauthorized();
         if (!currentUser.Role.RoleName.IsAnyAdmin() && currentUser.Id != req.Id) return TypedResults.Forbid();
         if (!await db.Users.AnyAsync(e => e.Id == req.Id, ct))
@@ -30,15 +31,16 @@ public class RegenerateUserCalendarSubscriptionEndpoint(AppDbContext db)
         }
 
         var active = await db.CalendarSubscriptions.Where(e => e.UserId == req.Id && e.RevokedAtUtc == null).ToListAsync(ct);
-        foreach (var subscription in active) subscription.RevokedAtUtc = DateTime.UtcNow;
-        var created = new CalendarSubscription { Id = Ulid.NewUlid(), UserId = req.Id, Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), CreatedAtUtc = DateTime.UtcNow };
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        foreach (var subscription in active) subscription.RevokedAtUtc = nowUtc;
+        var created = new CalendarSubscription { Id = Ulid.NewUlid(), UserId = req.Id, Token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32)), CreatedAtUtc = nowUtc };
         await db.CalendarSubscriptions.AddAsync(created, ct);
         await db.SaveChangesAsync(ct);
         return TypedResults.Ok(new CalendarSubscriptionResponse
         {
             Id = created.Id,
             Token = created.Token,
-            Url = UserUtils.GetCalendarSubscriptionUrl(created.Token),
+            Url = publicUrlBuilder.GetCalendarSubscriptionUrl(created.Token),
             FeedType = "user"
         });
     }

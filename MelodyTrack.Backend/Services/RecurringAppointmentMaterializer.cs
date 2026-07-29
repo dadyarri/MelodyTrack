@@ -7,6 +7,8 @@ namespace MelodyTrack.Backend.Services;
 public interface IRecurringAppointmentMaterializer
 {
     Task EnsureAppointmentsGeneratedAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct);
+    Task EnsureClientAppointmentsGeneratedAsync(Ulid clientId, DateTime startUtc, DateTime endUtc, CancellationToken ct);
+    Task EnsureProviderAppointmentsGeneratedAsync(Ulid providerId, DateTime startUtc, DateTime endUtc, CancellationToken ct);
 }
 
 public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppointmentService recurringAppointmentService)
@@ -14,7 +16,27 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
 {
     private const int AdvisoryLockKey = 41051;
 
-    public async Task EnsureAppointmentsGeneratedAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    public Task EnsureAppointmentsGeneratedAsync(DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    {
+        return EnsureAppointmentsGeneratedAsync(startUtc, endUtc, null, null, ct);
+    }
+
+    public Task EnsureClientAppointmentsGeneratedAsync(Ulid clientId, DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    {
+        return EnsureAppointmentsGeneratedAsync(startUtc, endUtc, clientId, null, ct);
+    }
+
+    public Task EnsureProviderAppointmentsGeneratedAsync(Ulid providerId, DateTime startUtc, DateTime endUtc, CancellationToken ct)
+    {
+        return EnsureAppointmentsGeneratedAsync(startUtc, endUtc, null, providerId, ct);
+    }
+
+    private async Task EnsureAppointmentsGeneratedAsync(
+        DateTime startUtc,
+        DateTime endUtc,
+        Ulid? clientId,
+        Ulid? providerId,
+        CancellationToken ct)
     {
         if (endUtc < startUtc)
         {
@@ -24,14 +46,25 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await db.Database.ExecuteSqlRawAsync($"SELECT pg_advisory_xact_lock({AdvisoryLockKey})", ct);
 
-        var recurrenceRules = await db.RecurrenceRules
+        var recurrenceRulesQuery = db.RecurrenceRules
             .Include(rule => rule.Service)
             .Include(rule => rule.Client)
             .ThenInclude(client => client.Vacations)
             .Include(rule => rule.Provider)
             .Include(rule => rule.RecurrenceType)
-            .Where(rule => rule.StartDate <= endUtc && (rule.EndDate == null || rule.EndDate >= startUtc))
-            .ToListAsync(ct);
+            .Where(rule => rule.StartDate <= endUtc && (rule.EndDate == null || rule.EndDate >= startUtc));
+
+        if (clientId is not null)
+        {
+            recurrenceRulesQuery = recurrenceRulesQuery.Where(rule => rule.Client.Id == clientId);
+        }
+
+        if (providerId is not null)
+        {
+            recurrenceRulesQuery = recurrenceRulesQuery.Where(rule => rule.Provider != null && rule.Provider.Id == providerId);
+        }
+
+        var recurrenceRules = await recurrenceRulesQuery.ToListAsync(ct);
 
         if (recurrenceRules.Count == 0)
         {

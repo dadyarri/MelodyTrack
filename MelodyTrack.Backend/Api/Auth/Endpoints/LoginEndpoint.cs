@@ -13,14 +13,21 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogService auditLogService)
+public class LoginEndpoint(
+    AppDbContext db,
+    IUaDetector uaDetector,
+    IAuditLogService auditLogService,
+    SessionSecurityMonitor sessionSecurityMonitor,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
     : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/login");
         AllowAnonymous();
-        Throttle(10, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Login));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
@@ -83,9 +90,10 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
 
         var refreshToken = UserUtils.GenerateRandomString(32);
         var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         await db.Sessions
-            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow && e.DeviceInfo == deviceInfo)
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= nowUtc && e.DeviceInfo == deviceInfo)
             .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
 
         var session = new Session
@@ -94,11 +102,13 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
             User = user,
             RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
             DeviceInfo = deviceInfo,
-            ValidUntil = DateTime.UtcNow.AddDays(7)
+            ValidUntil = nowUtc.AddDays(7)
         };
 
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
+        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
+        await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(user, ct);
 
         Logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
@@ -114,8 +124,7 @@ public class LoginEndpoint(AppDbContext db, IUaDetector uaDetector, IAuditLogSer
         }, ct);
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user, session.Id),
-            RefreshToken = refreshToken,
+            AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
             FirstName = user.FirstName,
             LastName = user.LastName
         };

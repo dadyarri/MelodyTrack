@@ -1,8 +1,8 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
-using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -11,8 +11,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer)
-    : Ep.Req<GetClientAnalyticsRequest>.Res<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>>
+public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<GetClientAnalyticsRequest>.Res<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
 {
     private const int LostClientWindowDays = 30;
     private const int ActiveClientRecentAppointmentWindowDays = 7;
@@ -24,14 +24,15 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
 
     public override void Configure()
     {
-        Get("/dashboard/clients");
+        Get("/reports/clients");
+        Options(builder => builder.RequireRateLimiting("expensive-read"));
     }
 
-    public override async Task<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<Ok<GetClientAnalyticsResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
         GetClientAnalyticsRequest req,
         CancellationToken ct)
     {
-        var currentUser = await DashboardAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
 
         if (currentUser is null)
         {
@@ -51,18 +52,18 @@ public class GetClientAnalyticsEndpoint(AppDbContext db, IRecurringAppointmentMa
         catch (TimeZoneNotFoundException)
         {
             AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
         catch (InvalidTimeZoneException)
         {
             AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         if (req.End < req.Start)
         {
             AddError(r => r.End, "Дата окончания не может быть раньше даты начала.");
-            return new ProblemDetails(ValidationFailures);
+            return new ApiProblemDetails(ValidationFailures);
         }
 
         var rangeStartLocal = req.Start.Date;

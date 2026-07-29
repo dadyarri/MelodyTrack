@@ -8,6 +8,7 @@ public class UserOnboardingState : BaseModel
     public required User User { get; set; }
     public required string CurrentStep { get; set; }
     public required string CurrentPath { get; set; }
+    public int DefinitionVersion { get; set; }
     public required OnboardingStatus Status { get; set; }
     public DateTime CreatedAtUtc { get; set; }
     public DateTime UpdatedAtUtc { get; set; }

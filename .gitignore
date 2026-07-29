@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local security analysis
+docs/MelodyTrack-threat-model.md

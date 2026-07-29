@@ -1,8 +1,11 @@
+using FastEndpoints;
+
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 
 public class UpdateCourseEnrollmentThemeProgressRequest
 {
-    public required Ulid Id { get; set; }
+    [BindFrom("id")]
+    public Ulid Id { get; set; }
 
     public required string Action { get; set; }
 }

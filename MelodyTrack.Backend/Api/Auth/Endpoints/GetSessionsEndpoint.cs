@@ -1,15 +1,14 @@
-﻿using System.Security.Claims;
-using FastEndpoints;
+﻿using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetSessionsEndpoint(AppDbContext db)
+public class GetSessionsEndpoint(AppDbContext db, TimeProvider timeProvider, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
@@ -20,27 +19,17 @@ public class GetSessionsEndpoint(AppDbContext db)
     public override async Task<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         CancellationToken ct)
     {
-        var email = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-        var currentSessionIdClaim = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Sid)?.Value;
-        var hasCurrentSessionId = Ulid.TryParse(currentSessionIdClaim, out var currentSessionId);
-
-        if (email is null)
-        {
-            Logger.LogWarning("Session list request without valid email claim in token");
-            return TypedResults.Unauthorized();
-        }
-
-        var user = await db.Users.AsNoTracking().WhereEmailMatches(email.Value).FirstOrDefaultAsync(ct);
-
+        var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Session list request for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(email.Value));
+            Logger.LogWarning("Session list request without a current user");
             return TypedResults.Unauthorized();
         }
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var sessions = await db.Sessions
             .AsNoTracking()
-            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow)
+            .Where(e => e.User.Id == user.Id && !e.WasRevoked && e.ValidUntil >= nowUtc)
             .OrderByDescending(e => e.Id)
             .ToListAsync(ct);
 
@@ -54,12 +43,12 @@ public class GetSessionsEndpoint(AppDbContext db)
             {
                 Id = e.Id,
                 DeviceInfo = e.DeviceInfo,
-                IsCurrent = hasCurrentSessionId && e.Id == currentSessionId,
+                IsCurrent = e.Id == currentUserAccessor.SessionId,
                 LastSeenAtUtc = e.Id.Time.UtcDateTime
             })
             .ToList();
 
-        Logger.LogInformation("Retrieved {Count} active sessions for {EmailRef}", sessions.Count, UserUtils.DescribeEmailForLogs(email.Value));
+        Logger.LogInformation("Retrieved {Count} active sessions for {EmailRef}", sessions.Count, UserUtils.DescribeEmailForLogs(user.Email));
         return TypedResults.Ok(new GetSessionsResponse
         {
             Data = data

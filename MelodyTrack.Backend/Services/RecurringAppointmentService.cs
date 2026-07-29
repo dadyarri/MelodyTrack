@@ -141,8 +141,8 @@ public class RecurringAppointmentService : IRecurringAppointmentService
         var dayOfMonth = rule.RecurrencePattern.Value;
         var startDate = rule.StartDate.Date;
         var endDateLimit = GetRangeEndDate(rule, rangeEnd);
-        var monthCursor = new DateTime(rangeStart.Year, rangeStart.Month, 1);
-        var lastMonth = new DateTime(rangeEnd.Year, rangeEnd.Month, 1);
+        var monthCursor = new DateTime(rangeStart.Year, rangeStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        var lastMonth = new DateTime(rangeEnd.Year, rangeEnd.Month, 1, 0, 0, 0, DateTimeKind.Utc);
 
         while (monthCursor <= lastMonth)
         {
@@ -152,7 +152,7 @@ public class RecurringAppointmentService : IRecurringAppointmentService
                 continue;
             }
 
-            var appointmentDate = new DateTime(monthCursor.Year, monthCursor.Month, dayOfMonth);
+            var appointmentDate = new DateTime(monthCursor.Year, monthCursor.Month, dayOfMonth, 0, 0, 0, DateTimeKind.Utc);
             if (appointmentDate < startDate || appointmentDate > endDateLimit)
             {
                 monthCursor = monthCursor.AddMonths(1);

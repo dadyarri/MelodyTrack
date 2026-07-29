@@ -25,7 +25,7 @@ public class RecurringTaskCustomEndpointTests(MelodyTrackFixture app) : Integrat
 
         var dueAtUtc = DateTime.UtcNow.AddHours(2);
         var response = await App.Client.PostAsJsonAsync(
-            "/tasks/custom",
+            "/tasks",
             new
             {
                 recipientName = "Новый контакт",
@@ -40,7 +40,7 @@ public class RecurringTaskCustomEndpointTests(MelodyTrackFixture app) : Integrat
         var payload = await response.Content.ReadFromJsonAsync<CreateEntityResponse>(cancellationToken: TestContext.Current.CancellationToken);
         payload.ShouldNotBeNull();
 
-        var dueResponse = await App.Client.GetAsync("/tasks/due?timezone=Europe/Moscow&type=custom-task&status=open", TestContext.Current.CancellationToken);
+        var dueResponse = await App.Client.GetAsync("/tasks?timezone=Europe/Moscow&type=custom-task&status=open", TestContext.Current.CancellationToken);
         dueResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var duePayload = await dueResponse.Content.ReadFromJsonAsync<GetDueRecurringTasksResponse>(cancellationToken: TestContext.Current.CancellationToken);
 
