@@ -21,6 +21,55 @@ namespace MelodyTrack.Backend.Tests;
 [Collection(IntegrationTestCollection.Name)]
 public class ReferenceBookEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
+    [Theory]
+    [InlineData("/expense-categories", "  Studio rent  ", "expense_category_created")]
+    [InlineData("/client-sources", "  Friend referral  ", "client_source_created")]
+    public async Task CreateReferenceBookItem_TrimsNamePersistsAndAudits(
+        string route,
+        string requestedName,
+        string expectedAuditAction)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+
+        using var response = await App.Client.PostAsJsonAsync(
+            route,
+            new { name = requestedName },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var created = await response.Content.ReadFromJsonAsync<CreateEntityResponse>(TestContext.Current.CancellationToken);
+        created.ShouldNotBeNull();
+        db.ChangeTracker.Clear();
+        var storedName = route == "/expense-categories"
+            ? await db.ExpenseCategories.Where(item => item.Id == created.Id).Select(item => item.Name).SingleAsync(TestContext.Current.CancellationToken)
+            : await db.ClientSources.Where(item => item.Id == created.Id).Select(item => item.Name).SingleAsync(TestContext.Current.CancellationToken);
+        storedName.ShouldBe(requestedName.Trim());
+        (await db.AuditLogs.AnyAsync(
+            item => item.Action == expectedAuditAction && item.EntityId == created.Id.ToString(),
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
+    [Theory]
+    [InlineData("/expense-categories")]
+    [InlineData("/client-sources")]
+    public async Task CreateReferenceBookItem_RegularUser_IsForbidden(string route)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PostAsJsonAsync(
+            route,
+            new { name = "Forbidden" },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
     [Fact]
     public async Task GetExpenseCategories_ReturnsForbiddenForRegularUser()
     {

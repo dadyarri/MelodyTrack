@@ -8,17 +8,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class GetRecurringTaskRulesEndpoint(AppDbContext db, IRecordActivityService recordActivityService)
+public class GetRecurringTaskRulesEndpoint(AppDbContext db, IRecordActivityService recordActivityService, ICurrentUserAccessor currentUserAccessor)
     : Ep.NoReq.Res<Results<Ok<GetRecurringTaskRulesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
-        Get("/tasks/rules");
+        Get("/recurring-task-rules");
     }
 
     public override async Task<Results<Ok<GetRecurringTaskRulesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

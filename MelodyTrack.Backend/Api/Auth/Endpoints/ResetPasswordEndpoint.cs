@@ -11,17 +11,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogService)
-    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ProblemDetails>>
+public class ResetPasswordEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    RefreshSessionCookieService refreshCookieService,
+    TimeProvider timeProvider)
+    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ApiProblemDetails>>
 {
     public override void Configure()
     {
-        Post("/auth/resetPassword");
+        Post("/auth/password-reset");
         AllowAnonymous();
-        Throttle(10, 600);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.ResetPassword));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<NoContent, ProblemDetails>> ExecuteAsync(
+    public override async Task<Results<NoContent, ApiProblemDetails>> ExecuteAsync(
         ResetPasswordRequest req,
         CancellationToken ct)
     {
@@ -30,7 +35,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
             .Where(e => !e.WasUsed && e.Token == tokenHash)
             .FirstOrDefaultAsync(ct);
 
-        if (restoreCode is null || restoreCode.ValidUntil < DateTime.UtcNow)
+        if (restoreCode is null || restoreCode.ValidUntil < timeProvider.GetUtcNow().UtcDateTime)
         {
             Logger.LogWarning("Password reset attempt with invalid, used or expired token");
             AddError(r => r.Token, "Ссылка восстановления больше не действует. Запросите новую ссылку.");
@@ -93,6 +98,7 @@ public class ResetPasswordEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+        refreshCookieService.Clear(HttpContext.Response);
 
         Logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest

@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -73,5 +74,40 @@ public class RecurringAppointmentMaterializerTests(MelodyTrackFixture fixture)
 
         appointments.Count.ShouldBe(7);
         appointments.Select(appointment => appointment.StartDate).Distinct().Count().ShouldBe(7);
+    }
+
+    [Fact]
+    public async Task EnsureAppointmentsGeneratedAsync_RepeatedRun_PreservesCompletedOccurrence()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
+
+        var rule = await TestDataFactory.CreateDailyRuleAsync(
+            db,
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
+            "Elena",
+            "Volkova",
+            "Piano",
+            TestContext.Current.CancellationToken);
+        var startUtc = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc);
+
+        await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
+        var completed = await db.Appointments
+            .FirstAsync(
+                appointment => appointment.RecurringRule != null && appointment.RecurringRule.Id == rule.Id,
+                TestContext.Current.CancellationToken);
+        completed.Status = AppointmentStatus.Completed;
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
+
+        var persistedStatus = await db.Appointments
+            .Where(appointment => appointment.Id == completed.Id)
+            .Select(appointment => appointment.Status)
+            .SingleAsync(TestContext.Current.CancellationToken);
+        persistedStatus.ShouldBe(AppointmentStatus.Completed);
     }
 }

@@ -13,6 +13,7 @@ public static class OnboardingStateMapper
             Status = MapStatus(state.Status),
             CurrentStep = state.CurrentStep,
             CurrentPath = state.CurrentPath,
+            DefinitionVersion = state.DefinitionVersion,
             ShouldLaunch = state.Status == OnboardingStatus.Active,
             UpdatedAtUtc = state.UpdatedAtUtc,
             CompletedAtUtc = state.CompletedAtUtc

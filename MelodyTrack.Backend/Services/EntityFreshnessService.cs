@@ -9,7 +9,7 @@ public interface IEntityFreshnessService
     Task<StaleEntityConflictResponse?> GetConflictIfStaleAsync(string entityType, Ulid entityId, Ulid? expectedActivityId, string message, CancellationToken ct);
 }
 
-public class EntityFreshnessService(IRecordActivityService recordActivityService) : IEntityFreshnessService
+public class EntityFreshnessService(IRecordActivityService recordActivityService, IHttpContextAccessor httpContextAccessor) : IEntityFreshnessService
 {
     public Task<RecordActivityDto?> GetLatestActivityAsync(string entityType, Ulid entityId, CancellationToken ct)
     {
@@ -24,6 +24,7 @@ public class EntityFreshnessService(IRecordActivityService recordActivityService
             return null;
         }
 
-        return EntityFreshnessUtils.CreateConflict(entityType, entityId, message, latestActivity);
+        var httpContext = httpContextAccessor.HttpContext ?? throw new InvalidOperationException("Entity freshness checks require an active HTTP request.");
+        return ApiErrorResponseFactory.CreateStaleEntityConflictProblemDetails(httpContext, entityType, entityId, message, latestActivity);
     }
 }

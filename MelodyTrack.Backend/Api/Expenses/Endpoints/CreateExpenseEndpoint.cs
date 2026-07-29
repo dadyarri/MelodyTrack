@@ -8,11 +8,10 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using Npgsql;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogService, IRequestReplayService requestReplayService) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class CreateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     private const string ReplayEndpoint = "expenses:create";
 
@@ -23,7 +22,7 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
     public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CreateExpenseRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -35,107 +34,76 @@ public class CreateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
         }
 
         var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
+        Ulid? reservationId = null;
         if (replayKey is not null)
         {
-            var existingId = await requestReplayService.TryGetResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (existingId is not null)
+            var decision = await requestReplayService.AcquireAsync(ReplayEndpoint, replayKey, req, ct);
+            if (decision.Status == RequestReplayStatus.Completed)
             {
-                return TypedResults.Created($"/expenses/{existingId}", new CreateEntityResponse
+                return TypedResults.Created($"/expenses/{decision.ResponseEntityId}", new CreateEntityResponse
                 {
-                    Id = existingId.Value
-                });
-            }
-        }
-
-        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
-        RequestReplay? replay = null;
-
-        try
-        {
-            if (replayKey is not null)
-            {
-                transaction = await db.Database.BeginTransactionAsync(ct);
-                replay = await requestReplayService.ReserveAsync(ReplayEndpoint, replayKey, ct);
-            }
-
-            string? categoryName = null;
-            if (req.CategoryId is not null)
-            {
-                categoryName = await db.ExpenseCategories
-                    .Where(e => e.Id == req.CategoryId.Value)
-                    .Select(e => e.Name)
-                    .FirstOrDefaultAsync(ct);
-
-                if (categoryName is null)
-                {
-                    ThrowError("Категория расхода не найдена");
-                }
-            }
-
-            var expense = new Expense
-            {
-                Id = Ulid.NewUlid(),
-                Amount = req.Amount,
-                CategoryId = req.CategoryId,
-                Date = req.Date.ToUniversalTime(),
-                Description = req.Description
-            };
-
-            await db.Expenses.AddAsync(expense, ct);
-            await db.SaveChangesAsync(ct);
-
-            Logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
-            await auditLogService.WriteAsync(new AuditLogWriteRequest
-            {
-                Category = "expenses",
-                Action = "expense_created",
-                EntityType = "expense",
-                EntityId = expense.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Описание", expense.Description),
-                    AuditDetailsFormatter.DescribeContext("Сумма", expense.Amount.ToString("0.##")),
-                    AuditDetailsFormatter.DescribeContext("Категория", categoryName),
-                    AuditDetailsFormatter.DescribeContext("Дата", expense.Date)
-                )
-            }, ct);
-
-            if (replay is not null)
-            {
-                await requestReplayService.CompleteAsync(replay, expense.Id, ct);
-            }
-
-            if (transaction is not null)
-            {
-                await transaction.CommitAsync(ct);
-            }
-
-            return TypedResults.Created($"/expenses/{expense.Id}", new CreateEntityResponse
-            {
-                Id = expense.Id
-            });
-        }
-        catch (DbUpdateException ex) when (replayKey is not null && IsUniqueViolation(ex))
-        {
-            if (transaction is not null)
-            {
-                await transaction.RollbackAsync(ct);
-            }
-
-            var completedId = await requestReplayService.WaitForResponseEntityIdAsync(ReplayEndpoint, replayKey, ct);
-            if (completedId is not null)
-            {
-                return TypedResults.Created($"/expenses/{completedId}", new CreateEntityResponse
-                {
-                    Id = completedId.Value
+                    Id = decision.ResponseEntityId!.Value
                 });
             }
 
-            throw;
+            reservationId = decision.ReservationId;
         }
-    }
 
-    private static bool IsUniqueViolation(DbUpdateException exception)
-    {
-        return exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
+        string? categoryName = null;
+        if (req.CategoryId is not null)
+        {
+            categoryName = await db.ExpenseCategories
+                .Where(e => e.Id == req.CategoryId.Value)
+                .Select(e => e.Name)
+                .FirstOrDefaultAsync(ct);
+
+            if (categoryName is null)
+            {
+                ThrowError("Категория расхода не найдена");
+            }
+        }
+
+        var expense = new Expense
+        {
+            Id = Ulid.NewUlid(),
+            Amount = req.Amount,
+            CategoryId = req.CategoryId,
+            Date = req.Date.ToUniversalTime(),
+            Description = req.Description
+        };
+
+        await db.Expenses.AddAsync(expense, ct);
+        await db.SaveChangesAsync(ct);
+
+        Logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
+        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Category = "expenses",
+            Action = "expense_created",
+            EntityType = "expense",
+            EntityId = expense.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Описание", expense.Description),
+                AuditDetailsFormatter.DescribeContext("Сумма", expense.Amount.ToString("0.##")),
+                AuditDetailsFormatter.DescribeContext("Категория", categoryName),
+                AuditDetailsFormatter.DescribeContext("Дата", expense.Date)
+            )
+        }, ct);
+
+        if (reservationId is not null)
+        {
+            await requestReplayService.CompleteAsync(reservationId.Value, expense.Id, ct);
+        }
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
+
+        return TypedResults.Created($"/expenses/{expense.Id}", new CreateEntityResponse
+        {
+            Id = expense.Id
+        });
     }
 }

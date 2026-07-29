@@ -1,26 +1,27 @@
-using MelodyTrack.Backend.Data.Enums;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Tasks.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CancelRecurringTaskEndpoint(AppDbContext db, IRecurringTaskService recurringTaskService)
+public class CancelRecurringTaskEndpoint(IRecurringTaskService recurringTaskService, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<CancelRecurringTaskRequest>.Res<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>>
 {
     public override void Configure()
     {
-        Post("/tasks/cancel");
+        Post("/tasks/{taskId}/cancellation");
     }
 
     public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(
         CancelRecurringTaskRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();

@@ -1,4 +1,3 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Audit.Requests;
 using MelodyTrack.Backend.Api.Audit.Responses;
@@ -6,13 +5,15 @@ using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Audit.Endpoints;
 
-public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginatedRequest>.Res<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<GetAuditLogsPaginatedRequest>.Res<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
@@ -22,22 +23,15 @@ public class GetAuditLogsEndpoint(AppDbContext db) : Ep.Req<GetAuditLogsPaginate
     public override async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAuditLogsPaginatedRequest req, CancellationToken ct)
     {
         var timezone = ResolveTimezoneOrUtc(req.Timezone);
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
+        var user = await currentUserAccessor.GetAsync(ct);
 
-        if (login is null)
+        if (user is null)
         {
-            AddError(_ => login, "Пользователь не авторизован");
             return TypedResults.Unauthorized();
         }
 
-        var user = await db.Users
-            .WhereEmailMatches(login.Value)
-            .Include(u => u.Role)
-            .FirstOrDefaultAsync(ct);
-
-        if (user is null || !user.Role.RoleName.IsSuperuser())
+        if (!user.Role.RoleName.IsSuperuser())
         {
-            AddError(_ => login, "Нет доступа");
             return TypedResults.Forbid();
         }
 

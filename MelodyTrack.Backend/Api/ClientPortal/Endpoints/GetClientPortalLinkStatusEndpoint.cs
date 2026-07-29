@@ -11,31 +11,24 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
 public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
-    : Ep.Req<GetClientPortalLinkStatusRequest>.Res<Results<Ok<GetClientPortalLinkStatusResponse>, ProblemDetails>>
+    : Ep.Req<GetClientPortalLinkStatusRequest>.Res<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
         Get("/client-portal/auth/link");
         AllowAnonymous();
-        Throttle(60, 60);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalLinkStatus));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
     {
-        if (!UserUtils.TryReadClientPortalToken(req.Token, out var clientId))
-        {
-            AddError(item => item.Token, "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
-            return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
-                StatusCodes.Status403Forbidden);
-        }
-
+        var tokenHash = UserUtils.HashOpaqueToken(req.Token);
         var link = await db.ClientPortalLoginLinks
             .AsNoTracking()
             .Include(item => item.User)
                 .ThenInclude(item => item.Role)
-            .FirstOrDefaultAsync(item => item.User.ClientId == clientId, ct);
+            .FirstOrDefaultAsync(item => item.TokenHash == tokenHash && item.RevokedAtUtc == null, ct);
 
         if (link is null || !link.User.Role.RoleName.IsClient() || link.User.ClientId is null)
         {
@@ -49,7 +42,7 @@ public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
         return TypedResults.Ok(new GetClientPortalLinkStatusResponse
         {
             FirstName = link.User.FirstName,
-            HasPin = !string.IsNullOrWhiteSpace(link.PinCode)
+            HasPin = !string.IsNullOrWhiteSpace(link.PinHash)
         });
     }
 }

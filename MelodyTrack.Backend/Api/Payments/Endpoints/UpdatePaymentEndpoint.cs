@@ -11,19 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class UpdatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdatePaymentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+    : Ep.Req<UpdatePaymentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/payments/{id}");
+        Patch("/payments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdatePaymentRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -42,14 +42,14 @@ public class UpdatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
         if (payment is null)
         {
             AddError(e => e.Id, "Платеж не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var client = await db.Clients.FirstOrDefaultAsync(e => e.Id == req.ClientId, ct);
         if (client is null)
         {
             AddError(e => e.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         Service? service = null;
@@ -59,7 +59,7 @@ public class UpdatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
             if (service is null)
             {
                 AddError(e => e.ServiceId, "Сервис не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -95,6 +95,7 @@ public class UpdatePaymentEndpoint(AppDbContext db, IAuditLogService auditLogSer
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Платеж клиента", $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Клиент", beforeClientName, $"{client.LastName} {client.FirstName}".Trim()),
                 AuditDetailsFormatter.DescribeChange("Услуга", beforeServiceName, service?.Name),
                 AuditDetailsFormatter.DescribeChange("Сумма", beforeAmount.ToString("0.##"), payment.Amount.ToString("0.##")),

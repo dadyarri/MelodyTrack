@@ -1,5 +1,7 @@
 using FastEndpoints;
+using FluentValidation.Results;
 using MelodyTrack.Backend.Api.Common.Responses;
+using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -11,14 +13,35 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService, IUserAvailabilityService userAvailabilityService) : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>>
+public class UpdateAppointmentEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IEntityFreshnessService entityFreshnessService,
+    AppointmentUpdatePreparationService preparationService)
+    : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>>
 {
+    private static readonly IReadOnlyDictionary<AppointmentUpdatePreparationError, (string Field, string Message, int Status)> PreparationErrors =
+        new Dictionary<AppointmentUpdatePreparationError, (string, string, int)>
+        {
+            [AppointmentUpdatePreparationError.InvalidStatus] = (nameof(UpdateAppointmentRequest.Status), "Некорректный статус записи", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.ClientNotFound] = (nameof(UpdateAppointmentRequest.ClientId), "Клиент не найден", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.ServiceNotFound] = (nameof(UpdateAppointmentRequest.ServiceId), "Услуга не найдена", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.ProviderNotFound] = (nameof(UpdateAppointmentRequest.ProviderId), "Пользователь не найден", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.CourseThemeNotFound] = (nameof(UpdateAppointmentRequest.CourseThemeId), "Тема курса не найдена", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.CourseThemeUnavailable] = (nameof(UpdateAppointmentRequest.CourseThemeId), "Эта тема недоступна для выбранного клиента.", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.MissingTimezone] = (nameof(UpdateAppointmentRequest.Timezone), "Нужно указать таймзону.", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.ProviderUnavailable] = (nameof(UpdateAppointmentRequest.StartDate), "Запись попадает в нерабочее время преподавателя или в отпуск.", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.MissingRecurrencePattern] = (nameof(UpdateAppointmentRequest.RecurrencePattern), "Паттерн повторения не указан", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.MissingRecurrenceStartDate] = (nameof(UpdateAppointmentRequest.StartDate), "Дата начала не задана", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.RecurrenceTypeNotFound] = (nameof(UpdateAppointmentRequest.RecurrenceTypeId), "Тип повторения не найден", StatusCodes.Status404NotFound)
+        };
+
     public override void Configure()
     {
         Patch("/appointments/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ProblemDetails>, ProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
     {
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id && !e.IsDeleted)
@@ -41,7 +64,7 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         if (appointment is null)
         {
             AddError(r => r.Id, "Встреча не найдена");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -51,139 +74,24 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             "Запись была изменена другим пользователем. Обновите данные или повторите сохранение поверх новой версии.",
             ct);
 
-        if (conflict is not null && !IsNoOp(appointment, req))
+        if (conflict is not null && !AppointmentUpdateComparer.IsNoOp(appointment, req))
         {
             return TypedResults.Conflict(conflict);
         }
 
-        AppointmentStatus? requestedStatus = null;
-        if (req.Status is not null)
+        var preparation = await preparationService.PrepareAsync(appointment, req, ct);
+        if (preparation.Error != AppointmentUpdatePreparationError.None)
         {
-            if (!AppointmentStatusExtensions.TryParseApiKey(req.Status, out var parsedStatus))
-            {
-                AddError(r => r.Status, "Некорректный статус записи");
-                return new ProblemDetails(ValidationFailures);
-            }
-
-            requestedStatus = parsedStatus;
+            return CreatePreparationError(preparation.Error);
         }
 
-        var clientChanged = req.ClientId is not null && req.ClientId.Value != appointment.Client.Id;
-        var serviceChanged = req.ServiceId is not null && req.ServiceId.Value != appointment.Service.Id;
-        var providerChanged = req.ProviderId is not null && req.ProviderId.Value != appointment.Provider?.Id;
-        var startDateChanged = req.StartDate is not null && req.StartDate.Value != appointment.StartDate;
-        var courseThemeChanged = req.HasCourseThemeSelection && req.CourseThemeId != appointment.CourseThemeId;
-        var lessonNotesChanged = req.HasLessonNotes && NormalizeLessonNotes(req.LessonNotes) != appointment.LessonNotes;
-        var nextStartDate = req.StartDate ?? appointment.StartDate;
-        var nextDuration = appointment.EndDate - appointment.StartDate;
-        var requestedScope = ParseScope(req.Scope);
-
-        if (req.ClientId is not null)
+        if (appointment.RecurringRule is not null && preparation.Changes.StartDateChanged && preparation.Scope != AppointmentUpdateScope.Single)
         {
-            var client = await db.Clients.FirstOrDefaultAsync(e => e.Id == req.ClientId.Value, ct);
-            if (client is null)
-            {
-                AddError(r => r.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            appointment.Client = client;
-        }
-
-        if (req.ServiceId is not null)
-        {
-            var service = await db.Services.FirstOrDefaultAsync(e => e.Id == req.ServiceId.Value, ct);
-            if (service is null)
-            {
-                AddError(r => r.ServiceId, "Услуга не найдена");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            appointment.Service = service;
-        }
-
-        if (req.ProviderId is not null)
-        {
-            var provider = await db.Users.FirstOrDefaultAsync(e => e.Id == req.ProviderId.Value, ct);
-            if (provider is null)
-            {
-                AddError(r => r.ProviderId, "Пользователь не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            appointment.Provider = provider;
-        }
-
-        if (req.HasCourseThemeSelection)
-        {
-            if (req.CourseThemeId is null)
-            {
-                appointment.CourseTheme = null;
-                appointment.CourseThemeId = null;
-            }
-            else
-            {
-                var courseTheme = await db.CourseThemes
-                    .Include(item => item.Branch)
-                        .ThenInclude(item => item.Block)
-                            .ThenInclude(item => item.Course)
-                    .FirstOrDefaultAsync(item => item.Id == req.CourseThemeId.Value, ct);
-
-                if (courseTheme is null)
-                {
-                    AddError(r => r.CourseThemeId, "Тема курса не найдена");
-                    return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-                }
-
-                var hasEnrollment = await db.CourseEnrollments
-                    .AsNoTracking()
-                    .AnyAsync(item => item.ClientId == appointment.Client.Id && item.CourseId == courseTheme.Branch.Block.CourseId, ct);
-
-                if (!hasEnrollment)
-                {
-                    AddError(r => r.CourseThemeId, "Эта тема недоступна для выбранного клиента.");
-                    return new ProblemDetails(ValidationFailures);
-                }
-
-                appointment.CourseTheme = courseTheme;
-                appointment.CourseThemeId = courseTheme.Id;
-            }
-        }
-
-        if (req.HasLessonNotes)
-        {
-            appointment.LessonNotes = NormalizeLessonNotes(req.LessonNotes);
-        }
-
-        if (appointment.Provider is not null && (providerChanged || startDateChanged))
-        {
-            if (string.IsNullOrWhiteSpace(req.Timezone))
-            {
-                AddError(r => r.Timezone, "Нужно указать таймзону.");
-                return new ProblemDetails(ValidationFailures);
-            }
-
-            var isAvailable = await userAvailabilityService.IsAvailableAsync(
-                appointment.Provider.Id,
-                nextStartDate.ToUniversalTime(),
-                nextStartDate.Add(nextDuration).ToUniversalTime(),
-                req.Timezone,
-                ct);
-
-            if (!isAvailable)
-            {
-                AddError(r => r.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
-                return new ProblemDetails(ValidationFailures);
-            }
-        }
-
-        if (appointment.RecurringRule is not null && startDateChanged && requestedScope != AppointmentUpdateScope.Single)
-        {
-            await RescheduleRecurringSeriesAsync(appointment, req.StartDate!.Value, requestedScope, ct);
+            await RescheduleRecurringSeriesAsync(appointment, req.StartDate!.Value, preparation.Scope, ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
                 Category = "schedule",
-                Action = requestedScope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
+                Action = preparation.Scope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
                 Details = AuditDetailsFormatter.JoinChanges(
@@ -198,9 +106,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             return TypedResults.NoContent();
         }
 
-        if (appointment.RecurringRule is not null && (clientChanged || serviceChanged || providerChanged || startDateChanged || courseThemeChanged || lessonNotesChanged))
+        if (appointment.RecurringRule is not null && preparation.Changes.RequiresRecurringDetachment)
         {
-            var duration = appointment.EndDate - appointment.StartDate;
             var updatedAppointment = new Appointment
             {
                 Id = Ulid.NewUlid(),
@@ -211,8 +118,8 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
                 CourseThemeId = appointment.CourseThemeId,
                 LessonNotes = appointment.LessonNotes,
                 StartDate = req.StartDate ?? appointment.StartDate,
-                EndDate = (req.StartDate ?? appointment.StartDate).Add(duration),
-                Status = requestedStatus ?? appointment.Status,
+                EndDate = (req.StartDate ?? appointment.StartDate).Add(preparation.Duration),
+                Status = preparation.RequestedStatus ?? appointment.Status,
                 IsDeleted = false
             };
 
@@ -248,51 +155,15 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
             appointment.EndDate = req.StartDate.Value.AddHours(1);
         }
 
-        if (requestedStatus is not null)
+        if (preparation.RequestedStatus is not null)
         {
-            appointment.Status = requestedStatus.Value;
+            appointment.Status = preparation.RequestedStatus.Value;
         }
 
-        if (req.RecurrenceTypeId is not null)
+        var recurrenceError = await preparationService.ApplyRecurrenceAsync(appointment, req, ct);
+        if (recurrenceError != AppointmentUpdatePreparationError.None)
         {
-            if (req.RecurrencePattern is null)
-            {
-                AddError(r => r.RecurrencePattern, "Паттерн повторения не указан");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            if (req.StartDate is null)
-            {
-                AddError(r => r.StartDate, "Дата начала не задана");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            var recurrenceType = await db.RecurrenceTypes.FirstOrDefaultAsync(e => e.Id == req.RecurrenceTypeId.Value, ct);
-            if (recurrenceType is null)
-            {
-                AddError(r => r.ProviderId, "Тип повторения не найден");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
-            }
-
-            var recurrenceRule = appointment.RecurringRule ?? new AppointmentRecurrenceRule
-            {
-                Id = Ulid.NewUlid(),
-                RecurrenceType = recurrenceType,
-                RecurrencePattern = req.RecurrencePattern,
-                Client = appointment.Client,
-                Service = appointment.Service,
-                Provider = appointment.Provider,
-                StartDate = req.StartDate.Value
-            };
-
-            recurrenceRule.RecurrenceType = recurrenceType;
-            recurrenceRule.RecurrencePattern = req.RecurrencePattern;
-            recurrenceRule.Client = appointment.Client;
-            recurrenceRule.Service = appointment.Service;
-            recurrenceRule.Provider = appointment.Provider;
-            recurrenceRule.StartDate = appointment.RecurringRule?.StartDate ?? req.StartDate.Value;
-
-            appointment.RecurringRule = recurrenceRule;
+            return CreatePreparationError(recurrenceError);
         }
 
         await db.SaveChangesAsync(ct);
@@ -318,36 +189,11 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         return TypedResults.NoContent();
     }
 
-    private static bool IsNoOp(Appointment appointment, UpdateAppointmentRequest req)
+    private ApiProblemDetails CreatePreparationError(AppointmentUpdatePreparationError error)
     {
-        var recurrenceTypeChanged = req.RecurrenceTypeId is not null
-                                    && req.RecurrenceTypeId != appointment.RecurringRule?.RecurrenceType.Id;
-        var recurrencePatternChanged = req.RecurrencePattern is not null
-                                       && req.RecurrencePattern != appointment.RecurringRule?.RecurrencePattern;
-
-        var statusChanged = req.Status is not null
-                            && (!AppointmentStatusExtensions.TryParseApiKey(req.Status, out var parsedStatus)
-                                || parsedStatus != appointment.Status);
-
-        return (req.ClientId is null || req.ClientId == appointment.Client.Id)
-               && (req.ServiceId is null || req.ServiceId == appointment.Service.Id)
-               && (req.ProviderId is null || req.ProviderId == appointment.Provider?.Id)
-               && (!req.HasCourseThemeSelection || req.CourseThemeId == appointment.CourseThemeId)
-               && (!req.HasLessonNotes || NormalizeLessonNotes(req.LessonNotes) == appointment.LessonNotes)
-               && (req.StartDate is null || req.StartDate == appointment.StartDate)
-               && !statusChanged
-               && !recurrenceTypeChanged
-               && !recurrencePatternChanged;
-    }
-
-    private static AppointmentUpdateScope ParseScope(string? rawScope)
-    {
-        return rawScope?.Trim().ToLowerInvariant() switch
-        {
-            "this-and-following" => AppointmentUpdateScope.ThisAndFollowing,
-            "all" => AppointmentUpdateScope.All,
-            _ => AppointmentUpdateScope.Single
-        };
+        var (field, message, status) = PreparationErrors[error];
+        ValidationFailures.Add(new ValidationFailure(field, message));
+        return new ApiProblemDetails(ValidationFailures, HttpContext, status);
     }
 
     private async Task RescheduleRecurringSeriesAsync(
@@ -474,15 +320,4 @@ public class UpdateAppointmentEndpoint(AppDbContext db, IAuditLogService auditLo
         return $"{provider.LastName} {provider.FirstName}".Trim();
     }
 
-    private static string? NormalizeLessonNotes(string? lessonNotes)
-    {
-        return string.IsNullOrWhiteSpace(lessonNotes) ? null : lessonNotes.Trim();
-    }
-}
-
-public enum AppointmentUpdateScope
-{
-    Single,
-    ThisAndFollowing,
-    All
 }

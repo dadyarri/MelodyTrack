@@ -74,7 +74,6 @@ public class AppDbContext : DbContext
             modelBuilder.Entity<ClientContacts>().Property(e => e.Telegram).HasConversion(new EncryptedStringConverter(_personalDataProtector));
             modelBuilder.Entity<ClientContacts>().Property(e => e.Vk).HasConversion(new EncryptedStringConverter(_personalDataProtector));
 
-            modelBuilder.Entity<ClientPortalLoginLink>().Property(e => e.PinCode).HasConversion(new EncryptedStringConverter(_personalDataProtector));
         }
 
         modelBuilder.Entity<User>()
@@ -239,7 +238,7 @@ public class AppDbContext : DbContext
             });
 
         modelBuilder.Entity<RequestReplay>()
-            .HasIndex(e => new { e.Endpoint, e.ReplayKey })
+            .HasIndex(e => new { e.Endpoint, e.CallerId, e.ReplayKey })
             .IsUnique();
 
         modelBuilder.Entity<User>()
@@ -258,6 +257,10 @@ public class AppDbContext : DbContext
             .WithMany()
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ClientPortalLoginLink>()
+            .HasIndex(e => e.TokenHash)
+            .IsUnique();
 
         modelBuilder.Entity<RecurringTaskExecution>()
             .HasIndex(e => e.DeduplicationKey)
@@ -490,5 +493,9 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<UserOnboardingState>()
             .HasIndex(e => e.UserId)
             .IsUnique();
+
+        modelBuilder.Entity<UserOnboardingState>()
+            .Property(e => e.DefinitionVersion)
+            .HasDefaultValue(1);
     }
 }

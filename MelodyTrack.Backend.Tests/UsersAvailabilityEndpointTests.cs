@@ -21,6 +21,39 @@ namespace MelodyTrack.Backend.Tests;
 public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
+    public async Task UpdateUserAvailability_PersistsCompleteWeekVacationAndAudit()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                workingHours = WeekSchedule(),
+                vacations = new[] { new { startDate = "2026-08-10", endDate = "2026-08-16" } },
+                expectedActivityId = (Ulid?)null
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        db.ChangeTracker.Clear();
+        var stored = await db.Users.Include(item => item.WorkingHours).Include(item => item.Vacations)
+            .SingleAsync(item => item.Id == user.Id, TestContext.Current.CancellationToken);
+        stored.WorkingHours.Count.ShouldBe(7);
+        var monday = stored.WorkingHours.Single(item => item.DayOfWeek == DayOfWeek.Monday);
+        monday.IsWorkingDay.ShouldBeTrue();
+        monday.StartMinuteOfDay.ShouldBe(8 * 60 + 30);
+        monday.EndMinuteOfDay.ShouldBe(17 * 60 + 15);
+        stored.Vacations.ShouldHaveSingleItem().StartDate.ShouldBe(new DateOnly(2026, 8, 10));
+        (await db.AuditLogs.AnyAsync(
+            item => item.Action == "user_availability_updated" && item.EntityId == user.Id.ToString(),
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task GetUsersAvailability_ReturnsAllUsersAvailabilityForAdmin()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -254,4 +287,15 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
+
+    private static object[] WeekSchedule() =>
+    [
+        new { dayOfWeek = "monday", isWorkingDay = true, startTime = (string?)"08:30", endTime = (string?)"17:15" },
+        new { dayOfWeek = "tuesday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+        new { dayOfWeek = "wednesday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+        new { dayOfWeek = "thursday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+        new { dayOfWeek = "friday", isWorkingDay = true, startTime = (string?)"09:00", endTime = (string?)"18:00" },
+        new { dayOfWeek = "saturday", isWorkingDay = false, startTime = (string?)null, endTime = (string?)null },
+        new { dayOfWeek = "sunday", isWorkingDay = false, startTime = (string?)null, endTime = (string?)null }
+    ];
 }

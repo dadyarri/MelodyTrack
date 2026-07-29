@@ -3,24 +3,25 @@ using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class GetCourseEndpoint(AppDbContext db)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<GetCourseResponse>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
+public class GetCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
+    : Ep.Req<GetEntityRequest>.Res<Results<Ok<GetCourseResponse>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
     public override void Configure()
     {
         Get("/courses/{id}");
     }
 
-    public override async Task<Results<Ok<GetCourseResponse>, NotFound<ProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+    public override async Task<Results<Ok<GetCourseResponse>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
         GetEntityRequest req, CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -44,7 +45,7 @@ public class GetCourseEndpoint(AppDbContext db)
         if (course is null)
         {
             AddError(item => item.Id, "Курс не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         return TypedResults.Ok(new GetCourseResponse

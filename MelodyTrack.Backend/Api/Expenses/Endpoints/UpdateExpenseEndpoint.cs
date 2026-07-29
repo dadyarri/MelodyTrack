@@ -10,19 +10,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class UpdateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateExpenseRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
+    : Ep.Req<UpdateExpenseRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/expenses/{id}");
+        Patch("/expenses/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateExpenseRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -40,7 +40,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
         if (expense is null)
         {
             AddError(item => item.Id, "Расход не найден");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         string? categoryName = null;
@@ -54,7 +54,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
             if (categoryName is null)
             {
                 AddError(item => item.CategoryId, "Категория расхода не найдена");
-                return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -89,6 +89,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, IAuditLogService auditLogSer
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Расход", expense.Description),
                 AuditDetailsFormatter.DescribeChange("Описание", beforeDescription, expense.Description),
                 AuditDetailsFormatter.DescribeChange("Сумма", beforeAmount.ToString("0.##"), expense.Amount.ToString("0.##")),
                 AuditDetailsFormatter.DescribeChange("Категория", beforeCategoryName, categoryName),

@@ -9,7 +9,7 @@ public class Expense : BaseModel
 
     public required decimal Amount { get; set; }
 
-    public required DateTime Date { get; set; } = DateTime.UtcNow;
+    public required DateTime Date { get; set; }
 
     public Ulid? CategoryId { get; set; }
 

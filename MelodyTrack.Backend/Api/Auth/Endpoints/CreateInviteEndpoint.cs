@@ -1,11 +1,9 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,35 +11,28 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogService)
+public class CreateInviteEndpoint(
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    IPublicUrlBuilder publicUrlBuilder,
+    TimeProvider timeProvider,
+    ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
 {
     public override void Configure()
     {
-        Post("/auth/invite");
+        Post("/auth/invites");
     }
 
     public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
         CreateInviteRequest req, CancellationToken ct)
     {
         var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
-        var login = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name);
-
-        if (login is null)
-        {
-            Logger.LogWarning("Invite creation attempt without valid email claim");
-            return TypedResults.Forbid();
-        }
-
-        var caller = await db.Users
-            .AsNoTracking()
-            .Include(u => u.Role)
-            .WhereEmailMatches(login.Value)
-            .FirstOrDefaultAsync(ct);
+        var caller = await currentUserAccessor.GetAsync(ct);
 
         if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Invite creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(login.Value));
+            Logger.LogWarning("Invite creation attempt without admin access");
             return TypedResults.Forbid();
         }
 
@@ -68,7 +59,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
         }
 
         var code = Ulid.NewUlid();
-        var inviteUrl = UserUtils.GetInviteUrl(code);
+        var inviteUrl = publicUrlBuilder.GetInviteUrl(code);
 
         var invite = new InviteCode
         {
@@ -76,7 +67,7 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
             Code = code,
             Role = role,
             Email = inviteEmail,
-            ValidUntil = DateTime.UtcNow.AddDays(2)
+            ValidUntil = timeProvider.GetUtcNow().UtcDateTime.AddDays(2)
         };
 
         await db.InviteCodes.AddAsync(invite, ct);
@@ -104,6 +95,6 @@ public class CreateInviteEndpoint(AppDbContext db, IAuditLogService auditLogServ
                 ? $"Приглашение {inviteRef} без привязки к email с ролью {role.DisplayName}"
                 : $"Приглашение {inviteRef} для {UserUtils.DescribeEmailForLogs(inviteEmail)} с ролью {role.DisplayName}"
         }, ct);
-        return TypedResults.Created("/auth/invite", response);
+        return TypedResults.Created("/auth/invites", response);
     }
 }

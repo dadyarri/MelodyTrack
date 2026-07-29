@@ -1,6 +1,6 @@
-using System.Security.Claims;
 using FastEndpoints;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -17,19 +17,20 @@ public sealed class ActiveSessionPreProcessor : GlobalPreProcessor<ActiveSession
             return;
         }
 
-        var sessionIdClaim = context.HttpContext.User.Claims.FirstOrDefault(e => e.Type == ClaimTypes.Sid)?.Value;
-        if (!Ulid.TryParse(sessionIdClaim, out var sessionId))
+        var services = context.HttpContext.RequestServices;
+        var sessionId = services.GetRequiredService<ICurrentUserAccessor>().SessionId;
+        if (sessionId is null)
         {
             return;
         }
 
-        var services = context.HttpContext.RequestServices;
         var db = services.GetRequiredService<AppDbContext>();
         var logger = services.GetRequiredService<ILogger<ActiveSessionPreProcessor>>();
+        var nowUtc = services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
 
         var isSessionActive = await db.Sessions
             .AsNoTracking()
-            .AnyAsync(e => e.Id == sessionId && !e.WasRevoked && e.ValidUntil >= DateTime.UtcNow, ct);
+            .AnyAsync(e => e.Id == sessionId.Value && !e.WasRevoked && e.ValidUntil >= nowUtc, ct);
 
         if (isSessionActive)
         {

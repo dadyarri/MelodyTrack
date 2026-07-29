@@ -1,30 +1,31 @@
-﻿using System.Security.Claims;
-using FastEndpoints;
+﻿using FastEndpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Extensions;
+using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Verify2FaEndpoint(AppDbContext db)
+public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
     : Ep.Req<Verify2FaRequest>.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
 {
     public override void Configure()
     {
         Post("/auth/2fa/verify");
         AllowAnonymous();
-        Throttle(10, 300);
+        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.VerifyTwoFactor));
+        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
     public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
         Verify2FaRequest req, CancellationToken ct)
     {
-        var authenticatedEmail = User.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Name)?.Value;
+        var authenticatedEmail = currentUserAccessor.Email;
         var email = authenticatedEmail ?? req.Email;
 
         if (email is null)

@@ -5,8 +5,8 @@ using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -14,19 +14,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>>
+public class GetClientHistoryEndpoint(
+    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
+    ClientToClientWithBalanceDtoMapConfig mapper,
+    IRecordActivityService recordActivityService,
+    TimeProvider timeProvider)
+    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
 {
     public override void Configure()
     {
         Get("/clients/{id}/history");
     }
 
-    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>>> ExecuteAsync(
+    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
         GetClientHistoryRequest req,
         CancellationToken ct)
     {
-        var currentUserRole = await EndpointAuthUtils.GetCurrentUserRoleAsync(User, db, ct);
+        var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
             return TypedResults.Unauthorized();
@@ -149,12 +153,13 @@ public class GetClientHistoryEndpoint(AppDbContext db, ClientToClientWithBalance
             .Select(e => (DateTime?)e.StartDate)
             .FirstOrDefaultAsync(ct);
 
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var upcomingAppointmentsQuery = db.Appointments
             .AsNoTracking()
             .Where(e => e.Client.Id == client.Id
                         && e.Status == AppointmentStatus.Planned
                         && !e.IsDeleted
-                        && e.StartDate >= DateTime.UtcNow);
+                        && e.StartDate >= nowUtc);
 
         var upcomingAppointmentsCount = await upcomingAppointmentsQuery.CountAsync(ct);
         var nextAppointmentAtUtc = await upcomingAppointmentsQuery

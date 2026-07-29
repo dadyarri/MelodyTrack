@@ -274,17 +274,32 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
-                    b.Property<string>("PinCode")
+                    b.Property<int>("FailedPinAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("LastFailedPinAttemptAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("PinHash")
                         .HasColumnType("text");
 
                     b.Property<DateTime?>("PinSetAtUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("RevokedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("TokenHash")
+                        .HasColumnType("text");
 
                     b.Property<byte[]>("UserId")
                         .IsRequired()
                         .HasColumnType("bytea");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
 
                     b.HasIndex("UserId");
 
@@ -1069,6 +1084,10 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
+                    b.Property<byte[]>("CallerId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -1082,12 +1101,17 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)");
 
+                    b.Property<string>("RequestFingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
                     b.Property<byte[]>("ResponseEntityId")
                         .HasColumnType("bytea");
 
                     b.HasKey("Id");
 
-                    b.HasIndex("Endpoint", "ReplayKey")
+                    b.HasIndex("Endpoint", "CallerId", "ReplayKey")
                         .IsUnique();
 
                     b.ToTable("RequestReplays");
@@ -1293,6 +1317,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<string>("CurrentStep")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<int>("DefinitionVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1);
 
                     b.Property<int>("Status")
                         .HasColumnType("integer");

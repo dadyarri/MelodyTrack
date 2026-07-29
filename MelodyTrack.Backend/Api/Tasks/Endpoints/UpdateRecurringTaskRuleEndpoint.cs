@@ -10,19 +10,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessService entityFreshnessService, IAuditLogService auditLogService)
-    : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+public class UpdateRecurringTaskRuleEndpoint(
+    AppDbContext db,
+    IEntityFreshnessService entityFreshnessService,
+    IAuditLogService auditLogService,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
+    : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
 {
     public override void Configure()
     {
-        Put("/tasks/rules/{id}");
+        Patch("/recurring-task-rules/{id}");
     }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
         UpdateRecurringTaskRuleRequest req,
         CancellationToken ct)
     {
-        var currentUser = await TaskAccess.GetCurrentUserAsync(User, db, ct);
+        var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
             return TypedResults.Unauthorized();
@@ -37,13 +42,13 @@ public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessSe
         if (rule is null)
         {
             AddError(item => item.Id, "Правило не найдено");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         if (!IsTimingSupported(rule.Type, req))
         {
             AddError(item => item.OffsetMinutes, "Это поле недоступно для данного правила.");
-            return TypedResults.NotFound(new ProblemDetails(ValidationFailures));
+            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -67,7 +72,7 @@ public class UpdateRecurringTaskRuleEndpoint(AppDbContext db, IEntityFreshnessSe
         rule.MessageTemplate = req.MessageTemplate;
         rule.OffsetMinutes = SupportsOffsetMinutes(rule.Type) ? req.OffsetMinutes : null;
         rule.CooldownDays = SupportsCooldownDays(rule.Type) ? req.CooldownDays : null;
-        rule.UpdatedAtUtc = DateTime.UtcNow;
+        rule.UpdatedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest

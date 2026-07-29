@@ -57,7 +57,7 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.GetAsync("/services/lookup", TestContext.Current.CancellationToken);
+        var response = await App.Client.GetAsync("/services/options", TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
 
@@ -79,11 +79,10 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/services/{service.Id}",
             new
             {
-                id = service.Id,
                 name = "New name",
                 description = "Updated description"
             },
@@ -103,7 +102,7 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.Action == "service_updated" && item.EntityId == service.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Details.ShouldBe("Название: Old name → New name; Описание: — → Updated description");
+        auditLog.Details.ShouldBe("Услуга: New name; Название: Old name → New name; Описание: — → Updated description");
     }
 
     [Fact]
@@ -117,7 +116,7 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/services/{service.Id}",
             new
             {
@@ -162,7 +161,7 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var response = await App.Client.PutAsJsonAsync(
+        var response = await App.Client.PatchAsJsonAsync(
             $"/services/{service.Id}",
             new
             {
@@ -212,7 +211,6 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
             $"/services/{service.Id}/price",
             new
             {
-                id = service.Id,
                 price = 3200m
             },
             TestContext.Current.CancellationToken);

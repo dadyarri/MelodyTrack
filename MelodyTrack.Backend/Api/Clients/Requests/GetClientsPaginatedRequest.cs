@@ -1,8 +1,8 @@
 using Facet;
 using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Requests;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
 
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 

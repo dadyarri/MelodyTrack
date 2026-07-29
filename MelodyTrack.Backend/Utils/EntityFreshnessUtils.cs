@@ -9,14 +9,4 @@ public static class EntityFreshnessUtils
         return expectedActivityId.HasValue && expectedActivityId != currentActivity?.Id;
     }
 
-    public static StaleEntityConflictResponse CreateConflict(string entityType, Ulid entityId, string message, RecordActivityDto? currentActivity)
-    {
-        return new StaleEntityConflictResponse
-        {
-            EntityType = entityType,
-            EntityId = entityId.ToString(),
-            Message = message,
-            CurrentActivity = currentActivity
-        };
-    }
 }

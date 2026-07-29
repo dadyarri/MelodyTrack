@@ -5,12 +5,13 @@ namespace MelodyTrack.Backend.Api.Onboarding;
 
 public static class OnboardingDefaults
 {
+    public const int CurrentDefinitionVersion = 2;
     public const string InitialStep = "welcome";
     public const string InitialPath = "/";
 
-    public static UserOnboardingState CreateState(User user)
+    public static UserOnboardingState CreateState(User user, TimeProvider timeProvider)
     {
-        var now = DateTime.UtcNow;
+        var now = timeProvider.GetUtcNow().UtcDateTime;
 
         return new UserOnboardingState
         {
@@ -19,6 +20,7 @@ public static class OnboardingDefaults
             User = user,
             CurrentStep = InitialStep,
             CurrentPath = InitialPath,
+            DefinitionVersion = CurrentDefinitionVersion,
             Status = OnboardingStatus.Active,
             CreatedAtUtc = now,
             UpdatedAtUtc = now

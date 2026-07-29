@@ -46,6 +46,7 @@ Required backend variables:
 
 - `ASPNETCORE_ENVIRONMENT`
 - `MELODY_TRACK_APP_DOMAIN`
+- `MELODY_TRACK_PUBLIC_API_BASE_URL`
 - `MELODY_TRACK_DATABASE_URL`
 - `MELODY_TRACK_JWT_SIGNING_KEY`
 
@@ -73,6 +74,16 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Fuzzy search depends on the PostgreSQL `fuzzystrmatch` extension and `[FuzzyPath]` for nested string properties.
 - DTO projection/mapping uses Facet in some response types. Prefer existing Facet patterns before adding manual duplicate DTO mapping.
 - Background jobs use Quartz with a persistent PostgreSQL store. `quartz.sql` is needed when preparing databases for Quartz tables.
+- Generate externally visible links through `IPublicUrlBuilder`. `MELODY_TRACK_APP_DOMAIN` is the frontend origin, while `MELODY_TRACK_PUBLIC_API_BASE_URL` is the externally reachable API base path.
+- Use the scoped `ICurrentUserAccessor` for authenticated-user identity throughout request handling; do not parse name/session claims or query the current user directly. `Email` and `SessionId` expose the token identity, while `GetAsync()` caches one tracked user with its role for the request. Load feature-specific navigations explicitly before using them.
+- Inject `TimeProvider` for all clock-sensitive application logic. Use `timeProvider.GetUtcNow().UtcDateTime` rather than `DateTime.UtcNow` or `DateTimeOffset.UtcNow`.
+- Capture the injected clock once before an operation that performs multiple comparisons, writes, or EF queries so every step observes the same instant and EF receives a parameterized value.
+- Do not put live-clock initializers on entity properties. Require creation flows to assign timestamps explicitly from their injected `TimeProvider`.
+- FastEndpoints preprocessors that are not constructor-injected may resolve `TimeProvider` from `HttpContext.RequestServices`. Startup seeding resolves it from the startup scope; Quartz jobs and application services receive it through constructor injection.
+- Test clock-sensitive helpers with a fixed `TimeProvider`; recurrence coverage must include calendar boundaries, provider propagation, repeated/overlapping materialization, and deletion/rematerialization behavior.
+- Idempotent create endpoints use `IRequestReplayService` and the `Idempotency-Key` header. Replay identity is scoped by endpoint and authenticated caller, and the stored SHA-256 request fingerprint prevents reusing a key for a different payload.
+- Keep request replay acquisition and completion inside the same database transaction as entity creation. The acquisition service uses PostgreSQL `ON CONFLICT DO NOTHING`, so concurrent duplicates wait on the database constraint and replay the committed response without application polling.
+- Recurring-task responsibilities live under `Services/RecurringTasks`: `RecurringTaskService` only routes requests; candidate loading and per-rule evaluation belong to `IRecurringTaskCandidateService`, recurring-execution mutations to `IRecurringTaskTransitionService`, custom-task mutations to `ICustomTaskTransitionService`, processed-list queries to `IRecurringTaskQueryService`, message token replacement to `IRecurringTaskTemplateRenderer`, and response shaping to `RecurringTaskPresentationMapper`. Do not move these concerns back into the orchestration service.
 
 ## Authentication And Authorization
 
@@ -105,6 +116,11 @@ Note the migrator variable names do not include the underscore after `MELODY`.
 - Do not introduce another database provider for app code; SQLite appears only as a referenced package and PostgreSQL is the configured runtime provider.
 - Avoid broad refactors in endpoint signatures, auth utilities, model relationships, or Quartz setup without tests.
 - Preserve Russian user-facing API messages unless the task explicitly asks to change localization.
+
+## Maintenance Conventions
+
+- `UseSerilogRequestLogging()` must stay before endpoint middleware so all API requests receive request timing and status logging.
+- Add focused tests when changing public URL generation or authenticated-user access; use `PublicUrlBuilderTests` and the relevant feature endpoint tests as examples.
 
 ## Safe Migration Process
 
