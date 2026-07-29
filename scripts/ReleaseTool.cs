@@ -23,11 +23,14 @@ switch (command)
     case "prepare":
         PrepareRelease(backend, changelog.Current, args.Skip(1).ToArray());
         break;
+    case "finalize":
+        FinalizeRelease(backend, args.Skip(1).ToArray());
+        break;
     case "publish":
         PublishRelease(backend, changelog.Current);
         break;
     default:
-        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|prepare|publish [--frontend <path>]");
+        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|prepare|finalize|publish [--frontend <path>]");
         break;
 }
 
@@ -55,14 +58,16 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
             EnsureCleanSource(repository);
             repository.OriginalBranch = Output("git", ["branch", "--show-current"], repository.Path);
             repository.SourceCommit = Output("git", ["rev-parse", "HEAD"], repository.Path);
-            Run("git", ["fetch", "origin", "master"], repository.Path);
+            Console.WriteLine($"{repository.Name}: checking {repository.OriginalBranch} against the remote...");
+            FetchReleaseRefs(repository);
             Run("git", ["merge-tree", "--write-tree", "--quiet", "origin/master", "HEAD"], repository.Path);
             if (HasRef(repository.Path, $"refs/heads/{branch}"))
             {
                 throw new InvalidOperationException($"{repository.Name}: local {branch} already exists.");
             }
 
-            repository.RemoteExists = HasRemoteRef(repository.Path, branch);
+            repository.RemoteExists = HasRef(repository.Path, $"refs/remotes/origin/{branch}");
+            Console.WriteLine($"{repository.Name}: checking for an existing release pull request...");
             repository.PullRequest = FindPullRequest(repository.Path, branch);
             if (repository.PullRequest is not null
                 && (repository.PullRequest.Title != current.Version || NormalizeBody(repository.PullRequest.Body) != expectedBody))
@@ -75,14 +80,13 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
         {
             if (repository.RemoteExists)
             {
-                Run("git", ["fetch", "origin", $"{branch}:refs/remotes/origin/{branch}"], repository.Path);
                 EnsureAncestor(repository.Path, repository.SourceCommit!, $"origin/{branch}", "source commit");
                 EnsureAncestor(repository.Path, "origin/master", $"origin/{branch}", "master");
                 Run("git", ["switch", "--create", branch, $"origin/{branch}"], repository.Path);
             }
             else
             {
-                Run("git", ["switch", "--create", branch, "origin/master"], repository.Path);
+                Run("git", ["switch", "--no-track", "--create", branch, "origin/master"], repository.Path);
                 Run("git", ["merge", "--no-ff", "--no-edit", repository.SourceCommit!], repository.Path);
             }
 
@@ -137,6 +141,53 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
                 Console.Error.WriteLine($"Could not restore {repository.Name}: {exception.Message}");
             }
         }
+    }
+}
+
+static void FinalizeRelease(string backend, string[] arguments)
+{
+    var frontendIndex = Array.IndexOf(arguments, "--frontend");
+    var frontend = frontendIndex >= 0 && frontendIndex + 1 < arguments.Length
+        ? Path.GetFullPath(arguments[frontendIndex + 1])
+        : Path.GetFullPath(Path.Combine(backend, "..", "MelodyTrack.Web"));
+    var repositories = new[]
+    {
+        new Repository("backend", backend, "dotnet", ["test", "MelodyTrack.slnx", "-c", "Release"]),
+        new Repository("frontend", frontend, "npm", ["run", "verify"])
+    };
+
+    foreach (var repository in repositories)
+    {
+        EnsureFinalizeSource(repository);
+        Console.WriteLine($"{repository.Name}: checking merged master state...");
+        FetchReleaseRefs(repository);
+        EnsureAncestor(repository.Path, "master", "origin/master", "local master");
+        EnsureAncestor(repository.Path, "develop", "origin/master", "develop branch");
+        repository.LocalReleaseBranches = GetLocalReleaseBranches(repository.Path);
+        foreach (var branch in repository.LocalReleaseBranches)
+        {
+            EnsureAncestor(repository.Path, branch, "origin/master", branch);
+        }
+    }
+
+    foreach (var repository in repositories)
+    {
+        Run("git", ["switch", "master"], repository.Path);
+        Run("git", ["merge", "--ff-only", "origin/master"], repository.Path);
+        if (Output("git", ["rev-parse", "master"], repository.Path) != Output("git", ["rev-parse", "origin/master"], repository.Path))
+        {
+            throw new InvalidOperationException($"{repository.Name}: local master does not match origin/master.");
+        }
+
+        Run("git", ["switch", "develop"], repository.Path);
+        Run("git", ["merge", "--ff-only", "master"], repository.Path);
+        foreach (var branch in repository.LocalReleaseBranches)
+        {
+            Run("git", ["branch", "--delete", branch], repository.Path);
+        }
+
+        var commit = Output("git", ["rev-parse", "--short", "develop"], repository.Path);
+        Console.WriteLine($"{repository.Name}: master and develop are at {commit}; removed {repository.LocalReleaseBranches.Length} local release branches.");
     }
 }
 
@@ -236,6 +287,16 @@ static string FindBackendRoot()
 
 static string NormalizeBody(string value) => value.Trim().TrimStart('\uFEFF');
 
+static void FetchReleaseRefs(Repository repository) =>
+    Run(
+        "git",
+        [
+            "fetch", "--prune", "origin",
+            "+refs/heads/master:refs/remotes/origin/master",
+            "+refs/heads/release/*:refs/remotes/origin/release/*"
+        ],
+        repository.Path);
+
 static void EnsureCleanSource(Repository repository)
 {
     if (!Directory.Exists(Path.Combine(repository.Path, ".git")))
@@ -254,6 +315,36 @@ static void EnsureCleanSource(Repository repository)
         throw new InvalidOperationException($"{repository.Name}: run from a non-master source branch.");
     }
 }
+
+static void EnsureFinalizeSource(Repository repository)
+{
+    if (!Directory.Exists(Path.Combine(repository.Path, ".git")))
+    {
+        throw new InvalidOperationException($"{repository.Name}: repository was not found at {repository.Path}.");
+    }
+
+    if (Output("git", ["status", "--porcelain"], repository.Path).Length > 0)
+    {
+        throw new InvalidOperationException($"{repository.Name}: worktree must be clean.");
+    }
+
+    if (Output("git", ["branch", "--show-current"], repository.Path) != "develop")
+    {
+        throw new InvalidOperationException($"{repository.Name}: finalize must run with develop checked out.");
+    }
+
+    foreach (var branch in new[] { "master", "develop" })
+    {
+        if (!HasRef(repository.Path, $"refs/heads/{branch}"))
+        {
+            throw new InvalidOperationException($"{repository.Name}: local {branch} branch does not exist.");
+        }
+    }
+}
+
+static string[] GetLocalReleaseBranches(string workingDirectory) =>
+    Output("git", ["for-each-ref", "--format=%(refname:short)", "refs/heads/release/"], workingDirectory)
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
 
 static PullRequest? FindPullRequest(string workingDirectory, string branch)
 {
@@ -285,9 +376,6 @@ static void EnsureAncestor(string workingDirectory, string ancestor, string desc
 
 static bool HasRef(string workingDirectory, string reference) =>
     RunForExitCode("git", ["show-ref", "--verify", "--quiet", reference], workingDirectory) == 0;
-
-static bool HasRemoteRef(string workingDirectory, string branch) =>
-    RunForExitCode("git", ["ls-remote", "--exit-code", "--heads", "origin", branch], workingDirectory) == 0;
 
 static string RequiredEnvironment(string name) =>
     Environment.GetEnvironmentVariable(name) is { Length: > 0 } value
@@ -326,6 +414,8 @@ static int RunForExitCode(string command, IReadOnlyList<string> arguments, strin
 static ProcessResult Execute(string command, IReadOnlyList<string> arguments, string workingDirectory, bool captureOutput)
 {
     var startInfo = new ProcessStartInfo(command) { WorkingDirectory = workingDirectory, UseShellExecute = false };
+    startInfo.Environment["GIT_TERMINAL_PROMPT"] = "0";
+    startInfo.Environment["GH_PROMPT_DISABLED"] = "1";
     foreach (var argument in arguments)
     {
         startInfo.ArgumentList.Add(argument);
@@ -456,6 +546,7 @@ sealed class Repository(string name, string path, string verifyCommand, string[]
     public string? SourceCommit { get; set; }
     public bool RemoteExists { get; set; }
     public PullRequest? PullRequest { get; set; }
+    public string[] LocalReleaseBranches { get; set; } = [];
 }
 
 sealed record PullRequest(string Url, string Title, string Body);
