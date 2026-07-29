@@ -90,7 +90,7 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
             }
             else
             {
-                Run("git", ["switch", "--create", branch, "origin/master"], repository.Path);
+                Run("git", ["switch", "--no-track", "--create", branch, "origin/master"], repository.Path);
                 Run("git", ["merge", "--no-ff", "--no-edit", repository.SourceCommit!], repository.Path);
             }
 
