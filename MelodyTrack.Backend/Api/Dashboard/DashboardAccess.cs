@@ -9,9 +9,4 @@ internal static class DashboardAccess
     {
         return user.Role.RoleName.IsAnyAdmin();
     }
-
-    public static bool IsProviderScoped(User user)
-    {
-        return !user.Role.RoleName.IsAnyAdmin();
-    }
 }

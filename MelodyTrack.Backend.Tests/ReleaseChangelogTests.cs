@@ -103,4 +103,29 @@ public class ReleaseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         changelog.TotalPages.ShouldBe(configuredChangelog.Releases.Count);
         changelog.HasNextPage.ShouldBe(configuredChangelog.Releases.Count > 1);
     }
+
+    [Fact]
+    public async Task Releases_DefaultsToTwoEntriesPerPage()
+    {
+        var response = await App.Client.GetAsync("/releases", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var changelog = await response.Content.ReadFromJsonAsync<ReleasesResponse>(TestContext.Current.CancellationToken);
+        changelog.ShouldNotBeNull();
+        changelog.PageSize.ShouldBe(2);
+        changelog.Releases.Count.ShouldBeLessThanOrEqualTo(2);
+    }
+}
+
+public class StartupBannerTests
+{
+    [Fact]
+    public void Render_IncludesAsciiLogoVersionAndCodename()
+    {
+        var banner = StartupBanner.Render("2026.07.2", "Aria");
+
+        banner.ShouldContain("__  __");
+        banner.ShouldContain("MelodyTrack", Case.Insensitive);
+        banner.ShouldContain("MelodyTrack · Version 2026.07.2 · Aria");
+    }
 }

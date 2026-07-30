@@ -6,7 +6,9 @@ using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Api.Clients.Responses;
+using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Onboarding;
+using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
@@ -52,8 +54,9 @@ using var listener = new ActivityListenerConfiguration()
     .Instrument.AspNetCoreRequests()
     .TraceToSharedLogger();
 
-Log.Information("Starting up");
-Log.Information("Product release {ReleaseVersion} ({ReleaseCodename})", releaseChangelog.Current.Version, releaseChangelog.Current.ResolvedCodename);
+Log.Information(
+    "{StartupBanner:l}",
+    StartupBanner.Render(releaseChangelog.Current.Version, releaseChangelog.Current.ResolvedCodename));
 
 try
 {
@@ -152,6 +155,12 @@ try
     builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
+    builder.Services.AddScoped<IPersonalDashboardQueryService, PersonalDashboardQueryService>();
+    builder.Services.AddScoped<IReportContextFactory, ReportContextFactory>();
+    builder.Services.AddScoped<IReportAppointmentQuery, ReportAppointmentQuery>();
+    builder.Services.AddScoped<IWorkReportQueryService, WorkReportQueryService>();
+    builder.Services.AddScoped<IFinanceReportQueryService, FinanceReportQueryService>();
+    builder.Services.AddScoped<IClientsReportQueryService, ClientsReportQueryService>();
     builder.Services.AddSingleton<IPublicUrlBuilder, PublicUrlBuilder>();
     builder.Services.AddScoped<IRecurringAppointmentService, RecurringAppointmentService>();
     builder.Services.AddScoped<IRecurringAppointmentMaterializer, RecurringAppointmentMaterializer>();

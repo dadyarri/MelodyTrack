@@ -131,6 +131,35 @@ public class RecurringTaskTransitionTests(MelodyTrackFixture app) : IntegrationT
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
     }
 
+    [Theory]
+    [InlineData("completion")]
+    [InlineData("cancellation")]
+    [InlineData("deferral")]
+    public async Task TransitionEndpoints_BindDeduplicationKeyFromRouteWithoutRequiringItInBody(string transition)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
+        var body = new Dictionary<string, object?>
+        {
+            ["timezone"] = "Europe/Moscow",
+            ["ruleId"] = Ulid.NewUlid(),
+            ["type"] = RecurringTaskType.CustomTask.ToApiKey()
+        };
+        if (transition == "deferral")
+        {
+            body["delayUntilUtc"] = DateTime.UtcNow.AddHours(1);
+        }
+
+        using var response = await App.Client.PostAsJsonAsync(
+            $"/tasks/stale-key/{transition}",
+            body,
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+    }
+
     [Fact]
     public async Task CancelAsync_RecurringTask_WhenAuditPersistenceFails_RollsBackExecution()
     {
