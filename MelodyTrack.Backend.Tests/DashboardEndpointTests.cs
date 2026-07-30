@@ -141,12 +141,12 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
     }
 
     [Fact]
-    public async Task GetDashboardStats_SumsOnlyPositiveClientBalances()
+    public async Task GetDashboardStats_SumsOrganizationClientBalances()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         var firstClient = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var secondClient = await TestDataFactory.CreateClientAsync(db, "Elena", "Sidorova", TestContext.Current.CancellationToken);
         var thirdClient = await TestDataFactory.CreateClientAsync(db, "Maria", "Ivanova", TestContext.Current.CancellationToken);
@@ -244,8 +244,9 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.TotalPositiveBalance.ShouldBe(150m);
-        res.TotalDebt.ShouldBe(50m);
+        res.Organization.ShouldNotBeNull();
+        res.Organization.TotalPositiveBalance.ShouldBe(150m);
+        res.Organization.TotalDebt.ShouldBe(50m);
     }
 
     [Fact]
@@ -260,7 +261,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(e => e.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
         var timezone = TimeZoneInfo.Utc;
         var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
-        var appointmentStart = DateTime.SpecifyKind(today.AddHours(10), DateTimeKind.Utc);
+        var appointmentStart = DateTime.SpecifyKind(today.AddDays(1).AddHours(10), DateTimeKind.Utc);
 
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
@@ -294,7 +295,8 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.AppointmentsToday.ShouldBeGreaterThanOrEqualTo(1);
+        res.Tomorrow.Count.ShouldBeGreaterThanOrEqualTo(1);
+        res.Tomorrow.Count.ShouldBe(res.Tomorrow.Appointments.Count);
     }
 
     [Fact]
@@ -307,19 +309,20 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
         var otherUser = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
-        var timezone = TimeZoneInfo.Utc;
-        var today = TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, timezone).Date;
+        var nowUtc = DateTime.UtcNow;
+        var visibleStart = nowUtc.AddMinutes(30);
+        var visibleAppointmentId = Ulid.NewUlid();
 
         await db.Appointments.AddRangeAsync(
             [
                 new Appointment
                 {
-                    Id = Ulid.NewUlid(),
+                    Id = visibleAppointmentId,
                     Client = client,
                     Service = service,
                     Provider = currentUser,
-                    StartDate = DateTime.SpecifyKind(today.AddHours(10), DateTimeKind.Utc),
-                    EndDate = DateTime.SpecifyKind(today.AddHours(11), DateTimeKind.Utc),
+                    StartDate = visibleStart,
+                    EndDate = visibleStart.AddHours(1),
                     Status = AppointmentStatus.Planned,
                     IsDeleted = false
                 },
@@ -329,8 +332,8 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
                     Client = client,
                     Service = service,
                     Provider = otherUser,
-                    StartDate = DateTime.SpecifyKind(today.AddHours(12), DateTimeKind.Utc),
-                    EndDate = DateTime.SpecifyKind(today.AddHours(13), DateTimeKind.Utc),
+                    StartDate = visibleStart.AddMinutes(15),
+                    EndDate = visibleStart.AddHours(1).AddMinutes(15),
                     Status = AppointmentStatus.Planned,
                     IsDeleted = false
                 }
@@ -349,7 +352,8 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.AppointmentsToday.ShouldBe(1);
+        res.Today.Count.ShouldBe(1);
+        res.Today.Appointments.ShouldHaveSingleItem().Id.ShouldBe(visibleAppointmentId);
     }
 
     [Fact]
