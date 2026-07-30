@@ -1,0 +1,159 @@
+using MelodyTrack.Backend.Api.Reports.Responses;
+using MelodyTrack.Backend.Services;
+
+namespace MelodyTrack.Backend.Api.Reports.Reporting;
+
+public interface IClientsReportQueryService
+{
+    Task<ClientsReportResponse> GetAsync(ReportContext context, CancellationToken ct);
+}
+
+public sealed class ClientsReportQueryService(
+    IReportContextFactory contextFactory,
+    IReportAppointmentQuery appointmentQuery,
+    IRecurringAppointmentMaterializer materializer) : IClientsReportQueryService
+{
+    private const int AtRiskAfterDays = 30;
+    private const int LostAfterDays = 60;
+
+    public async Task<ClientsReportResponse> GetAsync(ReportContext context, CancellationToken ct)
+    {
+        var periodLength = (context.EndExclusiveLocal - context.StartLocal).Days;
+        var previousStartLocal = context.StartLocal.AddDays(-periodLength);
+        var previousStartUtc = TimeZoneInfo.ConvertTimeToUtc(previousStartLocal, context.Timezone);
+        await materializer.EnsureAppointmentsGeneratedAsync(previousStartUtc, context.EndExclusiveUtc.AddTicks(-1), ct);
+
+        var appointments = await appointmentQuery.LoadAsync(context, DateTime.UnixEpoch, context.EndExclusiveUtc, ct);
+        var visits = appointments.Where(appointment => appointment.IsVisit).ToList();
+        var currentVisits = visits
+            .Where(appointment => appointment.StartLocal >= context.StartLocal && appointment.StartLocal < context.EndExclusiveLocal)
+            .ToList();
+        var previousVisits = visits
+            .Where(appointment => appointment.StartLocal >= previousStartLocal && appointment.StartLocal < context.StartLocal)
+            .ToList();
+        var currentClientIds = currentVisits.Select(appointment => appointment.ClientId).ToHashSet();
+        var previousClientIds = previousVisits.Select(appointment => appointment.ClientId).ToHashSet();
+        var retainedClientIds = previousClientIds.Where(currentClientIds.Contains).ToHashSet();
+        var clientRows = BuildClientRows(visits, currentClientIds, context);
+        var acquiredClientIds = clientRows
+            .Where(client => client.FirstVisitLocal >= context.StartLocal && client.FirstVisitLocal < context.EndExclusiveLocal)
+            .Select(client => client.ClientId)
+            .ToHashSet();
+        var valuedClients = clientRows.Where(client => client.Value > 0m).ToList();
+
+        return new ClientsReportResponse
+        {
+            Context = await contextFactory.CreateDtoAsync(context, ct),
+            Summary = new ClientsReportSummaryDto
+            {
+                AcquiredClients = acquiredClientIds.Count,
+                ActiveClients = currentClientIds.Count,
+                RetainedClients = retainedClientIds.Count,
+                RetentionPercent = ReportBuckets.Percent(retainedClientIds.Count, previousClientIds.Count),
+                AtRiskClients = clientRows.Count(client => client.ActivityState == "at-risk"),
+                LostClients = clientRows.Count(client => client.ActivityState == "lost"),
+                AverageVisitFrequency = currentClientIds.Count == 0 ? null : currentVisits.Count / (decimal)currentClientIds.Count,
+                AverageClientValue = valuedClients.Count == 0 ? null : valuedClients.Average(client => client.Value)
+            },
+            Trend = BuildTrend(context, visits, clientRows),
+            Sources = clientRows
+                .GroupBy(client => client.SourceName)
+                .Select(group => new ClientSourceReportDto
+                {
+                    SourceName = group.Key,
+                    AcquiredClients = group.Count(client => acquiredClientIds.Contains(client.ClientId)),
+                    ActiveClients = group.Count(client => currentClientIds.Contains(client.ClientId)),
+                    ClientValue = group.Sum(client => client.Value)
+                })
+                .OrderByDescending(item => item.AcquiredClients)
+                .ThenByDescending(item => item.ClientValue)
+                .ThenBy(item => item.SourceName)
+                .ToList(),
+            Clients = clientRows
+                .OrderByDescending(client => currentClientIds.Contains(client.ClientId))
+                .ThenByDescending(client => client.Value)
+                .ThenBy(client => client.ClientName)
+                .Take(100)
+                .Select(client => new ClientValueReportDto
+                {
+                    ClientId = client.ClientId,
+                    ClientName = client.ClientName,
+                    SourceName = client.SourceName,
+                    Visits = client.Visits,
+                    Value = client.Value,
+                    AverageIntervalDays = client.AverageIntervalDays,
+                    LastVisitAtUtc = client.LastVisitAtUtc,
+                    ActivityState = client.ActivityState
+                })
+                .ToList()
+        };
+    }
+
+    private static List<ClientRow> BuildClientRows(
+        IReadOnlyCollection<ReportAppointment> visits,
+        IReadOnlySet<Ulid> currentClientIds,
+        ReportContext context)
+    {
+        return visits
+            .GroupBy(appointment => new { appointment.ClientId, appointment.ClientName, appointment.SourceName })
+            .Select(group =>
+            {
+                var ordered = group.OrderBy(appointment => appointment.StartUtc).ToList();
+                var intervals = ordered.Zip(ordered.Skip(1), (previous, current) => Convert.ToDecimal((current.StartLocal - previous.StartLocal).TotalDays)).ToList();
+                var last = ordered[^1];
+                var daysSinceLastVisit = (context.EndLocal - last.StartLocal.Date).Days;
+                var activityState = currentClientIds.Contains(group.Key.ClientId)
+                    ? "active"
+                    : daysSinceLastVisit > LostAfterDays
+                        ? "lost"
+                        : daysSinceLastVisit > AtRiskAfterDays
+                            ? "at-risk"
+                            : "inactive";
+
+                return new ClientRow(
+                    group.Key.ClientId,
+                    group.Key.ClientName,
+                    group.Key.SourceName,
+                    ordered[0].StartLocal,
+                    last.StartUtc,
+                    ordered.Count,
+                    group.Sum(appointment => appointment.Price),
+                    intervals.Count == 0 ? null : intervals.Average(),
+                    activityState);
+            })
+            .ToList();
+    }
+
+    private static List<ClientActivityTrendDto> BuildTrend(
+        ReportContext context,
+        IReadOnlyCollection<ReportAppointment> visits,
+        IReadOnlyCollection<ClientRow> clients)
+    {
+        return ReportBuckets.Starts(context).Select(bucketStart =>
+        {
+            var bucketEndExclusive = ReportBuckets.EndExclusive(bucketStart, context.GroupBy);
+            var bucketVisits = visits
+                .Where(appointment => appointment.StartLocal >= bucketStart && appointment.StartLocal < bucketEndExclusive)
+                .ToList();
+            return new ClientActivityTrendDto
+            {
+                StartDate = bucketStart < context.StartLocal ? context.StartLocal : bucketStart,
+                EndDate = (bucketEndExclusive > context.EndExclusiveLocal ? context.EndExclusiveLocal : bucketEndExclusive).AddDays(-1),
+                AcquiredClients = clients.Count(client => client.FirstVisitLocal >= bucketStart && client.FirstVisitLocal < bucketEndExclusive),
+                ActiveClients = bucketVisits.Select(appointment => appointment.ClientId).Distinct().Count(),
+                Visits = bucketVisits.Count
+            };
+        }).ToList();
+    }
+
+    private sealed record ClientRow(
+        Ulid ClientId,
+        string ClientName,
+        string SourceName,
+        DateTime FirstVisitLocal,
+        DateTime LastVisitAtUtc,
+        int Visits,
+        decimal Value,
+        decimal? AverageIntervalDays,
+        string ActivityState);
+}
