@@ -53,8 +53,9 @@ using var listener = new ActivityListenerConfiguration()
     .Instrument.AspNetCoreRequests()
     .TraceToSharedLogger();
 
-Log.Information("Starting up");
-Log.Information("Product release {ReleaseVersion} ({ReleaseCodename})", releaseChangelog.Current.Version, releaseChangelog.Current.ResolvedCodename);
+Log.Information(
+    "{StartupBanner:l}",
+    StartupBanner.Render(releaseChangelog.Current.Version, releaseChangelog.Current.ResolvedCodename));
 
 try
 {
