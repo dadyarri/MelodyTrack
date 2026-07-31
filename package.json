@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "vite --host 0.0.0.0",
-    "build": "tsgo -b && vite build",
+    "build": "tsgo -b && npm run build:vite",
+    "build:vite": "vite build",
     "preview": "vite preview --host 0.0.0.0",
     "format": "biome format . --write",
     "format:check": "biome format .",
@@ -28,7 +29,12 @@
     "test:webkit": "node ./scripts/run-webkit-tests.mjs",
     "test:webkit:direct": "vitest run --config vitest.webkit.config.ts",
     "test:watch": "vitest",
-    "verify": "npm run format:check && npm run lint:biome && npm run lint && npm run lint:architecture && npm run check:assets && npm run check:css-compat && npm run check:security && npm run check:url-copy && npm run typecheck && npm run test && npm run test:browser && npm run test:webkit && npm run build && npm run check:bundle",
+    "verify:static": "npm run format:check && npm run lint:biome && npm run lint && npm run lint:architecture && npm run check:assets && npm run check:css-compat && npm run check:security && npm run check:url-copy && npm run typecheck",
+    "verify:unit": "npm run test",
+    "verify:chromium": "npm run test:browser",
+    "verify:bundle": "npm run build:vite && npm run check:bundle",
+    "verify:primary": "npm run verify:static && npm run verify:unit && npm run verify:chromium && npm run verify:bundle",
+    "verify": "npm run verify:primary && npm run test:webkit",
     "verify:fix": "npm run format && npm run lint:fix && npm run verify"
   },
   "browserslist": [
