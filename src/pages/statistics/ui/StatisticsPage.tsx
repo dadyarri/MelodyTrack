@@ -125,15 +125,39 @@ function WorkContent({ report, loading }: { report?: WorkReport; loading: boolea
   return (
     <ReportStack>
       <SummaryGrid>
-        <SummaryCard title="Всего записей" value={summary?.appointments ?? 0} />
-        <SummaryCard title="Проведено" value={summary?.completed ?? 0} />
-        <SummaryCard title="Занято часов" value={formatHours(summary?.occupiedHours)} />
-        <SummaryCard title="Доступно часов" value={formatHours(summary?.availableHours)} />
         <SummaryCard
-          title={<InfoLabel label="Загрузка" tooltip="Занятое записями время относительно доступного рабочего времени." />}
-          value={formatPercent(summary?.workloadPercent)}
+          title={<InfoLabel label="Всего записей" tooltip="Все неудалённые записи, начавшиеся в выбранном периоде." />}
+          value={summary?.appointments ?? 0}
         />
-        <SummaryCard title="Доля отмен" value={formatPercent(summary?.cancellationPercent)} />
+        <SummaryCard
+          title={<InfoLabel label="Проведено" tooltip="Записи с текущим статусом «Проведено»." />}
+          value={summary?.completed ?? 0}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Рабочая ёмкость" tooltip="Рабочее время преподавателей по расписанию за вычетом отпусков." />}
+          value={formatHours(summary?.workingCapacityHours)}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
+              label="Занято в рабочее время"
+              tooltip="Уникальное время записей внутри рабочего расписания; пересечения не считаются дважды."
+            />
+          }
+          value={formatHours(summary?.occupiedWorkingHours)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Свободно в рабочее время" tooltip="Рабочая ёмкость минус уникальное занятое рабочее время." />}
+          value={formatHours(summary?.freeWorkingHours)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Использование ёмкости" tooltip="Занятое рабочее время относительно рабочей ёмкости." />}
+          value={formatPercent(summary?.utilizationPercent)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Доля отмен" tooltip="Отменённые записи относительно всех записей периода." />}
+          value={formatPercent(summary?.cancellationPercent)}
+        />
       </SummaryGrid>
       <ChartGrid>
         <SectionCard title="Динамика работы">
@@ -141,12 +165,12 @@ function WorkContent({ report, loading }: { report?: WorkReport; loading: boolea
             data={report?.trend.map((item) => ({
               key: item.startDate,
               label: formatBucket(item.startDate, item.endDate),
-              values: { occupied: item.occupiedHours, available: item.availableHours },
-              tooltip: `Занято ${formatHours(item.occupiedHours)}, доступно ${formatHours(item.availableHours)}`,
+              values: { occupied: item.occupiedWorkingHours, free: item.freeWorkingHours },
+              tooltip: `Занято ${formatHours(item.occupiedWorkingHours)}, свободно ${formatHours(item.freeWorkingHours)}, ёмкость ${formatHours(item.workingCapacityHours)}`,
             }))}
             series={[
-              { key: "occupied", label: "Занято часов", color: STATS_CHART_COLORS[0] },
-              { key: "available", label: "Доступно часов", color: STATS_CHART_COLORS[2] },
+              { key: "occupied", label: "Занято в рабочее время", color: STATS_CHART_COLORS[0] },
+              { key: "free", label: "Свободно в рабочее время", color: STATS_CHART_COLORS[2] },
             ]}
           />
         </SectionCard>
@@ -184,9 +208,10 @@ function WorkContent({ report, loading }: { report?: WorkReport; loading: boolea
                     { title: "Проведено", dataIndex: "completed" },
                     { title: "Отменено", dataIndex: "cancelled" },
                     { title: "Сгорело", dataIndex: "burned" },
-                    { title: "Занято", dataIndex: "occupiedHours", render: formatHours },
-                    { title: "Доступно", dataIndex: "availableHours", render: formatHours },
-                    { title: "Загрузка", dataIndex: "workloadPercent", render: formatPercent },
+                    { title: "Рабочая ёмкость", dataIndex: "workingCapacityHours", render: formatHours },
+                    { title: "Занято в рабочее время", dataIndex: "occupiedWorkingHours", render: formatHours },
+                    { title: "Свободно в рабочее время", dataIndex: "freeWorkingHours", render: formatHours },
+                    { title: "Использование ёмкости", dataIndex: "utilizationPercent", render: formatPercent },
                   ]}
                 />
               ),
@@ -239,12 +264,42 @@ function FinanceContent({ report, loading }: { report?: FinanceReport; loading: 
   return (
     <ReportStack>
       <SummaryGrid>
-        <SummaryCard title="Выручка по занятиям" value={formatMoney(summary?.revenue)} />
-        <SummaryCard title="Фактические платежи" value={formatOptionalMoney(summary?.payments)} />
-        <SummaryCard title="Расходы" value={formatOptionalMoney(summary?.expenses)} />
-        <SummaryCard title="Чистая прибыль" value={formatOptionalMoney(summary?.netProfit)} />
-        <SummaryCard title="Долг клиентов" value={formatOptionalMoney(summary?.outstandingDebt)} />
-        <SummaryCard title="Средний чек" value={formatOptionalMoney(summary?.averageReceipt)} />
+        <SummaryCard
+          title={<InfoLabel label="Выручка по занятиям" tooltip="Историческая цена проведённых и сгоревших непробных занятий периода." />}
+          value={formatMoney(summary?.revenue)}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
+              label="Фактические платежи"
+              tooltip="Платёжные операции по дате получения; они могут погашать долг другого периода."
+            />
+          }
+          value={formatOptionalMoney(summary?.payments)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Расходы" tooltip="Расходные операции по дате совершения." />}
+          value={formatOptionalMoney(summary?.expenses)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Чистая прибыль" tooltip="Выручка по занятиям минус расходы периода." />}
+          value={formatOptionalMoney(summary?.netProfit)}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel label="Долг клиентов" tooltip="Положительная разница всех начислений и платежей каждого клиента на конец периода." />
+          }
+          value={formatOptionalMoney(summary?.outstandingDebt)}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
+              label="Средняя выручка за занятие"
+              tooltip="Выручка по непробным состоявшимся занятиям, делённая на их количество."
+            />
+          }
+          value={formatOptionalMoney(summary?.averageRevenuePerVisit)}
+        />
       </SummaryGrid>
       {!organizationFigures && !loading ? (
         <Typography.Text type="secondary">
@@ -362,14 +417,55 @@ function ClientsContent({ report, loading }: { report?: ClientsReport; loading: 
     <ReportStack>
       <SummaryGrid>
         <SummaryCard
-          title={<InfoLabel label="Новые клиенты" tooltip="Клиенты, чьё первое состоявшееся занятие пришлось на выбранный период." />}
+          title={
+            <InfoLabel label="Новые клиенты" tooltip="Клиенты, чьё первое состоявшееся непробное занятие пришлось на выбранный период." />
+          }
           value={summary?.acquiredClients ?? 0}
         />
-        <SummaryCard title="Активные клиенты" value={summary?.activeClients ?? 0} />
-        <SummaryCard title="Вернулись из прошлого периода" value={summary?.retainedClients ?? 0} />
-        <SummaryCard title="Удержание" value={formatPercent(summary?.retentionPercent)} />
-        <SummaryCard title="Под риском" value={summary?.atRiskClients ?? 0} />
-        <SummaryCard title="Средняя ценность клиента" value={formatOptionalMoney(summary?.averageClientValue)} />
+        <SummaryCard
+          title={
+            <InfoLabel label="Активные клиенты" tooltip="Клиенты хотя бы с одним проведённым или сгоревшим непробным занятием в периоде." />
+          }
+          value={summary?.activeClients ?? 0}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
+              label="Вернулись из прошлого периода"
+              tooltip="Клиенты с посещениями и в выбранном, и в непосредственно предыдущем периоде той же длины."
+            />
+          }
+          value={summary?.retainedClients ?? 0}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Удержание" tooltip="Вернувшиеся клиенты относительно активных клиентов прошлого периода." />}
+          value={formatPercent(summary?.retentionPercent)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Средняя частота посещений" tooltip="Состоявшиеся занятия периода на одного активного клиента." />}
+          value={formatDecimal(summary?.averageVisitFrequency)}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Под риском" tooltip="Без посещений 31–60 дней; дни отпуска клиента не считаются." />}
+          value={summary?.atRiskClients ?? 0}
+        />
+        <SummaryCard
+          title={<InfoLabel label="Потеряны" tooltip="Без посещений больше 60 дней; дни отпуска клиента не считаются." />}
+          value={summary?.lostClients ?? 0}
+        />
+        <SummaryCard
+          title={<InfoLabel label="В отпуске" tooltip="Неактивные клиенты, чей отпуск включает последний день отчёта." />}
+          value={summary?.onVacationClients ?? 0}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
+              label="Средняя выручка клиента"
+              tooltip="Средняя историческая выручка клиентов с положительной выручкой до конца периода."
+            />
+          }
+          value={formatOptionalMoney(summary?.averageClientValue)}
+        />
       </SummaryGrid>
       <ChartGrid>
         <SectionCard title="Активность клиентов">
@@ -417,9 +513,9 @@ function ClientsContent({ report, loading }: { report?: ClientsReport; loading: 
                   columns={[
                     { title: "Клиент", dataIndex: "clientName" },
                     { title: "Источник", dataIndex: "sourceName" },
-                    { title: "Посещений", dataIndex: "visits" },
-                    { title: "Ценность", dataIndex: "value", render: formatMoney },
-                    { title: "Средний интервал", dataIndex: "averageIntervalDays", render: formatDays },
+                    { title: "Посещений за всё время", dataIndex: "visits" },
+                    { title: "Выручка за всё время", dataIndex: "value", render: formatMoney },
+                    { title: "Средний календарный интервал", dataIndex: "averageIntervalDays", render: formatDays },
                     { title: "Последнее занятие", dataIndex: "lastVisitAtUtc", render: formatOptionalDateTime },
                     { title: "Состояние", dataIndex: "activityState", render: renderActivityState },
                   ]}
@@ -440,7 +536,7 @@ function ClientsContent({ report, loading }: { report?: ClientsReport; loading: 
                     { title: "Источник", dataIndex: "sourceName" },
                     { title: "Новых клиентов", dataIndex: "acquiredClients" },
                     { title: "Активных", dataIndex: "activeClients" },
-                    { title: "Ценность клиентов", dataIndex: "clientValue", render: formatMoney },
+                    { title: "Выручка клиентов за всё время", dataIndex: "clientValue", render: formatMoney },
                   ]}
                 />
               ),
@@ -480,7 +576,13 @@ function loadReport(area: StatisticsArea, params: ReportParams): Promise<ReportD
 }
 
 const statusLabels = { planned: "Запланировано", completed: "Проведено", cancelled: "Отменено", burned: "Сгорело" } as const;
-const activityLabels = { active: "Активен", inactive: "Неактивен", "at-risk": "Под риском", lost: "Потерян" } as const;
+const activityLabels = {
+  active: "Активен",
+  inactive: "Неактивен",
+  "at-risk": "Под риском",
+  lost: "Потерян",
+  "on-vacation": "В отпуске",
+} as const;
 
 function formatPercent(value?: number | null) {
   return value == null ? "—" : `${value.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} %`;
@@ -492,6 +594,10 @@ function formatHours(value?: number | null) {
 
 function formatDays(value?: number | null) {
   return value == null ? "—" : `${value.toLocaleString("ru-RU", { maximumFractionDigits: 1 })} дн.`;
+}
+
+function formatDecimal(value?: number | null) {
+  return value == null ? "—" : value.toLocaleString("ru-RU", { maximumFractionDigits: 1 });
 }
 
 function formatOptionalMoney(value?: number | null) {
@@ -507,6 +613,7 @@ function formatBucket(start: string, end: string) {
 }
 
 function renderActivityState(value: keyof typeof activityLabels) {
-  const color = value === "active" ? "green" : value === "at-risk" ? "orange" : value === "lost" ? "red" : "default";
+  const color =
+    value === "active" ? "green" : value === "at-risk" ? "orange" : value === "lost" ? "red" : value === "on-vacation" ? "blue" : "default";
   return <Tag color={color}>{activityLabels[value]}</Tag>;
 }

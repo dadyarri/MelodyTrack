@@ -109,7 +109,7 @@ const emptyFinanceReport: FinanceReport = {
     expenses: null,
     netProfit: null,
     outstandingDebt: null,
-    averageReceipt: null,
+    averageRevenuePerVisit: null,
     revenueAppointments: 0,
     organizationOnlyFiguresAvailable: false,
   },

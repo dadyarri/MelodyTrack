@@ -86,9 +86,10 @@ export interface WorkReport {
     appointments: number;
     completed: number;
     burned: number;
-    occupiedHours: number;
-    availableHours: number;
-    workloadPercent?: number | null;
+    workingCapacityHours: number;
+    occupiedWorkingHours: number;
+    freeWorkingHours: number;
+    utilizationPercent?: number | null;
     cancellationPercent?: number | null;
   };
   statuses: Array<{ status: AppointmentStatus; count: number; sharePercent?: number | null }>;
@@ -99,9 +100,10 @@ export interface WorkReport {
     completed: number;
     cancelled: number;
     burned: number;
-    occupiedHours: number;
-    availableHours: number;
-    workloadPercent?: number | null;
+    workingCapacityHours: number;
+    occupiedWorkingHours: number;
+    freeWorkingHours: number;
+    utilizationPercent?: number | null;
   }>;
   providers: Array<{
     providerId?: Ulid | null;
@@ -110,9 +112,10 @@ export interface WorkReport {
     completed: number;
     cancelled: number;
     burned: number;
-    occupiedHours: number;
-    availableHours: number;
-    workloadPercent?: number | null;
+    workingCapacityHours: number;
+    occupiedWorkingHours: number;
+    freeWorkingHours: number;
+    utilizationPercent?: number | null;
   }>;
   services: Array<{
     serviceId: Ulid;
@@ -133,7 +136,7 @@ export interface FinanceReport {
     expenses?: number | null;
     netProfit?: number | null;
     outstandingDebt?: number | null;
-    averageReceipt?: number | null;
+    averageRevenuePerVisit?: number | null;
     revenueAppointments: number;
     organizationOnlyFiguresAvailable: boolean;
   };
@@ -159,6 +162,7 @@ export interface ClientsReport {
     retentionPercent?: number | null;
     atRiskClients: number;
     lostClients: number;
+    onVacationClients: number;
     averageVisitFrequency?: number | null;
     averageClientValue?: number | null;
   };
@@ -172,6 +176,6 @@ export interface ClientsReport {
     value: number;
     averageIntervalDays?: number | null;
     lastVisitAtUtc?: string | null;
-    activityState: "active" | "inactive" | "at-risk" | "lost";
+    activityState: "active" | "inactive" | "at-risk" | "lost" | "on-vacation";
   }>;
 }
