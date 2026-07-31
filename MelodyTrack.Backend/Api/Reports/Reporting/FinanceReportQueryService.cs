@@ -20,7 +20,7 @@ public sealed class FinanceReportQueryService(
     {
         await materializer.EnsureAppointmentsGeneratedAsync(context.StartUtc, context.EndExclusiveUtc.AddTicks(-1), ct);
         var appointments = await appointmentQuery.LoadAsync(context, context.StartUtc, context.EndExclusiveUtc, ct);
-        var revenueAppointments = appointments.Where(appointment => appointment.IsVisit).ToList();
+        var revenueAppointments = appointments.Where(appointment => appointment.IsValueVisit).ToList();
         var includesOrganizationFigures = context.ProviderId is null;
 
         var payments = includesOrganizationFigures
@@ -39,9 +39,9 @@ public sealed class FinanceReportQueryService(
                 .ToListAsync(ct)
             : [];
 
-        var debtors = includesOrganizationFigures
+        var debt = includesOrganizationFigures
             ? await BuildDebtorsAsync(context, ct)
-            : [];
+            : DebtResult.Empty;
         var revenue = revenueAppointments.Sum(appointment => appointment.Price);
         var paymentTotal = payments.Sum(payment => payment.Amount);
         var expenseTotal = expenses.Sum(expense => expense.Amount);
@@ -55,8 +55,8 @@ public sealed class FinanceReportQueryService(
                 Payments = includesOrganizationFigures ? paymentTotal : null,
                 Expenses = includesOrganizationFigures ? expenseTotal : null,
                 NetProfit = includesOrganizationFigures ? revenue - expenseTotal : null,
-                OutstandingDebt = includesOrganizationFigures ? debtors.Sum(debtor => debtor.Debt) : null,
-                AverageReceipt = revenueAppointments.Count == 0 ? null : revenue / revenueAppointments.Count,
+                OutstandingDebt = includesOrganizationFigures ? debt.Total : null,
+                AverageRevenuePerVisit = revenueAppointments.Count == 0 ? null : revenue / revenueAppointments.Count,
                 RevenueAppointments = revenueAppointments.Count,
                 OrganizationOnlyFiguresAvailable = includesOrganizationFigures
             },
@@ -71,7 +71,7 @@ public sealed class FinanceReportQueryService(
                 .OrderByDescending(item => item.Amount)
                 .ThenBy(item => item.CategoryName)
                 .ToList(),
-            Debtors = debtors,
+            Debtors = debt.Rows,
             Services = revenueAppointments
                 .GroupBy(appointment => new { appointment.ServiceId, appointment.ServiceName })
                 .Select(group => new FinanceServiceDto
@@ -87,7 +87,7 @@ public sealed class FinanceReportQueryService(
         };
     }
 
-    private async Task<List<FinanceDebtorDto>> BuildDebtorsAsync(ReportContext context, CancellationToken ct)
+    private async Task<DebtResult> BuildDebtorsAsync(ReportContext context, CancellationToken ct)
     {
         var historicalAppointments = await appointmentQuery.LoadAsync(
             context,
@@ -95,14 +95,14 @@ public sealed class FinanceReportQueryService(
             context.EndExclusiveUtc,
             ct);
         var revenueByClient = historicalAppointments
-            .Where(appointment => appointment.IsVisit)
+            .Where(appointment => appointment.IsValueVisit)
             .GroupBy(appointment => new { appointment.ClientId, appointment.ClientName })
             .ToDictionary(
                 group => group.Key,
                 group => group.Sum(appointment => appointment.Price));
         if (revenueByClient.Count == 0)
         {
-            return [];
+            return DebtResult.Empty;
         }
 
         var clientIds = revenueByClient.Keys.Select(key => key.ClientId).ToList();
@@ -112,7 +112,7 @@ public sealed class FinanceReportQueryService(
             .Select(group => new { ClientId = group.Key, Amount = group.Sum(payment => payment.Amount) })
             .ToDictionaryAsync(item => item.ClientId, item => item.Amount, ct);
 
-        return revenueByClient
+        var debtors = revenueByClient
             .Select(pair => new FinanceDebtorDto
             {
                 ClientId = pair.Key.ClientId,
@@ -124,8 +124,9 @@ public sealed class FinanceReportQueryService(
             .Where(item => item.Debt > 0m)
             .OrderByDescending(item => item.Debt)
             .ThenBy(item => item.ClientName)
-            .Take(100)
             .ToList();
+
+        return new DebtResult(debtors.Sum(item => item.Debt), debtors.Take(100).ToList());
     }
 
     private static List<FinanceTrendDto> BuildTrend(
@@ -163,4 +164,8 @@ public sealed class FinanceReportQueryService(
 
     private sealed record PaymentRow(Ulid ClientId, DateTime DateUtc, decimal Amount);
     private sealed record ExpenseRow(DateTime DateUtc, decimal Amount, string CategoryName);
+    private sealed record DebtResult(decimal Total, List<FinanceDebtorDto> Rows)
+    {
+        public static DebtResult Empty { get; } = new(0m, []);
+    }
 }

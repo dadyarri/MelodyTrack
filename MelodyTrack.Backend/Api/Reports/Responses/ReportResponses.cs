@@ -33,9 +33,10 @@ public sealed class WorkReportSummaryDto
     public required int Appointments { get; init; }
     public required int Completed { get; init; }
     public required int Burned { get; init; }
-    public required decimal OccupiedHours { get; init; }
-    public required decimal AvailableHours { get; init; }
-    public decimal? WorkloadPercent { get; init; }
+    public required decimal WorkingCapacityHours { get; init; }
+    public required decimal OccupiedWorkingHours { get; init; }
+    public required decimal FreeWorkingHours { get; init; }
+    public decimal? UtilizationPercent { get; init; }
     public decimal? CancellationPercent { get; init; }
 }
 
@@ -54,9 +55,10 @@ public sealed class WorkTrendDto
     public required int Completed { get; init; }
     public required int Cancelled { get; init; }
     public required int Burned { get; init; }
-    public required decimal OccupiedHours { get; init; }
-    public required decimal AvailableHours { get; init; }
-    public decimal? WorkloadPercent { get; init; }
+    public required decimal WorkingCapacityHours { get; init; }
+    public required decimal OccupiedWorkingHours { get; init; }
+    public required decimal FreeWorkingHours { get; init; }
+    public decimal? UtilizationPercent { get; init; }
 }
 
 public sealed class WorkProviderDto
@@ -67,9 +69,10 @@ public sealed class WorkProviderDto
     public required int Completed { get; init; }
     public required int Cancelled { get; init; }
     public required int Burned { get; init; }
-    public required decimal OccupiedHours { get; init; }
-    public required decimal AvailableHours { get; init; }
-    public decimal? WorkloadPercent { get; init; }
+    public required decimal WorkingCapacityHours { get; init; }
+    public required decimal OccupiedWorkingHours { get; init; }
+    public required decimal FreeWorkingHours { get; init; }
+    public decimal? UtilizationPercent { get; init; }
 }
 
 public sealed class WorkServiceDto
@@ -107,7 +110,7 @@ public sealed class FinanceReportSummaryDto
     public decimal? Expenses { get; init; }
     public decimal? NetProfit { get; init; }
     public decimal? OutstandingDebt { get; init; }
-    public decimal? AverageReceipt { get; init; }
+    public decimal? AverageRevenuePerVisit { get; init; }
     public required int RevenueAppointments { get; init; }
     public required bool OrganizationOnlyFiguresAvailable { get; init; }
 }
@@ -162,6 +165,7 @@ public sealed class ClientsReportSummaryDto
     public decimal? RetentionPercent { get; init; }
     public required int AtRiskClients { get; init; }
     public required int LostClients { get; init; }
+    public required int OnVacationClients { get; init; }
     public decimal? AverageVisitFrequency { get; init; }
     public decimal? AverageClientValue { get; init; }
 }

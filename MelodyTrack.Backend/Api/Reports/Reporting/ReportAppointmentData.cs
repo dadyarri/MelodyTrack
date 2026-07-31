@@ -12,6 +12,7 @@ public sealed record ReportAppointment(
     string SourceName,
     Ulid ServiceId,
     string ServiceName,
+    bool IsConsultation,
     Ulid? ProviderId,
     string ProviderName,
     DateTime StartUtc,
@@ -24,6 +25,7 @@ public sealed record ReportAppointment(
     public decimal DurationHours => Convert.ToDecimal((EndUtc - StartUtc).TotalHours);
     public bool IsOccupied => Status is AppointmentStatus.Planned or AppointmentStatus.Completed or AppointmentStatus.Burned;
     public bool IsVisit => Status is AppointmentStatus.Completed or AppointmentStatus.Burned;
+    public bool IsValueVisit => IsVisit && !IsConsultation;
 }
 
 public interface IReportAppointmentQuery
@@ -50,6 +52,7 @@ public sealed class ReportAppointmentQuery(AppDbContext db) : IReportAppointment
                 SourceName = appointment.Client.Source != null ? appointment.Client.Source.Name : "Без источника",
                 ServiceId = appointment.Service.Id,
                 ServiceName = appointment.Service.Name,
+                IsConsultation = appointment.Service.IsConsultation,
                 ProviderId = appointment.Provider != null ? appointment.Provider.Id : null,
                 ProviderName = appointment.Provider != null
                     ? (appointment.Provider.LastName + " " + appointment.Provider.FirstName).Trim()
@@ -68,7 +71,7 @@ public sealed class ReportAppointmentQuery(AppDbContext db) : IReportAppointment
         var serviceIds = rows.Select(row => row.ServiceId).Distinct().ToList();
         var prices = await db.ServicePriceHistory
             .AsNoTracking()
-            .Where(price => serviceIds.Contains(price.Service.Id) && price.EffectiveDate < endExclusiveUtc)
+            .Where(price => serviceIds.Contains(price.Service.Id))
             .Select(price => new PriceRow(price.Service.Id, price.EffectiveDate, price.Price))
             .ToListAsync(ct);
         var pricesByService = prices
@@ -82,6 +85,7 @@ public sealed class ReportAppointmentQuery(AppDbContext db) : IReportAppointment
                 row.SourceName,
                 row.ServiceId,
                 row.ServiceName,
+                row.IsConsultation,
                 row.ProviderId,
                 row.ProviderName,
                 row.StartUtc,
@@ -106,6 +110,7 @@ public sealed class ReportAppointmentQuery(AppDbContext db) : IReportAppointment
         public required string SourceName { get; init; }
         public required Ulid ServiceId { get; init; }
         public required string ServiceName { get; init; }
+        public required bool IsConsultation { get; init; }
         public Ulid? ProviderId { get; init; }
         public required string ProviderName { get; init; }
         public required DateTime StartUtc { get; init; }
