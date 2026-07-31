@@ -11,7 +11,8 @@ WORKDIR /src
 COPY ["global.json", "."]
 COPY ["MelodyTrack.slnx", "."]
 COPY ["MelodyTrack.Backend/MelodyTrack.Backend.csproj", "MelodyTrack.Backend/"]
-RUN dotnet restore "MelodyTrack.Backend/MelodyTrack.Backend.csproj"
+RUN --mount=type=cache,target=/root/.nuget/packages \
+    dotnet restore "MelodyTrack.Backend/MelodyTrack.Backend.csproj"
 COPY ["MelodyTrack.Backend/", "MelodyTrack.Backend/"]
 WORKDIR "/src/MelodyTrack.Backend"
 RUN dotnet publish "./MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish --no-restore /p:UseAppHost=false /p:InformationalVersion=$RELEASE_VERSION

@@ -12,7 +12,26 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-and-test:
+  release-metadata:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.release.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Validate release changelog
+        run: dotnet run scripts/ReleaseTool.cs -- validate
+      - name: Read release version
+        id: release
+        run: echo "version=$(dotnet run scripts/ReleaseTool.cs -- current-version)" >> "$GITHUB_OUTPUT"
+
+  compile:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -29,18 +48,78 @@ jobs:
             MelodyTrack.slnx
             MelodyTrack.Backend/*.csproj
             MelodyTrack.Backend.Tests/*.csproj
-      - name: Validate release changelog
-        run: dotnet run scripts/ReleaseTool.cs -- validate
       - name: Restore dependencies
         run: dotnet restore MelodyTrack.slnx
       - name: Build
         run: dotnet build MelodyTrack.slnx --no-restore -c Release
+      - name: Upload compiled test module
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: backend-tests-release
+          path: MelodyTrack.Backend.Tests/bin/Release/net10.0
+          if-no-files-found: error
+          retention-days: 1
+          compression-level: 0
+
+  test:
+    runs-on: ubuntu-latest
+    needs: compile
+    name: test (${{ matrix.name }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: unit
+            filter: "/*/*/*/*[Category!=Integration]"
+          - name: integration-a-m
+            filter: "/*/*/(A*)|(B*)|(C*)|(D*)|(E*)|(F*)|(G*)|(H*)|(I*)|(J*)|(K*)|(L*)|(M*)/*[Category=Integration]"
+          - name: integration-n-z
+            filter: "/*/*/(N*)|(O*)|(P*)|(Q*)|(R*)|(S*)|(T*)|(U*)|(V*)|(W*)|(X*)|(Y*)|(Z*)/*[Category=Integration]"
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Download compiled test module
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: backend-tests-release
+          path: MelodyTrack.Backend.Tests/bin/Release/net10.0
       - name: Run tests
-        run: dotnet test MelodyTrack.slnx --no-build --no-restore -c Release --verbosity normal
+        run: |
+          chmod +x MelodyTrack.Backend.Tests/bin/Release/net10.0/MelodyTrack.Backend.Tests
+          MelodyTrack.Backend.Tests/bin/Release/net10.0/MelodyTrack.Backend.Tests --filter-query '${{ matrix.filter }}'
+
+  build-and-test:
+    name: build-and-test
+    runs-on: ubuntu-latest
+    if: ${{ always() }}
+    needs:
+      - release-metadata
+      - compile
+      - test
+    steps:
+      - name: Require successful validation, compilation, and tests
+        env:
+          RELEASE_METADATA_RESULT: ${{ needs.release-metadata.result }}
+          COMPILE_RESULT: ${{ needs.compile.result }}
+          TEST_RESULT: ${{ needs.test.result }}
+        run: |
+          for result in "$RELEASE_METADATA_RESULT" "$COMPILE_RESULT" "$TEST_RESULT"; do
+            if [ "$result" != "success" ]; then
+              exit 1
+            fi
+          done
 
   push-to-docker:
     runs-on: ubuntu-latest
-    needs: build-and-test
+    needs:
+      - build-and-test
+      - release-metadata
     if: github.ref == 'refs/heads/master'
     permissions:
       contents: write
@@ -52,9 +131,6 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-      - name: Read release version
-        id: release
-        run: echo "version=$(dotnet run scripts/ReleaseTool.cs -- current-version)" >> "$GITHUB_OUTPUT"
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
       - name: Login to GitHub Container Registry
@@ -71,13 +147,12 @@ jobs:
           push: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          build-args: RELEASE_VERSION=${{ steps.release.outputs.version }}
+          build-args: RELEASE_VERSION=${{ needs.release-metadata.outputs.version }}
           provenance: mode=max
           sbom: true
           tags: |
             ghcr.io/${{ github.repository_owner }}/melody-track-backend:latest
-            ghcr.io/${{ github.repository_owner }}/melody-track-backend:${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/melody-track-backend:${{ steps.release.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/melody-track-backend:${{ needs.release-metadata.outputs.version }}
       - name: Publish release tag and notes
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

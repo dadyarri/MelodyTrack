@@ -27,7 +27,7 @@ Run from the repository root:
 ```bash
 dotnet restore MelodyTrack.slnx
 dotnet build MelodyTrack.slnx
-dotnet test MelodyTrack.slnx
+dotnet test --solution MelodyTrack.slnx
 ```
 
 For local backend development:

@@ -4,6 +4,6 @@
   "appDomain": "denied",
   "diagnosticMessages": false,
   "parallelizeAssembly": false,
-  "parallelizeTestCollections": false,
+  "parallelizeTestCollections": true,
   "maxParallelThreads": -1
 }
