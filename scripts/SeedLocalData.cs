@@ -4,6 +4,7 @@
 #:project ../MelodyTrack.Backend/MelodyTrack.Backend.csproj
 #:package Bogus@35.6.5
 
+using System.Data;
 using System.Globalization;
 using System.Text.Json;
 using Bogus;
@@ -11,10 +12,9 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
-
-const string demoMarker = "Демо · рекомендации";
 
 try
 {
@@ -52,12 +52,6 @@ try
             $"В базе есть неприменённые миграции ({pendingMigrations.Length}). Сначала запустите приложение и примените миграции.");
     }
 
-    if (await db.ClientSources.AsNoTracking().AnyAsync(source => source.Name == demoMarker))
-    {
-        Console.WriteLine("Демонстрационные данные уже есть: найден источник «Демо · рекомендации». Ничего не изменено.");
-        return 0;
-    }
-
     var providers = await db.Users
         .Include(user => user.Role)
         .Where(user => user.Role.RoleName != UserRoles.Client)
@@ -72,40 +66,75 @@ try
             "Сначала создайте хотя бы одного пользователя приложения. Скрипт привязывает расписание к существующим сотрудникам.");
     }
 
+    var availabilityService = new UserAvailabilityService(db);
+    var availabilities = (await availabilityService.GetAvailabilitiesAsync(
+            providers.Select(provider => provider.Id).ToArray(),
+            CancellationToken.None))
+        .ToDictionary(availability => availability.UserId);
+
     Randomizer.Seed = new Random(options.Seed);
     var faker = new Faker("ru");
     var random = new Random(options.Seed);
-    var periodStart = Utc(options.Year, 1, 1);
-    var periodEnd = options.Year == nowUtc.Year
-        ? nowUtc.Date
-        : Utc(options.Year, 12, 31);
-    var scheduleEnd = options.Year == nowUtc.Year
-        ? Min(periodEnd.AddDays(21), Utc(options.Year, 12, 31))
-        : periodEnd;
+    var localNow = DateTimeUtils.ConvertDateToTimezone(nowUtc, options.TimeZoneId);
+    var firstLocalDate = new DateOnly(options.Year, 1, 1);
+    var lastLocalDate = options.Year == nowUtc.Year
+        ? DateOnly.FromDateTime(localNow)
+        : new DateOnly(options.Year, 12, 31);
+    var scheduleEndLocalDate = options.Year == nowUtc.Year
+        ? EarlierDate(lastLocalDate.AddDays(21), new DateOnly(options.Year, 12, 31))
+        : lastLocalDate;
+    var periodEnd = DateTimeUtils.ConvertLocalDateToUtc(lastLocalDate.AddDays(1), TimeOnly.MinValue, options.TimeZoneId).AddTicks(-1);
 
-    await using var transaction = await db.Database.BeginTransactionAsync();
+    await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable);
 
-    var sources = CreateSources();
-    var services = CreateServices(periodStart, periodEnd);
-    var categories = CreateExpenseCategories();
-    var clients = CreateClients(faker, random, sources, options.ClientCount, periodStart, periodEnd);
+    if (await HasPrimaryDataAsync(db))
+    {
+        Console.WriteLine("Целевые таблицы уже содержат данные. Новые строки не добавлены.");
+        return 0;
+    }
 
-    await db.ClientSources.AddRangeAsync(sources);
+    var sources = await ResolveSourcesAsync(db);
+    var services = CreateServices(options.Year, periodEnd, options.TimeZoneId);
+    var categories = await ResolveExpenseCategoriesAsync(db);
+    var clients = CreateClients(
+        faker,
+        random,
+        sources,
+        options.ClientCount,
+        firstLocalDate,
+        lastLocalDate,
+        options.TimeZoneId);
+
     await db.Services.AddRangeAsync(services.Select(item => item.Service));
     await db.ServicePriceHistory.AddRangeAsync(services.SelectMany(item => item.Prices));
-    await db.ExpenseCategories.AddRangeAsync(categories);
     await db.Clients.AddRangeAsync(clients);
 
+    var candidateSlots = CreateCandidateSlots(
+        providers,
+        availabilities,
+        firstLocalDate,
+        scheduleEndLocalDate,
+        options.TimeZoneId);
+    if (candidateSlots.Count == 0)
+    {
+        throw new InvalidOperationException("В выбранном периоде нет ни одного доступного часового окна преподавателя.");
+    }
+
+    var occupiedSlots = new HashSet<ProviderSlotKey>();
     var appointments = CreateAppointments(
         random,
         clients,
         services,
-        providers,
-        periodStart,
-        scheduleEnd,
+        candidateSlots,
+        occupiedSlots,
         nowUtc);
     var payments = CreatePayments(random, appointments, services, nowUtc, periodEnd);
-    var expenses = CreateExpenses(random, categories, periodStart, periodEnd);
+    var expenses = CreateExpenses(
+        random,
+        categories,
+        options.Year,
+        lastLocalDate,
+        options.TimeZoneId);
 
     await db.Appointments.AddRangeAsync(appointments);
     await db.Payments.AddRangeAsync(payments);
@@ -115,15 +144,38 @@ try
     if (options.Year == nowUtc.Year)
     {
         var weekly = await db.RecurrenceTypes.SingleAsync(type => type.Type == AppointmentRecurrenceType.Weekly);
-        recurrenceRules = CreateRecurrenceRules(random, clients, services, providers, weekly, nowUtc);
+        recurrenceRules = CreateRecurrenceRules(
+            random,
+            clients,
+            services,
+            candidateSlots,
+            occupiedSlots,
+            weekly,
+            nowUtc,
+            options.TimeZoneId);
         await db.RecurrenceRules.AddRangeAsync(recurrenceRules);
+    }
+
+    ValidateSeedData(
+        appointments,
+        payments,
+        recurrenceRules,
+        services,
+        availabilities,
+        options.TimeZoneId,
+        nowUtc);
+
+    if (clients.Count == 0 || services.Count == 0 || appointments.Count == 0 || payments.Count == 0 || expenses.Count == 0)
+    {
+        throw new InvalidOperationException("Набор данных должен содержать клиентов, услуги, занятия, оплаты и расходы.");
     }
 
     await db.SaveChangesAsync();
     await transaction.CommitAsync();
 
     var connection = new NpgsqlConnectionStringBuilder(databaseUrl);
-    Console.WriteLine($"Готово: локальная база {connection.Database} на {connection.Host} заполнена за период с {periodStart:dd.MM.yyyy}.");
+    Console.WriteLine($"Готово: локальная база {connection.Database} на {connection.Host} заполнена с {firstLocalDate:dd.MM.yyyy}.");
+    Console.WriteLine($"Часовой пояс расписания: {options.TimeZoneId}.");
     Console.WriteLine($"Клиенты: {clients.Count}; занятия: {appointments.Count}; оплаты: {payments.Count}; расходы: {expenses.Count}; будущие правила: {recurrenceRules.Count}.");
     Console.WriteLine($"Преподаватели в расписании: {string.Join(", ", providers.Select(user => $"{user.FirstName} {user.LastName}"))}.");
     return 0;
@@ -134,27 +186,52 @@ catch (Exception exception)
     return 1;
 }
 
-static List<ClientSource> CreateSources()
+static async Task<bool> HasPrimaryDataAsync(AppDbContext db)
 {
-    return
-    [
-        Entity(new ClientSource { Name = "Демо · рекомендации" }),
-        Entity(new ClientSource { Name = "Демо · ВКонтакте" }),
-        Entity(new ClientSource { Name = "Демо · Яндекс Карты" }),
-        Entity(new ClientSource { Name = "Демо · сайт" }),
-        Entity(new ClientSource { Name = "Демо · вывеска" })
-    ];
+    return await db.Appointments.AsNoTracking().AnyAsync()
+           || await db.Clients.AsNoTracking().AnyAsync()
+           || await db.Payments.AsNoTracking().AnyAsync()
+           || await db.Expenses.AsNoTracking().AnyAsync()
+           || await db.Services.AsNoTracking().AnyAsync();
 }
 
-static List<SeedService> CreateServices(DateTime periodStart, DateTime periodEnd)
+static async Task<List<ClientSource>> ResolveSourcesAsync(AppDbContext db)
+{
+    string[] names = ["Рекомендации", "ВКонтакте", "Яндекс Карты", "Сайт", "Вывеска"];
+    var existing = await db.ClientSources
+        .Where(source => names.Contains(source.Name))
+        .ToDictionaryAsync(source => source.Name, StringComparer.Ordinal);
+    var result = new List<ClientSource>(names.Length);
+
+    foreach (var name in names)
+    {
+        if (!existing.TryGetValue(name, out var source))
+        {
+            source = Entity(new ClientSource { Name = name });
+            db.ClientSources.Add(source);
+        }
+
+        result.Add(source);
+    }
+
+    return result;
+}
+
+static List<SeedService> CreateServices(int year, DateTime periodEnd, string timezoneId)
 {
     var definitions = new[]
     {
-        new ServiceDefinition("Демо · Вокал", "Вокал", "Индивидуальное занятие по вокалу", false, 2_200m),
-        new ServiceDefinition("Демо · Фортепиано", "Фортепиано", "Индивидуальное занятие по фортепиано", false, 2_400m),
-        new ServiceDefinition("Демо · Гитара", "Гитара", "Индивидуальное занятие по гитаре", false, 2_100m),
-        new ServiceDefinition("Демо · Сольфеджио", "Сольфеджио", "Занятие по музыкальной теории", false, 1_800m),
-        new ServiceDefinition("Демо · Знакомство", "Пробное занятие", "Первое знакомство с преподавателем", true, 1_000m)
+        new ServiceDefinition("Вокал", "Вокал", "Индивидуальное занятие по вокалу", false, 2_200m),
+        new ServiceDefinition("Фортепиано", "Фортепиано", "Индивидуальное занятие по фортепиано", false, 2_400m),
+        new ServiceDefinition("Гитара", "Гитара", "Индивидуальное занятие по гитаре", false, 2_100m),
+        new ServiceDefinition("Сольфеджио", "Сольфеджио", "Занятие по музыкальной теории", false, 1_800m),
+        new ServiceDefinition("Знакомство", "Пробное занятие", "Первое знакомство с преподавателем", true, 1_000m)
+    };
+    var priceDates = new[]
+    {
+        new DateOnly(year, 1, 1),
+        new DateOnly(year, 4, 1),
+        new DateOnly(year, 7, 1)
     };
 
     return definitions.Select(definition =>
@@ -166,13 +243,8 @@ static List<SeedService> CreateServices(DateTime periodStart, DateTime periodEnd
             Description = definition.Description,
             IsConsultation = definition.IsConsultation
         });
-        var priceDates = new[]
-        {
-            periodStart,
-            Utc(periodStart.Year, 4, 1),
-            Utc(periodStart.Year, 7, 1)
-        };
         var prices = priceDates
+            .Select(date => DateTimeUtils.ConvertLocalDateToUtc(date, TimeOnly.MinValue, timezoneId))
             .Where(date => date <= periodEnd)
             .Select((date, index) => Entity(new ServicePrice
             {
@@ -185,15 +257,26 @@ static List<SeedService> CreateServices(DateTime periodStart, DateTime periodEnd
     }).ToList();
 }
 
-static List<ExpenseCategory> CreateExpenseCategories()
+static async Task<List<ExpenseCategory>> ResolveExpenseCategoriesAsync(AppDbContext db)
 {
-    return
-    [
-        Entity(new ExpenseCategory { Name = "Демо · Аренда" }),
-        Entity(new ExpenseCategory { Name = "Демо · Реклама" }),
-        Entity(new ExpenseCategory { Name = "Демо · Оборудование" }),
-        Entity(new ExpenseCategory { Name = "Демо · Расходники" })
-    ];
+    string[] names = ["Аренда", "Реклама", "Оборудование", "Расходники"];
+    var existing = await db.ExpenseCategories
+        .Where(category => names.Contains(category.Name))
+        .ToDictionaryAsync(category => category.Name, StringComparer.Ordinal);
+    var result = new List<ExpenseCategory>(names.Length);
+
+    foreach (var name in names)
+    {
+        if (!existing.TryGetValue(name, out var category))
+        {
+            category = Entity(new ExpenseCategory { Name = name });
+            db.ExpenseCategories.Add(category);
+        }
+
+        result.Add(category);
+    }
+
+    return result;
 }
 
 static List<Client> CreateClients(
@@ -201,43 +284,41 @@ static List<Client> CreateClients(
     Random random,
     IReadOnlyList<ClientSource> sources,
     int count,
-    DateTime periodStart,
-    DateTime periodEnd)
+    DateOnly firstLocalDate,
+    DateOnly lastLocalDate,
+    string timezoneId)
 {
-    string[] patronymics =
-    [
-        "Александрович", "Александровна", "Андреевич", "Андреевна", "Игоревич", "Игоревна",
-        "Михайлович", "Михайловна", "Павлович", "Павловна", "Сергеевич", "Сергеевна"
-    ];
-    var earliestCreation = periodStart;
-    var latestCreation = Min(periodEnd, periodStart.AddMonths(4));
-    var creationRange = Math.Max(1, (latestCreation - earliestCreation).Days);
+    var latestCreationDate = EarlierDate(lastLocalDate, firstLocalDate.AddMonths(4));
+    var creationRange = Math.Max(1, latestCreationDate.DayNumber - firstLocalDate.DayNumber + 1);
     var clients = new List<Client>(count);
 
     for (var index = 0; index < count; index++)
     {
-        var firstName = faker.Name.FirstName();
-        var lastName = faker.Name.LastName();
+        var person = new Person("ru");
         var age = random.Next(8, 62);
-        var birthDate = DateOnly.FromDateTime(periodStart.AddYears(-age).AddDays(-random.Next(0, 365)));
-        var createdAt = earliestCreation.AddDays(random.Next(creationRange)).AddHours(random.Next(9, 19));
-        var contactIndex = index + 1;
+        var birthDate = firstLocalDate.AddYears(-age).AddDays(-random.Next(0, 365));
+        var createdDate = firstLocalDate.AddDays(random.Next(creationRange));
+        var createdAt = DateTimeUtils.ConvertLocalDateToUtc(
+            createdDate,
+            new TimeOnly(random.Next(9, 19), random.Next(0, 60)),
+            timezoneId);
+        var telegramName = faker.Internet.UserName();
+        var vkName = faker.Internet.UserName();
 
         clients.Add(Entity(new Client
         {
-            FirstName = firstName,
-            LastName = lastName,
-            Patronymic = patronymics[random.Next(patronymics.Length)],
+            FirstName = person.FirstName,
+            LastName = person.LastName,
             DateOfBirth = birthDate,
             Source = Pick(random, sources),
-            CreatedAtUtc = DateTime.SpecifyKind(createdAt, DateTimeKind.Utc),
+            CreatedAtUtc = createdAt,
             IsLeadClosed = random.NextDouble() < 0.12,
             Contacts = Entity(new ClientContacts
             {
-                Email = $"demo.client.{contactIndex:000}@example.test",
-                Phone = $"+7999{contactIndex % 10_000_000:0000000}",
-                Telegram = $"https://t.me/demo_client_{contactIndex:000}",
-                Vk = $"https://vk.com/demo_client_{contactIndex:000}"
+                Email = faker.Internet.Email(person.FirstName, person.LastName),
+                Phone = faker.Phone.PhoneNumber("+7##########"),
+                Telegram = $"https://t.me/{telegramName}",
+                Vk = $"https://vk.com/{vkName}"
             })
         }));
     }
@@ -245,13 +326,67 @@ static List<Client> CreateClients(
     return clients;
 }
 
+static List<ProviderSlot> CreateCandidateSlots(
+    IReadOnlyList<User> providers,
+    IReadOnlyDictionary<Ulid, UserAvailabilitySnapshot> availabilities,
+    DateOnly firstLocalDate,
+    DateOnly lastLocalDate,
+    string timezoneId)
+{
+    var timezone = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+    var slots = new List<ProviderSlot>();
+
+    foreach (var provider in providers)
+    {
+        if (!availabilities.TryGetValue(provider.Id, out var availability))
+        {
+            throw new InvalidOperationException($"Не удалось загрузить доступность пользователя {provider.Id}.");
+        }
+
+        for (var date = firstLocalDate; date <= lastLocalDate; date = date.AddDays(1))
+        {
+            if (availability.Vacations.Any(vacation => vacation.StartDate <= date && vacation.EndDate >= date))
+            {
+                continue;
+            }
+
+            var workingDay = availability.WorkingHours.FirstOrDefault(day => day.DayOfWeek == date.DayOfWeek);
+            if (workingDay is null || !workingDay.IsWorkingDay)
+            {
+                continue;
+            }
+
+            var firstMinute = ((workingDay.StartMinuteOfDay + 59) / 60) * 60;
+            for (var minute = firstMinute; minute + 60 <= workingDay.EndMinuteOfDay; minute += 60)
+            {
+                var time = new TimeOnly(minute / 60, minute % 60);
+                var localStart = date.ToDateTime(time, DateTimeKind.Unspecified);
+                if (timezone.IsInvalidTime(localStart))
+                {
+                    continue;
+                }
+
+                var startUtc = DateTimeUtils.ConvertLocalDateToUtc(date, time, timezoneId);
+                var endUtc = startUtc.AddHours(1);
+                if (!UserAvailabilityService.IsAvailable(availability, startUtc, endUtc, timezoneId))
+                {
+                    continue;
+                }
+
+                slots.Add(new ProviderSlot(provider, date, minute, startUtc));
+            }
+        }
+    }
+
+    return slots;
+}
+
 static List<Appointment> CreateAppointments(
     Random random,
     IReadOnlyList<Client> clients,
     IReadOnlyList<SeedService> services,
-    IReadOnlyList<User> providers,
-    DateTime periodStart,
-    DateTime scheduleEnd,
+    IReadOnlyList<ProviderSlot> candidateSlots,
+    ISet<ProviderSlotKey> occupiedSlots,
     DateTime nowUtc)
 {
     string[] notes =
@@ -264,48 +399,51 @@ static List<Appointment> CreateAppointments(
     ];
     var appointments = new List<Appointment>();
 
-    for (var day = periodStart.Date; day <= scheduleEnd.Date; day = day.AddDays(1))
+    foreach (var daySlots in candidateSlots.GroupBy(slot => slot.LocalDate).OrderBy(group => group.Key))
     {
-        if (day.DayOfWeek == DayOfWeek.Sunday)
-        {
-            continue;
-        }
-
-        var eligibleClients = clients
-            .Where(client => !client.IsLeadClosed && client.CreatedAtUtc.Date <= day)
+        var availableSlots = daySlots
+            .Where(slot => !occupiedSlots.Contains(slot.Key))
+            .OrderBy(_ => random.Next())
             .ToArray();
-        if (eligibleClients.Length == 0)
+        var eligibleClients = clients
+            .Where(client => !client.IsLeadClosed && availableSlots.Any(slot => client.CreatedAtUtc <= slot.StartUtc))
+            .ToArray();
+        if (availableSlots.Length == 0 || eligibleClients.Length == 0)
         {
             continue;
         }
 
-        var maximumDailyCount = Math.Min(7, eligibleClients.Length);
+        var maximumDailyCount = Math.Min(7, Math.Min(availableSlots.Length, eligibleClients.Length));
         var minimumDailyCount = Math.Min(3, maximumDailyCount);
         var dailyCount = random.Next(minimumDailyCount, maximumDailyCount + 1);
-        for (var index = 0; index < dailyCount; index++)
+
+        foreach (var slot in availableSlots.Take(dailyCount))
         {
-            var providerIndex = index % providers.Count;
-            var round = index / providers.Count;
-            var startMinute = 9 * 60 + round * 90 + random.Next(0, 3) * 15;
-            var start = AtUtc(day, startMinute);
+            var clientsCreatedBySlot = eligibleClients.Where(client => client.CreatedAtUtc <= slot.StartUtc).ToArray();
+            if (clientsCreatedBySlot.Length == 0)
+            {
+                continue;
+            }
+
             var service = Pick(random, services);
-            var status = start >= nowUtc
+            var status = slot.StartUtc >= nowUtc
                 ? AppointmentStatus.Planned
                 : PastAppointmentStatus(random);
 
             appointments.Add(Entity(new Appointment
             {
-                Client = Pick(random, eligibleClients),
+                Client = Pick(random, clientsCreatedBySlot),
                 Service = service.Service,
-                Provider = providers[providerIndex],
-                StartDate = start,
-                EndDate = start.AddMinutes(service.Service.IsConsultation ? 45 : 60),
+                Provider = slot.Provider,
+                StartDate = slot.StartUtc,
+                EndDate = slot.StartUtc.AddHours(1),
                 Status = status,
-                IsDeleted = start < nowUtc && random.NextDouble() < 0.012,
+                IsDeleted = slot.StartUtc < nowUtc && random.NextDouble() < 0.012,
                 LessonNotes = status == AppointmentStatus.Completed && random.NextDouble() < 0.32
                     ? Pick(random, notes)
                     : null
             }));
+            occupiedSlots.Add(slot.Key);
         }
     }
 
@@ -322,30 +460,33 @@ static List<Payment> CreatePayments(
     var priceHistory = services.ToDictionary(
         item => item.Service.Id,
         item => (IReadOnlyList<ServicePrice>)item.Prices.OrderBy(price => price.EffectiveDate).ToList());
+    var billableAppointments = appointments
+        .Where(item =>
+            !item.IsDeleted
+            && item.StartDate < nowUtc
+            && item.Status is AppointmentStatus.Completed or AppointmentStatus.Burned)
+        .OrderBy(item => item.StartDate)
+        .ToList();
     var payments = new List<Payment>();
 
-    foreach (var appointment in appointments.Where(item =>
-                 !item.IsDeleted &&
-                 item.StartDate < nowUtc &&
-                 item.Status is AppointmentStatus.Completed or AppointmentStatus.Burned))
+    foreach (var clientAppointments in billableAppointments.GroupBy(appointment => appointment.Client.Id))
     {
-        if (random.NextDouble() >= 0.78)
-        {
-            continue;
-        }
+        var orderedAppointments = clientAppointments.OrderBy(appointment => appointment.StartDate).ToArray();
+        var outstandingCount = random.Next(0, Math.Min(2, orderedAppointments.Length) + 1);
 
-        var price = PriceAt(priceHistory[appointment.Service.Id], appointment.StartDate);
-        var amount = random.NextDouble() < 0.12 ? Math.Round(price * 0.5m, 2) : price;
-        var paidAt = appointment.StartDate.AddDays(random.Next(0, 8)).AddHours(random.Next(0, 5));
-        paidAt = Min(Min(paidAt, nowUtc), periodEnd.AddDays(1).AddTicks(-1));
-        payments.Add(Entity(new Payment
+        foreach (var appointment in orderedAppointments.Take(orderedAppointments.Length - outstandingCount))
         {
-            Client = appointment.Client,
-            Service = appointment.Service,
-            Amount = amount,
-            Date = DateTime.SpecifyKind(paidAt, DateTimeKind.Utc),
-            Description = random.NextDouble() < 0.18 ? "Частичная оплата занятия" : "Оплата занятия"
-        }));
+            var paidAt = appointment.StartDate.AddDays(random.Next(0, 8)).AddHours(random.Next(0, 5));
+            paidAt = EarlierDateTime(EarlierDateTime(paidAt, nowUtc), periodEnd);
+            payments.Add(Entity(new Payment
+            {
+                Client = appointment.Client,
+                Service = appointment.Service,
+                Amount = PriceAt(priceHistory[appointment.Service.Id], appointment.StartDate),
+                Date = paidAt,
+                Description = "Оплата занятия"
+            }));
+        }
     }
 
     foreach (var client in appointments
@@ -366,29 +507,43 @@ static List<Payment> CreatePayments(
         }));
     }
 
+    if (payments.Count == 0 && billableAppointments.Count > 0)
+    {
+        var appointment = billableAppointments[0];
+        payments.Add(Entity(new Payment
+        {
+            Client = appointment.Client,
+            Service = appointment.Service,
+            Amount = PriceAt(priceHistory[appointment.Service.Id], appointment.StartDate),
+            Date = EarlierDateTime(nowUtc, periodEnd),
+            Description = "Оплата занятия"
+        }));
+    }
+
     return payments;
 }
 
 static List<Expense> CreateExpenses(
     Random random,
     IReadOnlyList<ExpenseCategory> categories,
-    DateTime periodStart,
-    DateTime periodEnd)
+    int year,
+    DateOnly lastLocalDate,
+    string timezoneId)
 {
     var descriptions = new Dictionary<string, string[]>
     {
-        ["Демо · Аренда"] = ["Аренда студии", "Аренда кабинета"],
-        ["Демо · Реклама"] = ["Продвижение объявлений", "Печать листовок", "Реклама в соцсетях"],
-        ["Демо · Оборудование"] = ["Стойка для микрофона", "Педаль для инструмента", "Наушники"],
-        ["Демо · Расходники"] = ["Ноты и тетради", "Струны", "Канцелярия", "Вода для студии"]
+        ["Аренда"] = ["Аренда студии", "Аренда кабинета"],
+        ["Реклама"] = ["Продвижение объявлений", "Печать листовок", "Реклама в соцсетях"],
+        ["Оборудование"] = ["Стойка для микрофона", "Педаль для инструмента", "Наушники"],
+        ["Расходники"] = ["Ноты и тетради", "Струны", "Канцелярия", "Вода для студии"]
     };
     var expenses = new List<Expense>();
 
-    for (var month = new DateTime(periodStart.Year, periodStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-         month <= periodEnd;
-         month = month.AddMonths(1))
+    for (var month = new DateOnly(year, 1, 1); month <= lastLocalDate; month = month.AddMonths(1))
     {
-        var lastDay = Math.Min(DateTime.DaysInMonth(month.Year, month.Month), periodEnd.Month == month.Month ? periodEnd.Day : 31);
+        var lastDay = month.Year == lastLocalDate.Year && month.Month == lastLocalDate.Month
+            ? lastLocalDate.Day
+            : DateTime.DaysInMonth(month.Year, month.Month);
         var monthlyRent = categories[0];
         expenses.Add(Entity(new Expense
         {
@@ -396,7 +551,10 @@ static List<Expense> CreateExpenses(
             CategoryId = monthlyRent.Id,
             Description = "Аренда студии",
             Amount = random.Next(28, 46) * 1_000m,
-            Date = Utc(month.Year, month.Month, Math.Min(5, lastDay), 11)
+            Date = DateTimeUtils.ConvertLocalDateToUtc(
+                new DateOnly(month.Year, month.Month, Math.Min(5, lastDay)),
+                new TimeOnly(11, 0),
+                timezoneId)
         }));
 
         var otherCount = random.Next(3, 7);
@@ -409,7 +567,10 @@ static List<Expense> CreateExpenses(
                 CategoryId = category.Id,
                 Description = Pick(random, descriptions[category.Name]),
                 Amount = random.Next(4, 80) * 250m,
-                Date = Utc(month.Year, month.Month, random.Next(1, lastDay + 1), random.Next(9, 20))
+                Date = DateTimeUtils.ConvertLocalDateToUtc(
+                    new DateOnly(month.Year, month.Month, random.Next(1, lastDay + 1)),
+                    new TimeOnly(random.Next(9, 20), 0),
+                    timezoneId)
             }));
         }
     }
@@ -421,29 +582,162 @@ static List<AppointmentRecurrenceRule> CreateRecurrenceRules(
     Random random,
     IReadOnlyList<Client> clients,
     IReadOnlyList<SeedService> services,
-    IReadOnlyList<User> providers,
+    IReadOnlyList<ProviderSlot> candidateSlots,
+    ISet<ProviderSlotKey> occupiedSlots,
     RecurrenceType weekly,
-    DateTime nowUtc)
+    DateTime nowUtc,
+    string timezoneId)
 {
     var activeClients = clients.Where(client => !client.IsLeadClosed).OrderBy(_ => random.Next()).Take(6).ToArray();
+    var availableFutureSlots = candidateSlots
+        .Where(slot => slot.StartUtc >= nowUtc && !occupiedSlots.Contains(slot.Key))
+        .OrderBy(_ => random.Next())
+        .ToList();
     var rules = new List<AppointmentRecurrenceRule>();
-    for (var index = 0; index < activeClients.Length; index++)
+    var endDate = DateTimeUtils.ConvertLocalDateToUtc(
+        new DateOnly(nowUtc.Year, 12, 31),
+        new TimeOnly(23, 59),
+        timezoneId);
+
+    foreach (var client in activeClients)
     {
-        var start = nowUtc.Date.AddDays(index + 1).AddHours(10 + index % 4 * 2);
-        var weekdayBit = 1 << (((int)start.DayOfWeek + 6) % 7);
+        var slot = availableFutureSlots.FirstOrDefault(candidate => !occupiedSlots.Contains(candidate.Key));
+        if (slot is null)
+        {
+            break;
+        }
+
+        occupiedSlots.Add(slot.Key);
+        var weekdayBit = 1 << (((int)slot.LocalDate.DayOfWeek + 6) % 7);
         rules.Add(Entity(new AppointmentRecurrenceRule
         {
-            Client = activeClients[index],
+            Client = client,
             Service = Pick(random, services).Service,
-            Provider = providers[index % providers.Count],
-            StartDate = DateTime.SpecifyKind(start, DateTimeKind.Utc),
-            EndDate = Utc(nowUtc.Year, 12, 31, 23, 59),
+            Provider = slot.Provider,
+            StartDate = slot.StartUtc,
+            EndDate = endDate,
             RecurrenceType = weekly,
             RecurrencePattern = weekdayBit
         }));
     }
 
     return rules;
+}
+
+static void ValidateSeedData(
+    IReadOnlyList<Appointment> appointments,
+    IReadOnlyList<Payment> payments,
+    IReadOnlyList<AppointmentRecurrenceRule> recurrenceRules,
+    IReadOnlyList<SeedService> services,
+    IReadOnlyDictionary<Ulid, UserAvailabilitySnapshot> availabilities,
+    string timezoneId,
+    DateTime nowUtc)
+{
+    foreach (var appointment in appointments)
+    {
+        if (appointment.EndDate - appointment.StartDate != TimeSpan.FromHours(1))
+        {
+            throw new InvalidOperationException($"Занятие {appointment.Id} длится не один час.");
+        }
+
+        var localStart = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, timezoneId);
+        if (localStart.Minute != 0 || localStart.Second != 0 || localStart.Millisecond != 0)
+        {
+            throw new InvalidOperationException($"Занятие {appointment.Id} начинается не в начале локального часа.");
+        }
+
+        var provider = appointment.Provider
+                       ?? throw new InvalidOperationException($"У занятия {appointment.Id} не указан преподаватель.");
+        if (!availabilities.TryGetValue(provider.Id, out var availability)
+            || !UserAvailabilityService.IsAvailable(availability, appointment.StartDate, appointment.EndDate, timezoneId))
+        {
+            throw new InvalidOperationException($"Занятие {appointment.Id} выходит за доступность преподавателя.");
+        }
+    }
+
+    var scheduledIntervals = appointments
+        .Where(item => !item.IsDeleted)
+        .Select(item => new ScheduledInterval(item.Provider!.Id, item.StartDate, item.EndDate, $"занятие {item.Id}"))
+        .Concat(recurrenceRules.Select(rule => new ScheduledInterval(
+            rule.Provider!.Id,
+            rule.StartDate,
+            rule.StartDate.AddHours(1),
+            $"правило {rule.Id}")));
+
+    foreach (var providerIntervals in scheduledIntervals.GroupBy(item => item.ProviderId))
+    {
+        var ordered = providerIntervals.OrderBy(item => item.StartUtc).ToArray();
+        for (var index = 1; index < ordered.Length; index++)
+        {
+            if (ordered[index - 1].StartUtc < ordered[index].EndUtc
+                && ordered[index].StartUtc < ordered[index - 1].EndUtc)
+            {
+                throw new InvalidOperationException(
+                    $"У преподавателя {providerIntervals.Key} пересекаются {ordered[index - 1].Description} и {ordered[index].Description}.");
+            }
+        }
+    }
+
+    foreach (var rule in recurrenceRules)
+    {
+        var localStart = DateTimeUtils.ConvertDateToTimezone(rule.StartDate, timezoneId);
+        var provider = rule.Provider
+                       ?? throw new InvalidOperationException($"У правила {rule.Id} не указан преподаватель.");
+        if (localStart.Minute != 0 || localStart.Second != 0
+            || !availabilities.TryGetValue(provider.Id, out var availability)
+            || !UserAvailabilityService.IsAvailable(availability, rule.StartDate, rule.StartDate.AddHours(1), timezoneId))
+        {
+            throw new InvalidOperationException($"Начало правила {rule.Id} не соответствует доступности преподавателя.");
+        }
+    }
+
+    ValidateClientDebt(appointments, payments, services, nowUtc);
+}
+
+static void ValidateClientDebt(
+    IReadOnlyList<Appointment> appointments,
+    IReadOnlyList<Payment> payments,
+    IReadOnlyList<SeedService> services,
+    DateTime nowUtc)
+{
+    var priceHistory = services.ToDictionary(
+        item => item.Service.Id,
+        item => (IReadOnlyList<ServicePrice>)item.Prices.OrderBy(price => price.EffectiveDate).ToList());
+    var billableAppointments = appointments
+        .Where(item =>
+            !item.IsDeleted
+            && item.StartDate < nowUtc
+            && item.Status is AppointmentStatus.Completed or AppointmentStatus.Burned)
+        .GroupBy(item => item.Client.Id);
+
+    foreach (var clientAppointments in billableAppointments)
+    {
+        var ledgers = clientAppointments
+            .OrderBy(item => item.StartDate)
+            .Select(item => PriceAt(priceHistory[item.Service.Id], item.StartDate))
+            .ToArray();
+        var remainingPayments = payments
+            .Where(payment => payment.Client.Id == clientAppointments.Key)
+            .OrderBy(payment => payment.Date)
+            .Select(payment => payment.Amount);
+        var remainders = ledgers.ToArray();
+
+        foreach (var paymentAmount in remainingPayments)
+        {
+            var remaining = paymentAmount;
+            for (var index = 0; index < remainders.Length && remaining > 0; index++)
+            {
+                var allocated = Math.Min(remainders[index], remaining);
+                remainders[index] -= allocated;
+                remaining -= allocated;
+            }
+        }
+
+        if (remainders.Count(remainder => remainder > 0) > 2)
+        {
+            throw new InvalidOperationException($"У клиента {clientAppointments.Key} осталось больше двух неоплаченных занятий.");
+        }
+    }
 }
 
 static AppointmentStatus PastAppointmentStatus(Random random)
@@ -477,17 +771,12 @@ static T Pick<T>(Random random, IReadOnlyList<T> items)
     return items[random.Next(items.Count)];
 }
 
-static DateTime AtUtc(DateTime day, int minuteOfDay)
+static DateTime EarlierDateTime(DateTime left, DateTime right)
 {
-    return DateTime.SpecifyKind(day.Date.AddMinutes(minuteOfDay), DateTimeKind.Utc);
+    return left <= right ? left : right;
 }
 
-static DateTime Utc(int year, int month, int day, int hour = 0, int minute = 0)
-{
-    return new DateTime(year, month, day, hour, minute, 0, DateTimeKind.Utc);
-}
-
-static DateTime Min(DateTime left, DateTime right)
+static DateOnly EarlierDate(DateOnly left, DateOnly right)
 {
     return left <= right ? left : right;
 }
@@ -585,9 +874,18 @@ static string FindBackendRoot()
 
 static bool IsBackendRoot(string path)
 {
-    return File.Exists(Path.Combine(path, "MelodyTrack.slnx")) &&
-           File.Exists(Path.Combine(path, "MelodyTrack.Backend", "Properties", "launchSettings.json"));
+    return File.Exists(Path.Combine(path, "MelodyTrack.slnx"))
+           && File.Exists(Path.Combine(path, "MelodyTrack.Backend", "Properties", "launchSettings.json"));
 }
+
+internal sealed record ProviderSlot(User Provider, DateOnly LocalDate, int StartMinuteOfDay, DateTime StartUtc)
+{
+    public ProviderSlotKey Key => new(Provider.Id, LocalDate, StartMinuteOfDay);
+}
+
+internal sealed record ProviderSlotKey(Ulid ProviderId, DateOnly LocalDate, int StartMinuteOfDay);
+
+internal sealed record ScheduledInterval(Ulid ProviderId, DateTime StartUtc, DateTime EndUtc, string Description);
 
 internal sealed record SeedService(Service Service, List<ServicePrice> Prices);
 
@@ -598,13 +896,14 @@ internal sealed record ServiceDefinition(
     bool IsConsultation,
     decimal BasePrice);
 
-internal sealed record SeedOptions(int Year, int ClientCount, int Seed, bool ShowHelp)
+internal sealed record SeedOptions(int Year, int ClientCount, int Seed, string TimeZoneId, bool ShowHelp)
 {
     public static SeedOptions Parse(string[] arguments, int currentYear)
     {
         var year = currentYear;
         var clientCount = 48;
         int? seed = null;
+        var timezoneId = TimeZoneInfo.Local.Id;
         var showHelp = arguments.Contains("--help", StringComparer.Ordinal) || arguments.Contains("-h", StringComparer.Ordinal);
 
         for (var index = 0; index < arguments.Length; index++)
@@ -622,6 +921,9 @@ internal sealed record SeedOptions(int Year, int ClientCount, int Seed, bool Sho
                 case "--seed":
                     seed = ReadInt(arguments, ref index, "--seed");
                     break;
+                case "--timezone":
+                    timezoneId = ReadString(arguments, ref index, "--timezone");
+                    break;
                 default:
                     throw new InvalidOperationException($"Неизвестный аргумент: {arguments[index]}. Используйте --help.");
             }
@@ -637,31 +939,55 @@ internal sealed record SeedOptions(int Year, int ClientCount, int Seed, bool Sho
             throw new InvalidOperationException("--clients должен быть от 10 до 500.");
         }
 
-        return new SeedOptions(year, clientCount, seed ?? year * 100 + 1, showHelp);
+        try
+        {
+            _ = TimeZoneInfo.FindSystemTimeZoneById(timezoneId);
+        }
+        catch (TimeZoneNotFoundException)
+        {
+            throw new InvalidOperationException($"Часовой пояс «{timezoneId}» не найден.");
+        }
+        catch (InvalidTimeZoneException)
+        {
+            throw new InvalidOperationException($"Данные часового пояса «{timezoneId}» повреждены.");
+        }
+
+        return new SeedOptions(year, clientCount, seed ?? year * 100 + 1, timezoneId, showHelp);
     }
 
     public static void PrintHelp()
     {
-        Console.WriteLine("Заполняет локальную базу MelodyTrack русскими демонстрационными данными начиная с января.");
+        Console.WriteLine("Заполняет локальную базу MelodyTrack реалистичными русскоязычными данными начиная с января.");
         Console.WriteLine();
         Console.WriteLine("Использование:");
         Console.WriteLine("  dotnet run scripts/SeedLocalData.cs");
-        Console.WriteLine("  dotnet run scripts/SeedLocalData.cs -- --year 2026 --clients 60 --seed 42");
+        Console.WriteLine("  dotnet run scripts/SeedLocalData.cs -- --year 2026 --clients 60 --seed 42 --timezone Europe/Moscow");
         Console.WriteLine();
         Console.WriteLine("Параметры:");
-        Console.WriteLine("  --year <год>       год начала данных; по умолчанию текущий");
-        Console.WriteLine("  --clients <число>  количество клиентов, от 10 до 500; по умолчанию 48");
-        Console.WriteLine("  --seed <число>     seed для повторяемой генерации");
+        Console.WriteLine("  --year <год>              год начала данных; по умолчанию текущий");
+        Console.WriteLine("  --clients <число>         количество клиентов, от 10 до 500; по умолчанию 48");
+        Console.WriteLine("  --seed <число>            начальное значение для повторяемой генерации");
+        Console.WriteLine($"  --timezone <идентификатор> часовой пояс расписания; по умолчанию {TimeZoneInfo.Local.Id}");
     }
 
     private static int ReadInt(string[] arguments, ref int index, string option)
     {
-        if (++index >= arguments.Length ||
-            !int.TryParse(arguments[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+        if (++index >= arguments.Length
+            || !int.TryParse(arguments[index], NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
         {
             throw new InvalidOperationException($"Для {option} нужно указать целое число.");
         }
 
         return value;
+    }
+
+    private static string ReadString(string[] arguments, ref int index, string option)
+    {
+        if (++index >= arguments.Length || string.IsNullOrWhiteSpace(arguments[index]))
+        {
+            throw new InvalidOperationException($"Для {option} нужно указать значение.");
+        }
+
+        return arguments[index];
     }
 }
