@@ -97,6 +97,18 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider
         var hasCompletedConsultation = await db.Appointments.AnyAsync(e =>
             e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Completed && e.Service.IsConsultation,
             cancellationToken);
+        var hasPaidAppointmentAfterConsultation = await db.Appointments.AnyAsync(appointment =>
+            appointment.Client.Id == source.Id
+            && !appointment.IsDeleted
+            && !appointment.Service.IsConsultation
+            && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned)
+            && db.Appointments.Any(consultation =>
+                consultation.Client.Id == source.Id
+                && !consultation.IsDeleted
+                && consultation.Status == AppointmentStatus.Completed
+                && consultation.Service.IsConsultation
+                && consultation.StartDate < appointment.StartDate),
+            cancellationToken);
         var hasPlannedConsultation = await db.Appointments.AnyAsync(e =>
             e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.Service.IsConsultation,
             cancellationToken);
@@ -104,6 +116,7 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider
             source.IsLeadClosed,
             hasFutureRegularAppointment,
             hasCompletedConsultation,
+            hasPaidAppointmentAfterConsultation,
             hasPlannedConsultation);
     }
 }

@@ -71,7 +71,14 @@ public class GetClientsEndpoint(
                                 && appointment.Service.IsConsultation)
                             && !client.Appointments.Any(appointment => !appointment.IsDeleted
                                 && appointment.Status == AppointmentStatus.Planned
-                                && appointment.Service.IsConsultation)))),
+                                && appointment.Service.IsConsultation))
+                        || client.Appointments.Any(appointment => !appointment.IsDeleted
+                            && !appointment.Service.IsConsultation
+                            && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned)
+                            && client.Appointments.Any(consultation => !consultation.IsDeleted
+                                && consultation.Status == AppointmentStatus.Completed
+                                && consultation.Service.IsConsultation
+                                && consultation.StartDate < appointment.StartDate)))),
                 ClientLifecycleStatus.ThinkingLead => clientsQuery.Where(client => !client.IsLeadClosed
                     && !client.Appointments.Any(appointment => !appointment.IsDeleted
                         && appointment.Status == AppointmentStatus.Planned
@@ -79,7 +86,14 @@ public class GetClientsEndpoint(
                         && !appointment.Service.IsConsultation)
                     && client.Appointments.Any(appointment => !appointment.IsDeleted
                         && appointment.Status == AppointmentStatus.Completed
-                        && appointment.Service.IsConsultation)),
+                        && appointment.Service.IsConsultation)
+                    && !client.Appointments.Any(appointment => !appointment.IsDeleted
+                        && !appointment.Service.IsConsultation
+                        && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned)
+                        && client.Appointments.Any(consultation => !consultation.IsDeleted
+                            && consultation.Status == AppointmentStatus.Completed
+                            && consultation.Service.IsConsultation
+                            && consultation.StartDate < appointment.StartDate))),
                 ClientLifecycleStatus.Lead => clientsQuery.Where(client => !client.IsLeadClosed
                     && !client.Appointments.Any(appointment => !appointment.IsDeleted
                         && appointment.Status == AppointmentStatus.Planned

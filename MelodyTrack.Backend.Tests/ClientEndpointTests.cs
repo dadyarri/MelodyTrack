@@ -126,6 +126,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         var activeClient = await TestDataFactory.CreateClientAsync(db, "Active", "Client", TestContext.Current.CancellationToken);
         var lead = await TestDataFactory.CreateClientAsync(db, "Open", "Lead", TestContext.Current.CancellationToken);
         var thinking = await TestDataFactory.CreateClientAsync(db, "Thinking", "Lead", TestContext.Current.CancellationToken);
+        var converted = await TestDataFactory.CreateClientAsync(db, "Converted", "Lead", TestContext.Current.CancellationToken);
         var closed = await TestDataFactory.CreateClientAsync(db, "Closed", "Lead", TestContext.Current.CancellationToken);
         closed.IsLeadClosed = true;
         var lesson = await TestDataFactory.CreateServiceAsync(db, "Lesson", TestContext.Current.CancellationToken);
@@ -137,19 +138,21 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         [
             CreateAppointment(activeClient, lesson, admin, future, AppointmentStatus.Planned),
             CreateAppointment(lead, consultation, admin, future, AppointmentStatus.Planned),
-            CreateAppointment(thinking, consultation, admin, past, AppointmentStatus.Completed)
+            CreateAppointment(thinking, consultation, admin, past, AppointmentStatus.Completed),
+            CreateAppointment(converted, consultation, admin, past, AppointmentStatus.Completed),
+            CreateAppointment(converted, lesson, admin, past.AddDays(1), AppointmentStatus.Completed)
         ], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-        var expected = new Dictionary<ClientLifecycleStatus, Ulid>
+        var expected = new Dictionary<ClientLifecycleStatus, IReadOnlyCollection<Ulid>>
         {
-            [ClientLifecycleStatus.Client] = activeClient.Id,
-            [ClientLifecycleStatus.Lead] = lead.Id,
-            [ClientLifecycleStatus.ThinkingLead] = thinking.Id,
-            [ClientLifecycleStatus.ClosedLead] = closed.Id
+            [ClientLifecycleStatus.Client] = [activeClient.Id, converted.Id],
+            [ClientLifecycleStatus.Lead] = [lead.Id],
+            [ClientLifecycleStatus.ThinkingLead] = [thinking.Id],
+            [ClientLifecycleStatus.ClosedLead] = [closed.Id]
         };
 
-        foreach (var (status, clientId) in expected)
+        foreach (var (status, clientIds) in expected)
         {
             using var response = await App.Client.GetAsync(
                 $"/clients?lifecycleStatus={(int)status}&page=1&page_size=20",
@@ -157,8 +160,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             var page = await response.Content.ReadFromJsonAsync<PaginatedResponse<ClientWithBalanceDto>>(TestContext.Current.CancellationToken);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             page.ShouldNotBeNull();
-            page.Data.Count.ShouldBe(1, $"Lifecycle filter {status} should return exactly one client.");
-            page.Data[0].Id.ShouldBe(clientId);
+            page.Data.Select(client => client.Id).ShouldBe(clientIds, ignoreOrder: true);
         }
     }
 

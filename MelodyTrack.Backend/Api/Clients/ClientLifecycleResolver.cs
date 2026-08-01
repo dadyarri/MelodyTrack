@@ -4,7 +4,12 @@ namespace MelodyTrack.Backend.Api.Clients;
 
 public static class ClientLifecycleResolver
 {
-    public static ClientLifecycleStatus Resolve(bool isLeadClosed, bool hasFutureRegularAppointment, bool hasCompletedConsultation, bool hasPlannedConsultation)
+    public static ClientLifecycleStatus Resolve(
+        bool isLeadClosed,
+        bool hasFutureRegularAppointment,
+        bool hasCompletedConsultation,
+        bool hasPaidAppointmentAfterConsultation,
+        bool hasPlannedConsultation)
     {
         if (isLeadClosed)
         {
@@ -16,7 +21,7 @@ public static class ClientLifecycleResolver
             return ClientLifecycleStatus.Client;
         }
 
-        if (hasCompletedConsultation)
+        if (hasCompletedConsultation && !hasPaidAppointmentAfterConsultation)
         {
             return ClientLifecycleStatus.ThinkingLead;
         }
