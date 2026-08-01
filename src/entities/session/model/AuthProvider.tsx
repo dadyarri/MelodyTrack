@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.removeQueries({ queryKey: authQueryKeys.me });
     queryClient.removeQueries({ queryKey: authQueryKeys.sessions });
     queryClient.removeQueries({ queryKey: ["users", "availability", null] });
-    queryClient.removeQueries({ queryKey: ["client-portal"] });
+    queryClient.removeQueries({ queryKey: ["portal"] });
   }, [queryClient]);
 
   const handleSessionExpired = useCallback(() => {
@@ -90,6 +90,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const loadMe = useCallback(
     async (accessToken: string) => {
+      queryClient.removeQueries({ queryKey: ["portal"] });
       authStore.setSession(accessToken);
       setHasSession(true);
       const me = await queryClient.fetchQuery<MeResponse>({

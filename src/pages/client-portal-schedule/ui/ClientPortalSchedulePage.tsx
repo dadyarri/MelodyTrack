@@ -1,11 +1,12 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { App as AntdApp, Button, Card, Space, Tag, Tooltip, Typography } from "antd";
 import dayjs from "dayjs";
+import { useEffect, useMemo } from "react";
 
 import { getAppointmentStatusLabel, getAppointmentStatusTagColor } from "@/entities/appointment";
 import { clientsApi } from "@/entities/client";
 import { useAuth } from "@/entities/session";
-import { clientPortalApi, clientPortalQueryKeys } from "@/features/client-portal";
+import { clientPortalApi, type ClientPortalAppointment, clientPortalQueryKeys } from "@/features/client-portal";
 import { getApiErrorMessages } from "@/shared/api";
 import { formatMoney } from "@/shared/lib";
 import { UrlCopyModal, useUrlCopyModal } from "@/shared/ui";
@@ -16,17 +17,35 @@ import styles from "./ClientPortalSchedulePage.module.css";
 export function ClientPortalSchedulePage() {
   const auth = useAuth();
   const { message } = AntdApp.useApp();
-  const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const startDate = dayjs().startOf("day").toISOString();
-  const endDate = dayjs().add(45, "day").endOf("day").toISOString();
+  const timezone = useMemo(() => Intl.DateTimeFormat().resolvedOptions().timeZone, []);
   const linkedClientId = auth.user?.linkedClientId ?? null;
   const urlModal = useUrlCopyModal(auth.user?.id);
 
   const query = useQuery({
-    queryKey: clientPortalQueryKeys.schedule(linkedClientId, startDate, endDate, timezone),
-    queryFn: () => clientPortalApi.schedule({ timezone, startDate, endDate }),
+    queryKey: clientPortalQueryKeys.schedule(linkedClientId, timezone),
+    queryFn: () => clientPortalApi.schedule({ timezone }),
     enabled: Boolean(linkedClientId),
+    refetchInterval: (currentQuery) => getNextRefreshInterval(currentQuery.state.data),
+    refetchIntervalInBackground: false,
   });
+  const { refetch } = query;
+
+  useEffect(() => {
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === "visible") {
+        void refetch();
+      }
+    };
+
+    window.addEventListener("focus", refreshWhenVisible);
+    window.addEventListener("online", refreshWhenVisible);
+    document.addEventListener("visibilitychange", refreshWhenVisible);
+    return () => {
+      window.removeEventListener("focus", refreshWhenVisible);
+      window.removeEventListener("online", refreshWhenVisible);
+      document.removeEventListener("visibilitychange", refreshWhenVisible);
+    };
+  }, [refetch]);
   const calendarSubscriptionMutation = useMutation({
     mutationFn: (clientId: string) => clientsApi.regenerateCalendarSubscription(clientId),
     onSuccess: (subscription) => {
@@ -45,8 +64,7 @@ export function ClientPortalSchedulePage() {
     },
   });
 
-  const appointments = query.data ?? [];
-  const nextAppointment = appointments[0];
+  const nextAppointment = query.data;
   const balance = auth.user?.balance ?? 0;
   const balanceToneClassName = balance < 0 ? styles.balanceNegative : balance > 0 ? styles.balancePositive : styles.balanceNeutral;
 
@@ -56,7 +74,7 @@ export function ClientPortalSchedulePage() {
         <div className={styles.summaryGrid}>
           <Card loading={query.isLoading} className={styles.heroCard} title="Ближайшее занятие">
             <Space vertical size={10} className={styles.heroCardContent}>
-              {appointments.length > 0 ? (
+              {nextAppointment ? (
                 <>
                   <Typography.Text strong>{formatDateRange(nextAppointment.startDate, nextAppointment.endDate)}</Typography.Text>
                   <Space wrap>
@@ -69,6 +87,13 @@ export function ClientPortalSchedulePage() {
               ) : (
                 <Typography.Text type="secondary">Пока нет запланированных занятий.</Typography.Text>
               )}
+              {query.isError ? (
+                <Typography.Text type="warning">
+                  {nextAppointment
+                    ? "Не удалось обновить расписание. Показаны последние подтверждённые данные."
+                    : "Не удалось обновить расписание."}
+                </Typography.Text>
+              ) : null}
             </Space>
           </Card>
 
@@ -116,4 +141,13 @@ function formatDateRange(startDate: string, endDate: string) {
   const start = dayjs(startDate);
   const end = dayjs(endDate);
   return `${start.format("D MMMM, dddd · HH:mm")} - ${end.format("HH:mm")}`;
+}
+
+function getNextRefreshInterval(nextAppointment: ClientPortalAppointment | null | undefined) {
+  if (!nextAppointment) {
+    return 60_000;
+  }
+
+  const untilEnd = new Date(nextAppointment.endDate).getTime() - Date.now();
+  return Math.max(1_000, Math.min(untilEnd + 1, 60_000));
 }

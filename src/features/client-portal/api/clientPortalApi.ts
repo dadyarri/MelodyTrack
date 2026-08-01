@@ -11,10 +11,10 @@ export interface ClientPortalAppointment {
 }
 
 export const clientPortalApi = {
-  schedule(params: { timezone: string; startDate: string; endDate: string }) {
+  schedule(params: { timezone: string }) {
     return http
-      .get<{ appointments: ClientPortalAppointment[] }>("/client-portal/schedule", { params })
-      .then((response) => response.data.appointments);
+      .get<{ nextAppointment: ClientPortalAppointment | null }>("/client-portal/schedule", { params })
+      .then((response) => response.data.nextAppointment);
   },
   courseEnrollments() {
     return http.get<{ enrollments: CourseEnrollment[] }>("/client-portal/course-enrollments").then((response) => response.data.enrollments);
