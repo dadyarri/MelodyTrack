@@ -1,6 +1,6 @@
 using FastEndpoints;
+using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
-using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -13,15 +13,18 @@ namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 public class GetClientPortalScheduleEndpoint(
     AppDbContext db,
     IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider)
+    : Ep.Req<GetClientPortalScheduleRequest>.Res<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
 {
+    private const int RecurrenceMaterializationHorizonDays = 45;
+
     public override void Configure()
     {
         Get("/client-portal/schedule");
     }
 
-    public override async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetClientPortalScheduleRequest req, CancellationToken ct)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -36,35 +39,35 @@ public class GetClientPortalScheduleEndpoint(
 
         var clientId = currentUser.ClientId.Value;
 
-        var startUtc = DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc);
-        var endUtc = DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc);
-        await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, ct);
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
+        await recurringAppointmentMaterializer.EnsureClientAppointmentsGeneratedAsync(
+            clientId,
+            nowUtc,
+            nowUtc.AddDays(RecurrenceMaterializationHorizonDays),
+            ct);
 
-        var appointments = await db.Appointments
+        var appointment = await db.Appointments
             .AsNoTracking()
             .Include(item => item.CourseTheme)
             .Where(item =>
                 !item.IsDeleted &&
                 item.Client.Id == clientId &&
-                item.StartDate >= startUtc &&
-                item.StartDate <= endUtc)
+                item.Status == AppointmentStatus.Planned &&
+                item.EndDate >= nowUtc)
             .OrderBy(item => item.StartDate)
             .Take(1)
-            .ToListAsync(ct);
+            .SingleOrDefaultAsync(ct);
 
-        var responseAppointments = appointments
-            .Select(ClientPortalAppointmentDto.FromModel)
-            .ToList();
-
-        foreach (var appointment in responseAppointments)
+        var responseAppointment = appointment is null ? null : ClientPortalAppointmentDto.FromModel(appointment);
+        if (responseAppointment is not null)
         {
-            appointment.StartDate = DateTimeUtils.ConvertDateToTimezone(appointment.StartDate, req.Timezone);
-            appointment.EndDate = DateTimeUtils.ConvertDateToTimezone(appointment.EndDate, req.Timezone);
+            responseAppointment.StartDate = DateTimeUtils.ConvertDateToTimezone(responseAppointment.StartDate, req.Timezone);
+            responseAppointment.EndDate = DateTimeUtils.ConvertDateToTimezone(responseAppointment.EndDate, req.Timezone);
         }
 
         return TypedResults.Ok(new GetClientPortalScheduleResponse
         {
-            Appointments = responseAppointments
+            NextAppointment = responseAppointment
         });
     }
 }

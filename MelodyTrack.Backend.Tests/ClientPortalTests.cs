@@ -141,16 +141,15 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         mePayload.IsClientPortal.ShouldBeTrue();
         mePayload.LinkedClientId.ShouldBe(client.Id);
 
-        var scheduleUrl =
-            $"/client-portal/schedule?timezone=UTC&startDate={Uri.EscapeDataString(startDate.AddDays(-1).ToString("O"))}&endDate={Uri.EscapeDataString(endDate.AddDays(1).ToString("O"))}";
+        var scheduleUrl = "/client-portal/schedule?timezone=UTC";
         using var scheduleResponse = await App.Client.GetAsync(scheduleUrl, TestContext.Current.CancellationToken);
         scheduleResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         var schedulePayload = await scheduleResponse.Content.ReadFromJsonAsync<GetClientPortalScheduleResponse>(cancellationToken: TestContext.Current.CancellationToken);
 
         schedulePayload.ShouldNotBeNull();
-        schedulePayload.Appointments.Count.ShouldBe(1);
-        schedulePayload.Appointments[0].Id.ShouldBe(appointment.Id);
-        schedulePayload.Appointments[0].CourseTheme.ShouldBeNull();
+        schedulePayload.NextAppointment.ShouldNotBeNull();
+        schedulePayload.NextAppointment.Id.ShouldBe(appointment.Id);
+        schedulePayload.NextAppointment.CourseTheme.ShouldBeNull();
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
 

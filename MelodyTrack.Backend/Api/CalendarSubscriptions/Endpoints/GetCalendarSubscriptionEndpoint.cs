@@ -21,8 +21,9 @@ public class GetCalendarSubscriptionEndpoint(
     TimeProvider timeProvider)
     : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
 {
-    private const int ClientMaterializationHorizonDays = 14;
-    private const int UserMaterializationHorizonDays = 31;
+    // The upper boundary is inclusive. Past non-cancelled appointments remain
+    // in the feed; only future events are limited to this rolling window.
+    private const int SubscriptionWindowDays = 14;
 
     public override void Configure()
     {
@@ -37,12 +38,13 @@ public class GetCalendarSubscriptionEndpoint(
         if (subscription is null) return TypedResults.NotFound();
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var windowEndUtc = now.AddDays(SubscriptionWindowDays);
         if (subscription.UserId is { } subscribedUserId)
         {
             await recurringAppointmentMaterializer.EnsureProviderAppointmentsGeneratedAsync(
                 subscribedUserId,
                 now,
-                now.AddDays(UserMaterializationHorizonDays),
+                windowEndUtc,
                 ct);
         }
         else
@@ -50,21 +52,22 @@ public class GetCalendarSubscriptionEndpoint(
             await recurringAppointmentMaterializer.EnsureClientAppointmentsGeneratedAsync(
                 subscription.ClientId!.Value,
                 now,
-                now.AddDays(ClientMaterializationHorizonDays),
+                windowEndUtc,
                 ct);
         }
 
         var events = subscription.UserId is { } userId
-            ? await GetUserEventsAsync(userId, ct)
-            : await GetClientEventsAsync(subscription.ClientId!.Value, ct);
+            ? await GetUserEventsAsync(userId, now, windowEndUtc, ct)
+            : await GetClientEventsAsync(subscription.ClientId!.Value, windowEndUtc, ct);
         var calendar = BuildCalendar(events, now);
         return TypedResults.File(Encoding.UTF8.GetBytes(calendar), "text/calendar; charset=utf-8", "melodytrack.ics");
     }
 
-    private async Task<List<CalendarEvent>> GetUserEventsAsync(Ulid userId, CancellationToken ct)
+    private async Task<List<CalendarEvent>> GetUserEventsAsync(Ulid userId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken ct)
     {
         var appointments = await db.Appointments.AsNoTracking()
-            .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
+            .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled
+                && e.StartDate <= windowEndUtc)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, $"{e.Service.Name} ({e.Client.LastName} {e.Client.FirstName})", null))
             .ToListAsync(ct);
         var tasks = await recurringTaskService.GetTasksAsync("UTC", null, RecurringTaskListStatus.Open, ct);
@@ -79,14 +82,16 @@ public class GetCalendarSubscriptionEndpoint(
                     startAtUtc.AddMinutes(15),
                     $"{task.Title}: {task.RelatedPersonDisplayName}",
                     null);
-            }));
+            })
+            .Where(task => task.StartAtUtc >= windowStartUtc && task.StartAtUtc <= windowEndUtc));
         return appointments;
     }
 
-    private async Task<List<CalendarEvent>> GetClientEventsAsync(Ulid clientId, CancellationToken ct)
+    private async Task<List<CalendarEvent>> GetClientEventsAsync(Ulid clientId, DateTime windowEndUtc, CancellationToken ct)
     {
         return await db.Appointments.AsNoTracking()
-            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
+            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled
+                && e.StartDate <= windowEndUtc)
             .OrderBy(e => e.StartDate)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, e.Service.PublicName ?? e.Service.Name, null))
             .ToListAsync(ct);

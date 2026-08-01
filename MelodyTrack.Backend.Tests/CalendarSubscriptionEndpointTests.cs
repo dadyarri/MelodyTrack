@@ -20,7 +20,7 @@ namespace MelodyTrack.Backend.Tests;
 public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task ClientSubscription_ReturnsAllConcreteAppointments()
+    public async Task ClientSubscription_PreservesPastAppointmentsAndLimitsFutureAppointmentsToTheRollingWindow()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -88,7 +88,7 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         calendar.ShouldContain(ToCalendarStart(firstStartUtc));
         calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(1)));
         calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(2)));
-        calendar.ShouldContain(ToCalendarStart(withinHorizonStartUtc));
+        calendar.ShouldNotContain(ToCalendarStart(withinHorizonStartUtc));
         calendar.ShouldNotContain(ToCalendarStart(outsideHorizonStartUtc));
         calendar.ShouldNotContain("RRULE:");
 
@@ -189,7 +189,7 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
             .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
 
         calendar.ShouldContain(ToCalendarStart(firstStartUtc));
-        calendar.ShouldContain(ToCalendarStart(withinHorizonStartUtc));
+        calendar.ShouldNotContain(ToCalendarStart(withinHorizonStartUtc));
         calendar.ShouldNotContain(ToCalendarStart(outsideHorizonStartUtc));
         calendar.ShouldContain("SUMMARY:Фортепиано (Соколова Мария)");
         calendar.ShouldNotContain("RRULE:");
