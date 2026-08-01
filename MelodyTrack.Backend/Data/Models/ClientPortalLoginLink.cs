@@ -10,4 +10,5 @@ public class ClientPortalLoginLink : BaseModel
     public int FailedPinAttempts { get; set; }
     public DateTime? LastFailedPinAttemptAtUtc { get; set; }
     public DateTime? RevokedAtUtc { get; set; }
+    public List<ClientPortalSavedIdentityReference> SavedIdentityReferences { get; set; } = [];
 }

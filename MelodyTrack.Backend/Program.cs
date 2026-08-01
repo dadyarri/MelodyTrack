@@ -5,6 +5,7 @@ using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.Auth.PreProcessors;
+using MelodyTrack.Backend.Api.ClientPortal;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Onboarding;
@@ -150,6 +151,7 @@ try
     builder.Services.AddScoped<SessionSecurityMonitor>();
     builder.Services.AddScoped<AppointmentUpdatePreparationService>();
     builder.Services.AddScoped<CourseProgressService>();
+    builder.Services.AddScoped<ClientPortalSessionService>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
     builder.Services.AddScoped<OnboardingStateService>();
     builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();

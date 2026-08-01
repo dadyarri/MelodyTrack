@@ -101,9 +101,11 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             },
             TestContext.Current.CancellationToken);
         consumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: TestContext.Current.CancellationToken);
+        var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(cancellationToken: TestContext.Current.CancellationToken);
 
         consumePayload.ShouldNotBeNull();
+        consumePayload.SavedIdentity.Reference.ShouldNotBeNullOrWhiteSpace();
+        consumePayload.SavedIdentity.DisplayLabel.ShouldBe("Mila S.");
 
         var storedCredentials = db.ClientPortalLoginLinks
             .AsNoTracking()
@@ -112,7 +114,24 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         storedCredentials.TokenHash.ShouldNotBe(token);
         storedCredentials.PinHash.ShouldNotBe("1234");
         UserUtils.IsValidPassword(storedCredentials.PinHash.ShouldNotBeNull(), "1234").ShouldBeTrue();
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", consumePayload.AccessToken);
+        db.ClientPortalSavedIdentityReferences.AsNoTracking()
+            .Single(item => item.LoginLinkId == storedCredentials.Id)
+            .ReferenceHash.ShouldBe(UserUtils.HashOpaqueToken(consumePayload.SavedIdentity.Reference));
+
+        using var savedStatusResponse = await App.Client.GetAsync(
+            $"/client-portal/auth/saved?reference={Uri.EscapeDataString(consumePayload.SavedIdentity.Reference)}",
+            TestContext.Current.CancellationToken);
+        savedStatusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+
+        using var savedLoginResponse = await App.Client.PostAsJsonAsync(
+            "/client-portal/auth/saved",
+            new { reference = consumePayload.SavedIdentity.Reference, pin = "1234" },
+            TestContext.Current.CancellationToken);
+        savedLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var savedLoginPayload = await savedLoginResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(TestContext.Current.CancellationToken);
+        savedLoginPayload.ShouldNotBeNull();
+        savedLoginPayload.SavedIdentity.Reference.ShouldBe(consumePayload.SavedIdentity.Reference);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", savedLoginPayload.AccessToken);
 
         using var meResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
         meResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
@@ -141,7 +160,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             TestContext.Current.CancellationToken);
         resetPinResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", consumePayload.AccessToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", savedLoginPayload.AccessToken);
         using var revokedMeResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
         revokedMeResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
 
@@ -201,6 +220,11 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
             $"/client-portal/auth/link?token={Uri.EscapeDataString(token)}",
             TestContext.Current.CancellationToken);
         oldLinkStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+
+        using var staleSavedIdentityStatus = await App.Client.GetAsync(
+            $"/client-portal/auth/saved?reference={Uri.EscapeDataString(consumePayload.SavedIdentity.Reference)}",
+            TestContext.Current.CancellationToken);
+        staleSavedIdentityStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
 
         using var rotatedLinkStatus = await App.Client.GetAsync(
             $"/client-portal/auth/link?token={Uri.EscapeDataString(rotatedToken)}",

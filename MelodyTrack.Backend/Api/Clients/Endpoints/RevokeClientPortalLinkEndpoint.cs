@@ -54,6 +54,10 @@ public class RevokeClientPortalLinkEndpoint(
         loginLink.FailedPinAttempts = 0;
         loginLink.LastFailedPinAttemptAtUtc = null;
 
+        await db.ClientPortalSavedIdentityReferences
+            .Where(item => item.LoginLinkId == loginLink.Id)
+            .ExecuteDeleteAsync(ct);
+
         await db.Sessions
             .Where(item => item.User.Id == loginLink.User.Id && !item.WasRevoked)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);

@@ -1,7 +1,6 @@
 using FastEndpoints;
-using MelodyTrack.Backend.Api.Auth;
-using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
+using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.ErrorHandling;
@@ -9,17 +8,15 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using UaDetector;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
 public class AuthenticateClientPortalLinkEndpoint(
     AppDbContext db,
-    IUaDetector uaDetector,
     IAuditLogService auditLogService,
-    RefreshSessionCookieService refreshCookieService,
+    ClientPortalSessionService sessionService,
     TimeProvider timeProvider)
-    : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<LoginResponse>, ApiProblemDetails>>
+    : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>>
 {
     public override void Configure()
     {
@@ -29,7 +26,7 @@ public class AuthenticateClientPortalLinkEndpoint(
         Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
     }
 
-    public override async Task<Results<Ok<LoginResponse>, ApiProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
+    public override async Task<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
     {
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var link = await LoadActiveLinkAsync(req.Token, ct);
@@ -101,29 +98,26 @@ public class AuthenticateClientPortalLinkEndpoint(
         link.FailedPinAttempts = 0;
         link.LastFailedPinAttemptAtUtc = null;
 
-        await db.Sessions
-            .Where(item => item.User.Id == link.User.Id && !item.WasRevoked)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
-
-        var refreshToken = UserUtils.GenerateRandomString(32);
-        var session = new Data.Models.Session
+        var savedReference = UserUtils.GenerateRandomString(32);
+        var savedIdentity = new Data.Models.ClientPortalSavedIdentityReference
         {
             Id = Ulid.NewUlid(),
-            User = link.User,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
-            ValidUntil = nowUtc.AddDays(30)
+            LoginLink = link,
+            LoginLinkId = link.Id,
+            ReferenceHash = UserUtils.HashOpaqueToken(savedReference),
+            CreatedAtUtc = nowUtc,
+            LastUsedAtUtc = nowUtc
         };
-
-        await db.Sessions.AddAsync(session, ct);
+        await db.ClientPortalSavedIdentityReferences.AddAsync(savedIdentity, ct);
+        var accessToken = await sessionService.IssueAsync(link.User, ct);
         await db.SaveChangesAsync(ct);
-        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
 
-        return TypedResults.Ok(new LoginResponse
+        return TypedResults.Ok(new ClientPortalAuthenticationResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(link.User, session.Id, timeProvider),
+            AccessToken = accessToken,
             FirstName = link.User.FirstName,
-            LastName = link.User.LastName
+            LastName = link.User.LastName,
+            SavedIdentity = SavedClientPortalIdentityMapper.ToResponse(link.User, savedReference, nowUtc)
         });
     }
 

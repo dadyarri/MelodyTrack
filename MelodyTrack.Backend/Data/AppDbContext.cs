@@ -22,6 +22,7 @@ public class AppDbContext : DbContext
     public DbSet<Session> Sessions { get; set; }
     public DbSet<PasswordRestorationRequest> PasswordRestorationRequests { get; set; }
     public DbSet<ClientPortalLoginLink> ClientPortalLoginLinks { get; set; }
+    public DbSet<ClientPortalSavedIdentityReference> ClientPortalSavedIdentityReferences { get; set; }
     public DbSet<Client> Clients { get; set; }
     public DbSet<Payment> Payments { get; set; }
     public DbSet<Service> Services { get; set; }
@@ -261,6 +262,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ClientPortalLoginLink>()
             .HasIndex(e => e.TokenHash)
             .IsUnique();
+
+        modelBuilder.Entity<ClientPortalSavedIdentityReference>()
+            .HasOne(e => e.LoginLink)
+            .WithMany(e => e.SavedIdentityReferences)
+            .HasForeignKey(e => e.LoginLinkId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<ClientPortalSavedIdentityReference>()
+            .HasIndex(e => e.ReferenceHash)
+            .IsUnique();
+
+        modelBuilder.Entity<ClientPortalSavedIdentityReference>()
+            .HasIndex(e => e.LoginLinkId);
 
         modelBuilder.Entity<RecurringTaskExecution>()
             .HasIndex(e => e.DeduplicationKey)

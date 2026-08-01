@@ -131,6 +131,9 @@ public class CreateClientPortalLinkEndpoint(
         }
         else
         {
+            await db.ClientPortalSavedIdentityReferences
+                .Where(item => item.LoginLinkId == loginLink.Id)
+                .ExecuteDeleteAsync(ct);
             loginLink.TokenHash = UserUtils.HashOpaqueToken(portalToken);
             loginLink.RevokedAtUtc = null;
             loginLink.FailedPinAttempts = 0;
