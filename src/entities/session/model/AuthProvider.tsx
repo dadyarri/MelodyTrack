@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     queryClient.removeQueries({ queryKey: authQueryKeys.me });
     queryClient.removeQueries({ queryKey: authQueryKeys.sessions });
     queryClient.removeQueries({ queryKey: ["users", "availability", null] });
+    queryClient.removeQueries({ queryKey: ["client-portal"] });
   }, [queryClient]);
 
   const handleSessionExpired = useCallback(() => {

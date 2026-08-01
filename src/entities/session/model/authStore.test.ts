@@ -38,6 +38,15 @@ describe("authStore", () => {
     expect(localStorage.getItem("melodytrack.portalClients")).toBeNull();
   });
 
+  it("retains approved saved-client chooser metadata when the active session is cleared", () => {
+    localStorage.setItem("melodytrack.savedClientIdentities", '{"version":1,"identities":[]}');
+    authStore.setSession("access");
+
+    authStore.clear();
+
+    expect(localStorage.getItem("melodytrack.savedClientIdentities")).toBe('{"version":1,"identities":[]}');
+  });
+
   it("migrates a legacy refresh token and observes logout performed by another tab", () => {
     const listener = vi.fn();
     const unsubscribe = authStore.subscribe(listener);

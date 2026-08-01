@@ -62,6 +62,21 @@ export interface ClientPortalPinAuthInput {
   pinConfirmation?: string;
 }
 
+export interface SavedClientIdentityDto {
+  identityId: string;
+  reference: string;
+  displayLabel: string;
+  lastUsedAtUtc: string;
+}
+
+export interface ClientPortalAuthenticationResponse extends LoginResponse {
+  savedIdentity: SavedClientIdentityDto;
+}
+
+export interface SavedClientPortalStatusResponse {
+  displayLabel: string;
+}
+
 export interface LoginChallengeResponse {
   requiresTwoFactor: boolean;
   canUseOtp: boolean;
@@ -177,7 +192,15 @@ export const authApi = {
     return http.get<ClientPortalLinkStatusResponse>("/client-portal/auth/link", { params: { token } }).then((response) => response.data);
   },
   authenticateClientPortalLink(input: ClientPortalPinAuthInput) {
-    return http.post<LoginResponse>("/client-portal/auth/link", input).then((response) => response.data);
+    return http.post<ClientPortalAuthenticationResponse>("/client-portal/auth/link", input).then((response) => response.data);
+  },
+  getSavedClientPortalStatus(reference: string) {
+    return http
+      .get<SavedClientPortalStatusResponse>("/client-portal/auth/saved", { params: { reference } })
+      .then((response) => response.data);
+  },
+  authenticateSavedClientPortalIdentity(input: { reference: string; pin: string }) {
+    return http.post<ClientPortalAuthenticationResponse>("/client-portal/auth/saved", input).then((response) => response.data);
   },
   verify2Fa(input: Verify2FaInput) {
     return http.post<RecoveryCodesResponse>("/auth/2fa/verify", input).then((response) => response.data);
