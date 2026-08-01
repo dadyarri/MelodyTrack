@@ -30,7 +30,7 @@ export function useOnboardingController({ onCompleted }: { onCompleted?: () => v
   const onboardingQuery = useQuery({
     queryKey: onboardingQueryKeys.state,
     queryFn: () => onboardingApi.getState(),
-    enabled: auth.isAuthenticated,
+    enabled: auth.isAuthenticated && !auth.user?.isClientPortal,
   });
   const journey = useMemo(() => getOnboardingJourney(auth.user), [auth.user]);
   const steps = journey.steps;

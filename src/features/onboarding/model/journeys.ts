@@ -1,16 +1,11 @@
 import type { AppUser } from "@/entities/session";
 
-import { portalJourney } from "../config/portalJourney";
 import { administratorJourney, superuserJourney, teacherJourney } from "../config/staffJourneys";
 import { type OnboardingJourney, onboardingTargetIds } from "./types";
 
-export const onboardingJourneys = [teacherJourney, administratorJourney, superuserJourney, portalJourney] as const;
+export const onboardingJourneys = [teacherJourney, administratorJourney, superuserJourney] as const;
 
 export function getOnboardingJourney(user: AppUser): OnboardingJourney {
-  if (user?.isClientPortal) {
-    return portalJourney;
-  }
-
   if (user?.isSuperuser) {
     return superuserJourney;
   }

@@ -22,9 +22,12 @@ describe("onboarding journeys", () => {
     { flags: {}, expected: "teacher" },
     { flags: { isAdmin: true }, expected: "administrator" },
     { flags: { isAdmin: true, isSuperuser: true }, expected: "superuser" },
-    { flags: { isClientPortal: true }, expected: "portal" },
   ])("selects the $expected journey for the current role", ({ flags, expected }) => {
     expect(getOnboardingJourney({ ...baseUser, ...flags }).id).toBe(expected);
+  });
+
+  it("contains staff journeys only", () => {
+    expect(onboardingJourneys.map((journey) => journey.id)).toEqual(["teacher", "administrator", "superuser"]);
   });
 
   it("keeps every journey short and its definitions valid", () => {

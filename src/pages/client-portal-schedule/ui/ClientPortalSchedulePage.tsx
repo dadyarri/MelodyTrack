@@ -53,7 +53,7 @@ export function ClientPortalSchedulePage() {
   return (
     <>
       <Space vertical size={16} className={styles.stack}>
-        <div className={styles.summaryGrid} data-onboarding-id="portal-schedule-summary">
+        <div className={styles.summaryGrid}>
           <Card loading={query.isLoading} className={styles.heroCard} title="Ближайшее занятие">
             <Space vertical size={10} className={styles.heroCardContent}>
               {appointments.length > 0 ? (
@@ -87,7 +87,7 @@ export function ClientPortalSchedulePage() {
             </Space>
           </Card>
 
-          <Card className={styles.heroCard} title="Подписка на календарь" data-onboarding-id="portal-calendar-subscription">
+          <Card className={styles.heroCard} title="Подписка на календарь">
             <Space vertical size={10} className={styles.heroCardContent}>
               <Typography.Text type="secondary">Добавьте занятия в свой календарь и получайте привычные напоминания.</Typography.Text>
               <Tooltip title="Вы можете добавить свои занятия в любой удобный календарь: Apple Calendar, Google Calendar и другие.">

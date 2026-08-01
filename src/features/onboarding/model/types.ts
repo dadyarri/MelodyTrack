@@ -13,13 +13,10 @@ export const onboardingTargetIds = [
   "users-page-content",
   "audit-page-content",
   "profile-availability",
-  "portal-header",
-  "portal-schedule-summary",
-  "portal-calendar-subscription",
 ] as const;
 
 export type OnboardingTargetId = (typeof onboardingTargetIds)[number];
-export type OnboardingJourneyId = "teacher" | "administrator" | "superuser" | "portal";
+export type OnboardingJourneyId = "teacher" | "administrator" | "superuser";
 export type OnboardingRoute =
   | "/"
   | "/tasks"
@@ -29,8 +26,7 @@ export type OnboardingRoute =
   | "/statistics/work"
   | "/users"
   | "/audit"
-  | "/profile"
-  | "/portal/schedule";
+  | "/profile";
 
 export type OnboardingStepDefinition = {
   id: string;
