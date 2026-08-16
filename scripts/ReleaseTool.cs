@@ -8,9 +8,9 @@ using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 
-var backend = FindBackendRoot();
+var repositoryRoot = FindRepositoryRoot();
 var command = args.FirstOrDefault() ?? "help";
-var changelog = Changelog.Load(Path.Combine(backend, "MelodyTrack.Backend", "changelog.json"));
+var changelog = Changelog.Load(Path.Combine(repositoryRoot, "changelog", "releases"));
 
 switch (command)
 {
@@ -21,88 +21,70 @@ switch (command)
         Console.Write(changelog.Current.Version);
         break;
     case "prepare":
-        PrepareRelease(backend, changelog.Current, args.Skip(1).ToArray());
+        PrepareRelease(repositoryRoot, changelog.Current);
         break;
     case "finalize":
-        FinalizeRelease(backend, args.Skip(1).ToArray());
+        FinalizeRelease(repositoryRoot);
         break;
     case "publish":
-        PublishRelease(backend, changelog.Current);
+        PublishRelease(repositoryRoot, changelog.Current);
         break;
     default:
-        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|prepare|finalize|publish [--frontend <path>]");
+        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|prepare|finalize|publish");
         break;
 }
 
-static void PrepareRelease(string backend, ReleaseEntry current, string[] arguments)
+static void PrepareRelease(string repositoryRoot, ReleaseEntry current)
 {
-    var frontendIndex = Array.IndexOf(arguments, "--frontend");
-    var frontend = frontendIndex >= 0 && frontendIndex + 1 < arguments.Length
-        ? Path.GetFullPath(arguments[frontendIndex + 1])
-        : Path.GetFullPath(Path.Combine(backend, "..", "MelodyTrack.Web"));
     var branch = $"release/{current.Version}";
     var expectedBody = Changelog.Render(current).Trim();
-    var repositories = new[]
-    {
-        new Repository("backend", backend, "dotnet", ["test", "MelodyTrack.slnx", "-c", "Release"]),
-        new Repository("frontend", frontend, "npm", ["run", "verify"])
-    };
+    var repository = new Repository("monorepo", repositoryRoot);
     var createdLocally = new HashSet<string>(StringComparer.Ordinal);
     var pushedThisRun = false;
 
     try
     {
-        Run("gh", ["auth", "status"], backend);
-        foreach (var repository in repositories)
+        Run("gh", ["auth", "status"], repositoryRoot);
+        EnsureCleanSource(repository);
+        repository.OriginalBranch = Output("git", ["branch", "--show-current"], repository.Path);
+        repository.SourceCommit = Output("git", ["rev-parse", "HEAD"], repository.Path);
+        Console.WriteLine($"{repository.Name}: checking {repository.OriginalBranch} against the remote...");
+        FetchReleaseRefs(repository);
+        Run("git", ["merge-tree", "--write-tree", "--quiet", "origin/master", "HEAD"], repository.Path);
+        if (HasRef(repository.Path, $"refs/heads/{branch}"))
         {
-            EnsureCleanSource(repository);
-            repository.OriginalBranch = Output("git", ["branch", "--show-current"], repository.Path);
-            repository.SourceCommit = Output("git", ["rev-parse", "HEAD"], repository.Path);
-            Console.WriteLine($"{repository.Name}: checking {repository.OriginalBranch} against the remote...");
-            FetchReleaseRefs(repository);
-            Run("git", ["merge-tree", "--write-tree", "--quiet", "origin/master", "HEAD"], repository.Path);
-            if (HasRef(repository.Path, $"refs/heads/{branch}"))
-            {
-                throw new InvalidOperationException($"{repository.Name}: local {branch} already exists.");
-            }
-
-            repository.RemoteExists = HasRef(repository.Path, $"refs/remotes/origin/{branch}");
-            Console.WriteLine($"{repository.Name}: checking for an existing release pull request...");
-            repository.PullRequest = FindPullRequest(repository.Path, branch);
-            if (repository.PullRequest is not null
-                && (repository.PullRequest.Title != current.Version || NormalizeBody(repository.PullRequest.Body) != expectedBody))
-            {
-                throw new InvalidOperationException($"{repository.Name}: existing pull request conflicts with the changelog.");
-            }
+            throw new InvalidOperationException($"{repository.Name}: local {branch} already exists.");
         }
 
-        foreach (var repository in repositories)
+        repository.RemoteExists = HasRef(repository.Path, $"refs/remotes/origin/{branch}");
+        Console.WriteLine($"{repository.Name}: checking for an existing release pull request...");
+        repository.PullRequest = FindPullRequest(repository.Path, branch);
+        if (repository.PullRequest is not null
+            && (repository.PullRequest.Title != current.Version || NormalizeBody(repository.PullRequest.Body) != expectedBody))
         {
-            if (repository.RemoteExists)
-            {
-                EnsureAncestor(repository.Path, repository.SourceCommit!, $"origin/{branch}", "source commit");
-                EnsureAncestor(repository.Path, "origin/master", $"origin/{branch}", "master");
-                Run("git", ["switch", "--create", branch, $"origin/{branch}"], repository.Path);
-            }
-            else
-            {
-                Run("git", ["switch", "--no-track", "--create", branch, "origin/master"], repository.Path);
-                Run("git", ["merge", "--no-ff", "--no-edit", repository.SourceCommit!], repository.Path);
-            }
-
-            createdLocally.Add(repository.Path);
+            throw new InvalidOperationException($"{repository.Name}: existing pull request conflicts with the changelog.");
         }
 
-        foreach (var repository in repositories)
+        if (repository.RemoteExists)
         {
-            Run(repository.VerifyCommand, repository.VerifyArguments, repository.Path);
-            if (Output("git", ["status", "--porcelain"], repository.Path).Length > 0)
-            {
-                throw new InvalidOperationException($"{repository.Name}: verification changed the worktree.");
-            }
+            EnsureAncestor(repository.Path, repository.SourceCommit!, $"origin/{branch}", "source commit");
+            EnsureAncestor(repository.Path, "origin/master", $"origin/{branch}", "master");
+            Run("git", ["switch", "--create", branch, $"origin/{branch}"], repository.Path);
+        }
+        else
+        {
+            Run("git", ["switch", "--no-track", "--create", branch, "origin/master"], repository.Path);
+            Run("git", ["merge", "--no-ff", "--no-edit", repository.SourceCommit!], repository.Path);
         }
 
-        foreach (var repository in repositories.Where(repository => !repository.RemoteExists))
+        createdLocally.Add(repository.Path);
+        VerifyRepository(repositoryRoot);
+        if (Output("git", ["status", "--porcelain"], repository.Path).Length > 0)
+        {
+            throw new InvalidOperationException($"{repository.Name}: verification changed the worktree.");
+        }
+
+        if (!repository.RemoteExists)
         {
             Run("git", ["push", "--set-upstream", "origin", branch], repository.Path);
             pushedThisRun = true;
@@ -112,12 +94,9 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
         File.WriteAllText(bodyFile, $"{expectedBody}\n", new UTF8Encoding(false));
         try
         {
-            foreach (var repository in repositories)
-            {
-                var url = repository.PullRequest?.Url
-                    ?? Output("gh", ["pr", "create", "--base", "master", "--head", branch, "--title", current.Version, "--body-file", bodyFile], repository.Path);
-                Console.WriteLine($"{repository.Name}: {url}");
-            }
+            var url = repository.PullRequest?.Url
+                ?? Output("gh", ["pr", "create", "--base", "master", "--head", branch, "--title", current.Version, "--body-file", bodyFile], repository.Path);
+            Console.WriteLine($"{repository.Name}: {url}");
         }
         finally
         {
@@ -126,7 +105,7 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
     }
     finally
     {
-        foreach (var repository in repositories.Where(repository => repository.OriginalBranch is not null))
+        if (repository.OriginalBranch is not null)
         {
             try
             {
@@ -144,58 +123,49 @@ static void PrepareRelease(string backend, ReleaseEntry current, string[] argume
     }
 }
 
-static void FinalizeRelease(string backend, string[] arguments)
+static void FinalizeRelease(string repositoryRoot)
 {
-    var frontendIndex = Array.IndexOf(arguments, "--frontend");
-    var frontend = frontendIndex >= 0 && frontendIndex + 1 < arguments.Length
-        ? Path.GetFullPath(arguments[frontendIndex + 1])
-        : Path.GetFullPath(Path.Combine(backend, "..", "MelodyTrack.Web"));
-    var repositories = new[]
+    var repository = new Repository("monorepo", repositoryRoot);
+    EnsureFinalizeSource(repository);
+    Console.WriteLine($"{repository.Name}: checking merged master state...");
+    FetchReleaseRefs(repository);
+    EnsureAncestor(repository.Path, "master", "origin/master", "local master");
+    EnsureAncestor(repository.Path, "develop", "origin/master", "develop branch");
+    repository.LocalReleaseBranches = GetLocalReleaseBranches(repository.Path);
+    foreach (var branch in repository.LocalReleaseBranches)
     {
-        new Repository("backend", backend, "dotnet", ["test", "MelodyTrack.slnx", "-c", "Release"]),
-        new Repository("frontend", frontend, "npm", ["run", "verify"])
-    };
-
-    foreach (var repository in repositories)
-    {
-        EnsureFinalizeSource(repository);
-        Console.WriteLine($"{repository.Name}: checking merged master state...");
-        FetchReleaseRefs(repository);
-        EnsureAncestor(repository.Path, "master", "origin/master", "local master");
-        EnsureAncestor(repository.Path, "develop", "origin/master", "develop branch");
-        repository.LocalReleaseBranches = GetLocalReleaseBranches(repository.Path);
-        foreach (var branch in repository.LocalReleaseBranches)
-        {
-            EnsureAncestor(repository.Path, branch, "origin/master", branch);
-        }
+        EnsureAncestor(repository.Path, branch, "origin/master", branch);
     }
 
-    foreach (var repository in repositories)
+    Run("git", ["switch", "master"], repository.Path);
+    Run("git", ["merge", "--ff-only", "origin/master"], repository.Path);
+    if (Output("git", ["rev-parse", "master"], repository.Path) != Output("git", ["rev-parse", "origin/master"], repository.Path))
     {
-        Run("git", ["switch", "master"], repository.Path);
-        Run("git", ["merge", "--ff-only", "origin/master"], repository.Path);
-        if (Output("git", ["rev-parse", "master"], repository.Path) != Output("git", ["rev-parse", "origin/master"], repository.Path))
-        {
-            throw new InvalidOperationException($"{repository.Name}: local master does not match origin/master.");
-        }
-
-        Run("git", ["switch", "develop"], repository.Path);
-        Run("git", ["merge", "--ff-only", "master"], repository.Path);
-        foreach (var branch in repository.LocalReleaseBranches)
-        {
-            Run("git", ["branch", "--delete", branch], repository.Path);
-        }
-
-        var commit = Output("git", ["rev-parse", "--short", "develop"], repository.Path);
-        Console.WriteLine($"{repository.Name}: master and develop are at {commit}; removed {repository.LocalReleaseBranches.Length} local release branches.");
+        throw new InvalidOperationException($"{repository.Name}: local master does not match origin/master.");
     }
+
+    Run("git", ["switch", "develop"], repository.Path);
+    Run("git", ["merge", "--ff-only", "master"], repository.Path);
+    foreach (var branch in repository.LocalReleaseBranches)
+    {
+        Run("git", ["branch", "--delete", branch], repository.Path);
+    }
+
+    var commit = Output("git", ["rev-parse", "--short", "develop"], repository.Path);
+    Console.WriteLine($"{repository.Name}: master and develop are at {commit}; removed {repository.LocalReleaseBranches.Length} local release branches.");
 }
 
-static void PublishRelease(string backend, ReleaseEntry current)
+static void VerifyRepository(string repositoryRoot)
+{
+    Run("dotnet", ["test", "MelodyTrack.slnx", "-c", "Release"], repositoryRoot);
+    Run("npm", ["run", "verify"], Path.Combine(repositoryRoot, "MelodyTrack.Web"));
+}
+
+static void PublishRelease(string repositoryRoot, ReleaseEntry current)
 {
     var repository = RequiredEnvironment("GITHUB_REPOSITORY");
     var commit = RequiredEnvironment("GITHUB_SHA");
-    using var pulls = JsonDocument.Parse(Output("gh", ["api", $"repos/{repository}/commits/{commit}/pulls"], backend));
+    using var pulls = JsonDocument.Parse(Output("gh", ["api", $"repos/{repository}/commits/{commit}/pulls"], repositoryRoot));
     var candidates = pulls.RootElement.EnumerateArray().Where(pull =>
         pull.GetProperty("merged_at").ValueKind != JsonValueKind.Null
         && pull.GetProperty("base").GetProperty("ref").GetString() == "master"
@@ -221,11 +191,11 @@ static void PublishRelease(string backend, ReleaseEntry current)
 
     var tag = $"v{current.Version}";
     var title = $"{current.Version} — {current.ResolvedCodename}";
-    Run("gh", ["auth", "setup-git"], backend);
-    Run("git", ["fetch", "--tags", "origin"], backend);
-    if (HasRef(backend, $"refs/tags/{tag}"))
+    Run("gh", ["auth", "setup-git"], repositoryRoot);
+    Run("git", ["fetch", "--tags", "origin"], repositoryRoot);
+    if (HasRef(repositoryRoot, $"refs/tags/{tag}"))
     {
-        if (Output("git", ["rev-list", "-n", "1", tag], backend) != commit)
+        if (Output("git", ["rev-list", "-n", "1", tag], repositoryRoot) != commit)
         {
             throw new InvalidOperationException($"{tag} already points to a different commit.");
         }
@@ -239,11 +209,11 @@ static void PublishRelease(string backend, ReleaseEntry current)
                 "-c", "user.email=41898282+github-actions[bot]@users.noreply.github.com",
                 "tag", "--annotate", tag, commit, "--message", title
             ],
-            backend);
-        Run("git", ["push", "origin", tag], backend);
+            repositoryRoot);
+        Run("git", ["push", "origin", tag], repositoryRoot);
     }
 
-    if (TryOutput("gh", ["release", "view", tag, "--json", "tagName,name,body"], backend, out var releaseJson))
+    if (TryOutput("gh", ["release", "view", tag, "--json", "tagName,name,body"], repositoryRoot, out var releaseJson))
     {
         using var release = JsonDocument.Parse(releaseJson);
         var root = release.RootElement;
@@ -261,7 +231,7 @@ static void PublishRelease(string backend, ReleaseEntry current)
     File.WriteAllText(notesFile, $"{expectedBody}\n", new UTF8Encoding(false));
     try
     {
-        Run("gh", ["release", "create", tag, "--verify-tag", "--title", title, "--notes-file", notesFile], backend);
+        Run("gh", ["release", "create", tag, "--verify-tag", "--title", title, "--notes-file", notesFile], repositoryRoot);
     }
     finally
     {
@@ -269,12 +239,14 @@ static void PublishRelease(string backend, ReleaseEntry current)
     }
 }
 
-static string FindBackendRoot()
+static string FindRepositoryRoot()
 {
     var directory = new DirectoryInfo(Directory.GetCurrentDirectory());
     while (directory is not null)
     {
-        if (File.Exists(Path.Combine(directory.FullName, "MelodyTrack.Backend", "changelog.json")))
+        if (File.Exists(Path.Combine(directory.FullName, "MelodyTrack.slnx"))
+            && Directory.Exists(Path.Combine(directory.FullName, "MelodyTrack.Web"))
+            && Directory.Exists(Path.Combine(directory.FullName, "changelog", "releases")))
         {
             return directory.FullName;
         }
@@ -282,7 +254,7 @@ static string FindBackendRoot()
         directory = directory.Parent;
     }
 
-    throw new DirectoryNotFoundException("Run this application from the backend repository.");
+    throw new DirectoryNotFoundException("Run this application from the MelodyTrack monorepo.");
 }
 
 static string NormalizeBody(string value) => value.Trim().TrimStart('\uFEFF');
@@ -448,19 +420,32 @@ sealed class Changelog
     public IReadOnlyList<ReleaseEntry> Releases { get; }
     public ReleaseEntry Current => Releases[0];
 
-    public static Changelog Load(string path)
+    public static Changelog Load(string releasesDirectory)
     {
-        var root = JsonNode.Parse(File.ReadAllText(path))?.AsObject() ?? throw new InvalidDataException("Changelog must be an object.");
-        RequireKeys(root, ["releases"], "changelog");
-        var array = root["releases"]?.AsArray() ?? throw new InvalidDataException("changelog.releases is required.");
-        if (array.Count == 0) throw new InvalidDataException("changelog.releases must not be empty.");
-        var releases = array.Select((node, index) => Parse(node?.AsObject(), index)).ToArray();
-        if (releases.Select(entry => entry.Version).Distinct(StringComparer.Ordinal).Count() != releases.Length) throw new InvalidDataException("Release versions must be unique.");
-        for (var index = 1; index < releases.Length; index++)
+        if (!Directory.Exists(releasesDirectory)) throw new DirectoryNotFoundException($"Release changelog directory was not found: {releasesDirectory}");
+        var paths = Directory.EnumerateFiles(releasesDirectory, "*.json", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (paths.Length == 0) throw new InvalidDataException("The release changelog must contain at least one JSON file.");
+
+        var releases = paths.Select(path =>
         {
-            if (releases[index].Date > releases[index - 1].Date) throw new InvalidDataException("Releases must be newest first.");
-            if (releases[index].Date == releases[index - 1].Date && Compare(releases[index - 1].Version, releases[index].Version) <= 0) throw new InvalidDataException("Same-day releases must use descending versions.");
-        }
+            var filename = Path.GetFileName(path);
+            var root = JsonNode.Parse(File.ReadAllText(path))?.AsObject() ?? throw new InvalidDataException($"{filename} must be an object.");
+            var release = Parse(root, filename);
+            if (!string.Equals(Path.GetFileNameWithoutExtension(path), release.Version, StringComparison.Ordinal))
+            {
+                throw new InvalidDataException($"{filename} must match release version {release.Version}.");
+            }
+
+            return release;
+        }).ToList();
+        if (releases.Select(entry => entry.Version).Distinct(StringComparer.Ordinal).Count() != releases.Count) throw new InvalidDataException("Release versions must be unique.");
+        releases.Sort((left, right) =>
+        {
+            var dateComparison = right.Date.CompareTo(left.Date);
+            return dateComparison != 0 ? dateComparison : Compare(right.Version, left.Version);
+        });
 
         var byVersion = releases.ToDictionary(entry => entry.Version, StringComparer.Ordinal);
         foreach (var patch in releases.Where(entry => entry.ParentVersion is not null))
@@ -484,12 +469,12 @@ sealed class Changelog
         return builder.ToString();
     }
 
-    private static ReleaseEntry Parse(JsonObject? value, int index)
+    private static ReleaseEntry Parse(JsonObject? value, string location)
     {
-        var entry = value ?? throw new InvalidDataException($"releases[{index}] must be an object.");
-        RequireKeys(entry, ["version", "codename", "date", "changes"], $"releases[{index}]", optionalCodename: true);
+        var entry = value ?? throw new InvalidDataException($"{location} must be an object.");
+        RequireKeys(entry, ["version", "codename", "date", "changes"], location, optionalCodename: true);
         var version = RequiredString(entry, "version");
-        if (!VersionPattern.IsMatch(version)) throw new InvalidDataException($"releases[{index}].version is invalid.");
+        if (!VersionPattern.IsMatch(version)) throw new InvalidDataException($"{location}.version is invalid.");
         var isPatch = version.Count(character => character == '.') == 3;
         var hasCodename = entry.ContainsKey("codename");
         var codename = hasCodename ? RequiredString(entry, "codename") : null;
@@ -536,12 +521,10 @@ sealed class ReleaseEntry(string version, string? codename, DateOnly date, IRead
     public string ResolvedCodename { get; set; } = string.Empty;
 }
 
-sealed class Repository(string name, string path, string verifyCommand, string[] verifyArguments)
+sealed class Repository(string name, string path)
 {
     public string Name { get; } = name;
     public string Path { get; } = path;
-    public string VerifyCommand { get; } = verifyCommand;
-    public string[] VerifyArguments { get; } = verifyArguments;
     public string? OriginalBranch { get; set; }
     public string? SourceCommit { get; set; }
     public bool RemoteExists { get; set; }

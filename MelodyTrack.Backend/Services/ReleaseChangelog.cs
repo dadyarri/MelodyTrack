@@ -8,7 +8,6 @@ namespace MelodyTrack.Backend.Services;
 
 public sealed partial class ReleaseChangelog
 {
-    private static readonly string[] AllowedRootProperties = ["releases"];
     private static readonly string[] AllowedReleaseProperties = ["version", "codename", "date", "changes"];
     private static readonly string[] AllowedChangeProperties = ["new", "improved", "fixed", "security"];
 
@@ -22,50 +21,60 @@ public sealed partial class ReleaseChangelog
     public ReleaseEntry Current => Releases[0];
     public string Etag { get; }
 
-    public static ReleaseChangelog Load(string path)
+    public static ReleaseChangelog Load(string releasesDirectory)
     {
-        var bytes = File.ReadAllBytes(path);
-        using var document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions
+        if (!Directory.Exists(releasesDirectory))
         {
-            AllowTrailingCommas = false,
-            CommentHandling = JsonCommentHandling.Disallow
-        });
-
-        var root = RequireObject(document.RootElement, "changelog");
-        RequireExactProperties(root, AllowedRootProperties, "changelog");
-        var releasesElement = RequireProperty(root, "releases");
-        if (releasesElement.ValueKind != JsonValueKind.Array || releasesElement.GetArrayLength() == 0)
-        {
-            throw new InvalidDataException("changelog.releases must be a non-empty array.");
+            throw new DirectoryNotFoundException($"Release changelog directory was not found: {releasesDirectory}");
         }
 
+        var paths = Directory.EnumerateFiles(releasesDirectory, "*.json", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (paths.Length == 0)
+        {
+            throw new InvalidDataException("The release changelog must contain at least one JSON file.");
+        }
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var releases = new List<ReleaseEntry>();
         var versions = new HashSet<string>(StringComparer.Ordinal);
-        DateOnly? previousDate = null;
-        foreach (var (element, index) in releasesElement.EnumerateArray().Select((value, index) => (value, index)))
+        foreach (var path in paths)
         {
-            var location = $"changelog.releases[{index}]";
-            var release = ParseRelease(element, location);
+            var filename = Path.GetFileName(path);
+            var bytes = File.ReadAllBytes(path);
+            hash.AppendData(Encoding.UTF8.GetBytes(filename));
+            hash.AppendData([0]);
+            hash.AppendData(bytes);
+            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions
+            {
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow
+            });
+            var release = ParseRelease(document.RootElement, filename);
             if (!versions.Add(release.Version))
             {
-                throw new InvalidDataException($"{location}.version is duplicated.");
+                throw new InvalidDataException($"{filename}.version is duplicated.");
             }
 
-            if (previousDate is not null && release.Date > previousDate)
+            if (!string.Equals(Path.GetFileNameWithoutExtension(path), release.Version, StringComparison.Ordinal))
             {
-                throw new InvalidDataException("changelog.releases must be ordered newest first.");
+                throw new InvalidDataException($"{filename} must match release version {release.Version}.");
             }
 
-            if (releases.Count > 0
-                && release.Date == previousDate
-                && CompareVersions(releases[^1].Version, release.Version) <= 0)
-            {
-                throw new InvalidDataException("Releases on the same date must be ordered by descending version.");
-            }
-
-            previousDate = release.Date;
             releases.Add(release);
         }
+
+        releases.Sort((left, right) =>
+        {
+            var dateComparison = right.Date.CompareTo(left.Date);
+            if (dateComparison != 0)
+            {
+                return dateComparison;
+            }
+
+            return CompareVersions(right.Version, left.Version);
+        });
 
         var byVersion = releases.ToDictionary(release => release.Version, StringComparer.Ordinal);
         foreach (var release in releases.Where(release => release.IsPatch))
@@ -78,8 +87,8 @@ public sealed partial class ReleaseChangelog
             release.ResolvedCodename = parent.Codename!;
         }
 
-        var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-        return new ReleaseChangelog(releases, $"\"{hash}\"");
+        var etag = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+        return new ReleaseChangelog(releases, $"\"{etag}\"");
     }
 
     private static int CompareVersions(string left, string right)

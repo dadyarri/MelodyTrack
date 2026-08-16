@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "MelodyTrack release",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "date", "changes"],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^[0-9]{4}\\.(0[1-9]|1[0-2])\\.[1-9][0-9]*(\\.[1-9][0-9]*)?$"
+    },
+    "codename": { "type": "string", "minLength": 1 },
+    "date": { "type": "string", "format": "date" },
+    "changes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["new", "improved", "fixed", "security"],
+      "properties": {
+        "new": { "$ref": "#/$defs/changeList" },
+        "improved": { "$ref": "#/$defs/changeList" },
+        "fixed": { "$ref": "#/$defs/changeList" },
+        "security": { "$ref": "#/$defs/changeList" }
+      }
+    }
+  },
+  "$defs": {
+    "changeList": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  }
+}

@@ -2,9 +2,9 @@
 
 ## Scope
 
-These instructions apply to the current `MelodyTrack.Web` repository. The workspace-root `AGENTS.md` defines shared workflow, roadmap, verification, Git, and security rules and takes precedence if there is a conflict.
+These instructions apply to the `MelodyTrack.Web` project. The repository-root `AGENTS.md` defines shared workflow, roadmap, verification, Git, and security rules and takes precedence if there is a conflict.
 
-The frontend will be merged into the MelodyTrack monorepo by the active roadmap. Preserve these frontend-specific rules after the merge in a nested `AGENTS.md` only if they remain useful at the new frontend path.
+The frontend is part of the MelodyTrack monorepo. Keep these rules scoped to frontend work under this directory.
 
 ## Architecture
 

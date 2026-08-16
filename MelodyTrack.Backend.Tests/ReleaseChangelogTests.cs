@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using System.Text;
+using System.Text.Json;
 using MelodyTrack.Backend.Api.Releases.Responses;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
@@ -17,19 +18,17 @@ public class ReleaseChangelogTests
         var changelog = Load(
             """
             {
-              "releases": [
-                {
-                  "version": "2026.07.1.1",
-                  "date": "2026-07-30",
-                  "changes": { "new": [], "improved": [], "fixed": ["Исправление"], "security": [] }
-                },
-                {
-                  "version": "2026.07.1",
-                  "codename": "Accordatura",
-                  "date": "2026-07-29",
-                  "changes": { "new": ["Релиз"], "improved": [], "fixed": [], "security": [] }
-                }
-              ]
+              "version": "2026.07.1.1",
+              "date": "2026-07-30",
+              "changes": { "new": [], "improved": [], "fixed": ["Исправление"], "security": [] }
+            }
+            """,
+            """
+            {
+              "version": "2026.07.1",
+              "codename": "Accordatura",
+              "date": "2026-07-29",
+              "changes": { "new": ["Релиз"], "improved": [], "fixed": [], "security": [] }
             }
             """);
 
@@ -40,27 +39,36 @@ public class ReleaseChangelogTests
     }
 
     [Theory]
-    [InlineData("{\"releases\":[],\"schemaVersion\":1}")]
-    [InlineData("{\"releases\":[]}")]
-    [InlineData("{\"releases\":[{\"version\":\"2026.07.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}]}")]
-    [InlineData("{\"releases\":[{\"version\":\"2026.07.1.1\",\"codename\":\"Wrong\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}]}")]
-    [InlineData("{\"releases\":[{\"version\":\"2026.07.1.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}]}")]
+    [InlineData("{\"version\":\"2026.07.1\",\"codename\":\"Accordatura\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]},\"schemaVersion\":1}")]
+    [InlineData("{}")]
+    [InlineData("{\"version\":\"2026.07.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
+    [InlineData("{\"version\":\"2026.07.1.1\",\"codename\":\"Wrong\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
+    [InlineData("{\"version\":\"2026.07.1.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     public void Load_RejectsInvalidChangelog(string json)
     {
         Should.Throw<InvalidDataException>(() => Load(json));
     }
 
-    private static ReleaseChangelog Load(string json)
+    private static ReleaseChangelog Load(params string[] releases)
     {
-        var path = Path.Combine(Path.GetTempPath(), $"melodytrack-changelog-{Guid.NewGuid():N}.json");
+        var directory = Path.Combine(Path.GetTempPath(), $"melodytrack-changelog-{Guid.NewGuid():N}");
         try
         {
-            File.WriteAllText(path, json, Encoding.UTF8);
-            return ReleaseChangelog.Load(path);
+            Directory.CreateDirectory(directory);
+            for (var index = 0; index < releases.Length; index++)
+            {
+                using var document = JsonDocument.Parse(releases[index]);
+                var filename = document.RootElement.TryGetProperty("version", out var version)
+                    ? version.GetString()
+                    : $"invalid-{index}";
+                File.WriteAllText(Path.Combine(directory, $"{filename}.json"), releases[index], Encoding.UTF8);
+            }
+
+            return ReleaseChangelog.Load(directory);
         }
         finally
         {
-            File.Delete(path);
+            Directory.Delete(directory, recursive: true);
         }
     }
 }

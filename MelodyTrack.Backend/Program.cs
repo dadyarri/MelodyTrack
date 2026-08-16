@@ -38,7 +38,7 @@ using UaDetector;
 var logLevelSwitch = new LoggingLevelSwitch();
 
 var startupConfiguration = StartupConfigurationValidator.LoadAndValidate(Directory.GetCurrentDirectory());
-var releaseChangelog = ReleaseChangelog.Load(Path.Combine(Directory.GetCurrentDirectory(), "changelog.json"));
+var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
 var environment = startupConfiguration.Environment;
 logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
@@ -433,6 +433,14 @@ catch (Exception ex)
 finally
 {
     await Log.CloseAndFlushAsync();
+}
+
+static string FindReleaseDirectory()
+{
+    var workingDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "changelog", "releases");
+    return Directory.Exists(workingDirectoryPath)
+        ? workingDirectoryPath
+        : Path.Combine(AppContext.BaseDirectory, "changelog", "releases");
 }
 
 static bool ShouldDisableCaching(PathString path)

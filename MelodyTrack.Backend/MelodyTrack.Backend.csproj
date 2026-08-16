@@ -66,12 +66,8 @@
             <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </None>
 
-        <None Update="changelog.json">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        </None>
-
-        <None Update="changelog.schema.json">
+        <None Include="..\changelog\**\*">
+            <Link>changelog\%(RecursiveDir)%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
             <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </None>
