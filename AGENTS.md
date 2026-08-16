@@ -1,182 +1,114 @@
-# AGENTS.md
+# Backend Repository Guidelines
 
 ## Scope
 
-These instructions apply to the whole repository.
+These instructions apply to the current `MelodyTrack.Backend` backend repository. The workspace-root `AGENTS.md` defines shared workflow, roadmap, verification, Git, and security rules and takes precedence if there is a conflict.
 
-## Project Overview
+This file intentionally describes durable backend conventions plus migration boundaries. It must be updated as the repository becomes the unified monorepo; do not preserve legacy FastEndpoints/startup behavior merely because it appears in old code.
 
-MelodyTrack is a custom CRM backend written in C# on .NET 10. The active solution is `MelodyTrack.slnx` and currently includes:
+## Current Backend
 
-- `MelodyTrack.Backend`: ASP.NET Core API using FastEndpoints, EF Core, PostgreSQL, Quartz, Serilog, JWT auth, TOTP 2FA, and Facet DTO mapping.
-- `MelodyTrack.Backend.Tests`: xUnit v3 integration tests using FastEndpoints.Testing, Shouldly, and Testcontainers PostgreSQL.
-- `MelodyTrack.Migrator`: one-shot hosted-service migrator from the legacy v1 PostgreSQL schema to the v2 backend schema.
+The current backend uses .NET 10, ASP.NET Core, EF Core, PostgreSQL, Quartz, Serilog, JWT authentication, TOTP 2FA, and xUnit/Testcontainers integration tests. FastEndpoints, FastEndpoints.Swagger, FluentValidation, startup database initialization, and the existing repository split are **legacy implementation details scheduled for replacement by the active roadmap**. Do not expand their use unless required for an intermediate compatibility step.
 
-Other directories may exist in the repository, but do not assume they are part of the active backend solution unless `MelodyTrack.slnx` is updated.
+Use the SDK selected by `global.json`. PostgreSQL remains the only application database provider.
 
-## Required Tooling
+## Stable Backend Conventions
 
-- Use the .NET SDK from `global.json` (`10.0.100`, rolling forward to the latest installed 10.x feature band is allowed).
-- PostgreSQL is the production database provider.
-- Docker is required for the integration test suite because tests start a PostgreSQL container.
-
-## Common Commands
-
-Run from the repository root:
-
-```bash
-dotnet restore MelodyTrack.slnx
-dotnet build MelodyTrack.slnx
-dotnet test --solution MelodyTrack.slnx
-```
-
-For local backend development:
-
-```bash
-dotnet run --project MelodyTrack.Backend
-```
-
-The `http` launch profile runs on `http://localhost:5230` and expects a frontend origin of `http://localhost:5173`.
-
-## Runtime Configuration
-
-`MelodyTrack.Backend` reads required configuration from environment variables, not from optional config binding. Missing variables throw during startup.
-
-Required backend variables:
-
-- `ASPNETCORE_ENVIRONMENT`
-- `MELODY_TRACK_APP_DOMAIN`
-- `MELODY_TRACK_PUBLIC_API_BASE_URL`
-- `MELODY_TRACK_DATABASE_URL`
-- `MELODY_TRACK_JWT_SIGNING_KEY`
-
-The development launch profile contains local sample values. Do not commit real secrets.
-
-Required migrator variables:
-
-- `MELODYTRACK_V1_DATABASE_URL`
-- `MELODYTRACK_V2_DATABASE_URL`
-
-Note the migrator variable names do not include the underscore after `MELODY`.
-
-## Architecture Conventions
-
-- API features live under `MelodyTrack.Backend/Api/<Feature>/` and are split into `Endpoints`, `Requests`, `Responses`, and `Validators`.
-- Endpoints use FastEndpoints classes such as `Ep.Req<TRequest>.Res<TResponse>` and return typed ASP.NET Core results.
-- Keep request validation in FastEndpoints/FluentValidation validators where possible. Existing validation messages are in Russian; keep user-facing validation errors consistent.
-- Data models live in `MelodyTrack.Backend/Data/Models`.
-- EF Core configuration currently lives mostly in `AppDbContext` and data annotations on models.
-- Migrations live in `MelodyTrack.Backend/Data/Migrations`. Add migrations for schema changes instead of editing generated migration output by hand except for deliberate migration fixes.
-- IDs use `Ulid`; new entities generally assign `Ulid.NewUlid()`.
-- Date/time values stored in PostgreSQL should be normalized to UTC when accepting request input.
-- Use `AsNoTracking()` for read-only queries.
-- Shared query helpers live in `MelodyTrack.Backend/Extensions`, including pagination, fuzzy search, and date range filtering.
-- Fuzzy search depends on the PostgreSQL `fuzzystrmatch` extension and `[FuzzyPath]` for nested string properties.
-- DTO projection/mapping uses Facet in some response types. Prefer existing Facet patterns before adding manual duplicate DTO mapping.
-- Background jobs use Quartz with a persistent PostgreSQL store. `quartz.sql` is needed when preparing databases for Quartz tables.
-- Generate externally visible links through `IPublicUrlBuilder`. `MELODY_TRACK_APP_DOMAIN` is the frontend origin, while `MELODY_TRACK_PUBLIC_API_BASE_URL` is the externally reachable API base path.
-- Use the scoped `ICurrentUserAccessor` for authenticated-user identity throughout request handling; do not parse name/session claims or query the current user directly. `Email` and `SessionId` expose the token identity, while `GetAsync()` caches one tracked user with its role for the request. Load feature-specific navigations explicitly before using them.
-- Inject `TimeProvider` for all clock-sensitive application logic. Use `timeProvider.GetUtcNow().UtcDateTime` rather than `DateTime.UtcNow` or `DateTimeOffset.UtcNow`.
-- Capture the injected clock once before an operation that performs multiple comparisons, writes, or EF queries so every step observes the same instant and EF receives a parameterized value.
-- Do not put live-clock initializers on entity properties. Require creation flows to assign timestamps explicitly from their injected `TimeProvider`.
-- FastEndpoints preprocessors that are not constructor-injected may resolve `TimeProvider` from `HttpContext.RequestServices`. Startup seeding resolves it from the startup scope; Quartz jobs and application services receive it through constructor injection.
-- Test clock-sensitive helpers with a fixed `TimeProvider`; recurrence coverage must include calendar boundaries, provider propagation, repeated/overlapping materialization, and deletion/rematerialization behavior.
-- Idempotent create endpoints use `IRequestReplayService` and the `Idempotency-Key` header. Replay identity is scoped by endpoint and authenticated caller, and the stored SHA-256 request fingerprint prevents reusing a key for a different payload.
-- Keep request replay acquisition and completion inside the same database transaction as entity creation. The acquisition service uses PostgreSQL `ON CONFLICT DO NOTHING`, so concurrent duplicates wait on the database constraint and replay the committed response without application polling.
-- Recurring-task responsibilities live under `Services/RecurringTasks`: `RecurringTaskService` only routes requests; candidate loading and per-rule evaluation belong to `IRecurringTaskCandidateService`, recurring-execution mutations to `IRecurringTaskTransitionService`, custom-task mutations to `ICustomTaskTransitionService`, processed-list queries to `IRecurringTaskQueryService`, message token replacement to `IRecurringTaskTemplateRenderer`, and response shaping to `RecurringTaskPresentationMapper`. Do not move these concerns back into the orchestration service.
-
-## Authentication And Authorization
-
-- JWT auth is configured with FastEndpoints security and `MELODY_TRACK_JWT_SIGNING_KEY`.
-- Auth endpoints under `Api/Auth` include registration, login, refresh, sessions, invite codes, password reset, and 2FA flows.
-- Admin-like users require TOTP during login. Regular users can log in without TOTP unless they have a TOTP secret.
-- Startup checks that the seeded `Superuser` role exists and creates/logs a superuser invite link if no superuser exists.
-
-## Testing Notes
-
-- Tests are integration-style and boot the real app through `AppFixture<Program>`.
-- `MelodyTrackFixture` starts a PostgreSQL Testcontainer, maps `MelodyTrack.Backend/quartz.sql` into the container init directory, sets test environment variables, and lets the app run migrations in `ASPNETCORE_ENVIRONMENT=Test`.
-- Tests may fail if Docker is unavailable or if the PostgreSQL image cannot be pulled.
-- Prefer focused tests in `MelodyTrack.Backend.Tests` for endpoint behavior, auth/session behavior, recurrence generation, and database-query behavior.
-- When testing login endpoints, set a valid `User-Agent` header if device information is part of the flow.
-
-## Style
-
-- Follow `.editorconfig`.
-- Use file-scoped namespaces, nullable reference types, implicit usings, four-space indentation, and braces on new lines.
-- Prefer `var` where the type is apparent or unimportant, matching current code style.
-- Keep public types and members in PascalCase; private instance fields use `_camelCase` when needed.
-- Use collection expressions where they fit existing style.
+- Follow `.editorconfig`: file-scoped namespaces, nullable reference types, implicit usings, four-space indentation, braces on new lines, and existing naming conventions.
+- Prefer `var` where the type is apparent or unimportant.
 - Keep comments sparse and useful.
+- Preserve Russian user-facing API/validation messages unless localization is explicitly in scope.
+- Use `Ulid` consistently for entities that already use ULIDs.
+- Normalize persisted timestamps to UTC.
+- Inject `TimeProvider` into clock-sensitive application logic; do not add direct application dependencies on `DateTime.UtcNow` or `DateTimeOffset.UtcNow`.
+- Capture one clock value before a multi-step operation that must observe a consistent instant.
+- Do not place live-clock initializers on entity properties.
+- Use `AsNoTracking()` for read-only EF queries when tracking is unnecessary.
+- Keep PostgreSQL-specific behavior where the application depends on it; do not introduce a second runtime database provider.
 
-## Change Discipline
+## API Migration Rules
 
-- Keep changes scoped to the active backend solution unless explicitly asked to touch other projects.
-- Do not alter generated EF migration designer files unless the migration itself requires regeneration or a precise manual repair.
-- Do not introduce another database provider for app code; SQLite appears only as a referenced package and PostgreSQL is the configured runtime provider.
-- Avoid broad refactors in endpoint signatures, auth utilities, model relationships, or Quartz setup without tests.
-- Preserve Russian user-facing API messages unless the task explicitly asks to change localization.
+During the Minimal API migration:
 
-## Maintenance Conventions
+- migrate FastEndpoints feature-by-feature; temporary coexistence is allowed when required for a safe incremental migration;
+- do not introduce new FastEndpoints abstractions that will immediately be removed;
+- new target endpoints use the roadmap-defined class-level `[ApiEndpoint(ApiMethod, route)]` convention and generated registration;
+- target endpoint classes expose exactly one `public static HandleAsync` and accept a `CancellationToken`;
+- use ordinary Minimal API parameter injection for services and `AppDbContext`;
+- direct `AppDbContext` access is allowed for straightforward endpoint-specific data access;
+- use typed Minimal API results by default;
+- keep native ASP.NET Core authorization, validation, OpenAPI, DI, serialization, and Problem Details as framework concerns rather than extending the custom generator to reproduce them;
+- keep coarse role authorization in centralized DB-backed policies and resource-specific checks close to the operation;
+- the real backend route prefix is `/api`; do not add route-version prefixes unless explicitly requested later.
 
-- `UseSerilogRequestLogging()` must stay before endpoint middleware so all API requests receive request timing and status logging.
-- Add focused tests when changing public URL generation or authenticated-user access; use `PublicUrlBuilderTests` and the relevant feature endpoint tests as examples.
+Do not add a generic repository/unit-of-work layer, `MelodyTrack.Application`, or a separate HTTP contracts assembly as part of this refactor.
 
-## Safe Migration Process
+## Data and Initialization
 
-This document defines the expected migration flow for MelodyTrack environments.
+The target ownership is:
 
-Scope:
+- `MelodyTrack.Core`: EF-free domain primitives/abstractions;
+- `MelodyTrack.Data`: EF Core, `AppDbContext`, configuration, migrations, converters, DB initialization implementation;
+- `MelodyTrack.Init`: executable orchestration for migrations/backfills/Quartz schema/invariants/environment-specific seed/bootstrap;
+- `MelodyTrack.Backend`: HTTP/business services/Quartz runtime.
 
-- EF Core schema migrations for `MelodyTrack.Backend`
-- Quartz schema bootstrap through `quartz.sql`
-- startup validation and post-deploy smoke checks
+Until that split exists, preserve current behavior while moving responsibilities deliberately. Do not add new startup migration/backfill/seed logic to Backend when it belongs in `MelodyTrack.Init`.
 
-This is intentionally separate from the backup/restore verification work. Production changes must still have an approved backup available before any schema change is applied.
+For schema changes:
 
-### General Rules
+- generate migrations with `dotnet ef migrations add`;
+- never hand-edit generated designer files;
+- review both `Up` and `Down` and inspect destructive changes carefully;
+- keep migrations focused;
+- do not combine unrelated data rewrites with schema work;
+- production schema changes require an approved backup before application.
 
-1. Apply migrations from the active backend solution only: `MelodyTrack.slnx`.
-2. Never hand-edit generated migration designer files.
-3. Create new migrations from code changes first, then review the generated SQL shape before applying them anywhere shared.
-4. Do not combine unrelated schema changes into one migration.
-5. Treat production migrations as a gated deployment step, not as something to discover during app startup.
-6. If a migration contains destructive operations such as `DropColumn`, `DropTable`, or data rewrites, require explicit review before applying it outside local development.
+## Existing Domain/Service Boundaries
 
-### Local Development
+Preserve these established behaviors unless the active task explicitly changes them:
 
-Use local startup-driven migrations when working alone on a feature.
+- use `ICurrentUserAccessor` rather than reparsing identity/session claims throughout request code;
+- preserve idempotent-create semantics through `IRequestReplayService`, `Idempotency-Key`, request fingerprinting, and the existing transaction/concurrency guarantees;
+- preserve recurring-task responsibility boundaries under `Services/RecurringTasks`; do not collapse specialized candidate/evaluation/transition/query/render/presentation responsibilities back into one orchestration service;
+- preserve recurrence semantics, session revocation semantics, audit behavior, and public URL behavior while relocating implementation.
 
-1. Make the model changes in `MelodyTrack.Backend`.
-2. Generate a migration:
+When the roadmap replaces one of these mechanisms, migrate its behavior and tests before removing the old implementation.
 
-```bash
-dotnet ef migrations add <Name> --project MelodyTrack.Backend/MelodyTrack.Backend.csproj
-```
+## Authentication and Security Migration
 
-3. Review the generated migration for unintended destructive changes.
-4. Build the backend:
+Follow the active roadmap rather than legacy authentication wiring. In particular:
 
-```bash
-dotnet build MelodyTrack.slnx
-```
+- the target JWT algorithm is ES256 with explicit issuer/audience/signature/lifetime validation;
+- password, portal-PIN, refresh-token hashing, CSRF signing, JWT signing, and PII encryption use purpose-separated secrets;
+- the auth cutover may revoke all existing sessions and force password/PIN reset; do not retain the legacy shared pepper merely for compatibility;
+- keep refresh rotation/replay detection, CSRF protection for cookie-authenticated session operations, TOTP/recovery behavior, and server-side active-session checks;
+- portal links are security-sensitive long-lived credentials and must not appear raw in logs/telemetry;
+- do not add account lockout state; use the roadmap-defined throttling/cooldown model;
+- keep PII field encryption as versioned AES-GCM and move re-encryption/backfill ownership to Init.
 
-5. Start the API with local environment variables configured.
-6. Let startup apply migrations automatically.
-7. Confirm startup succeeds without:
-    - missing environment variable failures
-    - missing seed/reference data failures
-    - Quartz bootstrap failures
+## Quartz and Background Work
 
-If startup fails after a migration was generated but before it was committed, fix the model or migration immediately before continuing.
+Quartz remains hosted in `MelodyTrack.Backend`; do not create a separate worker service or clustering/leader-election system unless requirements change explicitly.
 
-### Creating New Migrations
+Database/schema initialization for Quartz belongs in `MelodyTrack.Init` after that project exists. Jobs should accept/propagate cancellation and use normal application observability conventions.
 
-When adding a migration:
+## Observability
 
-1. Name it after the user-facing or domain change, not a temporary implementation detail.
-2. Keep the migration focused on one concern.
-3. Check both `Up` and `Down` methods for correctness.
-4. Avoid mixing seed-data fixes with unrelated schema changes unless they are required together.
+The target application telemetry APIs are `ILogger<T>`, `ActivitySource`, and `Meter`, exported through OpenTelemetry. Serilog may remain the logging provider; do not add new tracing through SerilogTracing.
 
-When a change introduces new required startup data, update startup validation in the same branch so bad deployments fail fast.
+Do not emit secrets/PII into logs, traces, metrics, exception metadata, or request logging. Preserve the canonical W3C/OpenTelemetry trace ID across response headers and Problem Details once that migration lands.
+
+## Testing
+
+Backend integration tests should remain normal `dotnet test` tests. The target harness is `WebApplicationFactory<Program>` + PostgreSQL Testcontainers + the real `MelodyTrack.Init --mode test`; Aspire AppHost is not a dependency of the normal integration suite.
+
+Add focused tests when changing authentication/session behavior, authorization, recurrence, idempotency, database queries, initialization, public URL generation, or security-sensitive behavior.
+
+Do not run tests/builds automatically after intermediate edits; follow the workspace-root verification policy.
+
+## Generated and Legacy Code
+
+- Do not hand-edit generated EF designer files.
+- Once Kiota/OpenAPI generation is integrated into the monorepo build, treat generated client files according to the root rules.
+- Remove FastEndpoints/FastEndpoints.Swagger/FluentValidation packages and obsolete startup/migration code only after their replacements are complete and verified.
+- Remove obsolete environment variables and configuration validation paths when the strongly typed Options replacement is complete; do not keep dead configuration aliases indefinitely.
