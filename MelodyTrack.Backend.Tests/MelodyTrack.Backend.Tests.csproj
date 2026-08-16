@@ -29,6 +29,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\MelodyTrack.Backend\MelodyTrack.Backend.csproj" />
+        <ProjectReference Include="..\MelodyTrack.Data\MelodyTrack.Data.csproj" />
     </ItemGroup>
 
 </Project>

@@ -1,7 +1,6 @@
 using System.Globalization;
 using System.Net;
 using System.Threading.RateLimiting;
-using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.ErrorHandling;
@@ -90,8 +89,8 @@ public static class ApiRateLimitPolicies
 
     private static string GetPartitionKey(HttpContext context)
     {
-        var configuration = context.RequestServices.GetRequiredService<StartupConfiguration>();
-        if (configuration.Environment == "Test"
+        var environment = context.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (environment.IsEnvironment("Test")
             && context.Request.Headers.TryGetValue("X-Forwarded-For", out var testIdentity))
         {
             return testIdentity.ToString();

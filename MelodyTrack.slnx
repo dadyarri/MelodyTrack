@@ -1,4 +1,7 @@
 ﻿<Solution>
+    <Project Path="MelodyTrack.Core/MelodyTrack.Core.csproj" />
+    <Project Path="MelodyTrack.Data/MelodyTrack.Data.csproj" />
+    <Project Path="MelodyTrack.Init/MelodyTrack.Init.csproj" />
     <Project Path="MelodyTrack.Backend/MelodyTrack.Backend.csproj" />
     <Project Path="MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj" />
 </Solution>

@@ -1,11 +1,11 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Exceptions;
+using MelodyTrack.Data.Exceptions;
 using Microsoft.EntityFrameworkCore;
 
-namespace MelodyTrack.Backend.Utils;
+namespace MelodyTrack.Data.Initialization;
 
-public static class StartupSeedDataValidator
+public static class DatabaseInvariantValidator
 {
     private static readonly UserRoles[] RequiredRoles =
     [

@@ -25,13 +25,6 @@
         <PackageReference Include="Isopoh.Cryptography.Argon2" />
         <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore" />
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
-        <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
         <PackageReference Include="Otp.NET" />
         <PackageReference Include="QRCoder" />
         <PackageReference Include="Quartz" />
@@ -61,11 +54,6 @@
             <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
         </None>
 
-        <None Update="quartz.sql">
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-            <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-        </None>
-
         <None Include="..\changelog\**\*">
             <Link>changelog\%(RecursiveDir)%(Filename)%(Extension)</Link>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
@@ -75,6 +63,11 @@
 
     <ItemGroup>
         <InternalsVisibleTo Include="MelodyTrack.Backend.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\MelodyTrack.Core\MelodyTrack.Core.csproj" />
+      <ProjectReference Include="..\MelodyTrack.Data\MelodyTrack.Data.csproj" />
     </ItemGroup>
 
 </Project>

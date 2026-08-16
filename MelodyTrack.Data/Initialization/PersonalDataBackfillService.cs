@@ -1,9 +1,9 @@
 using System.Data;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Security;
 using Microsoft.EntityFrameworkCore;
 
-namespace MelodyTrack.Backend.Services;
+namespace MelodyTrack.Data.Initialization;
 
 public interface IPersonalDataBackfillService
 {
@@ -98,9 +98,9 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
         {
             await using var command = connection.CreateCommand();
             command.CommandText = """
-                                  SELECT "Id", "Phone", "Telegram", "Vk"
+                                  SELECT "Id", "Email", "Phone", "Telegram", "Vk"
                                   FROM public."ClientContacts"
-                                  WHERE "Phone" IS NOT NULL OR "Telegram" IS NOT NULL OR "Vk" IS NOT NULL
+                                  WHERE "Email" IS NOT NULL OR "Phone" IS NOT NULL OR "Telegram" IS NOT NULL OR "Vk" IS NOT NULL
                                   """;
 
             await using var reader = await command.ExecuteReaderAsync(cancellationToken);
@@ -109,6 +109,7 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
             {
                 rows.Add(new ClientContactsBackfillRow(
                     (byte[])reader["Id"],
+                    reader["Email"] as string,
                     reader["Phone"] as string,
                     reader["Telegram"] as string,
                     reader["Vk"] as string));
@@ -122,11 +123,11 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
                     connection,
                     """
                     UPDATE public."ClientContacts"
-                    SET "Phone" = @phone, "Telegram" = @telegram, "Vk" = @vk
+                    SET "Email" = @email, "Phone" = @phone, "Telegram" = @telegram, "Vk" = @vk
                     WHERE "Id" = @id
                     """,
                     row.Id,
-                    null,
+                    row.Email,
                     null,
                     row.Phone,
                     row.Telegram,
@@ -156,13 +157,13 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
     {
         var normalizedEmail = string.IsNullOrWhiteSpace(email)
             ? email
-            : UserUtils.NormalizeEmail(protector.Decrypt(email));
+            : protector.NormalizeEmail(protector.Decrypt(email));
         var nextEmail = string.IsNullOrWhiteSpace(normalizedEmail)
             ? normalizedEmail
             : protector.Encrypt(normalizedEmail);
         var nextEmailBlindIndex = string.IsNullOrWhiteSpace(normalizedEmail)
             ? null
-            : UserUtils.HashEmailBlindIndex(normalizedEmail);
+            : protector.HashEmailBlindIndex(normalizedEmail);
         var nextPhone = EncryptIfNeeded(phone);
         var nextTelegram = EncryptIfNeeded(telegram);
         var nextVk = EncryptIfNeeded(vk);
@@ -218,5 +219,5 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
     }
 
     private sealed record UserBackfillRow(byte[] Id, string? Email, string? EmailBlindIndex, string? Phone, string? Telegram, string? Vk);
-    private sealed record ClientContactsBackfillRow(byte[] Id, string? Phone, string? Telegram, string? Vk);
+    private sealed record ClientContactsBackfillRow(byte[] Id, string? Email, string? Phone, string? Telegram, string? Vk);
 }

@@ -1,13 +1,22 @@
 using System.Security.Cryptography;
 using System.Text;
+using MelodyTrack.Core.Security;
+using MelodyTrack.Data.Configuration;
+using Microsoft.Extensions.Options;
 
-namespace MelodyTrack.Backend.Services;
+namespace MelodyTrack.Data.Security;
 
 public sealed class PersonalDataProtector : IPersonalDataProtector
 {
     private const string Prefix = "enc:";
     private readonly string _currentVersion;
     private readonly IReadOnlyDictionary<string, byte[]> _keysByVersion;
+    private readonly byte[] _emailIndexKey;
+
+    public PersonalDataProtector(IOptions<PersonalDataOptions> options)
+        : this(options.Value.CurrentKeyVersion, options.Value.BuildKeyRing())
+    {
+    }
 
     public PersonalDataProtector(string currentVersion, IReadOnlyDictionary<string, string> masterKeysByVersion)
     {
@@ -16,6 +25,8 @@ public sealed class PersonalDataProtector : IPersonalDataProtector
             pair => pair.Key,
             pair => SHA256.HashData(Encoding.UTF8.GetBytes($"melodytrack:pii:{pair.Value}")),
             StringComparer.Ordinal);
+        _emailIndexKey = SHA256.HashData(
+            Encoding.UTF8.GetBytes($"melodytrack:email-index:{masterKeysByVersion[currentVersion]}"));
     }
 
     public string Encrypt(string plaintext)
@@ -70,6 +81,17 @@ public sealed class PersonalDataProtector : IPersonalDataProtector
         using var aes = new AesGcm(key, 16);
         aes.Decrypt(nonce, ciphertext, tag, plaintext);
         return Encoding.UTF8.GetString(plaintext);
+    }
+
+    public string NormalizeEmail(string email)
+    {
+        return email.Trim().ToLowerInvariant();
+    }
+
+    public string HashEmailBlindIndex(string email)
+    {
+        var normalizedEmail = NormalizeEmail(email);
+        return Convert.ToHexString(HMACSHA256.HashData(_emailIndexKey, Encoding.UTF8.GetBytes(normalizedEmail)));
     }
 
     public bool IsEncrypted(string storedValue)

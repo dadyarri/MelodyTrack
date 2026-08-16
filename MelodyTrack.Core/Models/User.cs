@@ -1,6 +1,4 @@
-﻿using MelodyTrack.Backend.Utils;
-
-namespace MelodyTrack.Backend.Data.Models;
+﻿namespace MelodyTrack.Backend.Data.Models;
 
 /// <summary>
 ///     Database representation of user, who have access to data
@@ -27,13 +25,11 @@ public class User : BaseModel
         get => _email;
         set
         {
-            var normalizedEmail = UserUtils.NormalizeEmail(value);
-            _email = normalizedEmail;
-            EmailBlindIndex = UserUtils.HashEmailBlindIndex(normalizedEmail);
+            _email = value.Trim().ToLowerInvariant();
         }
     }
 
-    public string EmailBlindIndex { get; private set; } = null!;
+    public string EmailBlindIndex { get; internal set; } = null!;
 
     public string? Telegram { get; set; }
     public string? Vk { get; set; }

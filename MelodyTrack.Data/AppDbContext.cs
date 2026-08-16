@@ -1,7 +1,7 @@
 ﻿using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.ValueConverters;
-using MelodyTrack.Backend.Services;
+using MelodyTrack.Core.Security;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Data;
@@ -51,6 +51,18 @@ public class AppDbContext : DbContext
     public DbSet<CourseEnrollment> CourseEnrollments { get; set; }
     public DbSet<CourseEnrollmentTheme> CourseEnrollmentThemes { get; set; }
     public DbSet<CalendarSubscription> CalendarSubscriptions { get; set; }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        UpdateEmailBlindIndexes();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        UpdateEmailBlindIndexes();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder configurationBuilder)
     {
@@ -511,5 +523,19 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<UserOnboardingState>()
             .Property(e => e.DefinitionVersion)
             .HasDefaultValue(1);
+    }
+
+    private void UpdateEmailBlindIndexes()
+    {
+        if (_personalDataProtector is null)
+        {
+            return;
+        }
+
+        foreach (var entry in ChangeTracker.Entries<User>()
+                     .Where(entry => entry.State is EntityState.Added or EntityState.Modified))
+        {
+            entry.Entity.EmailBlindIndex = _personalDataProtector.HashEmailBlindIndex(entry.Entity.Email);
+        }
     }
 }

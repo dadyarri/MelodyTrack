@@ -7,9 +7,11 @@ using MelodyTrack.Backend.Api.Users.Endpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Security;
+using MelodyTrack.Data.Initialization;
+using MelodyTrack.Data.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
@@ -98,7 +100,8 @@ public class PersonalDataEncryptionTests(MelodyTrackFixture app) : IntegrationTe
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var backfill = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
+        var protector = scope.ServiceProvider.GetRequiredService<IPersonalDataProtector>();
+        var backfill = new PersonalDataBackfillService(db, protector);
 
         var contactsId = Ulid.NewUlid();
         var clientId = Ulid.NewUlid();

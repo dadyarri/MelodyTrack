@@ -12,17 +12,17 @@ using MelodyTrack.Backend.Api.Onboarding;
 using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Services.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data;
+using MelodyTrack.Data.Configuration;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using NJsonSchema;
 using NSwag;
 using Quartz;
@@ -37,9 +37,10 @@ using UaDetector;
 
 var logLevelSwitch = new LoggingLevelSwitch();
 
-var startupConfiguration = StartupConfigurationValidator.LoadAndValidate(Directory.GetCurrentDirectory());
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
 var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
-var environment = startupConfiguration.Environment;
+var environment = builder.Environment.EnvironmentName;
 logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
     : LogEventLevel.Information;
@@ -61,20 +62,24 @@ Log.Information(
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
-    var appDomain = startupConfiguration.AppDomain;
+    var publicBaseUrl = builder.Configuration[$"{PublicUrlOptions.SectionName}:BaseUrl"] ?? string.Empty;
+    var jwtSigningKey = builder.Configuration[$"{AuthenticationSecretsOptions.SectionName}:JwtSigningKey"] ?? string.Empty;
+    var personalDataKey = builder.Configuration[$"{PersonalDataOptions.SectionName}:CurrentKey"] ?? string.Empty;
+    UserUtils.ConfigureLegacySecrets(jwtSigningKey, personalDataKey);
 
     builder.Services.AddAuthenticationJwtBearer(opts =>
     {
-        opts.SigningKey = startupConfiguration.JwtSigningKey;
+        opts.SigningKey = jwtSigningKey;
     });
 
     builder.Services.AddAuthorization();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApiRateLimiting();
-    builder.Services.AddSingleton(startupConfiguration);
     builder.Services.AddSingleton(releaseChangelog);
     builder.Services.AddSingleton(TimeProvider.System);
+    builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
+    builder.Services.AddPublicUrlOptions(builder.Configuration);
+    builder.Services.AddMelodyTrackData(builder.Configuration);
     builder.Services.AddFastEndpoints(DiscoveredTypes.All);
     builder.Services.AddSerilog();
     builder.Services.AddResponseCompression(options =>
@@ -124,7 +129,7 @@ try
     {
         options.AddPolicy("AllowFrontend", policy =>
         {
-            policy.WithOrigins(appDomain)
+            policy.WithOrigins(publicBaseUrl)
                 .AllowAnyHeader()
                 .AllowAnyMethod()
                 .AllowCredentials();
@@ -133,11 +138,7 @@ try
 
     // Database configuration
 
-    var connectionString = startupConfiguration.DatabaseUrl;
-    builder.Services.AddSingleton<IPersonalDataProtector>(_ =>
-        new PersonalDataProtector(startupConfiguration.PiiMasterKeyVersion, startupConfiguration.PiiMasterKeys));
-    builder.Services.AddDbContext<AppDbContext>(opts => opts.UseNpgsql(connectionString)
-    );
+    var connectionString = builder.Configuration[$"{DatabaseOptions.SectionName}:ConnectionString"] ?? string.Empty;
     Log.Information("Using PostgreSQL database");
 
     // Custom services
@@ -154,7 +155,6 @@ try
     builder.Services.AddScoped<ClientPortalSessionService>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
     builder.Services.AddScoped<OnboardingStateService>();
-    builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IPersonalDashboardQueryService, PersonalDashboardQueryService>();
@@ -335,87 +335,6 @@ try
     app.UseAuthorization();
     app.UseRateLimiter();
     app.UseSwaggerGen();
-
-    {
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
-        var nowUtc = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-
-        await db.Database.MigrateAsync();
-        var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
-        await personalDataBackfillService.BackfillAsync(CancellationToken.None);
-
-        if (environment != "Test")
-        {
-            var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);
-            await db.Database.ExecuteSqlRawAsync(sql);
-        }
-
-        await StartupSeedDataValidator.ValidateAsync(db);
-
-        var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
-
-        var hasSuperuser = await db.Users
-            .AsNoTracking()
-            .Include(e => e.Role)
-            .AnyAsync(e => e.Role == superuserRole!);
-
-        var inviteCode = await db.InviteCodes
-            .AsNoTracking()
-            .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= nowUtc);
-
-        if (!hasSuperuser)
-        {
-            InviteCode bootstrapInvite;
-            if (inviteCode is null)
-            {
-                bootstrapInvite = new InviteCode
-                {
-                    Id = Ulid.NewUlid(),
-                    Code = Ulid.NewUlid(),
-                    Role = superuserRole!,
-                    ValidUntil = nowUtc.AddDays(2)
-                };
-                await db.InviteCodes.AddAsync(bootstrapInvite);
-                await db.SaveChangesAsync();
-            }
-            else
-            {
-                bootstrapInvite = inviteCode;
-            }
-
-            await db.AuditLogs.AddAsync(new AuditLog
-            {
-                Id = Ulid.NewUlid(),
-                CreatedAtUtc = nowUtc,
-                Category = "security",
-                Action = "superuser_bootstrap_invite_available",
-                EntityType = "invite",
-                EntityId = bootstrapInvite.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Приглашение", UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code)),
-                    AuditDetailsFormatter.DescribeContext("Действует до", bootstrapInvite.ValidUntil))
-            });
-            await db.SaveChangesAsync();
-
-            var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
-            if (startupConfiguration.LogBootstrapSecrets)
-            {
-                var url = publicUrlBuilder.GetInviteUrl(bootstrapInvite.Code);
-                Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
-            }
-            else
-            {
-                Log.Warning(
-                    "Superuser was not created yet. Bootstrap invite {InviteRef} exists until {ValidUntilUtc:O}. Full link logging is disabled; enable {EnvironmentVariable}=true only for controlled recovery.",
-                    inviteRef,
-                    bootstrapInvite.ValidUntil,
-                    "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS");
-            }
-        }
-    }
 
     app.Run();
     return 0;

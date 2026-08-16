@@ -15,6 +15,15 @@ namespace MelodyTrack.Backend.Utils;
 /// </summary>
 public static class UserUtils
 {
+    private static string? _legacyAuthenticationKey;
+    private static string? _personalDataKey;
+
+    public static void ConfigureLegacySecrets(string authenticationKey, string personalDataKey)
+    {
+        _legacyAuthenticationKey = authenticationKey;
+        _personalDataKey = personalDataKey;
+    }
+
     /// <summary>
     ///     Hash password
     /// </summary>
@@ -32,8 +41,7 @@ public static class UserUtils
             MemoryCost = 3000,
             Password = Encoding.UTF8.GetBytes(password),
             Salt = salt,
-            Secret = Encoding.UTF8.GetBytes(
-                EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"))
+            Secret = Encoding.UTF8.GetBytes(GetAuthenticationKey())
         };
 
         var argon2 = new Argon2(config);
@@ -46,7 +54,7 @@ public static class UserUtils
         var config = new Argon2Config
         {
             Password = Encoding.UTF8.GetBytes(password),
-            Secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"))
+            Secret = Encoding.UTF8.GetBytes(GetAuthenticationKey())
         };
 
         SecureArray<byte>? hashA = null;
@@ -97,7 +105,7 @@ public static class UserUtils
 
     public static string HashOpaqueToken(string token)
     {
-        var secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"));
+        var secret = Encoding.UTF8.GetBytes(GetAuthenticationKey());
         var tokenBytes = Encoding.UTF8.GetBytes(token);
         var hash = HMACSHA256.HashData(secret, tokenBytes);
         return Convert.ToHexString(hash);
@@ -112,7 +120,7 @@ public static class UserUtils
     {
         var normalizedEmail = NormalizeEmail(email);
         var indexKey = SHA256.HashData(
-            Encoding.UTF8.GetBytes($"melodytrack:email-index:{EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY")}"));
+            Encoding.UTF8.GetBytes($"melodytrack:email-index:{GetPersonalDataKey()}"));
         var emailBytes = Encoding.UTF8.GetBytes(normalizedEmail);
         var hash = HMACSHA256.HashData(indexKey, emailBytes);
         return Convert.ToHexString(hash);
@@ -150,7 +158,7 @@ public static class UserUtils
         var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
         return JwtBearer.CreateToken(opts =>
         {
-            opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+            opts.SigningKey = GetAuthenticationKey();
             opts.Issuer = "MelodyTrack";
             opts.ExpireAt = expireAt;
             opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
@@ -197,6 +205,20 @@ public static class UserUtils
 
         var sha512Totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
         return sha512Totp.VerifyTotp(otp, out _, window);
+    }
+
+    private static string GetAuthenticationKey()
+    {
+        return _legacyAuthenticationKey
+               ?? Environment.GetEnvironmentVariable("AuthenticationSecrets__JwtSigningKey")
+               ?? EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+    }
+
+    private static string GetPersonalDataKey()
+    {
+        return _personalDataKey
+               ?? Environment.GetEnvironmentVariable("PersonalData__CurrentKey")
+               ?? EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY");
     }
 
 }
