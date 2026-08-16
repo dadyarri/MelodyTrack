@@ -32,7 +32,9 @@ public static class StartupSeedDataValidator
         {
             if (!existingRoles.Contains(requiredRole))
             {
-                throw new MissingRoleInDatabaseException(requiredRole);
+                throw new MissingReferenceDataInDatabaseException(
+                    nameof(UserRoles),
+                    requiredRole.ToString());
             }
         }
 
