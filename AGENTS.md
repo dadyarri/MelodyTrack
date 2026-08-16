@@ -1,124 +1,98 @@
 # Frontend Repository Guidelines
 
+## Scope
+
+These instructions apply to the current `MelodyTrack.Web` repository. The workspace-root `AGENTS.md` defines shared workflow, roadmap, verification, Git, and security rules and takes precedence if there is a conflict.
+
+The frontend will be merged into the MelodyTrack monorepo by the active roadmap. Preserve these frontend-specific rules after the merge in a nested `AGENTS.md` only if they remain useful at the new frontend path.
+
 ## Architecture
 
-The frontend follows
-[Feature-Sliced Design v2.1](https://feature-sliced.design/docs/get-started/overview).
-All new code must follow FSD. Do not recreate the removed top-level `api`,
-`components`, `layout`, or `utils` groupings.
+The frontend follows Feature-Sliced Design v2.1.
 
-Use these layers, from highest to lowest:
+Use these layers from highest to lowest:
 
-1. `app`: entrypoints, providers, routing, global configuration and styles.
+1. `app`: entrypoints, providers, routing, global configuration/styles.
 2. `pages`: route-level composition.
-3. `widgets`: large self-contained page sections.
+3. `widgets`: large reusable page sections.
 4. `features`: reusable user actions that provide business value.
 5. `entities`: business models and reusable domain representations.
-6. `shared`: business-agnostic UI, API infrastructure, configuration and
-   utilities.
+6. `shared`: business-agnostic UI, API infrastructure, configuration, utilities.
 
-The deprecated `processes` layer must not be introduced.
+Rules:
 
-Imports may only point downward through the layer list. Slices must not import
-other slices on the same layer. If two slices need orchestration, compose them
-in a higher layer or move the genuinely shared concept lower. The FSD `@x`
-notation is allowed only for an unavoidable entity-to-entity relationship and
-must remain narrow.
+- Do not reintroduce deprecated top-level `api`, `components`, `layout`, `utils`, or `processes` groupings.
+- Imports may only point downward through the layer hierarchy.
+- Slices on the same layer must not import one another. Compose in a higher layer or move a genuinely shared concept lower.
+- Use FSD `@x` only for narrow unavoidable entity-to-entity relationships.
+- `app` and `shared` may contain technical segments directly; other layers contain business slices with purpose-based segments such as `ui`, `model`, `api`, `lib`, and `config`.
+- Every slice has an intentional root `index.ts` public API for cross-slice imports. Use explicit relative imports inside a slice. Avoid wildcard re-exports.
+- Put code in the lowest layer that truthfully owns it.
+- Do not create empty layers, speculative abstractions, or decorative one-file slices.
+- Keep the scoped Steiger exceptions narrow; fix new architecture violations in code instead of broadening suppression.
 
-`app` and `shared` contain technical segments directly. Every other layer
-contains business slices, and each slice contains purpose-based segments such
-as `ui`, `model`, `api`, `lib`, and `config`.
+Follow `docs/fsd-development-guide.md` for concrete placement/import examples.
 
-Every slice has a deliberate root `index.ts` public API. Cross-slice imports
-must use that public API; files inside the same slice use explicit relative
-imports. Avoid wildcard re-exports.
+## API and Server State
 
-See [`docs/fsd-development-guide.md`](docs/fsd-development-guide.md) for
-concrete placement and import examples.
+TanStack Query remains the server-state manager.
 
-Put code in the lowest layer that truthfully describes it:
+During the API migration:
 
-- passive reusable domain display belongs to an entity, not a feature;
-- an action such as creating a client or rescheduling an appointment belongs
-  to a feature;
-- route-specific composition stays in a page;
-- business-agnostic primitives belong in shared.
-
-Do not create empty layers, speculative abstractions, or single-file slices
-just to make the directory tree resemble an example.
-
-## Architecture Maintenance
-
-The scoped exceptions in `steiger.config.js` document intentional page
-granularity and focused single-consumer slices, not legacy import violations.
-Do not broaden them to silence a layer, sibling-slice, public-API, or
-segmentless-slice violation.
-
-Preserve behavior while relocating code. Keep query keys and persisted storage
-formats stable unless the change includes an explicit migration and tests.
+- Axios is legacy transport scheduled for replacement; do not create new Axios infrastructure unless needed for a short-lived compatibility step;
+- the target transport is Kiota's standard Fetch stack with centralized auth/session middleware;
+- generated Kiota request/response/entity models become the source of truth for API DTOs;
+- do not maintain handwritten TypeScript mirrors of generated API contracts;
+- handwritten types remain appropriate for frontend-owned form state, UI state, component props, view models, query convenience types, and persistence schemas;
+- keep application-facing API wrappers in the owning FSD slice so React/TanStack Query code is not coupled directly to generated request builders everywhere;
+- preserve query keys, mutation semantics, invalidation behavior, cancellation, idempotency headers, blob/download handling, and auth-expiry behavior while transport changes;
+- meaningful API errors must flow through the shared normalized application-error path once introduced; do not regress to transient toast-only diagnostics.
 
 ## Browser Persistence
 
-Follow [`docs/browser-storage-policy.md`](docs/browser-storage-policy.md).
-New code must not use browser persistence APIs ad hoc.
+Follow `docs/browser-storage-policy.md`. New code must not use persistence APIs ad hoc.
 
 - Keep access tokens and transient query/UI state in memory.
-- Use `sessionStorage` only for small, non-sensitive tab recovery markers.
-- Use `localStorage` only for small, non-sensitive device preferences.
-- Put durable user work behind the user-scoped, versioned,
-  runtime-validated `useDurableForm` adapter backed by IndexedDB.
-- Never persist credentials or secret-bearing URLs outside a Secure, HttpOnly
-  cookie.
+- Use `sessionStorage` only for small non-sensitive tab-recovery markers.
+- Use `localStorage` only for small non-sensitive device preferences.
+- Put durable user work behind the user-scoped, versioned, runtime-validated IndexedDB/Dexie boundary used by the application.
+- Never persist passwords, PINs, access tokens, refresh tokens, CSRF secrets, reset links, portal credential URLs, or other reusable credentials in Web Storage/IndexedDB.
+- Business persistence schemas belong to their owning entity/feature; shared code may provide mechanics but must not become a global business-data cache.
+- Preserve persisted formats while relocating code unless the same change includes an explicit migration and tests.
 
-Business storage schemas belong to the entity or feature that owns the data.
-Shared code may provide storage mechanics but must not become a global
-business-data cache.
+## Browser and Mobile Support
 
-## Mobile Browser Support
+Follow `docs/mobile-browser-support.md` and keep the documented supported-browser baseline aligned across Browserslist, Vite targets, CSS tooling, and compatibility checks.
 
-Follow [`docs/mobile-browser-support.md`](docs/mobile-browser-support.md).
-The supported baseline is iOS Safari and Safari 16.4+, Chrome and Edge 109+,
-and Firefox 115+. Keep Browserslist, Vite JavaScript/CSS targets, PostCSS, and
-the Lightning CSS compatibility check aligned when changing that baseline.
+- Prefer standards-based fallbacks and capability detection over user-agent checks.
+- Keep shared mobile compatibility fixes centralized rather than scattering WebKit-specific workarounds.
+- Preserve 16px form-control text, practical touch targets, safe-area handling, bounded internal scrollers, and no document-level horizontal overflow at compact widths.
+- Treat WebKit as a distinct behavioral target, especially for user activation, permissions, clipboard, sharing, downloads, focus, virtual keyboard, visual viewport, popup, media, and fullscreen behavior.
+- Browser APIs gated by transient user activation must be invoked directly from the user event before an `await`, network request, timer, state transition, or other asynchronous boundary.
+- Provide an explicit user-operable fallback when a browser capability is unavailable or rejected.
 
-Mobile fixes shared by multiple routes belong in
-`src/app/styles/mobile-compatibility.css` or the visual-viewport hook. Prefer
-standards-based fallbacks and capability queries; do not add user-agent checks
-or scatter WebKit workarounds across route styles. At compact widths, preserve
-16px form-control text, 44px primary touch targets, bounded internal scrollers,
-safe-area padding, and zero document-level horizontal overflow.
+## Static Hosting and PWA Boundary
 
-Treat WebKit as a distinct behavioral target, not only a CSS rendering target.
-Before introducing or changing a browser API, check its WebKit requirements and
-cover the real interaction in WebKit when behavior may depend on user
-activation, permissions, focus, the virtual keyboard, the visual viewport,
-popups, downloads, clipboard access, sharing, media, or fullscreen state. Do
-not assume behavior observed in Chromium is portable.
+During the monorepo/unified-hosting migration:
 
-Browser APIs gated by a user gesture must be invoked directly in the click,
-pointer, touch, or keyboard handler before any `await`, API request, timer,
-transition, state refresh, or other asynchronous boundary. It is fine to handle
-the API's returned promise afterward. If data must first be generated or
-loaded, use a second explicit user action after the data is available. Never
-rely on a transient-activation timeout, `navigator.userActivation`, a prior
-permission grant, or a fast network response for correctness. Use capability
-detection rather than user-agent detection, keep a user-operable fallback, and
-translate platform rejections into contextual application feedback instead of
-showing raw browser errors or reporting them as API failures.
+- Vite remains the development/build tool;
+- production Node/nginx runtime is removed only after Kestrel reproduces required caching, compression, security headers, and SPA fallback behavior;
+- fingerprinted assets may be immutable/long cached, while `index.html` and service-worker entry files must not be long cached;
+- unknown `/api`, `/otel`, health, or other backend infrastructure routes must never fall through to the SPA;
+- the development proxy must preserve the real `/api` prefix once the backend migration reaches that step.
+
+## Security and Telemetry
+
+- Keep credential material out of browser persistence, console output, analytics, telemetry, and copied diagnostic text.
+- Client portal links are long-lived authentication material; do not persist them after authentication or expose them through diagnostics.
+- Browser telemetry is deliberately minimal and must use the same-origin backend relay; the browser must never receive the Aspire OTLP API key/internal dashboard address.
+- A copied support trace ID is diagnostic metadata, not a URL workflow. Use the dedicated/general text-copy path rather than URL-copy semantics.
+- Do not add source-map publication/symbolication as part of the initial observability refactor.
 
 ## Verification
 
-Run `npm run verify` before handing off frontend changes. It checks formatting,
-Biome, ESLint, FSD architecture boundaries, browser-targeted CSS, strict
-TypeScript, unit tests, Chromium viewport/visual tests, WebKit interaction
-tests, and the production build. Chromium uses a system executable when
-available; otherwise install it with `npx playwright install chromium` or set
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH`. On Arch-based hosts, the WebKit command
-runs the exact matching official Playwright container because upstream WebKit
-binaries target supported Linux distributions.
+Steiger, formatting, Biome, ESLint, strict TypeScript, unit tests, browser checks, security checks, bundle budgets, and production build remain required quality gates for completed frontend work.
 
-Use `npm run test:watch` while developing tests. New business rules, storage
-migrations, auth/session behavior, and durable-form behavior require tests.
+However, **do not run the full verification pipeline automatically after intermediate edits**. Follow the workspace-root verification policy and wait for explicit authorization or completion of the current change batch.
 
-Architecture violations are checked with Steiger. A new violation must be fixed
-in code, not silenced in configuration.
+When full frontend verification is authorized, run `npm run verify:fix` unless the repository scripts have intentionally changed. It is a mutating verification pipeline: formatting/ESLint fixes may modify files before the remaining checks. Inspect resulting changes before committing. Fix architecture violations in code rather than suppressing them. Use focused/watch tests during an explicitly authorized debugging session where appropriate.
