@@ -6,6 +6,7 @@ using MelodyTrack.Data.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 
 namespace MelodyTrack.Data;
@@ -21,6 +22,12 @@ public static class DataServiceCollectionExtensions
         {
             var database = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
             options.UseNpgsql(database.ConnectionString);
+
+            var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
+            if (database.EnableSensitiveDataLogging && environment.IsDevelopment())
+            {
+                options.EnableSensitiveDataLogging();
+            }
         });
         return services;
     }

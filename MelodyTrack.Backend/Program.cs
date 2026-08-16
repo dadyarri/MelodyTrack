@@ -12,6 +12,7 @@ using MelodyTrack.Backend.Api.Onboarding;
 using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Services.Responses;
+using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
@@ -23,6 +24,7 @@ using MelodyTrack.Data.Configuration;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using NJsonSchema;
 using NSwag;
 using Quartz;
@@ -39,6 +41,7 @@ var logLevelSwitch = new LoggingLevelSwitch();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
+builder.AddServiceDefaults();
 var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
 var environment = builder.Environment.EnvironmentName;
 logLevelSwitch.MinimumLevel = environment == "Development"
@@ -79,6 +82,13 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
     builder.Services.AddPublicUrlOptions(builder.Configuration);
+    builder.Services.AddOptions<HttpOptions>()
+        .Bind(builder.Configuration.GetSection(HttpOptions.SectionName))
+        .Validate(
+            options => string.IsNullOrEmpty(options.PathBase)
+                       || options.PathBase.StartsWith('/') && !options.PathBase.EndsWith('/'),
+            "Http:PathBase must be empty or start with '/' and must not end with '/'.")
+        .ValidateOnStart();
     builder.Services.AddMelodyTrackData(builder.Configuration);
     builder.Services.AddFastEndpoints(DiscoveredTypes.All);
     builder.Services.AddSerilog();
@@ -209,6 +219,12 @@ try
     }
 
     var app = builder.Build();
+    var httpOptions = app.Services.GetRequiredService<IOptions<HttpOptions>>().Value;
+
+    if (!string.IsNullOrEmpty(httpOptions.PathBase))
+    {
+        app.UsePathBase(httpOptions.PathBase);
+    }
 
     app.UseFastEndpoints(x =>
     {
@@ -335,6 +351,7 @@ try
     app.UseAuthorization();
     app.UseRateLimiter();
     app.UseSwaggerGen();
+    app.MapDefaultEndpoints();
 
     app.Run();
     return 0;

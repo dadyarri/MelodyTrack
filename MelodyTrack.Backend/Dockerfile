@@ -14,6 +14,7 @@ COPY ["Directory.Packages.props", "."]
 COPY ["Directory.Build.props", "."]
 COPY ["MelodyTrack.Core/MelodyTrack.Core.csproj", "MelodyTrack.Core/"]
 COPY ["MelodyTrack.Data/MelodyTrack.Data.csproj", "MelodyTrack.Data/"]
+COPY ["MelodyTrack.ServiceDefaults/MelodyTrack.ServiceDefaults.csproj", "MelodyTrack.ServiceDefaults/"]
 COPY ["MelodyTrack.Init/MelodyTrack.Init.csproj", "MelodyTrack.Init/"]
 COPY ["MelodyTrack.Backend/MelodyTrack.Backend.csproj", "MelodyTrack.Backend/"]
 RUN --mount=type=cache,target=/root/.nuget/packages \
@@ -22,6 +23,7 @@ RUN --mount=type=cache,target=/root/.nuget/packages \
 COPY ["changelog/", "changelog/"]
 COPY ["MelodyTrack.Core/", "MelodyTrack.Core/"]
 COPY ["MelodyTrack.Data/", "MelodyTrack.Data/"]
+COPY ["MelodyTrack.ServiceDefaults/", "MelodyTrack.ServiceDefaults/"]
 COPY ["MelodyTrack.Init/", "MelodyTrack.Init/"]
 COPY ["MelodyTrack.Backend/", "MelodyTrack.Backend/"]
 RUN dotnet publish "MelodyTrack.Backend/MelodyTrack.Backend.csproj" -c $BUILD_CONFIGURATION -o /app/publish/backend --no-restore /p:UseAppHost=false /p:InformationalVersion=$RELEASE_VERSION && \

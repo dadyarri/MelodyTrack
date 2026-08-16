@@ -27,6 +27,7 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     EnvironmentName = environmentName
 });
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
+builder.AddServiceDefaults();
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
@@ -37,6 +38,7 @@ builder.Services.AddMelodyTrackInitialization(builder.Configuration);
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("MelodyTrack.Init");
 using var cancellationSource = new CancellationTokenSource();
+var hostStarted = false;
 Console.CancelKeyPress += (_, eventArgs) =>
 {
     eventArgs.Cancel = true;
@@ -45,6 +47,9 @@ Console.CancelKeyPress += (_, eventArgs) =>
 
 try
 {
+    await host.StartAsync(cancellationSource.Token);
+    hostStarted = true;
+
     await using var scope = host.Services.CreateAsyncScope();
     var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
     await initializer.RunAsync(mode, cancellationSource.Token);
@@ -59,6 +64,13 @@ catch (Exception exception)
 {
     logger.LogCritical(exception, "Database initialization failed; Backend must not be started");
     return 1;
+}
+finally
+{
+    if (hostStarted)
+    {
+        await host.StopAsync(CancellationToken.None);
+    }
 }
 
 static bool TryParseMode(string[] arguments, out InitializationMode mode)

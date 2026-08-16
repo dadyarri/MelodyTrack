@@ -8,6 +8,7 @@
       "applicationUrl": "http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
+        "Http__PathBase": "/api",
         "PublicUrl__BaseUrl": "http://localhost:5173",
         "Database__ConnectionString": "Server=127.0.0.1;Port=5432;Database=melodytrack;UserId=postgres;Password=postgres;",
         "AuthenticationSecrets__JwtSigningKey": "development-only-jwt-key-5L62Vvke1KOZTrwnuhk28",

@@ -31,12 +31,11 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
-      strictPort: false,
+      strictPort: true,
       proxy: {
         "/api": {
           target: apiProxyTarget,
           changeOrigin: true,
-          rewrite: (path) => path.replace(/^\/api/, ""),
         },
       },
     },
