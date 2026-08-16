@@ -10,6 +10,7 @@ ARG RELEASE_VERSION=dev
 WORKDIR /src
 COPY ["global.json", "."]
 COPY ["MelodyTrack.slnx", "."]
+COPY ["Directory.Packages.props", "."]
 COPY ["MelodyTrack.Backend/MelodyTrack.Backend.csproj", "MelodyTrack.Backend/"]
 RUN --mount=type=cache,target=/root/.nuget/packages \
     dotnet restore "MelodyTrack.Backend/MelodyTrack.Backend.csproj"
