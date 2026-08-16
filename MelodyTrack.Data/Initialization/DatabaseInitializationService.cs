@@ -19,12 +19,15 @@ public sealed class DatabaseInitializationService(
     IOptions<InitializationOptions> initializationOptions,
     IOptions<AuthenticationSecretsOptions> authenticationSecrets,
     IOptions<PublicUrlOptions> publicUrlOptions,
+    DevelopmentDemoDataSeeder developmentDemoDataSeeder,
+    DevelopmentFullDemoDataSeeder developmentFullDemoDataSeeder,
     TimeProvider timeProvider,
     ILogger<DatabaseInitializationService> logger)
 {
-    private const int DevelopmentSeedVersion = 1;
+    private const int DevelopmentSeedVersion = 6;
     private const string DevelopmentEmail = "dev.superuser@melodytrack.local";
     private const string DevelopmentPassword = "MelodyTrack-Development-Only!";
+    private const string DevelopmentTotpSecret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
 
     public async Task RunAsync(InitializationMode mode, CancellationToken cancellationToken)
     {
@@ -142,6 +145,21 @@ public sealed class DatabaseInitializationService(
             {
                 case 1:
                     await ApplyDevelopmentSeedVersionOneAsync(cancellationToken);
+                    break;
+                case 2:
+                    await ApplyDevelopmentSeedVersionTwoAsync(cancellationToken);
+                    break;
+                case 3:
+                    await developmentDemoDataSeeder.SeedAsync(cancellationToken);
+                    break;
+                case 4:
+                    await developmentDemoDataSeeder.EnsureProviderAssignmentsAsync(cancellationToken);
+                    break;
+                case 5:
+                    await developmentDemoDataSeeder.SeedUpcomingAppointmentsAsync(cancellationToken);
+                    break;
+                case 6:
+                    await developmentFullDemoDataSeeder.SeedAsync(cancellationToken);
                     break;
                 default:
                     throw new InvalidOperationException($"Development seed upgrade {version} is not implemented.");
@@ -272,6 +290,27 @@ public sealed class DatabaseInitializationService(
             DevelopmentEmail);
     }
 
+    private async Task ApplyDevelopmentSeedVersionTwoAsync(CancellationToken cancellationToken)
+    {
+        var emailBlindIndex = personalDataProtector.HashEmailBlindIndex(DevelopmentEmail);
+        var provider = await db.Users.SingleAsync(
+            user => user.EmailBlindIndex == emailBlindIndex,
+            cancellationToken);
+
+        if (string.IsNullOrWhiteSpace(provider.TotpSecret))
+        {
+            provider.TotpSecret = DevelopmentTotpSecret;
+            logger.LogInformation(
+                "Development identity {DevelopmentEmail} now has a configured second factor; its development-only TOTP setup key is documented in MelodyTrack.Init/README.md",
+                DevelopmentEmail);
+            return;
+        }
+
+        logger.LogInformation(
+            "Development identity {DevelopmentEmail} already has a configured second factor; preserving it",
+            DevelopmentEmail);
+    }
+
     private async Task EnsureTestBaselineAsync(CancellationToken cancellationToken)
     {
         const string action = "test_seed_v1";
@@ -304,6 +343,11 @@ public sealed class DatabaseInitializationService(
             Id = action switch
             {
                 "development_seed_v1" => Ulid.Parse("01K0000000000000000000000D"),
+                "development_seed_v2" => Ulid.Parse("01K0000000000000000000000F"),
+                "development_seed_v3" => Ulid.Parse("01K0000000000000000000000G"),
+                "development_seed_v4" => Ulid.Parse("01K0000000000000000000000H"),
+                "development_seed_v5" => Ulid.Parse("01K0000000000000000000000J"),
+                "development_seed_v6" => Ulid.Parse("01K0000000000000000000000K"),
                 "test_seed_v1" => Ulid.Parse("01K0000000000000000000000E"),
                 _ => Ulid.NewUlid()
             },

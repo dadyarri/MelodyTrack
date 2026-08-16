@@ -29,6 +29,8 @@ public static class DataServiceCollectionExtensions
     {
         services.AddInitializationOptions(configuration);
         services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
+        services.AddScoped<DevelopmentDemoDataSeeder>();
+        services.AddScoped<DevelopmentFullDemoDataSeeder>();
         services.AddScoped<DatabaseInitializationService>();
         return services;
     }
