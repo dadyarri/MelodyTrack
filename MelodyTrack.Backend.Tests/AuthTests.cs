@@ -3112,8 +3112,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var (rsp, res) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetEntityRequest, ApiProblemDetails>(
-            new GetEntityRequest { Id = Ulid.NewUlid() });
+        var (rsp, res) = await App.Client.GETAsync<GetClientHistoryEndpoint, GetClientHistoryRequest, ApiProblemDetails>(
+            new GetClientHistoryRequest { Id = Ulid.NewUlid() });
 
         App.Client.DefaultRequestHeaders.Authorization = null;
 

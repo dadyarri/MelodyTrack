@@ -75,7 +75,7 @@ try
     builder.Services.AddSingleton(startupConfiguration);
     builder.Services.AddSingleton(releaseChangelog);
     builder.Services.AddSingleton(TimeProvider.System);
-    builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
+    builder.Services.AddFastEndpoints(DiscoveredTypes.All);
     builder.Services.AddSerilog();
     builder.Services.AddResponseCompression(options =>
     {
