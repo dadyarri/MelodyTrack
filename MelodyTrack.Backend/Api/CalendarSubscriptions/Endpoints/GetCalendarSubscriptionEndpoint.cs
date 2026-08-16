@@ -65,6 +65,7 @@ public class GetCalendarSubscriptionEndpoint(
 
     private async Task<List<CalendarEvent>> GetUserEventsAsync(Ulid userId, DateTime windowStartUtc, DateTime windowEndUtc, CancellationToken ct)
     {
+        var taskWindowStartUtc = windowStartUtc.Date;
         var appointments = await db.Appointments.AsNoTracking()
             .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled
                 && e.StartDate <= windowEndUtc)
@@ -83,7 +84,7 @@ public class GetCalendarSubscriptionEndpoint(
                     $"{task.Title}: {task.RelatedPersonDisplayName}",
                     null);
             })
-            .Where(task => task.StartAtUtc >= windowStartUtc && task.StartAtUtc <= windowEndUtc));
+            .Where(task => task.StartAtUtc >= taskWindowStartUtc && task.StartAtUtc <= windowEndUtc));
         return appointments;
     }
 

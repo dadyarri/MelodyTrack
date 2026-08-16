@@ -88,7 +88,7 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         calendar.ShouldContain(ToCalendarStart(firstStartUtc));
         calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(1)));
         calendar.ShouldContain(ToCalendarStart(firstStartUtc.AddDays(2)));
-        calendar.ShouldNotContain(ToCalendarStart(withinHorizonStartUtc));
+        calendar.ShouldContain(ToCalendarStart(withinHorizonStartUtc));
         calendar.ShouldNotContain(ToCalendarStart(outsideHorizonStartUtc));
         calendar.ShouldNotContain("RRULE:");
 
@@ -125,7 +125,8 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
         admin.Phone = "+79990000000";
         var client = await TestDataFactory.CreateClientAsync(db, "Мария", "Соколова", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Фортепиано", TestContext.Current.CancellationToken);
-        var startAtUtc = DateTime.UtcNow.AddHours(1);
+        var nowUtc = DateTime.UtcNow;
+        var startAtUtc = nowUtc.Date.AddHours(12);
         await db.Appointments.AddAsync(CreateAppointment(client, service, startAtUtc, admin), TestContext.Current.CancellationToken);
         await db.RecurringTaskRules.AddAsync(new RecurringTaskRule
         {
@@ -134,8 +135,8 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
             Type = RecurringTaskType.TeacherDailySchedule,
             IsEnabled = true,
             MessageTemplate = "Расписание на {date}",
-            CreatedAtUtc = DateTime.UtcNow,
-            UpdatedAtUtc = DateTime.UtcNow
+            CreatedAtUtc = nowUtc,
+            UpdatedAtUtc = nowUtc
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
