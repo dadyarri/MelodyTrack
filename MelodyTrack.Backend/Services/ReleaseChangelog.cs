@@ -46,7 +46,13 @@ public sealed partial class ReleaseChangelog
             hash.AppendData(Encoding.UTF8.GetBytes(filename));
             hash.AppendData([0]);
             hash.AppendData(bytes);
-            using var document = JsonDocument.Parse(bytes, new JsonDocumentOptions
+            var jsonOffset = bytes.Length >= 3
+                && bytes[0] == 0xEF
+                && bytes[1] == 0xBB
+                && bytes[2] == 0xBF
+                    ? 3
+                    : 0;
+            using var document = JsonDocument.Parse(bytes.AsMemory(jsonOffset), new JsonDocumentOptions
             {
                 AllowTrailingCommas = false,
                 CommentHandling = JsonCommentHandling.Disallow
