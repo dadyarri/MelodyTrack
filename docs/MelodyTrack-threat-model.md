@@ -23,7 +23,7 @@ Open questions that would materially change ranking:
 
 - React/Vite single-page application served as static files by nginx (`MelodyTrack.Web/Dockerfile`, `MelodyTrack.Web/nginx/nginx.conf`).
 - ASP.NET Core 10 API using FastEndpoints, JWT bearer authentication, role checks, rate limiting, Quartz, and structured Problem Details (`MelodyTrack.Backend/MelodyTrack.Backend/Program.cs`).
-- PostgreSQL accessed through EF Core and used for domain records, hashed session artifacts, audit logs, and Quartz state (`MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs`).
+- PostgreSQL accessed through EF Core and used for domain records, hashed session artifacts, audit logs, and Quartz state (`MelodyTrack.Data/AppDbContext.cs`).
 - Browser memory, cookies, and local storage: the access token remains in memory, the refresh credential is a Secure/HttpOnly/SameSite cookie, a readable cookie supplies the matching CSRF proof, and local storage contains only a non-secret session marker, UI preferences, and account-scoped durable form drafts (`MelodyTrack.Web/src/entities/session/model/authStore.ts`, `MelodyTrack.Web/src/shared/api/http.ts`, `Api/Auth/RefreshSessionCookieService.cs`).
 - GitHub Actions and container builds that restore dependencies, test/build the applications, and publish images (`MelodyTrack.Backend/.github/workflows/main.yml`, `MelodyTrack.Web/.github/workflows/main.yml`).
 
@@ -105,7 +105,7 @@ flowchart LR
 | Authenticated FastEndpoints | Bearer-authenticated HTTPS JSON | Browser → API | Active-session preprocessing and role/ownership checks protect mutations | `MelodyTrack.Backend/MelodyTrack.Backend/Program.cs`; `Api/Auth/PreProcessors/ActiveSessionPreProcessor.cs` |
 | Contact and rich-text rendering | Stored API data rendered in React | Database → API → browser | Contact handles and BBCode links are normalized before navigation | `MelodyTrack.Web/src/entities/client/lib/contact.ts`; `src/shared/ui/editors/BbcodeContent.tsx` |
 | Browser session and draft storage | Same-origin JavaScript | Browser runtime → memory/cookies/local storage | Access token stays in memory; JavaScript cannot read the refresh cookie; mutations supply a cookie-bound CSRF proof | `MelodyTrack.Web/src/entities/session/model/authStore.ts`; `src/shared/api/http.ts`; `Api/Auth/RefreshSessionCookieService.cs` |
-| PostgreSQL connection | Backend-only configured connection | API → database | EF parameterization, encrypted PII, hashed opaque tokens | `MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs`; `Utils/UserUtils.cs` |
+| PostgreSQL connection | Backend/Init configured connection | API/Init → database | EF parameterization, encrypted PII, hashed opaque tokens | `MelodyTrack.Data/AppDbContext.cs`; `MelodyTrack.Backend/Utils/UserUtils.cs` |
 | Static deployment | Public HTTPS asset requests | Internet → nginx | CSP and hardening headers are applied to all cache-policy locations | `MelodyTrack.Web/nginx/nginx.conf`; `nginx/security-headers.inc` |
 | CI and container publication | Push or pull request | GitHub → runners → registry | Restore/build/test gates publication; actions and base images are external inputs | `MelodyTrack.Backend/.github/workflows/main.yml`; `MelodyTrack.Web/.github/workflows/main.yml` |
 
@@ -146,7 +146,7 @@ flowchart LR
 | `MelodyTrack.Backend/MelodyTrack.Backend/ErrorHandling/ApiRateLimiting.cs` | Establishes anonymous authentication-abuse partitions | TM-001, TM-005 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Api/Auth` | Creates, rotates, revokes, and recovers privileged sessions | TM-001, TM-003, TM-004 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Api/ClientPortal` | Implements capability-link and PIN authentication plus client-scoped reads | TM-001, TM-004, TM-005 |
-| `MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs` | Maps encrypted PII and authorization-critical relationships | TM-004, TM-006 |
+| `MelodyTrack.Data/AppDbContext.cs` | Maps encrypted PII and authorization-critical relationships | TM-004, TM-006 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Utils/UserUtils.cs` | Implements password, opaque-token, logging-reference, and JWT helpers | TM-003, TM-006 |
 | `MelodyTrack.Web/src/entities/session/model` | Controls in-memory and persistent browser session state | TM-002, TM-003 |
 | `MelodyTrack.Web/src/entities/client/lib/contact.ts` | Normalizes externally navigable stored contact values | TM-002 |

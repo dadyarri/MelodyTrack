@@ -5,6 +5,9 @@ MelodyTrack is maintained as one repository with separate backend and frontend d
 ## Layout
 
 - `MelodyTrack.Backend/` — .NET 10 ASP.NET Core API
+- `MelodyTrack.Core/` — EF-free domain abstractions
+- `MelodyTrack.Data/` — EF Core context, migrations, persistence, and reusable initialization
+- `MelodyTrack.Init/` — database initialization executable
 - `MelodyTrack.Backend.Tests/` — xUnit/Testcontainers integration tests
 - `MelodyTrack.Web/` — Vite, React, and TypeScript frontend
 - `changelog/releases/` — one JSON file per application release
@@ -18,6 +21,9 @@ From the repository root, `dotnet build` uses `MelodyTrack.slnx` as the solution
 dotnet restore
 dotnet build
 dotnet test
+
+dotnet run --project MelodyTrack.Init -- --mode development
+dotnet run --project MelodyTrack.Backend
 
 cd MelodyTrack.Web
 npm install

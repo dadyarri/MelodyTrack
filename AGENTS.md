@@ -5,6 +5,9 @@
 This repository is the MelodyTrack monorepo:
 
 - `MelodyTrack.Backend/`: .NET 10 ASP.NET Core application.
+- `MelodyTrack.Core/`: EF-free domain entities and abstractions.
+- `MelodyTrack.Data/`: EF Core persistence, migrations, and reusable database initialization.
+- `MelodyTrack.Init/`: database initialization executable with production, development, and test modes.
 - `MelodyTrack.Backend.Tests/`: xUnit integration tests.
 - `MelodyTrack.Web/`: Vite, React, and TypeScript frontend.
 - `changelog/releases/`: application-level release metadata, one JSON file per release.
@@ -18,6 +21,7 @@ The root `MelodyTrack.slnx` is the .NET solution/build entry point. Backend-spec
 - `dotnet build MelodyTrack.slnx`: build the backend solution.
 - `dotnet test MelodyTrack.slnx`: run backend tests; Docker is required for Testcontainers.
 - `dotnet run --project MelodyTrack.Backend`: run the API.
+- `dotnet run --project MelodyTrack.Init -- --mode development`: migrate and seed the development database before running the API.
 - Run `npm install` and `npm run dev` from `MelodyTrack.Web/` to start Vite.
 - Run `npm run verify` from `MelodyTrack.Web/` for the existing frontend verification baseline.
 - Run `dotnet run scripts/ReleaseTool.cs -- <command>` from the repository root for release metadata and release workflow operations.
