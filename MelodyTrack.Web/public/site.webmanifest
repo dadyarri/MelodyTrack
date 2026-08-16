@@ -1,0 +1,21 @@
+{
+  "name": "MelodyTrack",
+  "short_name": "MelodyTrack",
+  "icons": [
+    {
+      "src": "/web-app-manifest-192x192.png?v=20260725-1",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/web-app-manifest-512x512.png?v=20260725-1",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "theme_color": "#8b6226",
+  "background_color": "#f4e8c8",
+  "display": "standalone"
+}

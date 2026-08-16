@@ -1,0 +1,22 @@
+.keycap {
+  min-width: 20px;
+  min-height: 20px;
+  padding: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1px solid color-mix(in srgb, var(--border-main) 45%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--bg-elevated) 60%, transparent);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+  color: var(--text-subtle);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 10px;
+  line-height: 1;
+}
+
+[data-theme="dark"] .keycap {
+  background: color-mix(in srgb, var(--bg-elevated) 42%, transparent);
+}

@@ -1,0 +1,8 @@
+.root {
+  max-height: min(320px, 36vh);
+  overflow-y: auto;
+  padding: 12px 14px;
+  border: 1px solid var(--ant-color-border);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--ant-color-bg-container) 92%, var(--ant-color-fill-tertiary));
+}

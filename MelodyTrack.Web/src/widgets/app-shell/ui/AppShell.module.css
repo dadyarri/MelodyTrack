@@ -1,0 +1,284 @@
+.shell {
+  --shell-header-height: calc(64px + var(--safe-area-top));
+  height: var(--visual-viewport-height);
+  min-height: var(--visual-viewport-height);
+  background: var(--bg-app);
+  overflow: hidden;
+}
+
+.shell :global(.ant-layout) {
+  min-height: 0;
+}
+
+.sider {
+  background: var(--bg-sider);
+  border-right: 1px solid var(--border-strong);
+}
+
+.sider :global(.ant-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+}
+
+.brand {
+  height: 64px;
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  color: var(--text-main);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: 0;
+  border-bottom: 1px solid var(--border-main);
+}
+
+.sider :global(.ant-menu) {
+  padding-inline: 12px;
+  border-inline-end: 0;
+}
+
+.releaseVersion {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border-main);
+  text-align: center;
+}
+
+.releaseVersion :global(.ant-typography) {
+  font-size: 12px;
+}
+
+.mobileReleaseVersion {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.header {
+  height: var(--shell-header-height);
+  padding: var(--safe-area-top) max(24px, var(--safe-area-right)) 0 max(24px, var(--safe-area-left));
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-main);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 16px;
+}
+
+.headerBrand {
+  color: var(--text-main);
+  font-size: 18px;
+  font-weight: 750;
+  letter-spacing: 0;
+}
+
+.headerSpacer {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.header :global(.ant-btn).desktopCollapseButton,
+.header :global(.ant-btn).mobileMenuButton {
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 1px solid var(--border-main);
+  border-radius: 12px;
+  background: var(--bg-elevated);
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.header :global(.ant-btn).desktopCollapseButton {
+  display: inline-flex;
+}
+
+.header :global(.ant-btn).mobileMenuButton {
+  display: none;
+}
+
+.header :global(.ant-btn).desktopCollapseButton:hover,
+.header :global(.ant-btn).desktopCollapseButton:focus-visible,
+.header :global(.ant-btn).mobileMenuButton:hover,
+.header :global(.ant-btn).mobileMenuButton:focus-visible {
+  border-color: var(--border-strong);
+  background: var(--bg-hover);
+  color: var(--text-main);
+}
+
+.headerUserTrigger {
+  min-width: 0;
+  padding: 0;
+  padding-inline: 0;
+  border: 0;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+  color: var(--text-main);
+  font: inherit;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+}
+
+.headerUserTrigger:hover,
+.headerUserTrigger:focus,
+.headerUserTrigger:focus-visible,
+.headerUserTrigger:active {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+  outline: none;
+}
+
+.headerUserMobile {
+  display: none;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-main);
+  font-weight: 600;
+}
+
+.mobileNavDrawer :global(.ant-menu).mobileNavMenu,
+.mobileNavDrawer :global(.ant-menu).mobileNavActionsMenu {
+  border-inline-end: 0;
+}
+
+.mobileNavDrawer :global(.ant-menu-submenu-title),
+.mobileNavDrawer :global(.ant-menu-item),
+.mobileNavDrawer :global(.ant-menu-item-group-title) {
+  white-space: normal;
+}
+
+.mobileNavDrawer :global(.ant-menu).mobileNavMenu :global(.ant-menu-item),
+.mobileNavDrawer :global(.ant-menu).mobileNavActionsMenu :global(.ant-menu-item) {
+  width: 100%;
+}
+
+.desktopNavSubmenuPopup :global(.ant-menu) {
+  min-width: 280px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-main);
+  box-shadow: var(--shadow-soft);
+}
+
+.desktopNavSubmenuPopup :global(.ant-menu-item),
+.desktopNavSubmenuPopup :global(.ant-menu-submenu-title) {
+  height: auto;
+  min-height: 40px;
+  line-height: 1.2;
+  white-space: normal;
+}
+
+.desktopNavSubmenuPopup :global(.ant-menu-title-content) {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: block;
+  overflow: visible;
+}
+
+.desktopNavSubmenuPopup :global(.app-nav-label) {
+  display: inline-flex;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.desktopNavSubmenuPopup :global(.ant-menu-item .ant-menu-item-icon + span),
+.desktopNavSubmenuPopup :global(.ant-menu-submenu-title .ant-menu-item-icon + span),
+.desktopNavSubmenuPopup :global(.ant-menu-submenu-title .anticon + span) {
+  display: inline-flex;
+}
+
+.headerUserPopover :global(.ant-menu).headerUserMenu {
+  width: 200px;
+  background: transparent;
+  border-inline-end: 0;
+}
+
+.headerUserPopover :global(.ant-popover-inner) {
+  padding: 6px;
+}
+
+.headerUserPopover :global(.ant-menu).headerUserMenu :global(.ant-menu-item) {
+  height: auto;
+  min-height: 32px;
+  margin-block: 2px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+  line-height: 1.2;
+}
+
+.headerUserPopover :global(.headerUserMenu) :global(.app-nav-label) {
+  gap: 8px;
+}
+
+.content {
+  padding: 24px max(24px, var(--safe-area-right)) max(24px, var(--safe-area-bottom)) max(24px, var(--safe-area-left));
+  background: var(--bg-app);
+  min-height: 0;
+  overflow: auto;
+}
+
+.contentStack {
+  width: 100%;
+  gap: 28px;
+  min-height: 0;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    position: relative;
+  }
+
+  .shell > .sider {
+    display: none;
+  }
+
+  .sider :global(.ant-layout-sider-children) {
+    background: var(--bg-sider);
+  }
+
+  .header :global(.ant-btn).mobileMenuButton {
+    display: inline-flex;
+  }
+
+  .header :global(.ant-btn).desktopCollapseButton,
+  .headerBrand {
+    display: none;
+  }
+
+  .content {
+    padding: 16px max(16px, var(--safe-area-right)) max(16px, var(--safe-area-bottom)) max(16px, var(--safe-area-left));
+  }
+
+  .contentStack {
+    gap: 22px;
+  }
+
+  .header {
+    padding: 0 12px;
+    gap: 8px;
+  }
+
+  .headerUserTrigger {
+    display: none;
+  }
+
+  .headerUserMobile {
+    display: inline-flex;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .header :global(.ant-typography) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

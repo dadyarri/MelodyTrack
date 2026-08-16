@@ -1,0 +1,111 @@
+:root {
+  color-scheme: light;
+  --boot-bg: #f4e8c8;
+  --boot-card: #f8edcf;
+  --boot-text: #33271a;
+  --boot-muted: #6f5838;
+  --boot-accent: #8b6226;
+  --boot-border: #d8c8a7;
+  --boot-shadow: 0 18px 50px rgba(72, 52, 27, 0.12);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --boot-bg: #15120f;
+  --boot-card: #1f1914;
+  --boot-text: #f1e7d1;
+  --boot-muted: #d2c0a4;
+  --boot-accent: #d0a35b;
+  --boot-border: #4d3a28;
+  --boot-shadow: 0 20px 55px rgba(0, 0, 0, 0.4);
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+  background: var(--boot-bg);
+}
+
+.app-loading-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  min-height: 100dvh;
+  padding: 24px;
+  background: var(--boot-bg);
+  color: var(--boot-text);
+  font-family: "IBM Plex Sans", "Segoe UI", sans-serif;
+}
+
+.app-loading-card {
+  display: grid;
+  justify-items: center;
+  box-sizing: border-box;
+  width: min(280px, 100%);
+  padding: 28px 24px 24px;
+  border: 1px solid var(--boot-border);
+  border-radius: 14px;
+  background: var(--boot-card);
+  box-shadow: var(--boot-shadow);
+}
+
+.app-loading-mark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  margin-bottom: 18px;
+  overflow: hidden;
+  background: var(--boot-accent);
+  border-radius: 16px;
+}
+
+.app-loading-mark img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.app-loading-title {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 24px;
+  letter-spacing: 0.01em;
+}
+
+.app-loading-message {
+  min-height: 20px;
+  margin: 8px 0 18px;
+  color: var(--boot-muted);
+  font-size: 14px;
+  line-height: 20px;
+  text-align: center;
+}
+
+.app-loading-spinner {
+  box-sizing: border-box;
+  width: 26px;
+  height: 26px;
+  border: 3px solid color-mix(in srgb, var(--boot-accent) 24%, transparent);
+  border-top-color: var(--boot-accent);
+  border-radius: 50%;
+  animation: app-loading-spin 800ms linear infinite;
+}
+
+@keyframes app-loading-spin {
+  to {
+    transform: rotate(1turn);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-spinner {
+    animation-duration: 1600ms;
+  }
+}

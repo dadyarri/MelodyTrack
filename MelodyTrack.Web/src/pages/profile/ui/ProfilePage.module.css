@@ -1,0 +1,52 @@
+.setupCard {
+  background: var(--bg-elevated);
+}
+
+.availabilityRow {
+  display: grid;
+  grid-template-columns: minmax(140px, 180px) auto minmax(220px, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.availabilityDayLabel {
+  font-weight: 600;
+}
+
+.availabilityToggle,
+.availabilityTimeRange {
+  margin-bottom: 0;
+}
+
+.divider {
+  margin: 0;
+}
+
+.vacationsHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.vacationRow {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.vacationRange {
+  flex: 1 1 auto;
+  margin-bottom: 0;
+}
+
+@media (max-width: 720px) {
+  .availabilityRow {
+    grid-template-columns: 1fr;
+  }
+
+  .vacationsHeader,
+  .vacationRow {
+    flex-direction: column;
+  }
+}

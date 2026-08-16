@@ -1,0 +1,52 @@
+import type { Client, ClientHistory, ClientHistoryAppointmentStatus } from "../model/types";
+import { formatPhone, getPhoneUri, getSocialHandle, getSocialLinkHref } from "./contact";
+
+export type ClientWithOptionalContacts = Client;
+
+export function formatClientName(client: Pick<Client, "firstName" | "lastName" | "patronymic">) {
+  return [client.lastName, client.firstName, client.patronymic].filter(Boolean).join(" ");
+}
+
+export function getClientContactValue(client: ClientWithOptionalContacts, key: "telegram" | "vk" | "phone") {
+  return client.contacts?.[key] ?? client[key] ?? undefined;
+}
+
+export function renderClientPhoneLink(value?: string | null) {
+  const uri = getPhoneUri(value);
+  if (!uri) {
+    return null;
+  }
+
+  return <a href={uri}>{formatPhone(value)}</a>;
+}
+
+export function renderClientSocialLink(value: string | null | undefined, type: "telegram" | "vk") {
+  const href = getSocialLinkHref(value, type);
+  const handle = getSocialHandle(value, type);
+  if (!href || !handle) {
+    return null;
+  }
+
+  return (
+    <a href={href} target="_blank" rel="noreferrer">
+      @{handle}
+    </a>
+  );
+}
+
+export function renderClientHistoryAppointmentStatus(status: NonNullable<ClientHistory["events"]["data"][number]["appointmentStatus"]>) {
+  return getClientHistoryAppointmentStatusLabel(status);
+}
+
+function getClientHistoryAppointmentStatusLabel(status: ClientHistoryAppointmentStatus) {
+  switch (status) {
+    case "completed":
+      return "Завершено";
+    case "cancelled":
+      return "Отменено";
+    case "burned":
+      return "Сгорело";
+    default:
+      return "Запланировано";
+  }
+}

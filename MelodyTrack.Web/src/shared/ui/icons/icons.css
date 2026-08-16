@@ -1,0 +1,13 @@
+@keyframes melody-icon-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.melody-icon-spin {
+  animation: melody-icon-spin 1s linear infinite;
+}
