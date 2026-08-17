@@ -187,9 +187,8 @@ paths.
 an HTTP(S) URL for a separate API origin or a root-relative path for same-origin
 deployments.
 
-Local development uses `/api`; Vite proxies that prefix to
-`MELODY_TRACK_API_PROXY_TARGET` (default `http://localhost:5000`) and removes
-the prefix before forwarding. A phone or other LAN device therefore sends API
+Local development uses `/api`; Vite proxies that prefix unchanged to
+`MELODY_TRACK_API_PROXY_TARGET` (default `http://localhost:5000`). A phone or other LAN device therefore sends API
 requests back through the same Vite origin instead of trying to connect to a
 backend port that is bound only on the development machine.
 

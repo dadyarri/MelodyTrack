@@ -1,6 +1,6 @@
 # MelodyTrack
 
-MelodyTrack is maintained as one repository with separate backend and frontend development projects.
+MelodyTrack is maintained as one repository with separate backend and frontend development projects and one production application runtime.
 
 ## Layout
 
@@ -34,3 +34,19 @@ Development__EnableSqlParameterLogging=true dotnet run --project MelodyTrack.App
 ```
 
 The PostgreSQL data volume is named `melodytrack-postgres-data` and survives AppHost restarts. The existing `dotnet test MelodyTrack.slnx` and `npm run verify --prefix MelodyTrack.Web` commands remain the verification entry points. See `roadmap.md` for the active migration contract, `docs/releases.md` for the release workflow, and `docs/frontend-verification-inventory.md` for the custom frontend checks that must be preserved or replaced deliberately.
+
+## Build and publish
+
+The root solution build is the fast cross-stack compatibility build. It builds .NET, bootstraps frontend dependencies only when the package inputs or Node environment changed, and runs the frontend type check:
+
+```text
+dotnet build MelodyTrack.slnx
+```
+
+Individual project builds remain scoped and do not invoke the frontend. Publishing Backend builds the production Vite bundle and places it under the published `wwwroot`, producing a complete independently runnable application artifact:
+
+```text
+dotnet publish MelodyTrack.Backend/MelodyTrack.Backend.csproj -c Release
+```
+
+Production uses the single `ghcr.io/<owner>/melody-track` image. Its entrypoint runs `MelodyTrack.Init --mode production` before Kestrel, and Kestrel serves both `/api/*` and the SPA. See `docs/unified-runtime-deployment.md` for the reverse-proxy and Compose cutover contract.
