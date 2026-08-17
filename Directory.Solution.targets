@@ -1,0 +1,10 @@
+<Project>
+  <Import Project="build/Frontend.targets" />
+
+  <Target Name="BuildFrontendCompatibility"
+          AfterTargets="Build"
+          DependsOnTargets="BootstrapFrontendDependencies"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm run typecheck" WorkingDirectory="$(FrontendRoot)" />
+  </Target>
+</Project>

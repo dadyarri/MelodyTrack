@@ -1,0 +1,37 @@
+<Project>
+  <PropertyGroup>
+    <MelodyTrackRepositoryRoot Condition="'$(MelodyTrackRepositoryRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</MelodyTrackRepositoryRoot>
+    <FrontendRoot Condition="'$(FrontendRoot)' == ''">$(MelodyTrackRepositoryRoot)/MelodyTrack.Web</FrontendRoot>
+    <FrontendDistRoot Condition="'$(FrontendDistRoot)' == ''">$(FrontendRoot)/dist</FrontendDistRoot>
+    <FrontendApiBaseUrl Condition="'$(FrontendApiBaseUrl)' == ''">/api</FrontendApiBaseUrl>
+  </PropertyGroup>
+
+  <Target Name="BootstrapFrontendDependencies"
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(SkipFrontendBuild)' != 'true'">
+    <Exec Command="node &quot;$(MelodyTrackRepositoryRoot)/scripts/bootstrap-frontend.mjs&quot;"
+          WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
+  </Target>
+
+  <Target Name="BuildFrontendForPublish"
+          AfterTargets="ComputeFilesToPublish"
+          DependsOnTargets="BootstrapFrontendDependencies"
+          Condition="'$(MSBuildProjectName)' == 'MelodyTrack.Backend' AND '$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm run build"
+          WorkingDirectory="$(FrontendRoot)"
+          EnvironmentVariables="VITE_API_BASE_URL=$(FrontendApiBaseUrl)"
+          Condition="'$(SkipFrontendBuild)' != 'true'" />
+
+    <Error Text="The frontend publish output is missing: $(FrontendDistRoot)/index.html"
+           Condition="!Exists('$(FrontendDistRoot)/index.html')" />
+
+    <ItemGroup>
+      <FrontendPublishFile Include="$(FrontendDistRoot)/**/*" />
+      <ResolvedFileToPublish Include="@(FrontendPublishFile)"
+                             Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot/%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

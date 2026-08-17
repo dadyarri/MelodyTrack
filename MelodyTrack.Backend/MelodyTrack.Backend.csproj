@@ -71,4 +71,6 @@
       <ProjectReference Include="..\MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj" />
     </ItemGroup>
 
+    <Import Project="..\build\Frontend.targets" />
+
 </Project>
