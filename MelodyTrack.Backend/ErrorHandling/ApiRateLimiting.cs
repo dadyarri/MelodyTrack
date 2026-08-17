@@ -1,5 +1,4 @@
 using System.Globalization;
-using System.Net;
 using System.Threading.RateLimiting;
 using Microsoft.AspNetCore.RateLimiting;
 
@@ -101,15 +100,6 @@ public static class ApiRateLimitPolicies
 
     internal static string GetClientAddressPartitionKey(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            var lastProxyValue = forwardedFor.ToString().Split(',')[^1].Trim();
-            if (IPAddress.TryParse(lastProxyValue, out var clientAddress))
-            {
-                return clientAddress.ToString();
-            }
-        }
-
         return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 }

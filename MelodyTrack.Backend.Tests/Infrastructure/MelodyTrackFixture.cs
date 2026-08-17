@@ -57,6 +57,13 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
     protected override void ConfigureApp(IWebHostBuilder app)
     {
         app.UseEnvironment("Test");
+        app.ConfigureAppConfiguration((_, configuration) =>
+        {
+            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Http:PathBase"] = string.Empty
+            });
+        });
     }
 
     public async Task ResetStateAsync(CancellationToken cancellationToken)

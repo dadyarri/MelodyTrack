@@ -14,6 +14,7 @@ using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Hosting;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
@@ -65,7 +66,6 @@ Log.Information(
 
 try
 {
-    var publicBaseUrl = builder.Configuration[$"{PublicUrlOptions.SectionName}:BaseUrl"] ?? string.Empty;
     var jwtSigningKey = builder.Configuration[$"{AuthenticationSecretsOptions.SectionName}:JwtSigningKey"] ?? string.Empty;
     var personalDataKey = builder.Configuration[$"{PersonalDataOptions.SectionName}:CurrentKey"] ?? string.Empty;
     UserUtils.ConfigureLegacySecrets(jwtSigningKey, personalDataKey);
@@ -82,6 +82,7 @@ try
     builder.Services.AddSingleton(TimeProvider.System);
     builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
     builder.Services.AddPublicUrlOptions(builder.Configuration);
+    builder.Services.AddTrustedReverseProxy(builder.Configuration);
     builder.Services.AddOptions<HttpOptions>()
         .Bind(builder.Configuration.GetSection(HttpOptions.SectionName))
         .Validate(
@@ -98,7 +99,7 @@ try
         options.Providers.Add<BrotliCompressionProvider>();
         options.Providers.Add<GzipCompressionProvider>();
         options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-            ["application/problem+json"]);
+            ["application/manifest+json", "application/problem+json", "application/wasm"]);
     });
     builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     {
@@ -108,6 +109,7 @@ try
     {
         options.Level = CompressionLevel.Fastest;
     });
+    var configuredApiPathBase = builder.Configuration[$"{HttpOptions.SectionName}:PathBase"] ?? string.Empty;
     builder.Services.SwaggerDocument(o =>
     {
         o.DocumentSettings = s =>
@@ -117,7 +119,7 @@ try
             s.DocumentName = "v2";
             s.PostProcess = document =>
             {
-                ConfigureOpenApiContract(document);
+                ConfigureOpenApiContract(document, configuredApiPathBase);
                 foreach (var op in document.Operations)
                 {
                     if (op.Operation.Security is not null && op.Operation.Security.Count > 0)
@@ -135,17 +137,6 @@ try
         };
         o.ShortSchemaNames = true;
     });
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowFrontend", policy =>
-        {
-            policy.WithOrigins(publicBaseUrl)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
-    });
-
     // Database configuration
 
     var connectionString = builder.Configuration[$"{DatabaseOptions.SectionName}:ConnectionString"] ?? string.Empty;
@@ -221,10 +212,7 @@ try
     var app = builder.Build();
     var httpOptions = app.Services.GetRequiredService<IOptions<HttpOptions>>().Value;
 
-    if (!string.IsNullOrEmpty(httpOptions.PathBase))
-    {
-        app.UsePathBase(httpOptions.PathBase);
-    }
+    app.UseTrustedReverseProxy();
 
     app.UseFastEndpoints(x =>
     {
@@ -242,6 +230,10 @@ try
         x.Errors.ContentType = ApiMediaTypes.ProblemJson;
         x.Errors.ProducesMetadataType = typeof(ApiProblemDetails);
         x.Endpoints.ShortNames = true;
+        if (!string.IsNullOrEmpty(httpOptions.PathBase))
+        {
+            x.Endpoints.RoutePrefix = httpOptions.PathBase.Trim('/');
+        }
         x.Endpoints.Configurator = ep =>
         {
             if (ep.AnonymousVerbs is null)
@@ -253,36 +245,7 @@ try
 
     app.UseSerilogRequestLogging();
     app.UseResponseCompression();
-    app.UseCors("AllowFrontend");
-    app.Use(async (context, next) =>
-    {
-        context.Response.OnStarting(() =>
-        {
-            var headers = context.Response.Headers;
-            headers.TryAdd("X-Content-Type-Options", "nosniff");
-            headers.TryAdd("X-Frame-Options", "DENY");
-            headers.TryAdd("Referrer-Policy", "no-referrer");
-            headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-            headers.TryAdd("X-Trace-Id", context.TraceIdentifier);
-
-            if (context.Response.StatusCode >= StatusCodes.Status400BadRequest
-                && context.Response.ContentType?.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                context.Response.ContentType = ApiMediaTypes.ProblemJson;
-            }
-
-            if (ShouldDisableCaching(context.Request.Path) || headers.ContainsKey("Content-Disposition"))
-            {
-                headers["Cache-Control"] = "no-store, no-cache, max-age=0";
-                headers["Pragma"] = "no-cache";
-                headers["Expires"] = "0";
-            }
-
-            return Task.CompletedTask;
-        });
-
-        await next();
-    });
+    app.UseUnifiedRuntimeHeaders(httpOptions.PathBase);
     app.UseExceptionHandler(exceptionHandlerApp =>
     {
         exceptionHandlerApp.Run(async context =>
@@ -346,12 +309,14 @@ try
 
         await problemDetails.ExecuteAsync(context);
     });
+    app.UseSpaStaticFiles();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
     app.UseSwaggerGen();
     app.MapDefaultEndpoints();
+    app.MapSpaFallback();
 
     app.Run();
     return 0;
@@ -379,18 +344,7 @@ static string FindReleaseDirectory()
         : Path.Combine(AppContext.BaseDirectory, "changelog", "releases");
 }
 
-static bool ShouldDisableCaching(PathString path)
-{
-    if (path.StartsWithSegments("/auth"))
-    {
-        return true;
-    }
-
-    return path.StartsWithSegments("/users", out var remainingPath)
-           && remainingPath.Value?.EndsWith("/password-reset-links", StringComparison.OrdinalIgnoreCase) == true;
-}
-
-static void ConfigureOpenApiContract(OpenApiDocument document)
+static void ConfigureOpenApiContract(OpenApiDocument document, string apiPathBase)
 {
     if (!document.Components.Schemas.TryGetValue(nameof(ApiProblemDetails), out var problemSchema))
     {
@@ -400,9 +354,10 @@ static void ConfigureOpenApiContract(OpenApiDocument document)
     foreach (var description in document.Operations)
     {
         var operation = description.Operation;
+        var contractPath = RemoveApiPathBase(description.Path, apiPathBase);
         if (string.IsNullOrWhiteSpace(operation.OperationId))
         {
-            operation.OperationId = CreateOperationId(description.Method, description.Path);
+            operation.OperationId = CreateOperationId(description.Method, contractPath);
         }
 
         EnsureProblemResponse(operation, problemSchema, StatusCodes.Status405MethodNotAllowed);
@@ -436,7 +391,7 @@ static void ConfigureOpenApiContract(OpenApiDocument document)
             };
 
             if (description.Method.Equals("post", StringComparison.OrdinalIgnoreCase)
-                && SupportsIdempotency(description.Path)
+                && SupportsIdempotency(contractPath)
                 && operation.Parameters.All(parameter => !parameter.Name.Equals("Idempotency-Key", StringComparison.OrdinalIgnoreCase)))
             {
                 operation.Parameters.Add(new OpenApiHeader
@@ -449,7 +404,7 @@ static void ConfigureOpenApiContract(OpenApiDocument document)
             }
         }
 
-        if (GetDownloadMediaType(description.Path) is { } downloadMediaType)
+        if (GetDownloadMediaType(contractPath) is { } downloadMediaType)
         {
             if (!operation.Responses.TryGetValue(StatusCodes.Status200OK.ToString(), out var downloadResponse))
             {
@@ -549,6 +504,15 @@ static string CreateOperationId(string method, string path)
         path.Split('/', StringSplitOptions.RemoveEmptyEntries)
             .Select(segment => segment.Trim('{', '}').Replace('-', '_')));
     return $"{method.ToLowerInvariant()}_{normalizedPath}";
+}
+
+static string RemoveApiPathBase(string path, string apiPathBase)
+{
+    var normalizedPathBase = apiPathBase.TrimEnd('/');
+    return !string.IsNullOrEmpty(normalizedPathBase)
+           && path.StartsWith($"{normalizedPathBase}/", StringComparison.OrdinalIgnoreCase)
+        ? path[normalizedPathBase.Length..]
+        : path;
 }
 
 static bool SupportsIdempotency(string path) => path is
