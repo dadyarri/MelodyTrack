@@ -1,29 +1,33 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Releases.Responses;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.Api.Releases.Endpoints;
 
-public sealed class GetCurrentReleaseEndpoint(ReleaseChangelog changelog) : EndpointWithoutRequest<CurrentReleaseResponse>
+[ApiEndpoint(ApiMethod.Get, "/releases/current")]
+public static class GetCurrentReleaseEndpoint
 {
-    public override void Configure()
+    [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.Releases)]
+    [ProducesResponseType<CurrentReleaseResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    public static Results<Ok<CurrentReleaseResponse>, StatusCodeHttpResult> HandleAsync(
+        HttpContext context,
+        ReleaseChangelog changelog,
+        CancellationToken cancellationToken)
     {
-        Get("/releases/current");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Releases));
-        Description(builder => builder.Produces(StatusCodes.Status304NotModified));
-    }
-
-    public override async Task HandleAsync(CancellationToken ct)
-    {
-        if (ApplyCaching(HttpContext, changelog.Etag))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (ApplyCaching(context, changelog.Etag))
         {
-            await Send.ResultAsync(TypedResults.StatusCode(StatusCodes.Status304NotModified));
-            return;
+            return TypedResults.StatusCode(StatusCodes.Status304NotModified);
         }
 
-        await Send.OkAsync(new CurrentReleaseResponse(changelog.Current.Version, changelog.Current.ResolvedCodename), ct);
+        return TypedResults.Ok(new CurrentReleaseResponse(changelog.Current.Version, changelog.Current.ResolvedCodename));
     }
 
     internal static bool ApplyCaching(HttpContext context, string etag)
