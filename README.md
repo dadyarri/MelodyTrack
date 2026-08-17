@@ -10,6 +10,8 @@ MelodyTrack is maintained as one repository with separate backend and frontend d
 - `MelodyTrack.Init/` — database initialization executable
 - `MelodyTrack.AppHost/` — Aspire development orchestrator
 - `MelodyTrack.ServiceDefaults/` — shared development telemetry, health, resilience, and service discovery defaults
+- `MelodyTrack.Api.Generators/` — analyzer-only discovery and mapping generator for native Minimal API endpoints
+- `MelodyTrack.Api.Generators.Tests/` — compile-time diagnostic and generated-mapping coverage
 - `MelodyTrack.Backend.Tests/` — xUnit/Testcontainers integration tests
 - `MelodyTrack.Web/` — Vite, React, and TypeScript frontend
 - `changelog/releases/` — one JSON file per application release

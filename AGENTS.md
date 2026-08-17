@@ -10,6 +10,8 @@ This repository is the MelodyTrack monorepo:
 - `MelodyTrack.Init/`: database initialization executable with production, development, and test modes.
 - `MelodyTrack.AppHost/`: Aspire development orchestrator.
 - `MelodyTrack.ServiceDefaults/`: shared service discovery, health, resilience, and development telemetry defaults.
+- `MelodyTrack.Api.Generators/`: analyzer-only Minimal API endpoint source generator.
+- `MelodyTrack.Api.Generators.Tests/`: source-generator diagnostics and mapping tests.
 - `MelodyTrack.Backend.Tests/`: xUnit integration tests.
 - `MelodyTrack.Web/`: Vite, React, and TypeScript frontend.
 - `changelog/releases/`: application-level release metadata, one JSON file per release.
