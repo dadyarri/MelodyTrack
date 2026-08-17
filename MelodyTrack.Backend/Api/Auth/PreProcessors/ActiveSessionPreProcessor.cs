@@ -1,7 +1,4 @@
 using FastEndpoints;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Services;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace MelodyTrack.Backend.Api.Auth.PreProcessors;
@@ -12,36 +9,12 @@ public sealed class ActiveSessionPreProcessor : GlobalPreProcessor<ActiveSession
 
     public override async Task PreProcessAsync(IPreProcessorContext context, State state, CancellationToken ct)
     {
-        if (context.HttpContext.User.Identity?.IsAuthenticated != true)
+        var validator = context.HttpContext.RequestServices.GetRequiredService<ActiveSessionValidator>();
+        if (await validator.IsActiveAsync(context.HttpContext, ct))
         {
             return;
         }
 
-        var services = context.HttpContext.RequestServices;
-        var sessionId = services.GetRequiredService<ICurrentUserAccessor>().SessionId;
-        if (sessionId is null)
-        {
-            return;
-        }
-
-        var db = services.GetRequiredService<AppDbContext>();
-        var logger = services.GetRequiredService<ILogger<ActiveSessionPreProcessor>>();
-        var nowUtc = services.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-
-        var isSessionActive = await db.Sessions
-            .AsNoTracking()
-            .AnyAsync(e => e.Id == sessionId.Value && !e.WasRevoked && e.ValidUntil >= nowUtc, ct);
-
-        if (isSessionActive)
-        {
-            return;
-        }
-
-        logger.LogWarning(
-            "Authenticated request with inactive session {SessionId} to {Method} {Path}",
-            sessionId,
-            context.HttpContext.Request.Method,
-            context.HttpContext.Request.Path);
         await context.HttpContext.Response.SendUnauthorizedAsync(ct);
     }
 }

@@ -3,6 +3,7 @@ using FastEndpoints;
 using FastEndpoints.Security;
 using FastEndpoints.Swagger;
 using MelodyTrack.Backend;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Api.ClientPortal;
@@ -144,6 +145,7 @@ try
 
     // Custom services
     builder.Services.AddUaDetector();
+    builder.Services.AddScoped<ActiveSessionValidator>();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
@@ -316,6 +318,10 @@ try
     app.UseRateLimiter();
     app.UseSwaggerGen();
     app.MapDefaultEndpoints();
+    var apiEndpoints = app.MapGroup(httpOptions.PathBase);
+    apiEndpoints.RequireAuthorization();
+    apiEndpoints.AddEndpointFilter<ActiveSessionEndpointFilter>();
+    apiEndpoints.MapGeneratedApiEndpoints();
     app.MapSpaFallback();
 
     app.Run();
