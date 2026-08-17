@@ -1,6 +1,8 @@
 import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+import { setTestCookie } from "@/test/cookie";
+
 import {
   authExpiredEventName,
   configureHttpSession,
@@ -14,7 +16,7 @@ import {
 describe("shared HTTP transport", () => {
   afterEach(() => {
     vi.restoreAllMocks();
-    document.cookie = "MelodyTrack.Csrf=; Max-Age=0; Path=/";
+    setTestCookie("MelodyTrack.Csrf=; Max-Age=0; Path=/");
   });
 
   it("gets authentication from an injected session adapter", async () => {
@@ -44,7 +46,7 @@ describe("shared HTTP transport", () => {
   });
 
   it("adds the CSRF cookie value only to state-changing requests", async () => {
-    document.cookie = "MelodyTrack.Csrf=csrf-token; Path=/";
+    setTestCookie("MelodyTrack.Csrf=csrf-token; Path=/");
     const capturedConfigs: InternalAxiosRequestConfig[] = [];
     const adapter = (config: InternalAxiosRequestConfig) => {
       capturedConfigs.push(config);
@@ -168,7 +170,7 @@ describe("shared HTTP transport", () => {
   });
 
   it("refreshes a cookie session with credentials and explicit CSRF protection", async () => {
-    document.cookie = "MelodyTrack.Csrf=cookie-csrf; Path=/";
+    setTestCookie("MelodyTrack.Csrf=cookie-csrf; Path=/");
     configureHttpSession({
       clear: vi.fn(),
       clearLegacyRefreshToken: vi.fn(),
@@ -284,7 +286,7 @@ describe("shared HTTP transport", () => {
   });
 
   it("retries refresh when another request rotates the cookie", async () => {
-    document.cookie = "MelodyTrack.Csrf=csrf-before; Path=/";
+    setTestCookie("MelodyTrack.Csrf=csrf-before; Path=/");
     const setAccessToken = vi.fn();
     configureHttpSession({
       clear: vi.fn(),
@@ -295,7 +297,7 @@ describe("shared HTTP transport", () => {
     });
     const forbiddenConfig = {} as InternalAxiosRequestConfig;
     const post = vi.spyOn(axios, "post").mockImplementationOnce(() => {
-      document.cookie = "MelodyTrack.Csrf=csrf-after; Path=/";
+      setTestCookie("MelodyTrack.Csrf=csrf-after; Path=/");
       return Promise.reject(
         new AxiosError("Forbidden", "ERR_BAD_REQUEST", forbiddenConfig, undefined, {
           config: forbiddenConfig,

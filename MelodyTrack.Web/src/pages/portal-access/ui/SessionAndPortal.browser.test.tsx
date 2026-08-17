@@ -12,6 +12,7 @@ import { render } from "vitest-browser-react";
 import { authApi, AuthContext, type AuthContextValue, authStore, savedClientStorage } from "@/entities/session";
 import { configureHttpSession, getApiErrorMessage, http, restoreAccessToken } from "@/shared/api";
 import { ClientPortalThemeProvider } from "@/shared/config";
+import { setTestCookie } from "@/test/cookie";
 
 import { PortalAccessPage } from "./PortalAccessPage";
 
@@ -21,7 +22,7 @@ afterEach(() => {
   vi.restoreAllMocks();
   authStore.clear();
   localStorage.clear();
-  document.cookie = "MelodyTrack.Csrf=; Max-Age=0; Path=/";
+  setTestCookie("MelodyTrack.Csrf=; Max-Age=0; Path=/");
 });
 
 describe("browser session migration and failures", () => {
