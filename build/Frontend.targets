@@ -21,7 +21,7 @@
            Condition="'@(_OpenApiProjectDocuments->Count())' != '1'" />
     <Exec Command="dotnet tool restore"
           WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
-    <Exec Command="dotnet kiota generate --openapi &quot;@(_OpenApiProjectDocuments)&quot; --language TypeScript --class-name MelodyTrackApiClient --namespace-name MelodyTrack.Api --output &quot;$(FrontendGeneratedApiRoot)&quot; --clean-output --exclude-backward-compatible"
+    <Exec Command="node &quot;$(MelodyTrackRepositoryRoot)/scripts/run-kiota-generation.mjs&quot; --openapi &quot;@(_OpenApiProjectDocuments)&quot; --language TypeScript --class-name MelodyTrackApiClient --namespace-name MelodyTrack.Api --output &quot;$(FrontendGeneratedApiRoot)&quot; --clean-output --exclude-backward-compatible"
           WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
     <Exec Command="npm run typecheck"
           WorkingDirectory="$(FrontendRoot)" />
