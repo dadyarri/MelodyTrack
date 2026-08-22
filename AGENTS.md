@@ -40,7 +40,19 @@ The root `MelodyTrack.slnx` is the .NET solution/build entry point. Backend-spec
 - Never expose secrets or personal data in logs, traces, metrics, error metadata, or generated artifacts.
 - Do not hand-edit generated EF migration designer files; create migrations with `dotnet ef migrations add`.
 
+Always request an elevated shell before running `dotnet restore`, `dotnet build`, `dotnet test`, `dotnet tool`, or any other `dotnet` command that may access the internet, including commands that can perform an implicit restore. Do not try the command in the restricted sandbox first. If elevation is denied or unavailable, stop and report the blocker immediately; do not pursue browser downloads, alternate network paths, dependency downgrades, or cache substitutions unless the user explicitly asks for that workaround.
+
 Do not run automated tests, builds, linters, formatters, or verification pipelines after intermediate edits. Run verification only when the user explicitly requests it or says the current change batch is complete and ready for verification. When frontend verification is authorized, use `npm run verify:fix` from `MelodyTrack.Web/` and inspect its mutations before committing.
+
+## Test Conventions
+
+- New .NET test files and classes use `<Subject>Tests`; keep one primary subject or behavioral boundary per class. Test methods use `Operation_Context_ExpectedOutcome`, omitting the context segment only when the scenario remains unambiguous.
+- Use `[Fact]` for one scenario and `[Theory]` only when the same behavior is exercised over data variants. Do not combine unrelated cases merely to reduce the number of tests.
+- Colocate frontend tests with their source. Use `.test.ts`/`.test.tsx` for jsdom/unit behavior, `.browser.test.tsx` for real-browser behavior, and `.webkit.test.tsx` when the behavior specifically carries WebKit risk.
+- Frontend suites use `describe` for the subject/capability and a present-tense behavioral sentence in `it`.
+- Separate Arrange, Act, and Assert with blank lines when useful; do not add phase comments when the structure is already clear. Assert observable behavior and state, not incidental implementation details.
+- Tests must be deterministic, order-independent, and isolated from shared headers, clocks, mocks, database state, and browser persistence.
+- Apply these conventions to new or materially changed tests; do not bulk-rename unrelated legacy tests unless that cleanup is explicitly requested.
 
 ## Git and Releases
 

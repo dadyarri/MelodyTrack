@@ -4,11 +4,11 @@
 
 These instructions apply to the `MelodyTrack.Backend` project. The repository-root `AGENTS.md` defines shared workflow, roadmap, verification, Git, and security rules and takes precedence if there is a conflict.
 
-This file intentionally describes durable backend conventions plus migration boundaries. Do not preserve legacy FastEndpoints/startup behavior merely because it appears in old code.
+This file intentionally describes durable backend conventions plus active migration boundaries. Do not reintroduce removed FastEndpoints, FluentValidation, or startup database-initialization behavior.
 
 ## Current Backend
 
-The current backend uses .NET 10, ASP.NET Core, EF Core, PostgreSQL, Quartz, Serilog, JWT authentication, TOTP 2FA, and xUnit/Testcontainers integration tests. FastEndpoints, FastEndpoints.Swagger, FluentValidation, startup database initialization, and the existing repository split are **legacy implementation details scheduled for replacement by the active roadmap**. Do not expand their use unless required for an intermediate compatibility step.
+The current backend uses .NET 10 native Minimal APIs, generated endpoint registration, native validation and OpenAPI, EF Core, PostgreSQL, Quartz, Serilog, JWT authentication, TOTP 2FA, and xUnit/Testcontainers integration tests. Build-time OpenAPI feeds the committed Kiota TypeScript client. Database initialization is owned by `MelodyTrack.Init`, not Backend startup.
 
 Use the SDK selected by `global.json`. PostgreSQL remains the only application database provider.
 
@@ -26,14 +26,10 @@ Use the SDK selected by `global.json`. PostgreSQL remains the only application d
 - Use `AsNoTracking()` for read-only EF queries when tracking is unnecessary.
 - Keep PostgreSQL-specific behavior where the application depends on it; do not introduce a second runtime database provider.
 
-## API Migration Rules
+## API Conventions
 
-During the Minimal API migration:
-
-- migrate FastEndpoints feature-by-feature; temporary coexistence is allowed when required for a safe incremental migration;
-- do not introduce new FastEndpoints abstractions that will immediately be removed;
-- new target endpoints use the roadmap-defined class-level `[ApiEndpoint(ApiMethod, route)]` convention and generated registration;
-- target endpoint classes expose exactly one `public static HandleAsync` and accept a `CancellationToken`;
+- endpoints use the class-level `[ApiEndpoint(ApiMethod, route)]` convention and generated registration;
+- endpoint classes expose exactly one `public static HandleAsync` and accept a `CancellationToken`;
 - use ordinary Minimal API parameter injection for services and `AppDbContext`;
 - direct `AppDbContext` access is allowed for straightforward endpoint-specific data access;
 - use typed Minimal API results by default;
@@ -45,14 +41,14 @@ Do not add a generic repository/unit-of-work layer, `MelodyTrack.Application`, o
 
 ## Data and Initialization
 
-The target ownership is:
+Project ownership is:
 
 - `MelodyTrack.Core`: EF-free domain primitives/abstractions;
 - `MelodyTrack.Data`: EF Core, `AppDbContext`, configuration, migrations, converters, DB initialization implementation;
 - `MelodyTrack.Init`: executable orchestration for migrations/backfills/Quartz schema/invariants/environment-specific seed/bootstrap;
 - `MelodyTrack.Backend`: HTTP/business services/Quartz runtime.
 
-Until that split exists, preserve current behavior while moving responsibilities deliberately. Do not add new startup migration/backfill/seed logic to Backend when it belongs in `MelodyTrack.Init`.
+Do not add startup migration/backfill/seed logic to Backend when it belongs in `MelodyTrack.Init`.
 
 For schema changes:
 
@@ -96,7 +92,7 @@ Database/schema initialization for Quartz belongs in `MelodyTrack.Init` after th
 
 The target application telemetry APIs are `ILogger<T>`, `ActivitySource`, and `Meter`, exported through OpenTelemetry. Serilog may remain the logging provider; do not add new tracing through SerilogTracing.
 
-Do not emit secrets/PII into logs, traces, metrics, exception metadata, or request logging. Preserve the canonical W3C/OpenTelemetry trace ID across response headers and Problem Details once that migration lands.
+Do not emit secrets/PII into logs, traces, metrics, exception metadata, or request logging. Preserve the canonical W3C/OpenTelemetry trace ID across response headers and Problem Details.
 
 ## Testing
 
@@ -104,11 +100,19 @@ Backend integration tests should remain normal `dotnet test` tests. The target h
 
 Add focused tests when changing authentication/session behavior, authorization, recurrence, idempotency, database queries, initialization, public URL generation, or security-sensitive behavior.
 
+- In `MelodyTrack.Backend.Tests`, use a `<Subject>Tests.cs` file with a matching `<Subject>Tests` class and the `MelodyTrack.Backend.Tests` namespace. Split a class when it stops representing one navigable subject or behavioral boundary.
+- Name tests `Operation_Context_ExpectedOutcome`; keep each segment concrete, omit `Context` only when unnecessary, and do not prefix names with `Test` or use vague names such as `Works`.
+- Prefer Shouldly assertions. One test may assert several facets of one outcome, but it should have one behavioral reason to fail.
+- Keep Arrange, Act, and Assert visually distinct with blank lines. Use private factories/helpers at the bottom of the class; move setup into `TestDataFactory` only when multiple test classes share the same domain construction.
+- Unit tests do not join the integration collection. Database/HTTP tests use `[Collection(IntegrationTestCollection.Name)]`, receive `MelodyTrackFixture`, and normally derive from `IntegrationTestBase`.
+- Use `[Theory]` for data variants of one behavior, not for several workflows hidden behind branching test logic.
+- Use fixed UTC values or controlled `TimeProvider` state when time affects the outcome. Use `TestContext.Current.CancellationToken` for asynchronous test I/O.
+- Never rely on test order or state left by another test. Clear shared client headers and use a clean EF scope/change tracker when asserting persisted state.
+
 Do not run tests/builds automatically after intermediate edits; follow the workspace-root verification policy.
 
-## Generated and Legacy Code
+## Generated Code and Remaining Migration Boundaries
 
 - Do not hand-edit generated EF designer files.
-- Once Kiota/OpenAPI generation is integrated into the monorepo build, treat generated client files according to the root rules.
-- Remove FastEndpoints/FastEndpoints.Swagger/FluentValidation packages and obsolete startup/migration code only after their replacements are complete and verified.
+- Treat the committed Kiota client as generated output: change the native API/OpenAPI source and regenerate it through the root build rather than editing it by hand.
 - Remove obsolete environment variables and configuration validation paths when the strongly typed Options replacement is complete; do not keep dead configuration aliases indefinitely.

@@ -89,6 +89,16 @@ During the monorepo/unified-hosting migration:
 - A copied support trace ID is diagnostic metadata, not a URL workflow. Use the dedicated/general text-copy path rather than URL-copy semantics.
 - Do not add source-map publication/symbolication as part of the initial observability refactor.
 
+## Testing
+
+- Colocate tests with the source file or slice they specify; do not create a separate mirrored test tree.
+- Use `<subject>.test.ts` or `.test.tsx` for unit/jsdom behavior, `<subject>.browser.test.tsx` for behavior requiring a real browser, and `<subject>.webkit.test.tsx` for WebKit-risk behavior. Browser-suffixed tests may run in more than one browser lane.
+- Name `describe` blocks after the subject or user capability. Write `it` descriptions as lower-case, present-tense behavioral sentences that complete “it …”.
+- Keep one observable behavior per `it`; multiple assertions are appropriate when they describe the same outcome. Prefer role, label, accessible name, visible state, and public API assertions over DOM structure or implementation details.
+- Keep setup local. Share helpers through `src/test/` only when several suites need the same browser/test boundary, and restore timers, storage, mocks, and global API replacements after each test.
+- Test TanStack Query wrappers for request mapping, stable query keys, invalidation, cancellation, and errors at the owning slice. Do not test generated Kiota implementation details.
+- Use real-browser tests for user activation, clipboard/share/download, focus, viewport, touch, and other behavior jsdom cannot model faithfully. Add or update WebKit coverage when the documented risk applies.
+
 ## Verification
 
 Steiger, formatting, Biome, ESLint, strict TypeScript, unit tests, browser checks, security checks, bundle budgets, and production build remain required quality gates for completed frontend work.
