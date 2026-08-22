@@ -16,11 +16,11 @@ export function ListTable<RecordType extends object>({
   scroll,
   ...props
 }: ListTableProps<RecordType>) {
-  const showBackgroundRefresh = Boolean(queryStatus?.isFetching && !queryStatus.isError && !props.loading);
+  const showBackgroundRefresh = Boolean(queryStatus?.isFetching && !queryStatus.error && !props.loading);
 
   return (
     <div className={styles.root}>
-      {queryStatus?.isError ? <ListQueryStatus {...queryStatus} isFetching={false} /> : null}
+      {queryStatus?.error ? <ListQueryStatus {...queryStatus} isFetching={false} /> : null}
       {showBackgroundRefresh ? (
         <div className={styles.backgroundStatus}>
           <ListQueryStatus {...queryStatus} isFetching />

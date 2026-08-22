@@ -51,7 +51,7 @@ export function DashboardPage() {
         client={controller.historyClient}
         data={controller.historyQuery.data}
         isLoading={controller.historyQuery.isLoading}
-        isError={controller.historyQuery.isError}
+        error={controller.historyQuery.error}
         onClose={controller.closeHistoryClient}
         onCreateAppointment={controller.clientHistoryActions.onCreateAppointment}
         onCreatePayment={controller.clientHistoryActions.onCreatePayment}

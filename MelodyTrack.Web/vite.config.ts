@@ -60,8 +60,8 @@ export default defineConfig(({ mode }) => {
                 test: /[\\/]node_modules[\\/]@tanstack[\\/](query-core|react-query)[\\/]/,
               },
               {
-                name: "network",
-                test: /[\\/]node_modules[\\/]axios[\\/]/,
+                name: "kiota-runtime",
+                test: /[\\/]node_modules[\\/]@microsoft[\\/]kiota-/,
               },
               {
                 name: "lucide",

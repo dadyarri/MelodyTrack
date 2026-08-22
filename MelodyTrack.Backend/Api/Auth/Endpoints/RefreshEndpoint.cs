@@ -1,7 +1,6 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.AspNetCore.Authorization;
-using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
@@ -20,7 +19,6 @@ public sealed class RefreshEndpoint
         [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Refresh)]
     public static async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
-        RefreshRequest req,
         AppDbContext db,
         [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
         IAuditLogService auditLogService,
@@ -33,15 +31,13 @@ public sealed class RefreshEndpoint
     )
     {
         logger.LogDebug("Attempting to refresh token");
-        var cookieRefreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);
-        var isLegacyMigration = !string.IsNullOrWhiteSpace(req.RefreshToken);
-        var presentedRefreshToken = isLegacyMigration ? req.RefreshToken : cookieRefreshToken;
+        var presentedRefreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);
         if (string.IsNullOrWhiteSpace(presentedRefreshToken))
         {
             return TypedResults.Unauthorized();
         }
 
-        if (!isLegacyMigration && !refreshCookieService.HasValidCsrfToken(httpContext.Request, presentedRefreshToken))
+        if (!refreshCookieService.HasValidCsrfToken(httpContext.Request, presentedRefreshToken))
         {
             logger.LogWarning("auth.refresh.csrf_rejected");
             return TypedResults.Forbid();
@@ -118,10 +114,9 @@ public sealed class RefreshEndpoint
         await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(session.User, ct);
 
         logger.LogInformation(
-            "auth.refresh.succeeded {EmailRef} device {DeviceInfo} legacyMigration {LegacyMigration}",
+            "auth.refresh.succeeded {EmailRef} device {DeviceInfo}",
             UserUtils.DescribeEmailForLogs(session.User.Email),
-            newSession.DeviceInfo,
-            isLegacyMigration);
+            newSession.DeviceInfo);
         var response = new LoginResponse
         {
             AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id, timeProvider),

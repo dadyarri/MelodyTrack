@@ -27,8 +27,8 @@ export interface ExpensesRequestBuilder extends BaseRequestBuilder<ExpensesReque
 }
 export interface ExpensesRequestBuilderGetQueryParameters {
     end?: Date;
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
     search?: string;
     start?: Date;
 }

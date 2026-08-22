@@ -57,8 +57,8 @@ export interface PaymentsRequestBuilderGetQueryParameters {
     end?: Date;
     firstName?: string;
     lastName?: string;
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
     search?: string;
     serviceId?: string;
     start?: Date;

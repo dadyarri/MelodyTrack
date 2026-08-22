@@ -10,7 +10,7 @@ type ClientHistoryDrawerProps = {
   client: Client | null;
   data?: ClientHistory;
   isLoading: boolean;
-  isError: boolean;
+  error?: unknown;
   courseEnrollments?: CourseEnrollment[];
   isCourseEnrollmentsLoading?: boolean;
   isCourseEnrollmentsError?: boolean;
@@ -37,7 +37,7 @@ export function ClientHistoryDrawer({
   client,
   data,
   isLoading,
-  isError,
+  error,
   courseEnrollments,
   isCourseEnrollmentsLoading = false,
   isCourseEnrollmentsError = false,
@@ -93,8 +93,8 @@ export function ClientHistoryDrawer({
       ) : null}
       <QueryStateBlock
         isLoading={isLoading}
-        isError={isError}
-        isEmpty={!isLoading && !isError && !data}
+        error={error}
+        isEmpty={!isLoading && !error && !data}
         loadingText="Загрузка истории..."
         emptyText="История клиента пока недоступна"
         errorMessage="Не удалось загрузить историю клиента."

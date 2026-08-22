@@ -9,6 +9,7 @@ const reviewedClipboardFiles = new Set([
   "pages/tasks/model/useTasksPageController.ts",
   "shared/ui/UrlCopyModal.tsx",
 ]);
+const reviewedTraceIdCopyFiles = new Set(["shared/ui/CopyTraceIdButton.tsx"]);
 const reviewedCopyableFiles = new Set(["entities/session/ui/TotpSecretPanel.tsx", "pages/auth/ui/AuthPage.tsx"]);
 const requiredUrlModalProducers = new Map([
   ["pages/client-portal-schedule/ui/ClientPortalSchedulePage.tsx", 1],
@@ -34,6 +35,10 @@ for (const filePath of files) {
 
   if (/\bcopyable\b/.test(source) && !reviewedCopyableFiles.has(relativePath)) {
     problems.push(`${relativePath} uses copyable content outside the reviewed non-URL TOTP workflow.`);
+  }
+
+  if (source.includes("copyTextToClipboard") && source.includes("traceId") && !reviewedTraceIdCopyFiles.has(relativePath)) {
+    problems.push(`${relativePath} copies a trace ID outside the reviewed shared trace-ID primitive.`);
   }
 
   if (

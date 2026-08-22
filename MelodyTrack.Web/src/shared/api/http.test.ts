@@ -1,330 +1,173 @@
-import axios, { AxiosError, type AxiosRequestConfig, type InternalAxiosRequestConfig } from "axios";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { setTestCookie } from "@/test/cookie";
 
 import {
+  AppError,
   authExpiredEventName,
   configureHttpSession,
-  discardLegacyHttpCache,
-  getApiErrorMessages,
+  getApiErrorMessage,
   getApiFieldErrors,
   http,
+  isHttpRequestCanceled,
   restoreAccessToken,
-} from "./index";
+} from "./http";
 
-describe("shared HTTP transport", () => {
-  afterEach(() => {
-    vi.restoreAllMocks();
+describe("Kiota HTTP session transport", () => {
+  const clear = vi.fn();
+  let accessToken: string | null;
+
+  beforeEach(() => {
+    accessToken = "access-before";
+    clear.mockClear();
+    configureHttpSession({
+      clear,
+      getAccessToken: () => accessToken,
+      hasSession: () => true,
+      setAccessToken: (token) => {
+        accessToken = token;
+      },
+    });
     setTestCookie("MelodyTrack.Csrf=; Max-Age=0; Path=/");
   });
 
-  it("gets authentication from an injected session adapter", async () => {
-    let capturedConfig: InternalAxiosRequestConfig | undefined;
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => "access-token",
-      getLegacyRefreshToken: () => null,
-      setAccessToken: vi.fn(),
-    });
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    await http.get("/test", {
-      adapter: (config) => {
-        capturedConfig = config;
-        return Promise.resolve({
-          config,
-          data: null,
-          headers: {},
-          status: 200,
-          statusText: "OK",
-        });
+  it("preserves bearer, idempotency, cancellation, and cookie credentials", async () => {
+    const controller = new AbortController();
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ id: "created" }));
+
+    await http.post(
+      "/clients",
+      { name: "Client" },
+      {
+        headers: { "Idempotency-Key": "request-1" },
+        signal: controller.signal,
       },
-    });
-
-    expect(capturedConfig?.headers.Authorization).toBe("Bearer access-token");
-  });
-
-  it("adds the CSRF cookie value only to state-changing requests", async () => {
-    setTestCookie("MelodyTrack.Csrf=csrf-token; Path=/");
-    const capturedConfigs: InternalAxiosRequestConfig[] = [];
-    const adapter = (config: InternalAxiosRequestConfig) => {
-      capturedConfigs.push(config);
-      return Promise.resolve({ config, data: null, headers: {}, status: 200, statusText: "OK" });
-    };
-
-    await http.get("/read", { adapter });
-    await http.post("/write", {}, { adapter });
-
-    expect(capturedConfigs[0]?.headers["X-CSRF-Token"]).toBeUndefined();
-    expect(capturedConfigs[1]?.headers["X-CSRF-Token"]).toBe("csrf-token");
-  });
-
-  it("normalizes non-HTTP errors", () => {
-    expect(getApiErrorMessages(new Error("Something failed"))).toEqual(["Something failed"]);
-    expect(getApiErrorMessages("unknown")).toEqual(["Произошла неизвестная ошибка"]);
-  });
-
-  it("parses only the canonical Problem Details contract", () => {
-    const config = {} as InternalAxiosRequestConfig;
-    const canonical = new AxiosError("Bad Request", "ERR_BAD_REQUEST", config, undefined, {
-      config,
-      data: {
-        type: "urn:melody-track:problem:validation",
-        title: "Request validation failed",
-        status: 400,
-        detail: "Correct the highlighted fields.",
-        instance: "/test",
-        code: "validation_failed",
-        traceId: "trace-1",
-        errors: [{ path: "Pin", code: "NotEmptyValidator", message: "Введите PIN-код" }],
-      },
-      headers: {},
-      status: 400,
-      statusText: "Bad Request",
-    });
-    const legacy = new AxiosError("Bad Request", "ERR_BAD_REQUEST", config, undefined, {
-      config,
-      data: { message: "legacy error", errors: { pin: ["legacy field error"] } },
-      headers: {},
-      status: 400,
-      statusText: "Bad Request",
-    });
-
-    expect(getApiErrorMessages(canonical)).toEqual(["Введите PIN-код\nCorrect the highlighted fields."]);
-    expect(getApiFieldErrors(canonical)).toEqual({ pin: ["Введите PIN-код"] });
-    expect(getApiErrorMessages(legacy)).toEqual(["Сервер не смог обработать запрос (HTTP 400)."]);
-    expect(getApiFieldErrors(legacy)).toEqual({});
-  });
-
-  it("refreshes an expired access token and retries the original request once", async () => {
-    let accessToken = "expired-access";
-    const setAccessToken = vi.fn((nextAccessToken: string) => {
-      accessToken = nextAccessToken;
-    });
-    const clearLegacyRefreshToken = vi.fn();
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken,
-      getAccessToken: () => accessToken,
-      getLegacyRefreshToken: () => null,
-      setAccessToken,
-    });
-    vi.spyOn(axios, "post").mockResolvedValue({
-      data: { accessToken: "fresh-access" },
-    });
-    let attempt = 0;
-    let retriedAuthorization: unknown;
-
-    await http.get("/protected", {
-      adapter: (config) => {
-        attempt += 1;
-        if (attempt === 1) {
-          return Promise.reject(
-            new AxiosError("Unauthorized", "ERR_BAD_REQUEST", config, undefined, {
-              config,
-              data: null,
-              headers: {},
-              status: 401,
-              statusText: "Unauthorized",
-            }),
-          );
-        }
-        retriedAuthorization = config.headers.Authorization;
-        return Promise.resolve({
-          config,
-          data: { ok: true },
-          headers: {},
-          status: 200,
-          statusText: "OK",
-        });
-      },
-    });
-
-    expect(setAccessToken).toHaveBeenCalledWith("fresh-access");
-    expect(clearLegacyRefreshToken).toHaveBeenCalledOnce();
-    expect(retriedAuthorization).toBe("Bearer fresh-access");
-    expect(attempt).toBe(2);
-  });
-
-  it("restores an access token before the first authenticated request", async () => {
-    let accessToken: string | null = null;
-    const setAccessToken = vi.fn((nextAccessToken: string) => {
-      accessToken = nextAccessToken;
-    });
-    const clearLegacyRefreshToken = vi.fn();
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken,
-      getAccessToken: () => accessToken,
-      getLegacyRefreshToken: () => "refresh-1",
-      setAccessToken,
-    });
-    vi.spyOn(axios, "post").mockResolvedValue({
-      data: { accessToken: "fresh-access" },
-    });
-
-    await expect(restoreAccessToken()).resolves.toBe("fresh-access");
-    expect(setAccessToken).toHaveBeenCalledWith("fresh-access");
-    expect(clearLegacyRefreshToken).toHaveBeenCalledOnce();
-  });
-
-  it("refreshes a cookie session with credentials and explicit CSRF protection", async () => {
-    setTestCookie("MelodyTrack.Csrf=cookie-csrf; Path=/");
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => null,
-      getLegacyRefreshToken: () => null,
-      setAccessToken: vi.fn(),
-    });
-    const post = vi.spyOn(axios, "post").mockResolvedValue({ data: { accessToken: "fresh-access" } });
-
-    await expect(restoreAccessToken()).resolves.toBe("fresh-access");
-
-    expect(post).toHaveBeenCalledOnce();
-    const [url, body, config] = post.mock.calls[0] as [string, unknown, AxiosRequestConfig];
-    expect(url).toContain("/auth/refresh");
-    expect(body).toEqual({});
-    expect(config.withCredentials).toBe(true);
-    expect(config.headers).toMatchObject({ "X-CSRF-Token": "cookie-csrf" });
-  });
-
-  it("clears and publishes expiry when the refresh session is invalid", async () => {
-    const clear = vi.fn();
-    configureHttpSession({
-      clear,
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => "expired-access",
-      getLegacyRefreshToken: () => null,
-      setAccessToken: vi.fn(),
-    });
-    const refreshConfig = {} as InternalAxiosRequestConfig;
-    vi.spyOn(axios, "post").mockRejectedValue(
-      new AxiosError("Unauthorized", "ERR_BAD_REQUEST", refreshConfig, undefined, {
-        config: refreshConfig,
-        data: null,
-        headers: {},
-        status: 401,
-        statusText: "Unauthorized",
-      }),
     );
-    const expiredListener = vi.fn();
-    window.addEventListener(authExpiredEventName, expiredListener);
 
-    await expect(
-      http.get("/protected", {
-        adapter: (config) =>
-          Promise.reject(
-            new AxiosError("Unauthorized", "ERR_BAD_REQUEST", config, undefined, {
-              config,
-              data: null,
-              headers: {},
-              status: 401,
-              statusText: "Unauthorized",
-            }),
-          ),
-      }),
-    ).rejects.toThrow("Сессия истекла");
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    const headers = new Headers(init?.headers);
+    expect(headers.get("Authorization")).toBe("Bearer access-before");
+    expect(headers.get("Idempotency-Key")).toBe("request-1");
+    expect(headers.has("X-CSRF-Token")).toBe(false);
+    expect(init?.credentials).toBe("include");
+    expect(init?.signal).toBe(controller.signal);
+  });
+
+  it("adds CSRF only to cookie-authenticated session operations", async () => {
+    setTestCookie("MelodyTrack.Csrf=csrf-token; Path=/");
+    accessToken = null;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(jsonResponse({ accessToken: "fresh-access" }));
+
+    await restoreAccessToken();
+
+    const [, init] = fetchMock.mock.calls[0] ?? [];
+    expect(new Headers(init?.headers).get("X-CSRF-Token")).toBe("csrf-token");
+  });
+
+  it("coalesces concurrent 401 responses and replays every original request once", async () => {
+    let refreshCalls = 0;
+    let protectedCalls = 0;
+    vi.spyOn(globalThis, "fetch").mockImplementation((url, init) => {
+      if (getRequestUrl(url).endsWith("/auth/refresh")) {
+        refreshCalls += 1;
+        return Promise.resolve(jsonResponse({ accessToken: "access-after" }));
+      }
+
+      protectedCalls += 1;
+      const token = new Headers(init?.headers).get("Authorization");
+      return Promise.resolve(token === "Bearer access-after" ? jsonResponse({ ok: true }) : jsonResponse(createProblem(401), 401));
+    });
+
+    await Promise.all([http.get("/clients"), http.get("/services")]);
+
+    expect(refreshCalls).toBe(1);
+    expect(protectedCalls).toBe(4);
+    expect(accessToken).toBe("access-after");
+  });
+
+  it("publishes terminal expiry once and does not replay a state-changing request", async () => {
+    const onExpired = vi.fn();
+    window.addEventListener(authExpiredEventName, onExpired);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.resolve(jsonResponse(createProblem(401), 401)));
+
+    await expect(http.post("/payments", { amount: 100 })).rejects.toMatchObject({ status: 401 });
 
     expect(clear).toHaveBeenCalledOnce();
-    expect(expiredListener).toHaveBeenCalledOnce();
-    window.removeEventListener(authExpiredEventName, expiredListener);
+    expect(onExpired).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls.filter(([url]) => getRequestUrl(url).endsWith("/payments"))).toHaveLength(1);
+    window.removeEventListener(authExpiredEventName, onExpired);
   });
 
-  it("keeps the session when refreshing fails transiently", async () => {
-    const clear = vi.fn();
-    configureHttpSession({
-      clear,
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => "expired-access",
-      getLegacyRefreshToken: () => null,
-      setAccessToken: vi.fn(),
+  it("keeps the session when refresh fails because the network is unavailable", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      if (getRequestUrl(url).endsWith("/auth/refresh")) {
+        return Promise.reject(new TypeError("Network unavailable"));
+      }
+      return Promise.resolve(jsonResponse(createProblem(401), 401));
     });
-    vi.spyOn(axios, "post").mockRejectedValue(new AxiosError("Network unavailable", AxiosError.ERR_NETWORK));
-    const expiredListener = vi.fn();
-    window.addEventListener(authExpiredEventName, expiredListener);
 
-    await expect(
-      http.get("/protected", {
-        adapter: (config) =>
-          Promise.reject(
-            new AxiosError("Unauthorized", "ERR_BAD_REQUEST", config, undefined, {
-              config,
-              data: null,
-              headers: {},
-              status: 401,
-              statusText: "Unauthorized",
-            }),
-          ),
-      }),
-    ).rejects.toThrow("Не удалось обновить сессию");
+    await expect(http.get("/clients")).rejects.toMatchObject({ kind: "network" });
 
     expect(clear).not.toHaveBeenCalled();
-    expect(expiredListener).not.toHaveBeenCalled();
-    window.removeEventListener(authExpiredEventName, expiredListener);
   });
 
-  it("recovers when the first refresh attempt fails transiently", async () => {
-    const setAccessToken = vi.fn();
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => null,
-      getLegacyRefreshToken: () => null,
-      setAccessToken,
-    });
-    const post = vi
-      .spyOn(axios, "post")
-      .mockRejectedValueOnce(new AxiosError("Network unavailable", AxiosError.ERR_NETWORK))
-      .mockResolvedValueOnce({ data: { accessToken: "fresh-access" } });
+  it("normalizes problem details and field errors", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      jsonResponse(
+        {
+          ...createProblem(400),
+          detail: "Проверьте данные",
+          errors: [{ path: "Email", code: "invalid", message: "Некорректная почта" }],
+        },
+        400,
+      ),
+    );
 
-    await expect(restoreAccessToken()).resolves.toBe("fresh-access");
+    const error = await http.post("/auth/login", {}).catch((caught: unknown) => caught);
 
-    expect(post).toHaveBeenCalledTimes(2);
-    expect(setAccessToken).toHaveBeenCalledWith("fresh-access");
+    expect(error).toBeInstanceOf(AppError);
+    expect(getApiErrorMessage(error)).toContain("Некорректная почта");
+    expect(getApiFieldErrors(error)).toEqual({ email: ["Некорректная почта"] });
   });
 
-  it("retries refresh when another request rotates the cookie", async () => {
-    setTestCookie("MelodyTrack.Csrf=csrf-before; Path=/");
-    const setAccessToken = vi.fn();
-    configureHttpSession({
-      clear: vi.fn(),
-      clearLegacyRefreshToken: vi.fn(),
-      getAccessToken: () => null,
-      getLegacyRefreshToken: () => null,
-      setAccessToken,
-    });
-    const forbiddenConfig = {} as InternalAxiosRequestConfig;
-    const post = vi.spyOn(axios, "post").mockImplementationOnce(() => {
-      setTestCookie("MelodyTrack.Csrf=csrf-after; Path=/");
-      return Promise.reject(
-        new AxiosError("Forbidden", "ERR_BAD_REQUEST", forbiddenConfig, undefined, {
-          config: forbiddenConfig,
-          data: null,
-          headers: {},
-          status: 403,
-          statusText: "Forbidden",
-        }),
-      );
-    });
-    post.mockResolvedValueOnce({ data: { accessToken: "fresh-access" } });
+  it("recognizes AbortSignal cancellation", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new DOMException("Aborted", "AbortError"));
 
-    await expect(restoreAccessToken()).resolves.toBe("fresh-access");
+    const error = await http.get("/clients").catch((caught: unknown) => caught);
 
-    expect(post).toHaveBeenCalledTimes(2);
-    expect(post.mock.calls[0]?.[2]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-before" });
-    expect(post.mock.calls[1]?.[2]?.headers).toMatchObject({ "X-CSRF-Token": "csrf-after" });
-    expect(setAccessToken).toHaveBeenCalledWith("fresh-access");
-  });
-
-  it("removes only generic legacy response-cache entries", () => {
-    localStorage.setItem("melodytrack:http-cache:get:/client-portal/auth/link/secret-token", "{}");
-    localStorage.setItem("melodytrack.theme", "dark");
-
-    discardLegacyHttpCache(localStorage);
-
-    expect(localStorage.getItem("melodytrack:http-cache:get:/client-portal/auth/link/secret-token")).toBeNull();
-    expect(localStorage.getItem("melodytrack.theme")).toBe("dark");
+    expect(isHttpRequestCanceled(error)).toBe(true);
   });
 });
+
+function jsonResponse(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: { "Content-Type": "application/json" },
+  });
+}
+
+function createProblem(status: number) {
+  return {
+    type: `urn:melody-track:problem:${String(status)}`,
+    title: "Ошибка",
+    status,
+    instance: "/api/test",
+    code: `http_${String(status)}`,
+    traceId: "0123456789abcdef0123456789abcdef",
+    errors: [],
+  };
+}
+
+function getRequestUrl(input: RequestInfo | URL | undefined) {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input?.url ?? "";
+}

@@ -3,20 +3,17 @@ import "@/app/styles/mobile-compatibility.css";
 
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { App as AntdApp } from "antd";
-import axios, { AxiosError } from "axios";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 
 import { authApi, AuthContext, type AuthContextValue, authStore, savedClientStorage } from "@/entities/session";
-import { configureHttpSession, getApiErrorMessage, http, restoreAccessToken } from "@/shared/api";
+import { AppError, configureHttpSession, getApiErrorMessage, http, restoreAccessToken } from "@/shared/api";
 import { ClientPortalThemeProvider } from "@/shared/config";
 import { setTestCookie } from "@/test/cookie";
 
 import { PortalAccessPage } from "./PortalAccessPage";
-
-const legacyRefreshTokenKey = "melodytrack.refreshToken";
 
 afterEach(() => {
   vi.restoreAllMocks();
@@ -25,35 +22,44 @@ afterEach(() => {
   setTestCookie("MelodyTrack.Csrf=; Max-Age=0; Path=/");
 });
 
-describe("browser session migration and failures", () => {
-  it("exchanges a legacy refresh token once and removes it from browser storage", async () => {
-    localStorage.setItem(legacyRefreshTokenKey, "legacy-refresh-secret");
+describe("browser session refresh and failures", () => {
+  it("uses the cookie refresh session and keeps the new access token in memory", async () => {
     configureHttpSession(authStore);
-    const post = vi.spyOn(axios, "post").mockResolvedValue({ data: { accessToken: "memory-access-token" } });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ accessToken: "memory-access-token" }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
 
     await expect(restoreAccessToken()).resolves.toBe("memory-access-token");
 
-    expect(post).toHaveBeenCalledWith(
-      expect.stringContaining("/auth/refresh"),
-      { refreshToken: "legacy-refresh-secret" },
-      expect.objectContaining({ withCredentials: true }),
-    );
-    expect(localStorage.getItem(legacyRefreshTokenKey)).toBeNull();
+    expect(fetchMock).toHaveBeenCalledOnce();
+    expect(getRequestUrl(fetchMock.mock.calls[0]?.[0])).toContain("/auth/refresh");
+    expect(fetchMock.mock.calls[0]?.[1]?.credentials).toBe("include");
     expect(authStore.getAccessToken()).toBe("memory-access-token");
     expect(Object.values(localStorage)).not.toContain("memory-access-token");
   });
 
-  it("reports an offline request as a network failure before transport", async () => {
-    vi.spyOn(window.navigator, "onLine", "get").mockReturnValue(false);
-    const adapter = vi.fn();
+  it("reports a fetch failure as a network failure without clearing session state", async () => {
+    vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Network unavailable"));
 
-    const error = await http.get("/protected", { adapter }).catch((reason: unknown) => reason);
+    const error = await http.get("/protected").catch((reason: unknown) => reason);
 
-    expect(error).toBeInstanceOf(AxiosError);
-    expect(adapter).not.toHaveBeenCalled();
+    expect(error).toBeInstanceOf(AppError);
     expect(getApiErrorMessage(error)).toContain("Не удалось подключиться к серверу");
   });
 });
+
+function getRequestUrl(input: RequestInfo | URL | undefined) {
+  if (typeof input === "string") {
+    return input;
+  }
+  if (input instanceof URL) {
+    return input.href;
+  }
+  return input?.url ?? "";
+}
 
 describe("client portal access in a browser", () => {
   it("authenticates an existing PIN and establishes the portal session", async () => {
@@ -83,7 +89,7 @@ describe("client portal access in a browser", () => {
   });
 
   it("shows a useful failure state when the portal link check cannot reach the API", async () => {
-    vi.spyOn(authApi, "getClientPortalLinkStatus").mockRejectedValue(new AxiosError("Network Error", AxiosError.ERR_NETWORK));
+    vi.spyOn(authApi, "getClientPortalLinkStatus").mockRejectedValue(new AppError("Network Error", { kind: "network" }));
     const screen = await renderPortal(vi.fn());
 
     await expect.element(screen.getByText("Ссылка входа недействительна")).toBeVisible();
@@ -133,9 +139,7 @@ describe("client portal access in a browser", () => {
       displayLabel: "Анна К.",
       lastUsedAtUtc: "2026-07-31T12:00:00.000Z",
     });
-    vi.spyOn(authApi, "getSavedClientPortalStatus").mockRejectedValue(
-      new AxiosError("Forbidden", undefined, undefined, undefined, { status: 403 } as never),
-    );
+    vi.spyOn(authApi, "getSavedClientPortalStatus").mockRejectedValue(new AppError("Forbidden", { kind: "http", status: 403 }));
     const staleScreen = await renderPortal(vi.fn(), "/portal/access");
     await staleScreen.getByRole("button", { name: "Анна К." }).click();
     await expect.element(staleScreen.getByText("Профиль больше недоступен")).toBeVisible();

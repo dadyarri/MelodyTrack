@@ -18,10 +18,9 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Post, "/auth/login")]
 public sealed class LoginEndpoint
 {
-
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Login)]
-    public static async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> HandleAsync(
+    public static async Task<Results<Ok<LoginAttemptResponse>, Accepted<LoginAttemptResponse>, UnauthorizedHttpResult>> HandleAsync(
         LoginRequest req,
         AppDbContext db,
         [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
@@ -59,7 +58,7 @@ public sealed class LoginEndpoint
             logger.LogInformation("auth.login.challenge_required {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Accepted(
                 "/auth/login",
-                new LoginChallengeResponse
+                new LoginAttemptResponse
                 {
                     RequiresTwoFactor = true,
                     CanUseOtp = user.TotpSecret is not null,
@@ -123,7 +122,7 @@ public sealed class LoginEndpoint
             ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
             Details = $"Устройство: {session.DeviceInfo}"
         }, ct);
-        var response = new LoginResponse
+        var response = new LoginAttemptResponse
         {
             AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
             FirstName = user.FirstName,

@@ -323,7 +323,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         // set valid User-Agent header required by LoginEndpoint for device info
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.IntegrationTests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginChallengeResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginAttemptResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
@@ -331,9 +331,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         loginRes.ShouldNotBeNull();
-        loginRes.RequiresTwoFactor.ShouldBeTrue();
-        loginRes.CanUseOtp.ShouldBeTrue();
-        loginRes.CanUseRecoveryCode.ShouldBeFalse();
+        loginRes.RequiresTwoFactor.ShouldBe(true);
+        loginRes.CanUseOtp.ShouldBe(true);
+        loginRes.CanUseRecoveryCode.ShouldBe(false);
     }
 
     [Fact]
@@ -375,7 +375,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginChallengeResponse>(new LoginRequest
+        var (loginRsp, loginRes) = await App.Client.POSTAsync<LoginEndpoint, LoginRequest, LoginAttemptResponse>(new LoginRequest
         {
             Email = email.ToLowerInvariant(),
             Password = password
@@ -383,9 +383,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         loginRsp.StatusCode.ShouldBe(HttpStatusCode.Accepted);
         loginRes.ShouldNotBeNull();
-        loginRes.RequiresTwoFactor.ShouldBeTrue();
-        loginRes.CanUseOtp.ShouldBeTrue();
-        loginRes.CanUseRecoveryCode.ShouldBeFalse();
+        loginRes.RequiresTwoFactor.ShouldBe(true);
+        loginRes.CanUseOtp.ShouldBe(true);
+        loginRes.CanUseRecoveryCode.ShouldBe(false);
     }
 
     [Fact]
@@ -517,13 +517,13 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task Refresh_WithoutUsableToken_ReturnsUnauthorized()
+    public async Task Refresh_WithBodyTokenOnly_ReturnsUnauthorized()
     {
         using var client = App.CreateClient();
-        var rsp = await client.PostAsJsonAsync("/auth/refresh", new RefreshRequest
-        {
-            RefreshToken = ""
-        }, TestContext.Current.CancellationToken);
+        var rsp = await client.PostAsJsonAsync(
+            "/auth/refresh",
+            new { refreshToken = "legacy-body-token" },
+            TestContext.Current.CancellationToken);
         var res = await rsp.Content.ReadFromJsonAsync<ApiProblemDetails>(TestContext.Current.CancellationToken);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
@@ -1066,10 +1066,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         // include User-Agent header
         App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Backend.Tests/1.0 (CI)");
 
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
-        {
-            RefreshToken = rawRefreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, rawRefreshToken);
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, LoginResponse>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
@@ -1170,10 +1168,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     [Fact]
     public async Task Refresh_WithInvalidToken_Unauthorized()
     {
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiProblemDetails>(new RefreshRequest
-        {
-            RefreshToken = "nope"
-        });
+        SetRefreshCookieHeaders(App.Client, "nope");
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, ApiProblemDetails>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         res.ShouldNotBeNull();
@@ -1212,10 +1208,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiProblemDetails>(new RefreshRequest
-        {
-            RefreshToken = rawRefreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, rawRefreshToken);
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, ApiProblemDetails>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         res.ShouldNotBeNull();
@@ -1253,10 +1247,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiProblemDetails>(new RefreshRequest
-        {
-            RefreshToken = rawRefreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, rawRefreshToken);
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, ApiProblemDetails>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         res.ShouldNotBeNull();
@@ -1309,10 +1301,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.Sessions.AddRangeAsync([revokedSession, activeSession], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, ApiProblemDetails>(new RefreshRequest
-        {
-            RefreshToken = revokedRefreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, revokedRefreshToken);
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, ApiProblemDetails>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
         res.ShouldNotBeNull();
@@ -1359,10 +1349,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         App.Client.DefaultRequestHeaders.UserAgent.Clear();
 
-        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
-        {
-            RefreshToken = rawRefreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, rawRefreshToken);
+        var (rsp, res) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, LoginResponse>(EmptyRequest.Instance);
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
@@ -2628,10 +2616,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         }
 
         // Step 7: Refresh token
-        var (refreshRsp, refreshRes) = await App.Client.POSTAsync<RefreshEndpoint, RefreshRequest, LoginResponse>(new RefreshRequest
-        {
-            RefreshToken = refreshToken
-        });
+        SetRefreshCookieHeaders(App.Client, refreshToken);
+        var (refreshRsp, refreshRes) = await App.Client.POSTAsync<RefreshEndpoint, EmptyRequest, LoginResponse>(EmptyRequest.Instance);
 
         refreshRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         refreshRes.ShouldNotBeNull();

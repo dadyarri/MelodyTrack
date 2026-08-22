@@ -1,11 +1,15 @@
+using System.ComponentModel.DataAnnotations;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Core.Configuration;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.Options;
 using Microsoft.OpenApi;
 
 namespace MelodyTrack.Backend.OpenApi;
 
-public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer, IOpenApiOperationTransformer
+public sealed class MelodyTrackOpenApiTransformer(IOptions<PublicUrlOptions> publicUrlOptions)
+    : IOpenApiDocumentTransformer, IOpenApiOperationTransformer, IOpenApiSchemaTransformer
 {
     private const string BearerScheme = "Bearer";
 
@@ -19,6 +23,15 @@ public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer,
             Title = "MelodyTrack API",
             Version = "v1"
         };
+        document.Servers ??= [];
+        if (document.Servers.Count == 0)
+        {
+            document.Servers.Add(new OpenApiServer
+            {
+                Url = publicUrlOptions.Value.BaseUrl.TrimEnd('/'),
+                Description = "MelodyTrack public origin"
+            });
+        }
         document.Components ??= new OpenApiComponents();
         document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
         document.Components.SecuritySchemes[BearerScheme] = new OpenApiSecurityScheme
@@ -38,6 +51,7 @@ public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer,
     {
         var metadata = context.Description.ActionDescriptor.EndpointMetadata;
         var allowsAnonymous = metadata.OfType<IAllowAnonymous>().Any();
+        var route = "/" + (context.Description.RelativePath ?? string.Empty).TrimStart('/');
         if (!allowsAnonymous)
         {
             operation.Security ??= [];
@@ -45,6 +59,9 @@ public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer,
             {
                 [new OpenApiSecuritySchemeReference(BearerScheme, context.Document, null)] = []
             });
+        }
+        if (!allowsAnonymous || route == "/api/auth/refresh")
+        {
             EnsureProblemResponse(operation, StatusCodes.Status401Unauthorized, await GetProblemSchemaAsync(context, cancellationToken));
             EnsureProblemResponse(operation, StatusCodes.Status403Forbidden, await GetProblemSchemaAsync(context, cancellationToken));
         }
@@ -71,7 +88,6 @@ public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer,
             }
         }
 
-        var route = "/" + (context.Description.RelativePath ?? string.Empty).TrimStart('/');
         if (string.Equals(context.Description.HttpMethod, HttpMethods.Post, StringComparison.OrdinalIgnoreCase)
             && SupportsIdempotency(route))
         {
@@ -117,6 +133,48 @@ public sealed class MelodyTrackOpenApiTransformer : IOpenApiDocumentTransformer,
                 Description = "Download caching policy"
             };
         }
+    }
+
+    public Task TransformAsync(
+        OpenApiSchema schema,
+        OpenApiSchemaTransformerContext context,
+        CancellationToken cancellationToken)
+    {
+        var declaredType = context.JsonTypeInfo.Type;
+        var nullableType = Nullable.GetUnderlyingType(declaredType);
+        var type = nullableType ?? declaredType;
+        var nullableFlag = nullableType is null ? (JsonSchemaType)0 : JsonSchemaType.Null;
+
+        if (type == typeof(Ulid))
+        {
+            // Keep the shared primitive schema non-nullable. OpenAPI nullability belongs
+            // to the containing property; Kiota otherwise generates Ulid as Parsable.
+            schema.Type = JsonSchemaType.String;
+            schema.Format = null;
+            schema.Pattern = "^[0-9A-HJKMNP-TV-Z]{26}$";
+            schema.Properties?.Clear();
+        }
+        else if (type == typeof(byte) || type == typeof(sbyte)
+            || type == typeof(short) || type == typeof(ushort)
+            || type == typeof(int) || type == typeof(uint)
+            || type == typeof(long) || type == typeof(ulong))
+        {
+            schema.Type = JsonSchemaType.Integer | nullableFlag;
+            schema.Pattern = null;
+        }
+        else if (type == typeof(float) || type == typeof(double) || type == typeof(decimal))
+        {
+            schema.Type = JsonSchemaType.Number | nullableFlag;
+            schema.Pattern = null;
+        }
+        else if (context.JsonPropertyInfo?.AttributeProvider?.IsDefined(typeof(UrlAttribute), true) == true)
+        {
+            // Kiota represents URLs as strings and warns about OpenAPI's uri format.
+            // URL validation metadata remains on the .NET property.
+            schema.Format = null;
+        }
+
+        return Task.CompletedTask;
     }
 
     private static async Task<IOpenApiSchema> GetProblemSchemaAsync(

@@ -28,8 +28,8 @@ export interface HistoryRequestBuilder extends BaseRequestBuilder<HistoryRequest
 }
 export interface HistoryRequestBuilderGetQueryParameters {
     expectedActivityId?: string;
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
 }
 /**
  * Uri template for the request builder.

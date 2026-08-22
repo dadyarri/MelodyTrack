@@ -14,10 +14,12 @@ const listeners = new Set<(change: SessionChange) => void>();
 if (typeof window !== "undefined") {
   // Access tokens from older builds must not remain readable by injected scripts.
   window.localStorage.removeItem(legacyAccessTokenKey);
+  // Refresh credentials are cookie-only; old request-body credentials are discarded.
+  window.localStorage.removeItem(legacyRefreshTokenKey);
   // Portal-link tokens are login capabilities and must never remain in browser persistence.
   window.localStorage.removeItem(legacyPortalClientsKey);
   window.addEventListener("storage", (event) => {
-    if (event.key === sessionMarkerKey || event.key === legacyRefreshTokenKey || event.key === null) {
+    if (event.key === sessionMarkerKey || event.key === null) {
       accessToken = null;
       currentUserId = null;
       notifyListeners("external");
@@ -29,14 +31,11 @@ export const authStore = {
   getAccessToken() {
     return accessToken;
   },
-  getLegacyRefreshToken() {
-    return localStorage.getItem(legacyRefreshTokenKey);
-  },
   getUserId() {
     return currentUserId;
   },
   hasSession() {
-    return localStorage.getItem(sessionMarkerKey) === "1" || Boolean(localStorage.getItem(legacyRefreshTokenKey));
+    return localStorage.getItem(sessionMarkerKey) === "1";
   },
   setSession(accessToken: string) {
     setAccessToken(accessToken);
@@ -47,9 +46,6 @@ export const authStore = {
   setAccessToken(accessToken: string) {
     setAccessToken(accessToken);
     localStorage.setItem(sessionMarkerKey, "1");
-  },
-  clearLegacyRefreshToken() {
-    localStorage.removeItem(legacyRefreshTokenKey);
   },
   setUserId(userId: string) {
     currentUserId = userId;

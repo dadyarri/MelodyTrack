@@ -24,7 +24,7 @@ export interface ApiProblemDetails extends AdditionalDataHolder, ApiError, Parsa
     /**
      * The status property
      */
-    status?: UntypedNode | null;
+    status?: number | null;
     /**
      * The title property
      */
@@ -64,7 +64,7 @@ export interface Appointment extends AdditionalDataHolder, Parsable {
     /**
      * The courseThemeId property
      */
-    courseThemeId?: Appointment_courseThemeIdMember1 | Ulid | null;
+    courseThemeId?: string | null;
     /**
      * The endDate property
      */
@@ -72,7 +72,7 @@ export interface Appointment extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isDeleted property
      */
@@ -103,9 +103,6 @@ export interface Appointment extends AdditionalDataHolder, Parsable {
     status?: number | null;
 }
 export type Appointment_courseTheme = Appointment_courseThemeMember1 | CourseTheme;
-export type Appointment_courseThemeId = Appointment_courseThemeIdMember1 | Ulid;
-export interface Appointment_courseThemeIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface Appointment_courseThemeMember1 extends AdditionalDataHolder, Parsable {
 }
 export type Appointment_provider = Appointment_providerMember1 | User;
@@ -118,7 +115,7 @@ export interface AppointmentClientContactsDto extends AdditionalDataHolder, Pars
     /**
      * The id property
      */
-    id?: AppointmentClientContactsDto_idMember1 | Ulid | null;
+    id?: string | null;
     /**
      * The phone property
      */
@@ -132,9 +129,6 @@ export interface AppointmentClientContactsDto extends AdditionalDataHolder, Pars
      */
     vk?: string | null;
 }
-export type AppointmentClientContactsDto_id = AppointmentClientContactsDto_idMember1 | Ulid;
-export interface AppointmentClientContactsDto_idMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface AppointmentClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The contacts property
@@ -147,7 +141,7 @@ export interface AppointmentClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -164,7 +158,7 @@ export interface AppointmentCourseThemeDto extends AdditionalDataHolder, Parsabl
     /**
      * The courseId property
      */
-    courseId?: UntypedNode | null;
+    courseId?: string | null;
     /**
      * The courseName property
      */
@@ -172,7 +166,7 @@ export interface AppointmentCourseThemeDto extends AdditionalDataHolder, Parsabl
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The title property
      */
@@ -194,7 +188,7 @@ export interface AppointmentDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastActivity property
      */
@@ -244,7 +238,7 @@ export interface AppointmentProviderDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -266,7 +260,7 @@ export interface AppointmentRecurrenceRule extends AdditionalDataHolder, Parsabl
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The provider property
      */
@@ -274,7 +268,7 @@ export interface AppointmentRecurrenceRule extends AdditionalDataHolder, Parsabl
     /**
      * The recurrencePattern property
      */
-    recurrencePattern?: UntypedNode | null;
+    recurrencePattern?: number | null;
     /**
      * The recurrenceType property
      */
@@ -299,7 +293,7 @@ export interface AppointmentRecurrenceRuleDto extends AdditionalDataHolder, Pars
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The key property
      */
@@ -307,7 +301,7 @@ export interface AppointmentRecurrenceRuleDto extends AdditionalDataHolder, Pars
     /**
      * The recurrencePattern property
      */
-    recurrencePattern?: UntypedNode | null;
+    recurrencePattern?: number | null;
     /**
      * The startDate property
      */
@@ -317,7 +311,7 @@ export interface AppointmentServiceDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -355,7 +349,7 @@ export interface CalendarSubscriptionResponse extends AdditionalDataHolder, Pars
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The token property
      */
@@ -369,19 +363,19 @@ export interface CancelRecurringTaskRequest extends AdditionalDataHolder, Parsab
     /**
      * The appointmentId property
      */
-    appointmentId?: CancelRecurringTaskRequest_appointmentIdMember1 | Ulid | null;
+    appointmentId?: string | null;
     /**
      * The clientId property
      */
-    clientId?: CancelRecurringTaskRequest_clientIdMember1 | Ulid | null;
+    clientId?: string | null;
     /**
      * The ruleId property
      */
-    ruleId?: UntypedNode | null;
+    ruleId?: string | null;
     /**
      * The teacherId property
      */
-    teacherId?: CancelRecurringTaskRequest_teacherIdMember1 | Ulid | null;
+    teacherId?: string | null;
     /**
      * The timezone property
      */
@@ -390,15 +384,6 @@ export interface CancelRecurringTaskRequest extends AdditionalDataHolder, Parsab
      * The type property
      */
     type?: string | null;
-}
-export type CancelRecurringTaskRequest_appointmentId = CancelRecurringTaskRequest_appointmentIdMember1 | Ulid;
-export interface CancelRecurringTaskRequest_appointmentIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CancelRecurringTaskRequest_clientId = CancelRecurringTaskRequest_clientIdMember1 | Ulid;
-export interface CancelRecurringTaskRequest_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CancelRecurringTaskRequest_teacherId = CancelRecurringTaskRequest_teacherIdMember1 | Ulid;
-export interface CancelRecurringTaskRequest_teacherIdMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface ChangePasswordRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -434,7 +419,7 @@ export interface Client extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isLeadClosed property
      */
@@ -454,27 +439,24 @@ export interface Client extends AdditionalDataHolder, Parsable {
     /**
      * The sourceId property
      */
-    sourceId?: Client_sourceIdMember1 | Ulid | null;
+    sourceId?: string | null;
     /**
      * The vacations property
      */
     vacations?: ClientVacation[] | null;
 }
 export type Client_source = ClientSource | Client_sourceMember1;
-export type Client_sourceId = Client_sourceIdMember1 | Ulid;
-export interface Client_sourceIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface Client_sourceMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface ClientActivityTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The acquiredClients property
      */
-    acquiredClients?: UntypedNode | null;
+    acquiredClients?: number | null;
     /**
      * The activeClients property
      */
-    activeClients?: UntypedNode | null;
+    activeClients?: number | null;
     /**
      * The endDate property
      */
@@ -486,7 +468,7 @@ export interface ClientActivityTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The visits property
      */
-    visits?: UntypedNode | null;
+    visits?: number | null;
 }
 export interface ClientContacts extends AdditionalDataHolder, Parsable {
     /**
@@ -496,7 +478,7 @@ export interface ClientContacts extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The phone property
      */
@@ -514,7 +496,7 @@ export interface ClientFinancialHistoryEventDto extends AdditionalDataHolder, Pa
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The appointmentStatus property
      */
@@ -530,7 +512,7 @@ export interface ClientFinancialHistoryEventDto extends AdditionalDataHolder, Pa
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The providerDisplayName property
      */
@@ -552,7 +534,7 @@ export interface ClientHistoryContactsDto extends AdditionalDataHolder, Parsable
     /**
      * The id property
      */
-    id?: ClientHistoryContactsDto_idMember1 | Ulid | null;
+    id?: string | null;
     /**
      * The phone property
      */
@@ -565,9 +547,6 @@ export interface ClientHistoryContactsDto extends AdditionalDataHolder, Parsable
      * The vk property
      */
     vk?: string | null;
-}
-export type ClientHistoryContactsDto_id = ClientHistoryContactsDto_idMember1 | Ulid;
-export interface ClientHistoryContactsDto_idMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface ClientHistoryResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -587,7 +566,7 @@ export interface ClientHistorySummaryDto extends AdditionalDataHolder, Parsable 
     /**
      * The completedAppointmentsCount property
      */
-    completedAppointmentsCount?: UntypedNode | null;
+    completedAppointmentsCount?: number | null;
     /**
      * The lastPaymentAtUtc property
      */
@@ -603,15 +582,15 @@ export interface ClientHistorySummaryDto extends AdditionalDataHolder, Parsable 
     /**
      * The paymentsCount property
      */
-    paymentsCount?: UntypedNode | null;
+    paymentsCount?: number | null;
     /**
      * The totalPayments property
      */
-    totalPayments?: UntypedNode | null;
+    totalPayments?: number | null;
     /**
      * The upcomingAppointmentsCount property
      */
-    upcomingAppointmentsCount?: UntypedNode | null;
+    upcomingAppointmentsCount?: number | null;
 }
 export interface ClientPortalAppointmentDto extends AdditionalDataHolder, Parsable {
     /**
@@ -625,7 +604,7 @@ export interface ClientPortalAppointmentDto extends AdditionalDataHolder, Parsab
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The startDate property
      */
@@ -660,7 +639,7 @@ export interface ClientPortalCourseThemeDto extends AdditionalDataHolder, Parsab
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The title property
      */
@@ -670,7 +649,7 @@ export interface ClientSource extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -680,15 +659,15 @@ export interface ClientSourceReportDto extends AdditionalDataHolder, Parsable {
     /**
      * The acquiredClients property
      */
-    acquiredClients?: UntypedNode | null;
+    acquiredClients?: number | null;
     /**
      * The activeClients property
      */
-    activeClients?: UntypedNode | null;
+    activeClients?: number | null;
     /**
      * The clientValue property
      */
-    clientValue?: UntypedNode | null;
+    clientValue?: number | null;
     /**
      * The sourceName property
      */
@@ -720,45 +699,45 @@ export interface ClientsReportSummaryDto extends AdditionalDataHolder, Parsable 
     /**
      * The acquiredClients property
      */
-    acquiredClients?: UntypedNode | null;
+    acquiredClients?: number | null;
     /**
      * The activeClients property
      */
-    activeClients?: UntypedNode | null;
+    activeClients?: number | null;
     /**
      * The atRiskClients property
      */
-    atRiskClients?: UntypedNode | null;
+    atRiskClients?: number | null;
     /**
      * The averageClientValue property
      */
-    averageClientValue?: UntypedNode | null;
+    averageClientValue?: number | null;
     /**
      * The averageVisitFrequency property
      */
-    averageVisitFrequency?: UntypedNode | null;
+    averageVisitFrequency?: number | null;
     /**
      * The lostClients property
      */
-    lostClients?: UntypedNode | null;
+    lostClients?: number | null;
     /**
      * The onVacationClients property
      */
-    onVacationClients?: UntypedNode | null;
+    onVacationClients?: number | null;
     /**
      * The retainedClients property
      */
-    retainedClients?: UntypedNode | null;
+    retainedClients?: number | null;
     /**
      * The retentionPercent property
      */
-    retentionPercent?: UntypedNode | null;
+    retentionPercent?: number | null;
 }
 export interface ClientVacation extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The endDate property
      */
@@ -766,7 +745,7 @@ export interface ClientVacation extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The startDate property
      */
@@ -790,11 +769,11 @@ export interface ClientValueReportDto extends AdditionalDataHolder, Parsable {
     /**
      * The averageIntervalDays property
      */
-    averageIntervalDays?: UntypedNode | null;
+    averageIntervalDays?: number | null;
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The clientName property
      */
@@ -810,11 +789,11 @@ export interface ClientValueReportDto extends AdditionalDataHolder, Parsable {
     /**
      * The value property
      */
-    value?: UntypedNode | null;
+    value?: number | null;
     /**
      * The visits property
      */
-    visits?: UntypedNode | null;
+    visits?: number | null;
 }
 export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
     /**
@@ -824,7 +803,7 @@ export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
     /**
      * The balance property
      */
-    balance?: UntypedNode | null;
+    balance?: number | null;
     /**
      * The createdAtUtc property
      */
@@ -840,7 +819,7 @@ export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isLeadClosed property
      */
@@ -880,7 +859,7 @@ export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
     /**
      * The sourceId property
      */
-    sourceId?: ClientWithBalanceDto_sourceIdMember1 | Ulid | null;
+    sourceId?: string | null;
     /**
      * The sourceName property
      */
@@ -902,20 +881,17 @@ export type ClientWithBalanceDto_lastActivity = ClientWithBalanceDto_lastActivit
 export interface ClientWithBalanceDto_lastActivityMember1 extends AdditionalDataHolder, Parsable {
 }
 export type ClientWithBalanceDto_source = ClientSource | ClientWithBalanceDto_sourceMember1;
-export type ClientWithBalanceDto_sourceId = ClientWithBalanceDto_sourceIdMember1 | Ulid;
-export interface ClientWithBalanceDto_sourceIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface ClientWithBalanceDto_sourceMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface CompleteRecurringTaskRequest extends AdditionalDataHolder, Parsable {
     /**
      * The appointmentId property
      */
-    appointmentId?: CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid | null;
+    appointmentId?: string | null;
     /**
      * The clientId property
      */
-    clientId?: CompleteRecurringTaskRequest_clientIdMember1 | Ulid | null;
+    clientId?: string | null;
     /**
      * The preparedMessage property
      */
@@ -923,11 +899,11 @@ export interface CompleteRecurringTaskRequest extends AdditionalDataHolder, Pars
     /**
      * The ruleId property
      */
-    ruleId?: UntypedNode | null;
+    ruleId?: string | null;
     /**
      * The teacherId property
      */
-    teacherId?: CompleteRecurringTaskRequest_teacherIdMember1 | Ulid | null;
+    teacherId?: string | null;
     /**
      * The timezone property
      */
@@ -936,15 +912,6 @@ export interface CompleteRecurringTaskRequest extends AdditionalDataHolder, Pars
      * The type property
      */
     type?: string | null;
-}
-export type CompleteRecurringTaskRequest_appointmentId = CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid;
-export interface CompleteRecurringTaskRequest_appointmentIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CompleteRecurringTaskRequest_clientId = CompleteRecurringTaskRequest_clientIdMember1 | Ulid;
-export interface CompleteRecurringTaskRequest_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CompleteRecurringTaskRequest_teacherId = CompleteRecurringTaskRequest_teacherIdMember1 | Ulid;
-export interface CompleteRecurringTaskRequest_teacherIdMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface Course extends AdditionalDataHolder, Parsable {
     /**
@@ -962,7 +929,7 @@ export interface Course extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The levels property
      */
@@ -988,7 +955,7 @@ export interface CourseBlock extends AdditionalDataHolder, Parsable {
     /**
      * The courseId property
      */
-    courseId?: UntypedNode | null;
+    courseId?: string | null;
     /**
      * The description property
      */
@@ -996,11 +963,11 @@ export interface CourseBlock extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The title property
      */
@@ -1018,11 +985,11 @@ export interface CourseBlockDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The title property
      */
@@ -1036,7 +1003,7 @@ export interface CourseBranch extends AdditionalDataHolder, Parsable {
     /**
      * The blockId property
      */
-    blockId?: UntypedNode | null;
+    blockId?: string | null;
     /**
      * The description property
      */
@@ -1044,11 +1011,11 @@ export interface CourseBranch extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The themes property
      */
@@ -1066,11 +1033,11 @@ export interface CourseBranchDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The themes property
      */
@@ -1096,7 +1063,7 @@ export interface CourseDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The levels property
      */
@@ -1118,7 +1085,7 @@ export interface CourseEnrollmentDto extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The course property
      */
@@ -1126,7 +1093,7 @@ export interface CourseEnrollmentDto extends AdditionalDataHolder, Parsable {
     /**
      * The courseId property
      */
-    courseId?: UntypedNode | null;
+    courseId?: string | null;
     /**
      * The courseName property
      */
@@ -1142,11 +1109,11 @@ export interface CourseEnrollmentDto extends AdditionalDataHolder, Parsable {
     /**
      * The earnedExperiencePoints property
      */
-    earnedExperiencePoints?: UntypedNode | null;
+    earnedExperiencePoints?: number | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The themes property
      */
@@ -1159,15 +1126,15 @@ export interface CourseEnrollmentLevelDto extends AdditionalDataHolder, Parsable
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The requiredExperiencePoints property
      */
-    requiredExperiencePoints?: UntypedNode | null;
+    requiredExperiencePoints?: number | null;
     /**
      * The title property
      */
@@ -1177,7 +1144,7 @@ export interface CourseEnrollmentThemeAppointmentDto extends AdditionalDataHolde
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lessonNotes property
      */
@@ -1203,15 +1170,15 @@ export interface CourseEnrollmentThemeDto extends AdditionalDataHolder, Parsable
     /**
      * The courseThemeId property
      */
-    courseThemeId?: UntypedNode | null;
+    courseThemeId?: string | null;
     /**
      * The earnedExperiencePoints property
      */
-    earnedExperiencePoints?: UntypedNode | null;
+    earnedExperiencePoints?: number | null;
     /**
      * The experiencePointsReward property
      */
-    experiencePointsReward?: UntypedNode | null;
+    experiencePointsReward?: number | null;
     /**
      * The homeworkContent property
      */
@@ -1219,7 +1186,7 @@ export interface CourseEnrollmentThemeDto extends AdditionalDataHolder, Parsable
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lessonContent property
      */
@@ -1261,19 +1228,19 @@ export interface CourseLevel extends AdditionalDataHolder, Parsable {
     /**
      * The courseId property
      */
-    courseId?: UntypedNode | null;
+    courseId?: string | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The requiredExperiencePoints property
      */
-    requiredExperiencePoints?: UntypedNode | null;
+    requiredExperiencePoints?: number | null;
     /**
      * The title property
      */
@@ -1283,15 +1250,15 @@ export interface CourseLevelDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The requiredExperiencePoints property
      */
-    requiredExperiencePoints?: UntypedNode | null;
+    requiredExperiencePoints?: number | null;
     /**
      * The title property
      */
@@ -1301,7 +1268,7 @@ export interface CourseSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The blockCount property
      */
-    blockCount?: UntypedNode | null;
+    blockCount?: number | null;
     /**
      * The description property
      */
@@ -1309,7 +1276,7 @@ export interface CourseSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -1317,7 +1284,7 @@ export interface CourseSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The themeCount property
      */
-    themeCount?: UntypedNode | null;
+    themeCount?: number | null;
     /**
      * The updatedAtUtc property
      */
@@ -1331,7 +1298,7 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
     /**
      * The branchId property
      */
-    branchId?: UntypedNode | null;
+    branchId?: string | null;
     /**
      * The dependencies property
      */
@@ -1343,7 +1310,7 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
     /**
      * The experiencePointsReward property
      */
-    experiencePointsReward?: UntypedNode | null;
+    experiencePointsReward?: number | null;
     /**
      * The homeworkContent property
      */
@@ -1351,7 +1318,7 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The key property
      */
@@ -1363,7 +1330,7 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The requiredForThemes property
      */
@@ -1381,11 +1348,11 @@ export interface CourseThemeDependency extends AdditionalDataHolder, Parsable {
     /**
      * The dependsOnThemeId property
      */
-    dependsOnThemeId?: UntypedNode | null;
+    dependsOnThemeId?: string | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The theme property
      */
@@ -1393,7 +1360,7 @@ export interface CourseThemeDependency extends AdditionalDataHolder, Parsable {
     /**
      * The themeId property
      */
-    themeId?: UntypedNode | null;
+    themeId?: string | null;
 }
 export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
     /**
@@ -1407,7 +1374,7 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
     /**
      * The experiencePointsReward property
      */
-    experiencePointsReward?: UntypedNode | null;
+    experiencePointsReward?: number | null;
     /**
      * The homeworkContent property
      */
@@ -1415,7 +1382,7 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The key property
      */
@@ -1427,7 +1394,7 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The title property
      */
@@ -1459,24 +1426,6 @@ export function createApiValidationErrorFromDiscriminatorValue(parseNode: ParseN
 // @ts-ignore
 export function createAppointment_courseThemeFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoAppointment_courseTheme;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Appointment_courseThemeIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createAppointment_courseThemeIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAppointment_courseThemeId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Appointment_courseThemeIdMember1}
- */
-// @ts-ignore
-export function createAppointment_courseThemeIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAppointment_courseThemeIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1522,24 +1471,6 @@ export function createAppointment_recurringRuleFromDiscriminatorValue(parseNode:
 // @ts-ignore
 export function createAppointment_recurringRuleMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoAppointment_recurringRuleMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {AppointmentClientContactsDto_idMember1 | Ulid}
- */
-// @ts-ignore
-export function createAppointmentClientContactsDto_idFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAppointmentClientContactsDto_id;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {AppointmentClientContactsDto_idMember1}
- */
-// @ts-ignore
-export function createAppointmentClientContactsDto_idMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAppointmentClientContactsDto_idMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1725,11 +1656,11 @@ export interface CreateAppointmentRequest extends AdditionalDataHolder, Parsable
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The courseThemeId property
      */
-    courseThemeId?: CreateAppointmentRequest_courseThemeIdMember1 | Ulid | null;
+    courseThemeId?: string | null;
     /**
      * The lessonNotes property
      */
@@ -1741,19 +1672,19 @@ export interface CreateAppointmentRequest extends AdditionalDataHolder, Parsable
     /**
      * The providerId property
      */
-    providerId?: CreateAppointmentRequest_providerIdMember1 | Ulid | null;
+    providerId?: string | null;
     /**
      * The recurrencePattern property
      */
-    recurrencePattern?: UntypedNode | null;
+    recurrencePattern?: number | null;
     /**
      * The recurrenceTypeId property
      */
-    recurrenceTypeId?: CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid | null;
+    recurrenceTypeId?: string | null;
     /**
      * The serviceId property
      */
-    serviceId?: UntypedNode | null;
+    serviceId?: string | null;
     /**
      * The startDate property
      */
@@ -1762,15 +1693,6 @@ export interface CreateAppointmentRequest extends AdditionalDataHolder, Parsable
      * The timezone property
      */
     timezone?: string | null;
-}
-export type CreateAppointmentRequest_courseThemeId = CreateAppointmentRequest_courseThemeIdMember1 | Ulid;
-export interface CreateAppointmentRequest_courseThemeIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CreateAppointmentRequest_providerId = CreateAppointmentRequest_providerIdMember1 | Ulid;
-export interface CreateAppointmentRequest_providerIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type CreateAppointmentRequest_recurrenceTypeId = CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid;
-export interface CreateAppointmentRequest_recurrenceTypeIdMember1 extends AdditionalDataHolder, Parsable {
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1811,60 +1733,6 @@ export function createCalendarSubscriptionResponseFromDiscriminatorValue(parseNo
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_appointmentIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_appointmentIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_appointmentId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_appointmentIdMember1}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_appointmentIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_clientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_teacherIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_teacherIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_teacherId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CancelRecurringTaskRequest_teacherIdMember1}
- */
-// @ts-ignore
-export function createCancelRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCancelRecurringTaskRequest_teacherIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CancelRecurringTaskRequest}
  */
 // @ts-ignore
@@ -1888,24 +1756,6 @@ export function createChangePasswordRequestFromDiscriminatorValue(parseNode: Par
 // @ts-ignore
 export function createClient_sourceFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClient_source;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Client_sourceIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createClient_sourceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClient_sourceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Client_sourceIdMember1}
- */
-// @ts-ignore
-export function createClient_sourceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClient_sourceIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -1951,24 +1801,6 @@ export function createClientFinancialHistoryEventDtoFromDiscriminatorValue(parse
 // @ts-ignore
 export function createClientFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClient;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientHistoryContactsDto_idMember1 | Ulid}
- */
-// @ts-ignore
-export function createClientHistoryContactsDto_idFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientHistoryContactsDto_id;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientHistoryContactsDto_idMember1}
- */
-// @ts-ignore
-export function createClientHistoryContactsDto_idMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientHistoryContactsDto_idMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2076,7 +1908,7 @@ export interface CreateClientRequest extends AdditionalDataHolder, Parsable {
     /**
      * The sourceId property
      */
-    sourceId?: CreateClientRequest_sourceIdMember1 | Ulid | null;
+    sourceId?: string | null;
     /**
      * The telegram property
      */
@@ -2085,9 +1917,6 @@ export interface CreateClientRequest extends AdditionalDataHolder, Parsable {
      * The vk property
      */
     vk?: string | null;
-}
-export type CreateClientRequest_sourceId = CreateClientRequest_sourceIdMember1 | Ulid;
-export interface CreateClientRequest_sourceIdMember1 extends AdditionalDataHolder, Parsable {
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2188,24 +2017,6 @@ export function createClientWithBalanceDto_sourceFromDiscriminatorValue(parseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientWithBalanceDto_sourceIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createClientWithBalanceDto_sourceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientWithBalanceDto_sourceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientWithBalanceDto_sourceIdMember1}
- */
-// @ts-ignore
-export function createClientWithBalanceDto_sourceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientWithBalanceDto_sourceIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ClientWithBalanceDto_sourceMember1}
  */
 // @ts-ignore
@@ -2220,60 +2031,6 @@ export function createClientWithBalanceDto_sourceMember1FromDiscriminatorValue(p
 // @ts-ignore
 export function createClientWithBalanceDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClientWithBalanceDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_appointmentIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_appointmentId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_appointmentIdMember1}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_appointmentIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_clientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_teacherIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_teacherIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_teacherId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CompleteRecurringTaskRequest_teacherIdMember1}
- */
-// @ts-ignore
-export function createCompleteRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCompleteRecurringTaskRequest_teacherIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2314,7 +2071,7 @@ export interface CreateCourseBlockRequest extends AdditionalDataHolder, Parsable
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The title property
      */
@@ -2346,7 +2103,7 @@ export interface CreateCourseBranchRequest extends AdditionalDataHolder, Parsabl
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The themes property
      */
@@ -2405,11 +2162,11 @@ export interface CreateCourseEnrollmentRequest extends AdditionalDataHolder, Par
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The courseId property
      */
-    courseId?: UntypedNode | null;
+    courseId?: string | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2460,11 +2217,11 @@ export interface CreateCourseLevelRequest extends AdditionalDataHolder, Parsable
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The requiredExperiencePoints property
      */
-    requiredExperiencePoints?: UntypedNode | null;
+    requiredExperiencePoints?: number | null;
     /**
      * The title property
      */
@@ -2536,7 +2293,7 @@ export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable
     /**
      * The experiencePointsReward property
      */
-    experiencePointsReward?: UntypedNode | null;
+    experiencePointsReward?: number | null;
     /**
      * The homeworkContent property
      */
@@ -2552,65 +2309,11 @@ export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable
     /**
      * The order property
      */
-    order?: UntypedNode | null;
+    order?: number | null;
     /**
      * The title property
      */
     title?: string | null;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_courseThemeIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_courseThemeIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_courseThemeId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_courseThemeIdMember1}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_courseThemeIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_courseThemeIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_providerIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_providerIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_providerId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_providerIdMember1}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_providerIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_providerIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_recurrenceTypeIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_recurrenceTypeId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateAppointmentRequest_recurrenceTypeIdMember1}
- */
-// @ts-ignore
-export function createCreateAppointmentRequest_recurrenceTypeIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateAppointmentRequest_recurrenceTypeIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2629,24 +2332,6 @@ export function createCreateAppointmentRequestFromDiscriminatorValue(parseNode: 
 // @ts-ignore
 export function createCreateClientPortalLinkResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoCreateClientPortalLinkResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateClientRequest_sourceIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateClientRequest_sourceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateClientRequest_sourceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateClientRequest_sourceIdMember1}
- */
-// @ts-ignore
-export function createCreateClientRequest_sourceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateClientRequest_sourceIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2723,24 +2408,6 @@ export function createCreateCourseThemeRequestFromDiscriminatorValue(parseNode: 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateCustomTaskRequest_clientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateCustomTaskRequest_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateCustomTaskRequest_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateCustomTaskRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createCreateCustomTaskRequest_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateCustomTaskRequest_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CreateCustomTaskRequest}
  */
 // @ts-ignore
@@ -2764,24 +2431,6 @@ export function createCreateEntityResponseFromDiscriminatorValue(parseNode: Pars
 // @ts-ignore
 export function createCreateExpenseCategoryRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoCreateExpenseCategoryRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateExpenseRequest_categoryIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreateExpenseRequest_categoryIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateExpenseRequest_categoryId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreateExpenseRequest_categoryIdMember1}
- */
-// @ts-ignore
-export function createCreateExpenseRequest_categoryIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreateExpenseRequest_categoryIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2822,24 +2471,6 @@ export function createCreatePasswordResetLinkResponseFromDiscriminatorValue(pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreatePaymentRequest_serviceIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createCreatePaymentRequest_serviceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreatePaymentRequest_serviceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {CreatePaymentRequest_serviceIdMember1}
- */
-// @ts-ignore
-export function createCreatePaymentRequest_serviceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoCreatePaymentRequest_serviceIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CreatePaymentRequest}
  */
 // @ts-ignore
@@ -2868,7 +2499,7 @@ export interface CreateCustomTaskRequest extends AdditionalDataHolder, Parsable 
     /**
      * The clientId property
      */
-    clientId?: CreateCustomTaskRequest_clientIdMember1 | Ulid | null;
+    clientId?: string | null;
     /**
      * The dueAtUtc property
      */
@@ -2897,9 +2528,6 @@ export interface CreateCustomTaskRequest extends AdditionalDataHolder, Parsable 
      * The vk property
      */
     vk?: string | null;
-}
-export type CreateCustomTaskRequest_clientId = CreateCustomTaskRequest_clientIdMember1 | Ulid;
-export interface CreateCustomTaskRequest_clientIdMember1 extends AdditionalDataHolder, Parsable {
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2967,60 +2595,6 @@ export function createDashboardServiceResponseFromDiscriminatorValue(parseNode: 
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_appointmentIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_appointmentIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_appointmentId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_appointmentIdMember1}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_appointmentIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_clientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_teacherIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_teacherIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_teacherId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {DelayRecurringTaskRequest_teacherIdMember1}
- */
-// @ts-ignore
-export function createDelayRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoDelayRecurringTaskRequest_teacherIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {DelayRecurringTaskRequest}
  */
 // @ts-ignore
@@ -3031,31 +2605,13 @@ export interface CreateEntityResponse extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
 }
 export interface CreateExpenseCategoryRequest extends AdditionalDataHolder, Parsable {
     /**
      * The name property
      */
     name?: string | null;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ExpenseDto_categoryIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createExpenseDto_categoryIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoExpenseDto_categoryId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ExpenseDto_categoryIdMember1}
- */
-// @ts-ignore
-export function createExpenseDto_categoryIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoExpenseDto_categoryIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3088,11 +2644,11 @@ export interface CreateExpenseRequest extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The categoryId property
      */
-    categoryId?: CreateExpenseRequest_categoryIdMember1 | Ulid | null;
+    categoryId?: string | null;
     /**
      * The date property
      */
@@ -3101,9 +2657,6 @@ export interface CreateExpenseRequest extends AdditionalDataHolder, Parsable {
      * The description property
      */
     description?: string | null;
-}
-export type CreateExpenseRequest_categoryId = CreateExpenseRequest_categoryIdMember1 | Ulid;
-export interface CreateExpenseRequest_categoryIdMember1 extends AdditionalDataHolder, Parsable {
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3482,13 +3035,22 @@ export interface CreateInviteRequest extends AdditionalDataHolder, Parsable {
     /**
      * The role property
      */
-    role?: UntypedNode | null;
+    role?: string | null;
 }
 export interface CreateInviteResponse extends AdditionalDataHolder, Parsable {
     /**
      * The url property
      */
     url?: string | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {LoginAttemptResponse}
+ */
+// @ts-ignore
+export function createLoginAttemptResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoLoginAttemptResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3525,24 +3087,6 @@ export function createLookupClientDto_contactsFromDiscriminatorValue(parseNode: 
 // @ts-ignore
 export function createLookupClientDto_contactsMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoLookupClientDto_contactsMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {LookupClientDto_sourceIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createLookupClientDto_sourceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoLookupClientDto_sourceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {LookupClientDto_sourceIdMember1}
- */
-// @ts-ignore
-export function createLookupClientDto_sourceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoLookupClientDto_sourceIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3637,24 +3181,6 @@ export function createMeResponse_lastActivityMember1FromDiscriminatorValue(parse
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {MeResponse_linkedClientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createMeResponse_linkedClientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoMeResponse_linkedClientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {MeResponse_linkedClientIdMember1}
- */
-// @ts-ignore
-export function createMeResponse_linkedClientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoMeResponse_linkedClientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {MeResponse}
  */
 // @ts-ignore
@@ -3734,11 +3260,11 @@ export interface CreatePaymentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The date property
      */
@@ -3750,10 +3276,7 @@ export interface CreatePaymentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The serviceId property
      */
-    serviceId?: CreatePaymentRequest_serviceIdMember1 | Ulid | null;
-}
-export type CreatePaymentRequest_serviceId = CreatePaymentRequest_serviceIdMember1 | Ulid;
-export interface CreatePaymentRequest_serviceIdMember1 extends AdditionalDataHolder, Parsable {
+    serviceId?: string | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3821,60 +3344,6 @@ export function createRecurringTaskActionResponseFromDiscriminatorValue(parseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_appointmentIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createRecurringTaskDto_appointmentIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_appointmentId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_appointmentIdMember1}
- */
-// @ts-ignore
-export function createRecurringTaskDto_appointmentIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_appointmentIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_clientIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createRecurringTaskDto_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_clientIdMember1}
- */
-// @ts-ignore
-export function createRecurringTaskDto_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_teacherIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createRecurringTaskDto_teacherIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_teacherId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RecurringTaskDto_teacherIdMember1}
- */
-// @ts-ignore
-export function createRecurringTaskDto_teacherIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRecurringTaskDto_teacherIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RecurringTaskDto}
  */
 // @ts-ignore
@@ -3938,15 +3407,6 @@ export function createReferenceBookItemDtoFromDiscriminatorValue(parseNode: Pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {RefreshRequest}
- */
-// @ts-ignore
-export function createRefreshRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoRefreshRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RegisterRequest}
  */
 // @ts-ignore
@@ -3961,24 +3421,6 @@ export function createRegisterRequestFromDiscriminatorValue(parseNode: ParseNode
 // @ts-ignore
 export function createRegisterResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoRegisterResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ReportContextDto_providerIdMember1 | Ulid}
- */
-// @ts-ignore
-export function createReportContextDto_providerIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoReportContextDto_providerId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ReportContextDto_providerIdMember1}
- */
-// @ts-ignore
-export function createReportContextDto_providerIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoReportContextDto_providerIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4050,7 +3492,7 @@ export interface CreateServiceRequest extends AdditionalDataHolder, Parsable {
     /**
      * The price property
      */
-    price?: UntypedNode | null;
+    price?: number | null;
     /**
      * The publicName property
      */
@@ -4122,164 +3564,11 @@ export function createSetup2FaResponseFromDiscriminatorValue(parseNode: ParseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid}
- */
-// @ts-ignore
-export function createUlidFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUlid;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_clientIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_clientIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_courseThemeIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_courseThemeIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_courseThemeId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_courseThemeIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_courseThemeIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_courseThemeIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_providerIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_providerIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_providerId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_providerIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_providerIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_providerIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_recurrenceTypeIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_recurrenceTypeId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_recurrenceTypeIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_recurrenceTypeIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_recurrenceTypeIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateAppointmentRequest_serviceIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_serviceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_serviceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateAppointmentRequest_serviceIdMember1}
- */
-// @ts-ignore
-export function createUpdateAppointmentRequest_serviceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateAppointmentRequest_serviceIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateAppointmentRequest}
  */
 // @ts-ignore
 export function createUpdateAppointmentRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdateAppointmentRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateClientRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateClientRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateClientRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateClientRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateClientRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateClientRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateClientRequest_sourceIdMember1}
- */
-// @ts-ignore
-export function createUpdateClientRequest_sourceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateClientRequest_sourceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateClientRequest_sourceIdMember1}
- */
-// @ts-ignore
-export function createUpdateClientRequest_sourceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateClientRequest_sourceIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4302,65 +3591,11 @@ export function createUpdateCourseEnrollmentThemeProgressRequestFromDiscriminato
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateCourseRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateCourseRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateCourseRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateCourseRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateCourseRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateCourseRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateCourseRequest}
  */
 // @ts-ignore
 export function createUpdateCourseRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdateCourseRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateExpenseRequest_categoryIdMember1}
- */
-// @ts-ignore
-export function createUpdateExpenseRequest_categoryIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateExpenseRequest_categoryId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateExpenseRequest_categoryIdMember1}
- */
-// @ts-ignore
-export function createUpdateExpenseRequest_categoryIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateExpenseRequest_categoryIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateExpenseRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateExpenseRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateExpenseRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateExpenseRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateExpenseRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateExpenseRequest_expectedActivityIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4383,65 +3618,11 @@ export function createUpdateOnboardingProgressRequestFromDiscriminatorValue(pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdatePaymentRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdatePaymentRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdatePaymentRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdatePaymentRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdatePaymentRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdatePaymentRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdatePaymentRequest_serviceIdMember1}
- */
-// @ts-ignore
-export function createUpdatePaymentRequest_serviceIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdatePaymentRequest_serviceId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdatePaymentRequest_serviceIdMember1}
- */
-// @ts-ignore
-export function createUpdatePaymentRequest_serviceIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdatePaymentRequest_serviceIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdatePaymentRequest}
  */
 // @ts-ignore
 export function createUpdatePaymentRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdatePaymentRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateRecurringTaskRuleRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateRecurringTaskRuleRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateRecurringTaskRuleRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4455,47 +3636,11 @@ export function createUpdateRecurringTaskRuleRequestFromDiscriminatorValue(parse
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateServicePriceRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateServicePriceRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateServicePriceRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateServicePriceRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateServicePriceRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateServicePriceRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateServicePriceRequest}
  */
 // @ts-ignore
 export function createUpdateServicePriceRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdateServicePriceRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateServiceRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateServiceRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateServiceRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateServiceRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateServiceRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateServiceRequest_expectedActivityIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4509,47 +3654,11 @@ export function createUpdateServiceRequestFromDiscriminatorValue(parseNode: Pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateUserAvailabilityRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateUserAvailabilityRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateUserAvailabilityRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateUserAvailabilityRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateUserAvailabilityRequest_expectedActivityIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UpdateUserAvailabilityRequest}
  */
 // @ts-ignore
 export function createUpdateUserAvailabilityRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUpdateUserAvailabilityRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | UpdateUserRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateUserRequest_expectedActivityIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateUserRequest_expectedActivityId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UpdateUserRequest_expectedActivityIdMember1}
- */
-// @ts-ignore
-export function createUpdateUserRequest_expectedActivityIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUpdateUserRequest_expectedActivityIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4568,24 +3677,6 @@ export function createUpdateUserRequestFromDiscriminatorValue(parseNode: ParseNo
 // @ts-ignore
 export function createUser_clientFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUser_client;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | User_clientIdMember1}
- */
-// @ts-ignore
-export function createUser_clientIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUser_clientId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {User_clientIdMember1}
- */
-// @ts-ignore
-export function createUser_clientIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUser_clientIdMember1;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4734,24 +3825,6 @@ export function createWorkHourDtoFromDiscriminatorValue(parseNode: ParseNode | u
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {Ulid | WorkProviderDto_providerIdMember1}
- */
-// @ts-ignore
-export function createWorkProviderDto_providerIdFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoWorkProviderDto_providerId;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {WorkProviderDto_providerIdMember1}
- */
-// @ts-ignore
-export function createWorkProviderDto_providerIdMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoWorkProviderDto_providerIdMember1;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {WorkProviderDto}
  */
 // @ts-ignore
@@ -4825,7 +3898,7 @@ export interface DashboardAppointmentResponse extends AdditionalDataHolder, Pars
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The service property
      */
@@ -4865,7 +3938,7 @@ export interface DashboardClientResponse extends AdditionalDataHolder, Parsable 
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -4882,7 +3955,7 @@ export interface DashboardScheduleDayResponse extends AdditionalDataHolder, Pars
     /**
      * The count property
      */
-    count?: UntypedNode | null;
+    count?: number | null;
     /**
      * The date property
      */
@@ -4892,7 +3965,7 @@ export interface DashboardServiceResponse extends AdditionalDataHolder, Parsable
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -4902,11 +3975,11 @@ export interface DelayRecurringTaskRequest extends AdditionalDataHolder, Parsabl
     /**
      * The appointmentId property
      */
-    appointmentId?: DelayRecurringTaskRequest_appointmentIdMember1 | Ulid | null;
+    appointmentId?: string | null;
     /**
      * The clientId property
      */
-    clientId?: DelayRecurringTaskRequest_clientIdMember1 | Ulid | null;
+    clientId?: string | null;
     /**
      * The delayUntilUtc property
      */
@@ -4914,11 +3987,11 @@ export interface DelayRecurringTaskRequest extends AdditionalDataHolder, Parsabl
     /**
      * The ruleId property
      */
-    ruleId?: UntypedNode | null;
+    ruleId?: string | null;
     /**
      * The teacherId property
      */
-    teacherId?: DelayRecurringTaskRequest_teacherIdMember1 | Ulid | null;
+    teacherId?: string | null;
     /**
      * The timezone property
      */
@@ -4927,15 +4000,6 @@ export interface DelayRecurringTaskRequest extends AdditionalDataHolder, Parsabl
      * The type property
      */
     type?: string | null;
-}
-export type DelayRecurringTaskRequest_appointmentId = DelayRecurringTaskRequest_appointmentIdMember1 | Ulid;
-export interface DelayRecurringTaskRequest_appointmentIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type DelayRecurringTaskRequest_clientId = DelayRecurringTaskRequest_clientIdMember1 | Ulid;
-export interface DelayRecurringTaskRequest_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type DelayRecurringTaskRequest_teacherId = DelayRecurringTaskRequest_teacherIdMember1 | Ulid;
-export interface DelayRecurringTaskRequest_teacherIdMember1 extends AdditionalDataHolder, Parsable {
 }
 /**
  * The deserialization information for the current model
@@ -4949,7 +4013,7 @@ export function deserializeIntoApiProblemDetails(apiProblemDetails: Partial<ApiP
         "detail": n => { apiProblemDetails.detail = n.getStringValue(); },
         "errors": n => { apiProblemDetails.errors = n.getCollectionOfObjectValues<ApiValidationError>(createApiValidationErrorFromDiscriminatorValue); },
         "instance": n => { apiProblemDetails.instance = n.getStringValue(); },
-        "status": n => { apiProblemDetails.status = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "status": n => { apiProblemDetails.status = n.getNumberValue(); },
         "title": n => { apiProblemDetails.title = n.getStringValue(); },
         "traceId": n => { apiProblemDetails.traceId = n.getStringValue(); },
         "type": n => { apiProblemDetails.type = n.getStringValue(); },
@@ -4978,9 +4042,9 @@ export function deserializeIntoAppointment(appointment: Partial<Appointment> | u
     return {
         "client": n => { appointment.client = n.getObjectValue<Client>(createClientFromDiscriminatorValue); },
         "courseTheme": n => { appointment.courseTheme = n.getObjectValue<Appointment_courseThemeMember1>(createAppointment_courseThemeMember1FromDiscriminatorValue) ?? n.getObjectValue<CourseTheme>(createCourseThemeFromDiscriminatorValue); },
-        "courseThemeId": n => { appointment.courseThemeId = n.getObjectValue<Appointment_courseThemeIdMember1>(createAppointment_courseThemeIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "courseThemeId": n => { appointment.courseThemeId = n.getStringValue(); },
         "endDate": n => { appointment.endDate = n.getDateValue(); },
-        "id": n => { appointment.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointment.id = n.getStringValue(); },
         "isDeleted": n => { appointment.isDeleted = n.getBooleanValue(); },
         "lessonNotes": n => { appointment.lessonNotes = n.getStringValue(); },
         "provider": n => { appointment.provider = n.getObjectValue<Appointment_providerMember1>(createAppointment_providerMember1FromDiscriminatorValue) ?? n.getObjectValue<User>(createUserFromDiscriminatorValue); },
@@ -5000,28 +4064,6 @@ export function deserializeIntoAppointment_courseTheme(appointment_courseTheme: 
     return {
         ...deserializeIntoAppointment_courseThemeMember1(appointment_courseTheme as Appointment_courseThemeMember1),
         ...deserializeIntoCourseTheme(appointment_courseTheme as CourseTheme),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param Appointment_courseThemeId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAppointment_courseThemeId(appointment_courseThemeId: Partial<Appointment_courseThemeIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoAppointment_courseThemeIdMember1(appointment_courseThemeId as Appointment_courseThemeIdMember1),
-        ...deserializeIntoUlid(appointment_courseThemeId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param Appointment_courseThemeIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAppointment_courseThemeIdMember1(appointment_courseThemeIdMember1: Partial<Appointment_courseThemeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -5086,32 +4128,10 @@ export function deserializeIntoAppointment_recurringRuleMember1(appointment_recu
 // @ts-ignore
 export function deserializeIntoAppointmentClientContactsDto(appointmentClientContactsDto: Partial<AppointmentClientContactsDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { appointmentClientContactsDto.id = n.getObjectValue<AppointmentClientContactsDto_idMember1>(createAppointmentClientContactsDto_idMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "id": n => { appointmentClientContactsDto.id = n.getStringValue(); },
         "phone": n => { appointmentClientContactsDto.phone = n.getStringValue(); },
         "telegram": n => { appointmentClientContactsDto.telegram = n.getStringValue(); },
         "vk": n => { appointmentClientContactsDto.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param AppointmentClientContactsDto_id The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAppointmentClientContactsDto_id(appointmentClientContactsDto_id: Partial<AppointmentClientContactsDto_idMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoAppointmentClientContactsDto_idMember1(appointmentClientContactsDto_id as AppointmentClientContactsDto_idMember1),
-        ...deserializeIntoUlid(appointmentClientContactsDto_id as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param AppointmentClientContactsDto_idMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAppointmentClientContactsDto_idMember1(appointmentClientContactsDto_idMember1: Partial<AppointmentClientContactsDto_idMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -5124,7 +4144,7 @@ export function deserializeIntoAppointmentClientDto(appointmentClientDto: Partia
     return {
         "contacts": n => { appointmentClientDto.contacts = n.getObjectValue<AppointmentClientContactsDto>(createAppointmentClientContactsDtoFromDiscriminatorValue) ?? n.getObjectValue<AppointmentClientDto_contactsMember1>(createAppointmentClientDto_contactsMember1FromDiscriminatorValue); },
         "firstName": n => { appointmentClientDto.firstName = n.getStringValue(); },
-        "id": n => { appointmentClientDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentClientDto.id = n.getStringValue(); },
         "lastName": n => { appointmentClientDto.lastName = n.getStringValue(); },
         "patronymic": n => { appointmentClientDto.patronymic = n.getStringValue(); },
     }
@@ -5159,9 +4179,9 @@ export function deserializeIntoAppointmentClientDto_contactsMember1(appointmentC
 // @ts-ignore
 export function deserializeIntoAppointmentCourseThemeDto(appointmentCourseThemeDto: Partial<AppointmentCourseThemeDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "courseId": n => { appointmentCourseThemeDto.courseId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "courseId": n => { appointmentCourseThemeDto.courseId = n.getStringValue(); },
         "courseName": n => { appointmentCourseThemeDto.courseName = n.getStringValue(); },
-        "id": n => { appointmentCourseThemeDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentCourseThemeDto.id = n.getStringValue(); },
         "title": n => { appointmentCourseThemeDto.title = n.getStringValue(); },
     }
 }
@@ -5176,7 +4196,7 @@ export function deserializeIntoAppointmentDto(appointmentDto: Partial<Appointmen
         "client": n => { appointmentDto.client = n.getObjectValue<AppointmentClientDto>(createAppointmentClientDtoFromDiscriminatorValue); },
         "courseTheme": n => { appointmentDto.courseTheme = n.getObjectValue<AppointmentCourseThemeDto>(createAppointmentCourseThemeDtoFromDiscriminatorValue) ?? n.getObjectValue<AppointmentDto_courseThemeMember1>(createAppointmentDto_courseThemeMember1FromDiscriminatorValue); },
         "endDate": n => { appointmentDto.endDate = n.getDateValue(); },
-        "id": n => { appointmentDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentDto.id = n.getStringValue(); },
         "lastActivity": n => { appointmentDto.lastActivity = n.getObjectValue<AppointmentDto_lastActivityMember1>(createAppointmentDto_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
         "lessonNotes": n => { appointmentDto.lessonNotes = n.getStringValue(); },
         "provider": n => { appointmentDto.provider = n.getObjectValue<AppointmentDto_providerMember1>(createAppointmentDto_providerMember1FromDiscriminatorValue) ?? n.getObjectValue<AppointmentProviderDto>(createAppointmentProviderDtoFromDiscriminatorValue); },
@@ -5283,7 +4303,7 @@ export function deserializeIntoAppointmentDto_recurringRuleMember1(appointmentDt
 export function deserializeIntoAppointmentProviderDto(appointmentProviderDto: Partial<AppointmentProviderDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "firstName": n => { appointmentProviderDto.firstName = n.getStringValue(); },
-        "id": n => { appointmentProviderDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentProviderDto.id = n.getStringValue(); },
         "lastName": n => { appointmentProviderDto.lastName = n.getStringValue(); },
         "roleDisplayName": n => { appointmentProviderDto.roleDisplayName = n.getStringValue(); },
     }
@@ -5298,9 +4318,9 @@ export function deserializeIntoAppointmentRecurrenceRule(appointmentRecurrenceRu
     return {
         "client": n => { appointmentRecurrenceRule.client = n.getObjectValue<Client>(createClientFromDiscriminatorValue); },
         "endDate": n => { appointmentRecurrenceRule.endDate = n.getDateValue(); },
-        "id": n => { appointmentRecurrenceRule.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentRecurrenceRule.id = n.getStringValue(); },
         "provider": n => { appointmentRecurrenceRule.provider = n.getObjectValue<AppointmentRecurrenceRule_providerMember1>(createAppointmentRecurrenceRule_providerMember1FromDiscriminatorValue) ?? n.getObjectValue<User>(createUserFromDiscriminatorValue); },
-        "recurrencePattern": n => { appointmentRecurrenceRule.recurrencePattern = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "recurrencePattern": n => { appointmentRecurrenceRule.recurrencePattern = n.getNumberValue(); },
         "recurrenceType": n => { appointmentRecurrenceRule.recurrenceType = n.getObjectValue<RecurrenceType>(createRecurrenceTypeFromDiscriminatorValue); },
         "service": n => { appointmentRecurrenceRule.service = n.getObjectValue<Service>(createServiceFromDiscriminatorValue); },
         "startDate": n => { appointmentRecurrenceRule.startDate = n.getDateValue(); },
@@ -5337,9 +4357,9 @@ export function deserializeIntoAppointmentRecurrenceRule_providerMember1(appoint
 export function deserializeIntoAppointmentRecurrenceRuleDto(appointmentRecurrenceRuleDto: Partial<AppointmentRecurrenceRuleDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { appointmentRecurrenceRuleDto.endDate = n.getDateValue(); },
-        "id": n => { appointmentRecurrenceRuleDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentRecurrenceRuleDto.id = n.getStringValue(); },
         "key": n => { appointmentRecurrenceRuleDto.key = n.getStringValue(); },
-        "recurrencePattern": n => { appointmentRecurrenceRuleDto.recurrencePattern = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "recurrencePattern": n => { appointmentRecurrenceRuleDto.recurrencePattern = n.getNumberValue(); },
         "startDate": n => { appointmentRecurrenceRuleDto.startDate = n.getDateValue(); },
     }
 }
@@ -5351,7 +4371,7 @@ export function deserializeIntoAppointmentRecurrenceRuleDto(appointmentRecurrenc
 // @ts-ignore
 export function deserializeIntoAppointmentServiceDto(appointmentServiceDto: Partial<AppointmentServiceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { appointmentServiceDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { appointmentServiceDto.id = n.getStringValue(); },
         "name": n => { appointmentServiceDto.name = n.getStringValue(); },
     }
 }
@@ -5389,7 +4409,7 @@ export function deserializeIntoAuthenticateSavedClientPortalIdentityRequest(auth
 export function deserializeIntoCalendarSubscriptionResponse(calendarSubscriptionResponse: Partial<CalendarSubscriptionResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "feedType": n => { calendarSubscriptionResponse.feedType = n.getStringValue(); },
-        "id": n => { calendarSubscriptionResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { calendarSubscriptionResponse.id = n.getStringValue(); },
         "token": n => { calendarSubscriptionResponse.token = n.getStringValue(); },
         "url": n => { calendarSubscriptionResponse.url = n.getStringValue(); },
     }
@@ -5402,78 +4422,12 @@ export function deserializeIntoCalendarSubscriptionResponse(calendarSubscription
 // @ts-ignore
 export function deserializeIntoCancelRecurringTaskRequest(cancelRecurringTaskRequest: Partial<CancelRecurringTaskRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointmentId": n => { cancelRecurringTaskRequest.appointmentId = n.getObjectValue<CancelRecurringTaskRequest_appointmentIdMember1>(createCancelRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "clientId": n => { cancelRecurringTaskRequest.clientId = n.getObjectValue<CancelRecurringTaskRequest_clientIdMember1>(createCancelRecurringTaskRequest_clientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "ruleId": n => { cancelRecurringTaskRequest.ruleId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "teacherId": n => { cancelRecurringTaskRequest.teacherId = n.getObjectValue<CancelRecurringTaskRequest_teacherIdMember1>(createCancelRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "appointmentId": n => { cancelRecurringTaskRequest.appointmentId = n.getStringValue(); },
+        "clientId": n => { cancelRecurringTaskRequest.clientId = n.getStringValue(); },
+        "ruleId": n => { cancelRecurringTaskRequest.ruleId = n.getStringValue(); },
+        "teacherId": n => { cancelRecurringTaskRequest.teacherId = n.getStringValue(); },
         "timezone": n => { cancelRecurringTaskRequest.timezone = n.getStringValue(); },
         "type": n => { cancelRecurringTaskRequest.type = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_appointmentId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_appointmentId(cancelRecurringTaskRequest_appointmentId: Partial<CancelRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCancelRecurringTaskRequest_appointmentIdMember1(cancelRecurringTaskRequest_appointmentId as CancelRecurringTaskRequest_appointmentIdMember1),
-        ...deserializeIntoUlid(cancelRecurringTaskRequest_appointmentId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_appointmentIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_appointmentIdMember1(cancelRecurringTaskRequest_appointmentIdMember1: Partial<CancelRecurringTaskRequest_appointmentIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_clientId(cancelRecurringTaskRequest_clientId: Partial<CancelRecurringTaskRequest_clientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCancelRecurringTaskRequest_clientIdMember1(cancelRecurringTaskRequest_clientId as CancelRecurringTaskRequest_clientIdMember1),
-        ...deserializeIntoUlid(cancelRecurringTaskRequest_clientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_clientIdMember1(cancelRecurringTaskRequest_clientIdMember1: Partial<CancelRecurringTaskRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_teacherId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_teacherId(cancelRecurringTaskRequest_teacherId: Partial<CancelRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCancelRecurringTaskRequest_teacherIdMember1(cancelRecurringTaskRequest_teacherId as CancelRecurringTaskRequest_teacherIdMember1),
-        ...deserializeIntoUlid(cancelRecurringTaskRequest_teacherId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CancelRecurringTaskRequest_teacherIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCancelRecurringTaskRequest_teacherIdMember1(cancelRecurringTaskRequest_teacherIdMember1: Partial<CancelRecurringTaskRequest_teacherIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -5501,12 +4455,12 @@ export function deserializeIntoClient(client: Partial<Client> | undefined = {}) 
         "createdAtUtc": n => { client.createdAtUtc = n.getDateValue(); },
         "dateOfBirth": n => { client.dateOfBirth = n.getDateOnlyValue(); },
         "firstName": n => { client.firstName = n.getStringValue(); },
-        "id": n => { client.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { client.id = n.getStringValue(); },
         "isLeadClosed": n => { client.isLeadClosed = n.getBooleanValue(); },
         "lastName": n => { client.lastName = n.getStringValue(); },
         "patronymic": n => { client.patronymic = n.getStringValue(); },
         "source": n => { client.source = n.getObjectValue<ClientSource>(createClientSourceFromDiscriminatorValue) ?? n.getObjectValue<Client_sourceMember1>(createClient_sourceMember1FromDiscriminatorValue); },
-        "sourceId": n => { client.sourceId = n.getObjectValue<Client_sourceIdMember1>(createClient_sourceIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "sourceId": n => { client.sourceId = n.getStringValue(); },
         "vacations": n => { client.vacations = n.getCollectionOfObjectValues<ClientVacation>(createClientVacationFromDiscriminatorValue); },
     }
 }
@@ -5520,28 +4474,6 @@ export function deserializeIntoClient_source(client_source: Partial<ClientSource
     return {
         ...deserializeIntoClientSource(client_source as ClientSource),
         ...deserializeIntoClient_sourceMember1(client_source as Client_sourceMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param Client_sourceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClient_sourceId(client_sourceId: Partial<Client_sourceIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoClient_sourceIdMember1(client_sourceId as Client_sourceIdMember1),
-        ...deserializeIntoUlid(client_sourceId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param Client_sourceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClient_sourceIdMember1(client_sourceIdMember1: Partial<Client_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -5562,11 +4494,11 @@ export function deserializeIntoClient_sourceMember1(client_sourceMember1: Partia
 // @ts-ignore
 export function deserializeIntoClientActivityTrendDto(clientActivityTrendDto: Partial<ClientActivityTrendDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "acquiredClients": n => { clientActivityTrendDto.acquiredClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "activeClients": n => { clientActivityTrendDto.activeClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "acquiredClients": n => { clientActivityTrendDto.acquiredClients = n.getNumberValue(); },
+        "activeClients": n => { clientActivityTrendDto.activeClients = n.getNumberValue(); },
         "endDate": n => { clientActivityTrendDto.endDate = n.getDateValue(); },
         "startDate": n => { clientActivityTrendDto.startDate = n.getDateValue(); },
-        "visits": n => { clientActivityTrendDto.visits = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "visits": n => { clientActivityTrendDto.visits = n.getNumberValue(); },
     }
 }
 /**
@@ -5578,7 +4510,7 @@ export function deserializeIntoClientActivityTrendDto(clientActivityTrendDto: Pa
 export function deserializeIntoClientContacts(clientContacts: Partial<ClientContacts> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "email": n => { clientContacts.email = n.getStringValue(); },
-        "id": n => { clientContacts.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientContacts.id = n.getStringValue(); },
         "phone": n => { clientContacts.phone = n.getStringValue(); },
         "telegram": n => { clientContacts.telegram = n.getStringValue(); },
         "vk": n => { clientContacts.vk = n.getStringValue(); },
@@ -5592,11 +4524,11 @@ export function deserializeIntoClientContacts(clientContacts: Partial<ClientCont
 // @ts-ignore
 export function deserializeIntoClientFinancialHistoryEventDto(clientFinancialHistoryEventDto: Partial<ClientFinancialHistoryEventDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { clientFinancialHistoryEventDto.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "amount": n => { clientFinancialHistoryEventDto.amount = n.getNumberValue(); },
         "appointmentStatus": n => { clientFinancialHistoryEventDto.appointmentStatus = n.getStringValue(); },
         "date": n => { clientFinancialHistoryEventDto.date = n.getDateValue(); },
         "description": n => { clientFinancialHistoryEventDto.description = n.getStringValue(); },
-        "id": n => { clientFinancialHistoryEventDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientFinancialHistoryEventDto.id = n.getStringValue(); },
         "providerDisplayName": n => { clientFinancialHistoryEventDto.providerDisplayName = n.getStringValue(); },
         "serviceName": n => { clientFinancialHistoryEventDto.serviceName = n.getStringValue(); },
         "type": n => { clientFinancialHistoryEventDto.type = n.getStringValue(); },
@@ -5611,32 +4543,10 @@ export function deserializeIntoClientFinancialHistoryEventDto(clientFinancialHis
 export function deserializeIntoClientHistoryContactsDto(clientHistoryContactsDto: Partial<ClientHistoryContactsDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "email": n => { clientHistoryContactsDto.email = n.getStringValue(); },
-        "id": n => { clientHistoryContactsDto.id = n.getObjectValue<ClientHistoryContactsDto_idMember1>(createClientHistoryContactsDto_idMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "id": n => { clientHistoryContactsDto.id = n.getStringValue(); },
         "phone": n => { clientHistoryContactsDto.phone = n.getStringValue(); },
         "telegram": n => { clientHistoryContactsDto.telegram = n.getStringValue(); },
         "vk": n => { clientHistoryContactsDto.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ClientHistoryContactsDto_id The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientHistoryContactsDto_id(clientHistoryContactsDto_id: Partial<ClientHistoryContactsDto_idMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoClientHistoryContactsDto_idMember1(clientHistoryContactsDto_id as ClientHistoryContactsDto_idMember1),
-        ...deserializeIntoUlid(clientHistoryContactsDto_id as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ClientHistoryContactsDto_idMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientHistoryContactsDto_idMember1(clientHistoryContactsDto_idMember1: Partial<ClientHistoryContactsDto_idMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -5660,13 +4570,13 @@ export function deserializeIntoClientHistoryResponse(clientHistoryResponse: Part
 // @ts-ignore
 export function deserializeIntoClientHistorySummaryDto(clientHistorySummaryDto: Partial<ClientHistorySummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "completedAppointmentsCount": n => { clientHistorySummaryDto.completedAppointmentsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "completedAppointmentsCount": n => { clientHistorySummaryDto.completedAppointmentsCount = n.getNumberValue(); },
         "lastPaymentAtUtc": n => { clientHistorySummaryDto.lastPaymentAtUtc = n.getDateValue(); },
         "lastVisitAtUtc": n => { clientHistorySummaryDto.lastVisitAtUtc = n.getDateValue(); },
         "nextAppointmentAtUtc": n => { clientHistorySummaryDto.nextAppointmentAtUtc = n.getDateValue(); },
-        "paymentsCount": n => { clientHistorySummaryDto.paymentsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "totalPayments": n => { clientHistorySummaryDto.totalPayments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "upcomingAppointmentsCount": n => { clientHistorySummaryDto.upcomingAppointmentsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "paymentsCount": n => { clientHistorySummaryDto.paymentsCount = n.getNumberValue(); },
+        "totalPayments": n => { clientHistorySummaryDto.totalPayments = n.getNumberValue(); },
+        "upcomingAppointmentsCount": n => { clientHistorySummaryDto.upcomingAppointmentsCount = n.getNumberValue(); },
     }
 }
 /**
@@ -5679,7 +4589,7 @@ export function deserializeIntoClientPortalAppointmentDto(clientPortalAppointmen
     return {
         "courseTheme": n => { clientPortalAppointmentDto.courseTheme = n.getObjectValue<ClientPortalAppointmentDto_courseThemeMember1>(createClientPortalAppointmentDto_courseThemeMember1FromDiscriminatorValue) ?? n.getObjectValue<ClientPortalCourseThemeDto>(createClientPortalCourseThemeDtoFromDiscriminatorValue); },
         "endDate": n => { clientPortalAppointmentDto.endDate = n.getDateValue(); },
-        "id": n => { clientPortalAppointmentDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientPortalAppointmentDto.id = n.getStringValue(); },
         "startDate": n => { clientPortalAppointmentDto.startDate = n.getDateValue(); },
         "status": n => { clientPortalAppointmentDto.status = n.getStringValue(); },
     }
@@ -5728,7 +4638,7 @@ export function deserializeIntoClientPortalAuthenticationResponse(clientPortalAu
 // @ts-ignore
 export function deserializeIntoClientPortalCourseThemeDto(clientPortalCourseThemeDto: Partial<ClientPortalCourseThemeDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { clientPortalCourseThemeDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientPortalCourseThemeDto.id = n.getStringValue(); },
         "title": n => { clientPortalCourseThemeDto.title = n.getStringValue(); },
     }
 }
@@ -5740,7 +4650,7 @@ export function deserializeIntoClientPortalCourseThemeDto(clientPortalCourseThem
 // @ts-ignore
 export function deserializeIntoClientSource(clientSource: Partial<ClientSource> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { clientSource.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientSource.id = n.getStringValue(); },
         "name": n => { clientSource.name = n.getStringValue(); },
     }
 }
@@ -5752,9 +4662,9 @@ export function deserializeIntoClientSource(clientSource: Partial<ClientSource> 
 // @ts-ignore
 export function deserializeIntoClientSourceReportDto(clientSourceReportDto: Partial<ClientSourceReportDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "acquiredClients": n => { clientSourceReportDto.acquiredClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "activeClients": n => { clientSourceReportDto.activeClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "clientValue": n => { clientSourceReportDto.clientValue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "acquiredClients": n => { clientSourceReportDto.acquiredClients = n.getNumberValue(); },
+        "activeClients": n => { clientSourceReportDto.activeClients = n.getNumberValue(); },
+        "clientValue": n => { clientSourceReportDto.clientValue = n.getNumberValue(); },
         "sourceName": n => { clientSourceReportDto.sourceName = n.getStringValue(); },
     }
 }
@@ -5781,15 +4691,15 @@ export function deserializeIntoClientsReportResponse(clientsReportResponse: Part
 // @ts-ignore
 export function deserializeIntoClientsReportSummaryDto(clientsReportSummaryDto: Partial<ClientsReportSummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "acquiredClients": n => { clientsReportSummaryDto.acquiredClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "activeClients": n => { clientsReportSummaryDto.activeClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "atRiskClients": n => { clientsReportSummaryDto.atRiskClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "averageClientValue": n => { clientsReportSummaryDto.averageClientValue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "averageVisitFrequency": n => { clientsReportSummaryDto.averageVisitFrequency = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "lostClients": n => { clientsReportSummaryDto.lostClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "onVacationClients": n => { clientsReportSummaryDto.onVacationClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "retainedClients": n => { clientsReportSummaryDto.retainedClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "retentionPercent": n => { clientsReportSummaryDto.retentionPercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "acquiredClients": n => { clientsReportSummaryDto.acquiredClients = n.getNumberValue(); },
+        "activeClients": n => { clientsReportSummaryDto.activeClients = n.getNumberValue(); },
+        "atRiskClients": n => { clientsReportSummaryDto.atRiskClients = n.getNumberValue(); },
+        "averageClientValue": n => { clientsReportSummaryDto.averageClientValue = n.getNumberValue(); },
+        "averageVisitFrequency": n => { clientsReportSummaryDto.averageVisitFrequency = n.getNumberValue(); },
+        "lostClients": n => { clientsReportSummaryDto.lostClients = n.getNumberValue(); },
+        "onVacationClients": n => { clientsReportSummaryDto.onVacationClients = n.getNumberValue(); },
+        "retainedClients": n => { clientsReportSummaryDto.retainedClients = n.getNumberValue(); },
+        "retentionPercent": n => { clientsReportSummaryDto.retentionPercent = n.getNumberValue(); },
     }
 }
 /**
@@ -5800,9 +4710,9 @@ export function deserializeIntoClientsReportSummaryDto(clientsReportSummaryDto: 
 // @ts-ignore
 export function deserializeIntoClientVacation(clientVacation: Partial<ClientVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { clientVacation.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "clientId": n => { clientVacation.clientId = n.getStringValue(); },
         "endDate": n => { clientVacation.endDate = n.getDateOnlyValue(); },
-        "id": n => { clientVacation.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientVacation.id = n.getStringValue(); },
         "startDate": n => { clientVacation.startDate = n.getDateOnlyValue(); },
     }
 }
@@ -5827,13 +4737,13 @@ export function deserializeIntoClientVacationRequest(clientVacationRequest: Part
 export function deserializeIntoClientValueReportDto(clientValueReportDto: Partial<ClientValueReportDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "activityState": n => { clientValueReportDto.activityState = n.getStringValue(); },
-        "averageIntervalDays": n => { clientValueReportDto.averageIntervalDays = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "clientId": n => { clientValueReportDto.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "averageIntervalDays": n => { clientValueReportDto.averageIntervalDays = n.getNumberValue(); },
+        "clientId": n => { clientValueReportDto.clientId = n.getStringValue(); },
         "clientName": n => { clientValueReportDto.clientName = n.getStringValue(); },
         "lastVisitAtUtc": n => { clientValueReportDto.lastVisitAtUtc = n.getDateValue(); },
         "sourceName": n => { clientValueReportDto.sourceName = n.getStringValue(); },
-        "value": n => { clientValueReportDto.value = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "visits": n => { clientValueReportDto.visits = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "value": n => { clientValueReportDto.value = n.getNumberValue(); },
+        "visits": n => { clientValueReportDto.visits = n.getNumberValue(); },
     }
 }
 /**
@@ -5845,11 +4755,11 @@ export function deserializeIntoClientValueReportDto(clientValueReportDto: Partia
 export function deserializeIntoClientWithBalanceDto(clientWithBalanceDto: Partial<ClientWithBalanceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "appointments": n => { clientWithBalanceDto.appointments = n.getCollectionOfObjectValues<Appointment>(createAppointmentFromDiscriminatorValue); },
-        "balance": n => { clientWithBalanceDto.balance = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "balance": n => { clientWithBalanceDto.balance = n.getNumberValue(); },
         "createdAtUtc": n => { clientWithBalanceDto.createdAtUtc = n.getDateValue(); },
         "dateOfBirth": n => { clientWithBalanceDto.dateOfBirth = n.getDateOnlyValue(); },
         "firstName": n => { clientWithBalanceDto.firstName = n.getStringValue(); },
-        "id": n => { clientWithBalanceDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { clientWithBalanceDto.id = n.getStringValue(); },
         "isLeadClosed": n => { clientWithBalanceDto.isLeadClosed = n.getBooleanValue(); },
         "lastActivity": n => { clientWithBalanceDto.lastActivity = n.getObjectValue<ClientWithBalanceDto_lastActivityMember1>(createClientWithBalanceDto_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
         "lastAppointmentAtUtc": n => { clientWithBalanceDto.lastAppointmentAtUtc = n.getDateValue(); },
@@ -5859,7 +4769,7 @@ export function deserializeIntoClientWithBalanceDto(clientWithBalanceDto: Partia
         "patronymic": n => { clientWithBalanceDto.patronymic = n.getStringValue(); },
         "phone": n => { clientWithBalanceDto.phone = n.getStringValue(); },
         "source": n => { clientWithBalanceDto.source = n.getObjectValue<ClientSource>(createClientSourceFromDiscriminatorValue) ?? n.getObjectValue<ClientWithBalanceDto_sourceMember1>(createClientWithBalanceDto_sourceMember1FromDiscriminatorValue); },
-        "sourceId": n => { clientWithBalanceDto.sourceId = n.getObjectValue<ClientWithBalanceDto_sourceIdMember1>(createClientWithBalanceDto_sourceIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "sourceId": n => { clientWithBalanceDto.sourceId = n.getStringValue(); },
         "sourceName": n => { clientWithBalanceDto.sourceName = n.getStringValue(); },
         "telegram": n => { clientWithBalanceDto.telegram = n.getStringValue(); },
         "vacations": n => { clientWithBalanceDto.vacations = n.getCollectionOfObjectValues<ClientVacation>(createClientVacationFromDiscriminatorValue); },
@@ -5902,28 +4812,6 @@ export function deserializeIntoClientWithBalanceDto_source(clientWithBalanceDto_
 }
 /**
  * The deserialization information for the current model
- * @param ClientWithBalanceDto_sourceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientWithBalanceDto_sourceId(clientWithBalanceDto_sourceId: Partial<ClientWithBalanceDto_sourceIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoClientWithBalanceDto_sourceIdMember1(clientWithBalanceDto_sourceId as ClientWithBalanceDto_sourceIdMember1),
-        ...deserializeIntoUlid(clientWithBalanceDto_sourceId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ClientWithBalanceDto_sourceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientWithBalanceDto_sourceIdMember1(clientWithBalanceDto_sourceIdMember1: Partial<ClientWithBalanceDto_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
  * @param ClientWithBalanceDto_sourceMember1 The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5940,79 +4828,13 @@ export function deserializeIntoClientWithBalanceDto_sourceMember1(clientWithBala
 // @ts-ignore
 export function deserializeIntoCompleteRecurringTaskRequest(completeRecurringTaskRequest: Partial<CompleteRecurringTaskRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointmentId": n => { completeRecurringTaskRequest.appointmentId = n.getObjectValue<CompleteRecurringTaskRequest_appointmentIdMember1>(createCompleteRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "clientId": n => { completeRecurringTaskRequest.clientId = n.getObjectValue<CompleteRecurringTaskRequest_clientIdMember1>(createCompleteRecurringTaskRequest_clientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "appointmentId": n => { completeRecurringTaskRequest.appointmentId = n.getStringValue(); },
+        "clientId": n => { completeRecurringTaskRequest.clientId = n.getStringValue(); },
         "preparedMessage": n => { completeRecurringTaskRequest.preparedMessage = n.getStringValue(); },
-        "ruleId": n => { completeRecurringTaskRequest.ruleId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "teacherId": n => { completeRecurringTaskRequest.teacherId = n.getObjectValue<CompleteRecurringTaskRequest_teacherIdMember1>(createCompleteRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "ruleId": n => { completeRecurringTaskRequest.ruleId = n.getStringValue(); },
+        "teacherId": n => { completeRecurringTaskRequest.teacherId = n.getStringValue(); },
         "timezone": n => { completeRecurringTaskRequest.timezone = n.getStringValue(); },
         "type": n => { completeRecurringTaskRequest.type = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_appointmentId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_appointmentId(completeRecurringTaskRequest_appointmentId: Partial<CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCompleteRecurringTaskRequest_appointmentIdMember1(completeRecurringTaskRequest_appointmentId as CompleteRecurringTaskRequest_appointmentIdMember1),
-        ...deserializeIntoUlid(completeRecurringTaskRequest_appointmentId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_appointmentIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_appointmentIdMember1(completeRecurringTaskRequest_appointmentIdMember1: Partial<CompleteRecurringTaskRequest_appointmentIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_clientId(completeRecurringTaskRequest_clientId: Partial<CompleteRecurringTaskRequest_clientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCompleteRecurringTaskRequest_clientIdMember1(completeRecurringTaskRequest_clientId as CompleteRecurringTaskRequest_clientIdMember1),
-        ...deserializeIntoUlid(completeRecurringTaskRequest_clientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_clientIdMember1(completeRecurringTaskRequest_clientIdMember1: Partial<CompleteRecurringTaskRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_teacherId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_teacherId(completeRecurringTaskRequest_teacherId: Partial<CompleteRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCompleteRecurringTaskRequest_teacherIdMember1(completeRecurringTaskRequest_teacherId as CompleteRecurringTaskRequest_teacherIdMember1),
-        ...deserializeIntoUlid(completeRecurringTaskRequest_teacherId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CompleteRecurringTaskRequest_teacherIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCompleteRecurringTaskRequest_teacherIdMember1(completeRecurringTaskRequest_teacherIdMember1: Partial<CompleteRecurringTaskRequest_teacherIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6026,7 +4848,7 @@ export function deserializeIntoCourse(course: Partial<Course> | undefined = {}) 
         "blocks": n => { course.blocks = n.getCollectionOfObjectValues<CourseBlock>(createCourseBlockFromDiscriminatorValue); },
         "createdAtUtc": n => { course.createdAtUtc = n.getDateValue(); },
         "description": n => { course.description = n.getStringValue(); },
-        "id": n => { course.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { course.id = n.getStringValue(); },
         "levels": n => { course.levels = n.getCollectionOfObjectValues<CourseLevel>(createCourseLevelFromDiscriminatorValue); },
         "name": n => { course.name = n.getStringValue(); },
         "updatedAtUtc": n => { course.updatedAtUtc = n.getDateValue(); },
@@ -6042,10 +4864,10 @@ export function deserializeIntoCourseBlock(courseBlock: Partial<CourseBlock> | u
     return {
         "branches": n => { courseBlock.branches = n.getCollectionOfObjectValues<CourseBranch>(createCourseBranchFromDiscriminatorValue); },
         "course": n => { courseBlock.course = n.getObjectValue<Course>(createCourseFromDiscriminatorValue); },
-        "courseId": n => { courseBlock.courseId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "courseId": n => { courseBlock.courseId = n.getStringValue(); },
         "description": n => { courseBlock.description = n.getStringValue(); },
-        "id": n => { courseBlock.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseBlock.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseBlock.id = n.getStringValue(); },
+        "order": n => { courseBlock.order = n.getNumberValue(); },
         "title": n => { courseBlock.title = n.getStringValue(); },
     }
 }
@@ -6059,8 +4881,8 @@ export function deserializeIntoCourseBlockDto(courseBlockDto: Partial<CourseBloc
     return {
         "branches": n => { courseBlockDto.branches = n.getCollectionOfObjectValues<CourseBranchDto>(createCourseBranchDtoFromDiscriminatorValue); },
         "description": n => { courseBlockDto.description = n.getStringValue(); },
-        "id": n => { courseBlockDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseBlockDto.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseBlockDto.id = n.getStringValue(); },
+        "order": n => { courseBlockDto.order = n.getNumberValue(); },
         "title": n => { courseBlockDto.title = n.getStringValue(); },
     }
 }
@@ -6073,10 +4895,10 @@ export function deserializeIntoCourseBlockDto(courseBlockDto: Partial<CourseBloc
 export function deserializeIntoCourseBranch(courseBranch: Partial<CourseBranch> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "block": n => { courseBranch.block = n.getObjectValue<CourseBlock>(createCourseBlockFromDiscriminatorValue); },
-        "blockId": n => { courseBranch.blockId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "blockId": n => { courseBranch.blockId = n.getStringValue(); },
         "description": n => { courseBranch.description = n.getStringValue(); },
-        "id": n => { courseBranch.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseBranch.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseBranch.id = n.getStringValue(); },
+        "order": n => { courseBranch.order = n.getNumberValue(); },
         "themes": n => { courseBranch.themes = n.getCollectionOfObjectValues<CourseTheme>(createCourseThemeFromDiscriminatorValue); },
         "title": n => { courseBranch.title = n.getStringValue(); },
     }
@@ -6090,8 +4912,8 @@ export function deserializeIntoCourseBranch(courseBranch: Partial<CourseBranch> 
 export function deserializeIntoCourseBranchDto(courseBranchDto: Partial<CourseBranchDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "description": n => { courseBranchDto.description = n.getStringValue(); },
-        "id": n => { courseBranchDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseBranchDto.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseBranchDto.id = n.getStringValue(); },
+        "order": n => { courseBranchDto.order = n.getNumberValue(); },
         "themes": n => { courseBranchDto.themes = n.getCollectionOfObjectValues<CourseThemeDto>(createCourseThemeDtoFromDiscriminatorValue); },
         "title": n => { courseBranchDto.title = n.getStringValue(); },
     }
@@ -6107,7 +4929,7 @@ export function deserializeIntoCourseDto(courseDto: Partial<CourseDto> | undefin
         "blocks": n => { courseDto.blocks = n.getCollectionOfObjectValues<CourseBlockDto>(createCourseBlockDtoFromDiscriminatorValue); },
         "createdAtUtc": n => { courseDto.createdAtUtc = n.getDateValue(); },
         "description": n => { courseDto.description = n.getStringValue(); },
-        "id": n => { courseDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseDto.id = n.getStringValue(); },
         "levels": n => { courseDto.levels = n.getCollectionOfObjectValues<CourseLevelDto>(createCourseLevelDtoFromDiscriminatorValue); },
         "name": n => { courseDto.name = n.getStringValue(); },
         "updatedAtUtc": n => { courseDto.updatedAtUtc = n.getDateValue(); },
@@ -6122,14 +4944,14 @@ export function deserializeIntoCourseDto(courseDto: Partial<CourseDto> | undefin
 export function deserializeIntoCourseEnrollmentDto(courseEnrollmentDto: Partial<CourseEnrollmentDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "clientDisplayName": n => { courseEnrollmentDto.clientDisplayName = n.getStringValue(); },
-        "clientId": n => { courseEnrollmentDto.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "clientId": n => { courseEnrollmentDto.clientId = n.getStringValue(); },
         "course": n => { courseEnrollmentDto.course = n.getObjectValue<CourseDto>(createCourseDtoFromDiscriminatorValue); },
-        "courseId": n => { courseEnrollmentDto.courseId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "courseId": n => { courseEnrollmentDto.courseId = n.getStringValue(); },
         "courseName": n => { courseEnrollmentDto.courseName = n.getStringValue(); },
         "createdAtUtc": n => { courseEnrollmentDto.createdAtUtc = n.getDateValue(); },
         "currentLevel": n => { courseEnrollmentDto.currentLevel = n.getObjectValue<CourseEnrollmentDto_currentLevelMember1>(createCourseEnrollmentDto_currentLevelMember1FromDiscriminatorValue) ?? n.getObjectValue<CourseEnrollmentLevelDto>(createCourseEnrollmentLevelDtoFromDiscriminatorValue); },
-        "earnedExperiencePoints": n => { courseEnrollmentDto.earnedExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { courseEnrollmentDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "earnedExperiencePoints": n => { courseEnrollmentDto.earnedExperiencePoints = n.getNumberValue(); },
+        "id": n => { courseEnrollmentDto.id = n.getStringValue(); },
         "themes": n => { courseEnrollmentDto.themes = n.getCollectionOfObjectValues<CourseEnrollmentThemeDto>(createCourseEnrollmentThemeDtoFromDiscriminatorValue); },
     }
 }
@@ -6163,9 +4985,9 @@ export function deserializeIntoCourseEnrollmentDto_currentLevelMember1(courseEnr
 // @ts-ignore
 export function deserializeIntoCourseEnrollmentLevelDto(courseEnrollmentLevelDto: Partial<CourseEnrollmentLevelDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { courseEnrollmentLevelDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseEnrollmentLevelDto.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "requiredExperiencePoints": n => { courseEnrollmentLevelDto.requiredExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseEnrollmentLevelDto.id = n.getStringValue(); },
+        "order": n => { courseEnrollmentLevelDto.order = n.getNumberValue(); },
+        "requiredExperiencePoints": n => { courseEnrollmentLevelDto.requiredExperiencePoints = n.getNumberValue(); },
         "title": n => { courseEnrollmentLevelDto.title = n.getStringValue(); },
     }
 }
@@ -6177,7 +4999,7 @@ export function deserializeIntoCourseEnrollmentLevelDto(courseEnrollmentLevelDto
 // @ts-ignore
 export function deserializeIntoCourseEnrollmentThemeAppointmentDto(courseEnrollmentThemeAppointmentDto: Partial<CourseEnrollmentThemeAppointmentDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { courseEnrollmentThemeAppointmentDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseEnrollmentThemeAppointmentDto.id = n.getStringValue(); },
         "lessonNotes": n => { courseEnrollmentThemeAppointmentDto.lessonNotes = n.getStringValue(); },
         "providerDisplayName": n => { courseEnrollmentThemeAppointmentDto.providerDisplayName = n.getStringValue(); },
         "startDateUtc": n => { courseEnrollmentThemeAppointmentDto.startDateUtc = n.getDateValue(); },
@@ -6193,11 +5015,11 @@ export function deserializeIntoCourseEnrollmentThemeAppointmentDto(courseEnrollm
 export function deserializeIntoCourseEnrollmentThemeDto(courseEnrollmentThemeDto: Partial<CourseEnrollmentThemeDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "completedAtUtc": n => { courseEnrollmentThemeDto.completedAtUtc = n.getDateValue(); },
-        "courseThemeId": n => { courseEnrollmentThemeDto.courseThemeId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "earnedExperiencePoints": n => { courseEnrollmentThemeDto.earnedExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "experiencePointsReward": n => { courseEnrollmentThemeDto.experiencePointsReward = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "courseThemeId": n => { courseEnrollmentThemeDto.courseThemeId = n.getStringValue(); },
+        "earnedExperiencePoints": n => { courseEnrollmentThemeDto.earnedExperiencePoints = n.getNumberValue(); },
+        "experiencePointsReward": n => { courseEnrollmentThemeDto.experiencePointsReward = n.getNumberValue(); },
         "homeworkContent": n => { courseEnrollmentThemeDto.homeworkContent = n.getStringValue(); },
-        "id": n => { courseEnrollmentThemeDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseEnrollmentThemeDto.id = n.getStringValue(); },
         "lessonContent": n => { courseEnrollmentThemeDto.lessonContent = n.getStringValue(); },
         "recentAppointments": n => { courseEnrollmentThemeDto.recentAppointments = n.getCollectionOfObjectValues<CourseEnrollmentThemeAppointmentDto>(createCourseEnrollmentThemeAppointmentDtoFromDiscriminatorValue); },
         "startedAtUtc": n => { courseEnrollmentThemeDto.startedAtUtc = n.getDateValue(); },
@@ -6217,10 +5039,10 @@ export function deserializeIntoCourseEnrollmentThemeDto(courseEnrollmentThemeDto
 export function deserializeIntoCourseLevel(courseLevel: Partial<CourseLevel> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "course": n => { courseLevel.course = n.getObjectValue<Course>(createCourseFromDiscriminatorValue); },
-        "courseId": n => { courseLevel.courseId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { courseLevel.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseLevel.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "requiredExperiencePoints": n => { courseLevel.requiredExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "courseId": n => { courseLevel.courseId = n.getStringValue(); },
+        "id": n => { courseLevel.id = n.getStringValue(); },
+        "order": n => { courseLevel.order = n.getNumberValue(); },
+        "requiredExperiencePoints": n => { courseLevel.requiredExperiencePoints = n.getNumberValue(); },
         "title": n => { courseLevel.title = n.getStringValue(); },
     }
 }
@@ -6232,9 +5054,9 @@ export function deserializeIntoCourseLevel(courseLevel: Partial<CourseLevel> | u
 // @ts-ignore
 export function deserializeIntoCourseLevelDto(courseLevelDto: Partial<CourseLevelDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { courseLevelDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "order": n => { courseLevelDto.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "requiredExperiencePoints": n => { courseLevelDto.requiredExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseLevelDto.id = n.getStringValue(); },
+        "order": n => { courseLevelDto.order = n.getNumberValue(); },
+        "requiredExperiencePoints": n => { courseLevelDto.requiredExperiencePoints = n.getNumberValue(); },
         "title": n => { courseLevelDto.title = n.getStringValue(); },
     }
 }
@@ -6246,11 +5068,11 @@ export function deserializeIntoCourseLevelDto(courseLevelDto: Partial<CourseLeve
 // @ts-ignore
 export function deserializeIntoCourseSummaryDto(courseSummaryDto: Partial<CourseSummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "blockCount": n => { courseSummaryDto.blockCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "blockCount": n => { courseSummaryDto.blockCount = n.getNumberValue(); },
         "description": n => { courseSummaryDto.description = n.getStringValue(); },
-        "id": n => { courseSummaryDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseSummaryDto.id = n.getStringValue(); },
         "name": n => { courseSummaryDto.name = n.getStringValue(); },
-        "themeCount": n => { courseSummaryDto.themeCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "themeCount": n => { courseSummaryDto.themeCount = n.getNumberValue(); },
         "updatedAtUtc": n => { courseSummaryDto.updatedAtUtc = n.getDateValue(); },
     }
 }
@@ -6263,15 +5085,15 @@ export function deserializeIntoCourseSummaryDto(courseSummaryDto: Partial<Course
 export function deserializeIntoCourseTheme(courseTheme: Partial<CourseTheme> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "branch": n => { courseTheme.branch = n.getObjectValue<CourseBranch>(createCourseBranchFromDiscriminatorValue); },
-        "branchId": n => { courseTheme.branchId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "branchId": n => { courseTheme.branchId = n.getStringValue(); },
         "dependencies": n => { courseTheme.dependencies = n.getCollectionOfObjectValues<CourseThemeDependency>(createCourseThemeDependencyFromDiscriminatorValue); },
         "description": n => { courseTheme.description = n.getStringValue(); },
-        "experiencePointsReward": n => { courseTheme.experiencePointsReward = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "experiencePointsReward": n => { courseTheme.experiencePointsReward = n.getNumberValue(); },
         "homeworkContent": n => { courseTheme.homeworkContent = n.getStringValue(); },
-        "id": n => { courseTheme.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseTheme.id = n.getStringValue(); },
         "key": n => { courseTheme.key = n.getStringValue(); },
         "lessonContent": n => { courseTheme.lessonContent = n.getStringValue(); },
-        "order": n => { courseTheme.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { courseTheme.order = n.getNumberValue(); },
         "requiredForThemes": n => { courseTheme.requiredForThemes = n.getCollectionOfObjectValues<CourseThemeDependency>(createCourseThemeDependencyFromDiscriminatorValue); },
         "title": n => { courseTheme.title = n.getStringValue(); },
     }
@@ -6285,10 +5107,10 @@ export function deserializeIntoCourseTheme(courseTheme: Partial<CourseTheme> | u
 export function deserializeIntoCourseThemeDependency(courseThemeDependency: Partial<CourseThemeDependency> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "dependsOnTheme": n => { courseThemeDependency.dependsOnTheme = n.getObjectValue<CourseTheme>(createCourseThemeFromDiscriminatorValue); },
-        "dependsOnThemeId": n => { courseThemeDependency.dependsOnThemeId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { courseThemeDependency.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "dependsOnThemeId": n => { courseThemeDependency.dependsOnThemeId = n.getStringValue(); },
+        "id": n => { courseThemeDependency.id = n.getStringValue(); },
         "theme": n => { courseThemeDependency.theme = n.getObjectValue<CourseTheme>(createCourseThemeFromDiscriminatorValue); },
-        "themeId": n => { courseThemeDependency.themeId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "themeId": n => { courseThemeDependency.themeId = n.getStringValue(); },
     }
 }
 /**
@@ -6301,12 +5123,12 @@ export function deserializeIntoCourseThemeDto(courseThemeDto: Partial<CourseThem
     return {
         "dependencyThemeIds": n => { courseThemeDto.dependencyThemeIds = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
         "description": n => { courseThemeDto.description = n.getStringValue(); },
-        "experiencePointsReward": n => { courseThemeDto.experiencePointsReward = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "experiencePointsReward": n => { courseThemeDto.experiencePointsReward = n.getNumberValue(); },
         "homeworkContent": n => { courseThemeDto.homeworkContent = n.getStringValue(); },
-        "id": n => { courseThemeDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { courseThemeDto.id = n.getStringValue(); },
         "key": n => { courseThemeDto.key = n.getStringValue(); },
         "lessonContent": n => { courseThemeDto.lessonContent = n.getStringValue(); },
-        "order": n => { courseThemeDto.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { courseThemeDto.order = n.getNumberValue(); },
         "title": n => { courseThemeDto.title = n.getStringValue(); },
     }
 }
@@ -6318,82 +5140,16 @@ export function deserializeIntoCourseThemeDto(courseThemeDto: Partial<CourseThem
 // @ts-ignore
 export function deserializeIntoCreateAppointmentRequest(createAppointmentRequest: Partial<CreateAppointmentRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { createAppointmentRequest.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "courseThemeId": n => { createAppointmentRequest.courseThemeId = n.getObjectValue<CreateAppointmentRequest_courseThemeIdMember1>(createCreateAppointmentRequest_courseThemeIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "clientId": n => { createAppointmentRequest.clientId = n.getStringValue(); },
+        "courseThemeId": n => { createAppointmentRequest.courseThemeId = n.getStringValue(); },
         "lessonNotes": n => { createAppointmentRequest.lessonNotes = n.getStringValue(); },
         "patternEndDate": n => { createAppointmentRequest.patternEndDate = n.getDateValue(); },
-        "providerId": n => { createAppointmentRequest.providerId = n.getObjectValue<CreateAppointmentRequest_providerIdMember1>(createCreateAppointmentRequest_providerIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "recurrencePattern": n => { createAppointmentRequest.recurrencePattern = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "recurrenceTypeId": n => { createAppointmentRequest.recurrenceTypeId = n.getObjectValue<CreateAppointmentRequest_recurrenceTypeIdMember1>(createCreateAppointmentRequest_recurrenceTypeIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "serviceId": n => { createAppointmentRequest.serviceId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "providerId": n => { createAppointmentRequest.providerId = n.getStringValue(); },
+        "recurrencePattern": n => { createAppointmentRequest.recurrencePattern = n.getNumberValue(); },
+        "recurrenceTypeId": n => { createAppointmentRequest.recurrenceTypeId = n.getStringValue(); },
+        "serviceId": n => { createAppointmentRequest.serviceId = n.getStringValue(); },
         "startDate": n => { createAppointmentRequest.startDate = n.getDateValue(); },
         "timezone": n => { createAppointmentRequest.timezone = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_courseThemeId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_courseThemeId(createAppointmentRequest_courseThemeId: Partial<CreateAppointmentRequest_courseThemeIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateAppointmentRequest_courseThemeIdMember1(createAppointmentRequest_courseThemeId as CreateAppointmentRequest_courseThemeIdMember1),
-        ...deserializeIntoUlid(createAppointmentRequest_courseThemeId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_courseThemeIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_courseThemeIdMember1(createAppointmentRequest_courseThemeIdMember1: Partial<CreateAppointmentRequest_courseThemeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_providerId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_providerId(createAppointmentRequest_providerId: Partial<CreateAppointmentRequest_providerIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateAppointmentRequest_providerIdMember1(createAppointmentRequest_providerId as CreateAppointmentRequest_providerIdMember1),
-        ...deserializeIntoUlid(createAppointmentRequest_providerId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_providerIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_providerIdMember1(createAppointmentRequest_providerIdMember1: Partial<CreateAppointmentRequest_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_recurrenceTypeId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_recurrenceTypeId(createAppointmentRequest_recurrenceTypeId: Partial<CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateAppointmentRequest_recurrenceTypeIdMember1(createAppointmentRequest_recurrenceTypeId as CreateAppointmentRequest_recurrenceTypeIdMember1),
-        ...deserializeIntoUlid(createAppointmentRequest_recurrenceTypeId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateAppointmentRequest_recurrenceTypeIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateAppointmentRequest_recurrenceTypeIdMember1(createAppointmentRequest_recurrenceTypeIdMember1: Partial<CreateAppointmentRequest_recurrenceTypeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6421,31 +5177,9 @@ export function deserializeIntoCreateClientRequest(createClientRequest: Partial<
         "lastName": n => { createClientRequest.lastName = n.getStringValue(); },
         "patronymic": n => { createClientRequest.patronymic = n.getStringValue(); },
         "phone": n => { createClientRequest.phone = n.getStringValue(); },
-        "sourceId": n => { createClientRequest.sourceId = n.getObjectValue<CreateClientRequest_sourceIdMember1>(createCreateClientRequest_sourceIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "sourceId": n => { createClientRequest.sourceId = n.getStringValue(); },
         "telegram": n => { createClientRequest.telegram = n.getStringValue(); },
         "vk": n => { createClientRequest.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateClientRequest_sourceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateClientRequest_sourceId(createClientRequest_sourceId: Partial<CreateClientRequest_sourceIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateClientRequest_sourceIdMember1(createClientRequest_sourceId as CreateClientRequest_sourceIdMember1),
-        ...deserializeIntoUlid(createClientRequest_sourceId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateClientRequest_sourceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateClientRequest_sourceIdMember1(createClientRequest_sourceIdMember1: Partial<CreateClientRequest_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6469,7 +5203,7 @@ export function deserializeIntoCreateCourseBlockRequest(createCourseBlockRequest
     return {
         "branches": n => { createCourseBlockRequest.branches = n.getCollectionOfObjectValues<CreateCourseBranchRequest>(createCreateCourseBranchRequestFromDiscriminatorValue); },
         "description": n => { createCourseBlockRequest.description = n.getStringValue(); },
-        "order": n => { createCourseBlockRequest.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { createCourseBlockRequest.order = n.getNumberValue(); },
         "title": n => { createCourseBlockRequest.title = n.getStringValue(); },
     }
 }
@@ -6482,7 +5216,7 @@ export function deserializeIntoCreateCourseBlockRequest(createCourseBlockRequest
 export function deserializeIntoCreateCourseBranchRequest(createCourseBranchRequest: Partial<CreateCourseBranchRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "description": n => { createCourseBranchRequest.description = n.getStringValue(); },
-        "order": n => { createCourseBranchRequest.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { createCourseBranchRequest.order = n.getNumberValue(); },
         "themes": n => { createCourseBranchRequest.themes = n.getCollectionOfObjectValues<CreateCourseThemeRequest>(createCreateCourseThemeRequestFromDiscriminatorValue); },
         "title": n => { createCourseBranchRequest.title = n.getStringValue(); },
     }
@@ -6495,8 +5229,8 @@ export function deserializeIntoCreateCourseBranchRequest(createCourseBranchReque
 // @ts-ignore
 export function deserializeIntoCreateCourseEnrollmentRequest(createCourseEnrollmentRequest: Partial<CreateCourseEnrollmentRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { createCourseEnrollmentRequest.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "courseId": n => { createCourseEnrollmentRequest.courseId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "clientId": n => { createCourseEnrollmentRequest.clientId = n.getStringValue(); },
+        "courseId": n => { createCourseEnrollmentRequest.courseId = n.getStringValue(); },
     }
 }
 /**
@@ -6507,8 +5241,8 @@ export function deserializeIntoCreateCourseEnrollmentRequest(createCourseEnrollm
 // @ts-ignore
 export function deserializeIntoCreateCourseLevelRequest(createCourseLevelRequest: Partial<CreateCourseLevelRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "order": n => { createCourseLevelRequest.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "requiredExperiencePoints": n => { createCourseLevelRequest.requiredExperiencePoints = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { createCourseLevelRequest.order = n.getNumberValue(); },
+        "requiredExperiencePoints": n => { createCourseLevelRequest.requiredExperiencePoints = n.getNumberValue(); },
         "title": n => { createCourseLevelRequest.title = n.getStringValue(); },
     }
 }
@@ -6536,11 +5270,11 @@ export function deserializeIntoCreateCourseThemeRequest(createCourseThemeRequest
     return {
         "dependencyKeys": n => { createCourseThemeRequest.dependencyKeys = n.getCollectionOfPrimitiveValues<string>("string"); },
         "description": n => { createCourseThemeRequest.description = n.getStringValue(); },
-        "experiencePointsReward": n => { createCourseThemeRequest.experiencePointsReward = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "experiencePointsReward": n => { createCourseThemeRequest.experiencePointsReward = n.getNumberValue(); },
         "homeworkContent": n => { createCourseThemeRequest.homeworkContent = n.getStringValue(); },
         "key": n => { createCourseThemeRequest.key = n.getStringValue(); },
         "lessonContent": n => { createCourseThemeRequest.lessonContent = n.getStringValue(); },
-        "order": n => { createCourseThemeRequest.order = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "order": n => { createCourseThemeRequest.order = n.getNumberValue(); },
         "title": n => { createCourseThemeRequest.title = n.getStringValue(); },
     }
 }
@@ -6552,7 +5286,7 @@ export function deserializeIntoCreateCourseThemeRequest(createCourseThemeRequest
 // @ts-ignore
 export function deserializeIntoCreateCustomTaskRequest(createCustomTaskRequest: Partial<CreateCustomTaskRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { createCustomTaskRequest.clientId = n.getObjectValue<CreateCustomTaskRequest_clientIdMember1>(createCreateCustomTaskRequest_clientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "clientId": n => { createCustomTaskRequest.clientId = n.getStringValue(); },
         "dueAtUtc": n => { createCustomTaskRequest.dueAtUtc = n.getDateValue(); },
         "messageText": n => { createCustomTaskRequest.messageText = n.getStringValue(); },
         "phone": n => { createCustomTaskRequest.phone = n.getStringValue(); },
@@ -6564,35 +5298,13 @@ export function deserializeIntoCreateCustomTaskRequest(createCustomTaskRequest: 
 }
 /**
  * The deserialization information for the current model
- * @param CreateCustomTaskRequest_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateCustomTaskRequest_clientId(createCustomTaskRequest_clientId: Partial<CreateCustomTaskRequest_clientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateCustomTaskRequest_clientIdMember1(createCustomTaskRequest_clientId as CreateCustomTaskRequest_clientIdMember1),
-        ...deserializeIntoUlid(createCustomTaskRequest_clientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateCustomTaskRequest_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateCustomTaskRequest_clientIdMember1(createCustomTaskRequest_clientIdMember1: Partial<CreateCustomTaskRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
  * @param CreateEntityResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
 export function deserializeIntoCreateEntityResponse(createEntityResponse: Partial<CreateEntityResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { createEntityResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { createEntityResponse.id = n.getStringValue(); },
     }
 }
 /**
@@ -6614,32 +5326,10 @@ export function deserializeIntoCreateExpenseCategoryRequest(createExpenseCategor
 // @ts-ignore
 export function deserializeIntoCreateExpenseRequest(createExpenseRequest: Partial<CreateExpenseRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { createExpenseRequest.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "categoryId": n => { createExpenseRequest.categoryId = n.getObjectValue<CreateExpenseRequest_categoryIdMember1>(createCreateExpenseRequest_categoryIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "amount": n => { createExpenseRequest.amount = n.getNumberValue(); },
+        "categoryId": n => { createExpenseRequest.categoryId = n.getStringValue(); },
         "date": n => { createExpenseRequest.date = n.getDateValue(); },
         "description": n => { createExpenseRequest.description = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateExpenseRequest_categoryId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateExpenseRequest_categoryId(createExpenseRequest_categoryId: Partial<CreateExpenseRequest_categoryIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreateExpenseRequest_categoryIdMember1(createExpenseRequest_categoryId as CreateExpenseRequest_categoryIdMember1),
-        ...deserializeIntoUlid(createExpenseRequest_categoryId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreateExpenseRequest_categoryIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreateExpenseRequest_categoryIdMember1(createExpenseRequest_categoryIdMember1: Partial<CreateExpenseRequest_categoryIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6651,7 +5341,7 @@ export function deserializeIntoCreateExpenseRequest_categoryIdMember1(createExpe
 export function deserializeIntoCreateInviteRequest(createInviteRequest: Partial<CreateInviteRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "email": n => { createInviteRequest.email = n.getStringValue(); },
-        "role": n => { createInviteRequest.role = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "role": n => { createInviteRequest.role = n.getStringValue(); },
     }
 }
 /**
@@ -6684,33 +5374,11 @@ export function deserializeIntoCreatePasswordResetLinkResponse(createPasswordRes
 // @ts-ignore
 export function deserializeIntoCreatePaymentRequest(createPaymentRequest: Partial<CreatePaymentRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { createPaymentRequest.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "clientId": n => { createPaymentRequest.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "amount": n => { createPaymentRequest.amount = n.getNumberValue(); },
+        "clientId": n => { createPaymentRequest.clientId = n.getStringValue(); },
         "date": n => { createPaymentRequest.date = n.getDateValue(); },
         "description": n => { createPaymentRequest.description = n.getStringValue(); },
-        "serviceId": n => { createPaymentRequest.serviceId = n.getObjectValue<CreatePaymentRequest_serviceIdMember1>(createCreatePaymentRequest_serviceIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreatePaymentRequest_serviceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreatePaymentRequest_serviceId(createPaymentRequest_serviceId: Partial<CreatePaymentRequest_serviceIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoCreatePaymentRequest_serviceIdMember1(createPaymentRequest_serviceId as CreatePaymentRequest_serviceIdMember1),
-        ...deserializeIntoUlid(createPaymentRequest_serviceId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param CreatePaymentRequest_serviceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoCreatePaymentRequest_serviceIdMember1(createPaymentRequest_serviceIdMember1: Partial<CreatePaymentRequest_serviceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "serviceId": n => { createPaymentRequest.serviceId = n.getStringValue(); },
     }
 }
 /**
@@ -6724,7 +5392,7 @@ export function deserializeIntoCreateServiceRequest(createServiceRequest: Partia
         "description": n => { createServiceRequest.description = n.getStringValue(); },
         "isConsultation": n => { createServiceRequest.isConsultation = n.getBooleanValue(); },
         "name": n => { createServiceRequest.name = n.getStringValue(); },
-        "price": n => { createServiceRequest.price = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "price": n => { createServiceRequest.price = n.getNumberValue(); },
         "publicName": n => { createServiceRequest.publicName = n.getStringValue(); },
     }
 }
@@ -6750,7 +5418,7 @@ export function deserializeIntoDashboardAppointmentResponse(dashboardAppointment
     return {
         "client": n => { dashboardAppointmentResponse.client = n.getObjectValue<DashboardClientResponse>(createDashboardClientResponseFromDiscriminatorValue); },
         "endDate": n => { dashboardAppointmentResponse.endDate = n.getDateValue(); },
-        "id": n => { dashboardAppointmentResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { dashboardAppointmentResponse.id = n.getStringValue(); },
         "service": n => { dashboardAppointmentResponse.service = n.getObjectValue<DashboardServiceResponse>(createDashboardServiceResponseFromDiscriminatorValue); },
         "startDate": n => { dashboardAppointmentResponse.startDate = n.getDateValue(); },
         "status": n => { dashboardAppointmentResponse.status = n.getStringValue(); },
@@ -6779,7 +5447,7 @@ export function deserializeIntoDashboardClientResponse(dashboardClientResponse: 
     return {
         "contacts": n => { dashboardClientResponse.contacts = n.getObjectValue<DashboardClientContactsResponse>(createDashboardClientContactsResponseFromDiscriminatorValue) ?? n.getObjectValue<DashboardClientResponse_contactsMember1>(createDashboardClientResponse_contactsMember1FromDiscriminatorValue); },
         "firstName": n => { dashboardClientResponse.firstName = n.getStringValue(); },
-        "id": n => { dashboardClientResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { dashboardClientResponse.id = n.getStringValue(); },
         "lastName": n => { dashboardClientResponse.lastName = n.getStringValue(); },
     }
 }
@@ -6814,7 +5482,7 @@ export function deserializeIntoDashboardClientResponse_contactsMember1(dashboard
 export function deserializeIntoDashboardScheduleDayResponse(dashboardScheduleDayResponse: Partial<DashboardScheduleDayResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "appointments": n => { dashboardScheduleDayResponse.appointments = n.getCollectionOfObjectValues<DashboardAppointmentResponse>(createDashboardAppointmentResponseFromDiscriminatorValue); },
-        "count": n => { dashboardScheduleDayResponse.count = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "count": n => { dashboardScheduleDayResponse.count = n.getNumberValue(); },
         "date": n => { dashboardScheduleDayResponse.date = n.getDateOnlyValue(); },
     }
 }
@@ -6826,7 +5494,7 @@ export function deserializeIntoDashboardScheduleDayResponse(dashboardScheduleDay
 // @ts-ignore
 export function deserializeIntoDashboardServiceResponse(dashboardServiceResponse: Partial<DashboardServiceResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { dashboardServiceResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { dashboardServiceResponse.id = n.getStringValue(); },
         "name": n => { dashboardServiceResponse.name = n.getStringValue(); },
     }
 }
@@ -6838,79 +5506,13 @@ export function deserializeIntoDashboardServiceResponse(dashboardServiceResponse
 // @ts-ignore
 export function deserializeIntoDelayRecurringTaskRequest(delayRecurringTaskRequest: Partial<DelayRecurringTaskRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointmentId": n => { delayRecurringTaskRequest.appointmentId = n.getObjectValue<DelayRecurringTaskRequest_appointmentIdMember1>(createDelayRecurringTaskRequest_appointmentIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
-        "clientId": n => { delayRecurringTaskRequest.clientId = n.getObjectValue<DelayRecurringTaskRequest_clientIdMember1>(createDelayRecurringTaskRequest_clientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "appointmentId": n => { delayRecurringTaskRequest.appointmentId = n.getStringValue(); },
+        "clientId": n => { delayRecurringTaskRequest.clientId = n.getStringValue(); },
         "delayUntilUtc": n => { delayRecurringTaskRequest.delayUntilUtc = n.getDateValue(); },
-        "ruleId": n => { delayRecurringTaskRequest.ruleId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "teacherId": n => { delayRecurringTaskRequest.teacherId = n.getObjectValue<DelayRecurringTaskRequest_teacherIdMember1>(createDelayRecurringTaskRequest_teacherIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "ruleId": n => { delayRecurringTaskRequest.ruleId = n.getStringValue(); },
+        "teacherId": n => { delayRecurringTaskRequest.teacherId = n.getStringValue(); },
         "timezone": n => { delayRecurringTaskRequest.timezone = n.getStringValue(); },
         "type": n => { delayRecurringTaskRequest.type = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_appointmentId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_appointmentId(delayRecurringTaskRequest_appointmentId: Partial<DelayRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoDelayRecurringTaskRequest_appointmentIdMember1(delayRecurringTaskRequest_appointmentId as DelayRecurringTaskRequest_appointmentIdMember1),
-        ...deserializeIntoUlid(delayRecurringTaskRequest_appointmentId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_appointmentIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_appointmentIdMember1(delayRecurringTaskRequest_appointmentIdMember1: Partial<DelayRecurringTaskRequest_appointmentIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_clientId(delayRecurringTaskRequest_clientId: Partial<DelayRecurringTaskRequest_clientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoDelayRecurringTaskRequest_clientIdMember1(delayRecurringTaskRequest_clientId as DelayRecurringTaskRequest_clientIdMember1),
-        ...deserializeIntoUlid(delayRecurringTaskRequest_clientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_clientIdMember1(delayRecurringTaskRequest_clientIdMember1: Partial<DelayRecurringTaskRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_teacherId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_teacherId(delayRecurringTaskRequest_teacherId: Partial<DelayRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoDelayRecurringTaskRequest_teacherIdMember1(delayRecurringTaskRequest_teacherId as DelayRecurringTaskRequest_teacherIdMember1),
-        ...deserializeIntoUlid(delayRecurringTaskRequest_teacherId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param DelayRecurringTaskRequest_teacherIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoDelayRecurringTaskRequest_teacherIdMember1(delayRecurringTaskRequest_teacherIdMember1: Partial<DelayRecurringTaskRequest_teacherIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6921,35 +5523,13 @@ export function deserializeIntoDelayRecurringTaskRequest_teacherIdMember1(delayR
 // @ts-ignore
 export function deserializeIntoExpenseDto(expenseDto: Partial<ExpenseDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { expenseDto.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "categoryId": n => { expenseDto.categoryId = n.getObjectValue<ExpenseDto_categoryIdMember1>(createExpenseDto_categoryIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "amount": n => { expenseDto.amount = n.getNumberValue(); },
+        "categoryId": n => { expenseDto.categoryId = n.getStringValue(); },
         "categoryName": n => { expenseDto.categoryName = n.getStringValue(); },
         "date": n => { expenseDto.date = n.getDateValue(); },
         "description": n => { expenseDto.description = n.getStringValue(); },
-        "id": n => { expenseDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { expenseDto.id = n.getStringValue(); },
         "lastActivity": n => { expenseDto.lastActivity = n.getObjectValue<ExpenseDto_lastActivityMember1>(createExpenseDto_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ExpenseDto_categoryId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoExpenseDto_categoryId(expenseDto_categoryId: Partial<ExpenseDto_categoryIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoExpenseDto_categoryIdMember1(expenseDto_categoryId as ExpenseDto_categoryIdMember1),
-        ...deserializeIntoUlid(expenseDto_categoryId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ExpenseDto_categoryIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoExpenseDto_categoryIdMember1(expenseDto_categoryIdMember1: Partial<ExpenseDto_categoryIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -6982,11 +5562,11 @@ export function deserializeIntoExpenseDto_lastActivityMember1(expenseDto_lastAct
 // @ts-ignore
 export function deserializeIntoFinanceDebtorDto(financeDebtorDto: Partial<FinanceDebtorDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { financeDebtorDto.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "clientId": n => { financeDebtorDto.clientId = n.getStringValue(); },
         "clientName": n => { financeDebtorDto.clientName = n.getStringValue(); },
-        "debt": n => { financeDebtorDto.debt = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "payments": n => { financeDebtorDto.payments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenue": n => { financeDebtorDto.revenue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "debt": n => { financeDebtorDto.debt = n.getNumberValue(); },
+        "payments": n => { financeDebtorDto.payments = n.getNumberValue(); },
+        "revenue": n => { financeDebtorDto.revenue = n.getNumberValue(); },
     }
 }
 /**
@@ -6997,7 +5577,7 @@ export function deserializeIntoFinanceDebtorDto(financeDebtorDto: Partial<Financ
 // @ts-ignore
 export function deserializeIntoFinanceExpenseCategoryDto(financeExpenseCategoryDto: Partial<FinanceExpenseCategoryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { financeExpenseCategoryDto.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "amount": n => { financeExpenseCategoryDto.amount = n.getNumberValue(); },
         "categoryName": n => { financeExpenseCategoryDto.categoryName = n.getStringValue(); },
     }
 }
@@ -7025,14 +5605,14 @@ export function deserializeIntoFinanceReportResponse(financeReportResponse: Part
 // @ts-ignore
 export function deserializeIntoFinanceReportSummaryDto(financeReportSummaryDto: Partial<FinanceReportSummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "averageRevenuePerVisit": n => { financeReportSummaryDto.averageRevenuePerVisit = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "expenses": n => { financeReportSummaryDto.expenses = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "netProfit": n => { financeReportSummaryDto.netProfit = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "averageRevenuePerVisit": n => { financeReportSummaryDto.averageRevenuePerVisit = n.getNumberValue(); },
+        "expenses": n => { financeReportSummaryDto.expenses = n.getNumberValue(); },
+        "netProfit": n => { financeReportSummaryDto.netProfit = n.getNumberValue(); },
         "organizationOnlyFiguresAvailable": n => { financeReportSummaryDto.organizationOnlyFiguresAvailable = n.getBooleanValue(); },
-        "outstandingDebt": n => { financeReportSummaryDto.outstandingDebt = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "payments": n => { financeReportSummaryDto.payments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenue": n => { financeReportSummaryDto.revenue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenueAppointments": n => { financeReportSummaryDto.revenueAppointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "outstandingDebt": n => { financeReportSummaryDto.outstandingDebt = n.getNumberValue(); },
+        "payments": n => { financeReportSummaryDto.payments = n.getNumberValue(); },
+        "revenue": n => { financeReportSummaryDto.revenue = n.getNumberValue(); },
+        "revenueAppointments": n => { financeReportSummaryDto.revenueAppointments = n.getNumberValue(); },
     }
 }
 /**
@@ -7043,9 +5623,9 @@ export function deserializeIntoFinanceReportSummaryDto(financeReportSummaryDto: 
 // @ts-ignore
 export function deserializeIntoFinanceServiceDto(financeServiceDto: Partial<FinanceServiceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { financeServiceDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenue": n => { financeServiceDto.revenue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "serviceId": n => { financeServiceDto.serviceId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointments": n => { financeServiceDto.appointments = n.getNumberValue(); },
+        "revenue": n => { financeServiceDto.revenue = n.getNumberValue(); },
+        "serviceId": n => { financeServiceDto.serviceId = n.getStringValue(); },
         "serviceName": n => { financeServiceDto.serviceName = n.getStringValue(); },
     }
 }
@@ -7058,10 +5638,10 @@ export function deserializeIntoFinanceServiceDto(financeServiceDto: Partial<Fina
 export function deserializeIntoFinanceTrendDto(financeTrendDto: Partial<FinanceTrendDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { financeTrendDto.endDate = n.getDateValue(); },
-        "expenses": n => { financeTrendDto.expenses = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "netProfit": n => { financeTrendDto.netProfit = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "payments": n => { financeTrendDto.payments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenue": n => { financeTrendDto.revenue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "expenses": n => { financeTrendDto.expenses = n.getNumberValue(); },
+        "netProfit": n => { financeTrendDto.netProfit = n.getNumberValue(); },
+        "payments": n => { financeTrendDto.payments = n.getNumberValue(); },
+        "revenue": n => { financeTrendDto.revenue = n.getNumberValue(); },
         "startDate": n => { financeTrendDto.startDate = n.getDateValue(); },
     }
 }
@@ -7092,7 +5672,7 @@ export function deserializeIntoGetAuditLogsDto(getAuditLogsDto: Partial<GetAudit
         "details": n => { getAuditLogsDto.details = n.getStringValue(); },
         "entityId": n => { getAuditLogsDto.entityId = n.getStringValue(); },
         "entityType": n => { getAuditLogsDto.entityType = n.getStringValue(); },
-        "id": n => { getAuditLogsDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { getAuditLogsDto.id = n.getStringValue(); },
         "sourceIpAddress": n => { getAuditLogsDto.sourceIpAddress = n.getStringValue(); },
     }
 }
@@ -7216,9 +5796,9 @@ export function deserializeIntoGetCoursesResponse(getCoursesResponse: Partial<Ge
 // @ts-ignore
 export function deserializeIntoGetDashboardStatsResponse(getDashboardStatsResponse: Partial<GetDashboardStatsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "monthIncome": n => { getDashboardStatsResponse.monthIncome = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "monthIncome": n => { getDashboardStatsResponse.monthIncome = n.getNumberValue(); },
         "organization": n => { getDashboardStatsResponse.organization = n.getObjectValue<GetDashboardStatsResponse_organizationMember1>(createGetDashboardStatsResponse_organizationMember1FromDiscriminatorValue) ?? n.getObjectValue<OrganizationDashboardResponse>(createOrganizationDashboardResponseFromDiscriminatorValue); },
-        "personalClientsCount": n => { getDashboardStatsResponse.personalClientsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "personalClientsCount": n => { getDashboardStatsResponse.personalClientsCount = n.getNumberValue(); },
         "today": n => { getDashboardStatsResponse.today = n.getObjectValue<DashboardScheduleDayResponse>(createDashboardScheduleDayResponseFromDiscriminatorValue); },
         "tomorrow": n => { getDashboardStatsResponse.tomorrow = n.getObjectValue<DashboardScheduleDayResponse>(createDashboardScheduleDayResponseFromDiscriminatorValue); },
     }
@@ -7300,7 +5880,7 @@ export function deserializeIntoGetInviteCodeInformationResponse(getInviteCodeInf
 export function deserializeIntoGetPaymentsClientDto(getPaymentsClientDto: Partial<GetPaymentsClientDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "firstName": n => { getPaymentsClientDto.firstName = n.getStringValue(); },
-        "id": n => { getPaymentsClientDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { getPaymentsClientDto.id = n.getStringValue(); },
         "lastName": n => { getPaymentsClientDto.lastName = n.getStringValue(); },
         "patronymic": n => { getPaymentsClientDto.patronymic = n.getStringValue(); },
     }
@@ -7313,11 +5893,11 @@ export function deserializeIntoGetPaymentsClientDto(getPaymentsClientDto: Partia
 // @ts-ignore
 export function deserializeIntoGetPaymentsDto(getPaymentsDto: Partial<GetPaymentsDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { getPaymentsDto.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "amount": n => { getPaymentsDto.amount = n.getNumberValue(); },
         "client": n => { getPaymentsDto.client = n.getObjectValue<GetPaymentsClientDto>(createGetPaymentsClientDtoFromDiscriminatorValue); },
         "date": n => { getPaymentsDto.date = n.getDateValue(); },
         "description": n => { getPaymentsDto.description = n.getStringValue(); },
-        "id": n => { getPaymentsDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { getPaymentsDto.id = n.getStringValue(); },
         "lastActivity": n => { getPaymentsDto.lastActivity = n.getObjectValue<GetPaymentsDto_lastActivityMember1>(createGetPaymentsDto_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
         "service": n => { getPaymentsDto.service = n.getObjectValue<GetPaymentsDto_serviceMember1>(createGetPaymentsDto_serviceMember1FromDiscriminatorValue) ?? n.getObjectValue<GetPaymentsServiceDto>(createGetPaymentsServiceDtoFromDiscriminatorValue); },
     }
@@ -7387,7 +5967,7 @@ export function deserializeIntoGetPaymentsResponse(getPaymentsResponse: Partial<
 // @ts-ignore
 export function deserializeIntoGetPaymentsServiceDto(getPaymentsServiceDto: Partial<GetPaymentsServiceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { getPaymentsServiceDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { getPaymentsServiceDto.id = n.getStringValue(); },
         "name": n => { getPaymentsServiceDto.name = n.getStringValue(); },
     }
 }
@@ -7444,7 +6024,7 @@ export function deserializeIntoGetUsersAvailabilityResponse(getUsersAvailability
 export function deserializeIntoGetUsersDto(getUsersDto: Partial<GetUsersDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "firstName": n => { getUsersDto.firstName = n.getStringValue(); },
-        "id": n => { getUsersDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { getUsersDto.id = n.getStringValue(); },
         "lastActivity": n => { getUsersDto.lastActivity = n.getObjectValue<GetUsersDto_lastActivityMember1>(createGetUsersDto_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
         "lastName": n => { getUsersDto.lastName = n.getStringValue(); },
         "phone": n => { getUsersDto.phone = n.getStringValue(); },
@@ -7488,6 +6068,22 @@ export function deserializeIntoGetUsersResponse(getUsersResponse: Partial<GetUse
 }
 /**
  * The deserialization information for the current model
+ * @param LoginAttemptResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoLoginAttemptResponse(loginAttemptResponse: Partial<LoginAttemptResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "accessToken": n => { loginAttemptResponse.accessToken = n.getStringValue(); },
+        "canUseOtp": n => { loginAttemptResponse.canUseOtp = n.getBooleanValue(); },
+        "canUseRecoveryCode": n => { loginAttemptResponse.canUseRecoveryCode = n.getBooleanValue(); },
+        "firstName": n => { loginAttemptResponse.firstName = n.getStringValue(); },
+        "lastName": n => { loginAttemptResponse.lastName = n.getStringValue(); },
+        "requiresTwoFactor": n => { loginAttemptResponse.requiresTwoFactor = n.getBooleanValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param LoginRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7523,10 +6119,10 @@ export function deserializeIntoLookupClientDto(lookupClientDto: Partial<LookupCl
     return {
         "contacts": n => { lookupClientDto.contacts = n.getObjectValue<ClientHistoryContactsDto>(createClientHistoryContactsDtoFromDiscriminatorValue) ?? n.getObjectValue<LookupClientDto_contactsMember1>(createLookupClientDto_contactsMember1FromDiscriminatorValue); },
         "firstName": n => { lookupClientDto.firstName = n.getStringValue(); },
-        "id": n => { lookupClientDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { lookupClientDto.id = n.getStringValue(); },
         "lastName": n => { lookupClientDto.lastName = n.getStringValue(); },
         "patronymic": n => { lookupClientDto.patronymic = n.getStringValue(); },
-        "sourceId": n => { lookupClientDto.sourceId = n.getObjectValue<LookupClientDto_sourceIdMember1>(createLookupClientDto_sourceIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "sourceId": n => { lookupClientDto.sourceId = n.getStringValue(); },
         "sourceName": n => { lookupClientDto.sourceName = n.getStringValue(); },
     }
 }
@@ -7554,28 +6150,6 @@ export function deserializeIntoLookupClientDto_contactsMember1(lookupClientDto_c
 }
 /**
  * The deserialization information for the current model
- * @param LookupClientDto_sourceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoLookupClientDto_sourceId(lookupClientDto_sourceId: Partial<LookupClientDto_sourceIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoLookupClientDto_sourceIdMember1(lookupClientDto_sourceId as LookupClientDto_sourceIdMember1),
-        ...deserializeIntoUlid(lookupClientDto_sourceId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param LookupClientDto_sourceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoLookupClientDto_sourceIdMember1(lookupClientDto_sourceIdMember1: Partial<LookupClientDto_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
  * @param LookupClientsResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7594,7 +6168,7 @@ export function deserializeIntoLookupClientsResponse(lookupClientsResponse: Part
 export function deserializeIntoLookupRecurrenceTypeDto(lookupRecurrenceTypeDto: Partial<LookupRecurrenceTypeDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "displayName": n => { lookupRecurrenceTypeDto.displayName = n.getStringValue(); },
-        "id": n => { lookupRecurrenceTypeDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { lookupRecurrenceTypeDto.id = n.getStringValue(); },
         "key": n => { lookupRecurrenceTypeDto.key = n.getStringValue(); },
     }
 }
@@ -7618,7 +6192,7 @@ export function deserializeIntoLookupRecurrenceTypesResponse(lookupRecurrenceTyp
 export function deserializeIntoLookupRolesDto(lookupRolesDto: Partial<LookupRolesDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "displayName": n => { lookupRolesDto.displayName = n.getStringValue(); },
-        "id": n => { lookupRolesDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { lookupRolesDto.id = n.getStringValue(); },
     }
 }
 /**
@@ -7640,9 +6214,9 @@ export function deserializeIntoLookupRolesResponse(lookupRolesResponse: Partial<
 // @ts-ignore
 export function deserializeIntoLookupServicesDto(lookupServicesDto: Partial<LookupServicesDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { lookupServicesDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { lookupServicesDto.id = n.getStringValue(); },
         "name": n => { lookupServicesDto.name = n.getStringValue(); },
-        "price": n => { lookupServicesDto.price = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "price": n => { lookupServicesDto.price = n.getNumberValue(); },
     }
 }
 /**
@@ -7664,10 +6238,10 @@ export function deserializeIntoLookupServicesResponse(lookupServicesResponse: Pa
 // @ts-ignore
 export function deserializeIntoMeResponse(meResponse: Partial<MeResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "balance": n => { meResponse.balance = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "balance": n => { meResponse.balance = n.getNumberValue(); },
         "email": n => { meResponse.email = n.getStringValue(); },
         "firstName": n => { meResponse.firstName = n.getStringValue(); },
-        "id": n => { meResponse.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { meResponse.id = n.getStringValue(); },
         "isAdmin": n => { meResponse.isAdmin = n.getBooleanValue(); },
         "isClientPortal": n => { meResponse.isClientPortal = n.getBooleanValue(); },
         "isSuperuser": n => { meResponse.isSuperuser = n.getBooleanValue(); },
@@ -7675,7 +6249,7 @@ export function deserializeIntoMeResponse(meResponse: Partial<MeResponse> | unde
         "isTwoFactorRequired": n => { meResponse.isTwoFactorRequired = n.getBooleanValue(); },
         "lastActivity": n => { meResponse.lastActivity = n.getObjectValue<MeResponse_lastActivityMember1>(createMeResponse_lastActivityMember1FromDiscriminatorValue) ?? n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue); },
         "lastName": n => { meResponse.lastName = n.getStringValue(); },
-        "linkedClientId": n => { meResponse.linkedClientId = n.getObjectValue<MeResponse_linkedClientIdMember1>(createMeResponse_linkedClientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "linkedClientId": n => { meResponse.linkedClientId = n.getStringValue(); },
         "phone": n => { meResponse.phone = n.getStringValue(); },
         "roleDisplayName": n => { meResponse.roleDisplayName = n.getStringValue(); },
         "telegram": n => { meResponse.telegram = n.getStringValue(); },
@@ -7706,28 +6280,6 @@ export function deserializeIntoMeResponse_lastActivityMember1(meResponse_lastAct
 }
 /**
  * The deserialization information for the current model
- * @param MeResponse_linkedClientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoMeResponse_linkedClientId(meResponse_linkedClientId: Partial<MeResponse_linkedClientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoMeResponse_linkedClientIdMember1(meResponse_linkedClientId as MeResponse_linkedClientIdMember1),
-        ...deserializeIntoUlid(meResponse_linkedClientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param MeResponse_linkedClientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoMeResponse_linkedClientIdMember1(meResponse_linkedClientIdMember1: Partial<MeResponse_linkedClientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
  * @param MoneyListSummaryDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7735,9 +6287,9 @@ export function deserializeIntoMeResponse_linkedClientIdMember1(meResponse_linke
 export function deserializeIntoMoneyListSummaryDto(moneyListSummaryDto: Partial<MoneyListSummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "firstItemAtUtc": n => { moneyListSummaryDto.firstItemAtUtc = n.getDateValue(); },
-        "itemsCount": n => { moneyListSummaryDto.itemsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "itemsCount": n => { moneyListSummaryDto.itemsCount = n.getNumberValue(); },
         "lastItemAtUtc": n => { moneyListSummaryDto.lastItemAtUtc = n.getDateValue(); },
-        "totalAmount": n => { moneyListSummaryDto.totalAmount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "totalAmount": n => { moneyListSummaryDto.totalAmount = n.getNumberValue(); },
     }
 }
 /**
@@ -7751,7 +6303,7 @@ export function deserializeIntoOnboardingStateResponse(onboardingStateResponse: 
         "completedAtUtc": n => { onboardingStateResponse.completedAtUtc = n.getDateValue(); },
         "currentPath": n => { onboardingStateResponse.currentPath = n.getStringValue(); },
         "currentStep": n => { onboardingStateResponse.currentStep = n.getStringValue(); },
-        "definitionVersion": n => { onboardingStateResponse.definitionVersion = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "definitionVersion": n => { onboardingStateResponse.definitionVersion = n.getNumberValue(); },
         "shouldLaunch": n => { onboardingStateResponse.shouldLaunch = n.getBooleanValue(); },
         "status": n => { onboardingStateResponse.status = n.getStringValue(); },
         "updatedAtUtc": n => { onboardingStateResponse.updatedAtUtc = n.getDateValue(); },
@@ -7765,15 +6317,15 @@ export function deserializeIntoOnboardingStateResponse(onboardingStateResponse: 
 // @ts-ignore
 export function deserializeIntoOrganizationDashboardResponse(organizationDashboardResponse: Partial<OrganizationDashboardResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointmentsToday": n => { organizationDashboardResponse.appointmentsToday = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "appointmentsTomorrow": n => { organizationDashboardResponse.appointmentsTomorrow = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "debtorsCount": n => { organizationDashboardResponse.debtorsCount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "monthExpenses": n => { organizationDashboardResponse.monthExpenses = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "monthIncome": n => { organizationDashboardResponse.monthIncome = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "monthNet": n => { organizationDashboardResponse.monthNet = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "totalClients": n => { organizationDashboardResponse.totalClients = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "totalDebt": n => { organizationDashboardResponse.totalDebt = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "totalPositiveBalance": n => { organizationDashboardResponse.totalPositiveBalance = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointmentsToday": n => { organizationDashboardResponse.appointmentsToday = n.getNumberValue(); },
+        "appointmentsTomorrow": n => { organizationDashboardResponse.appointmentsTomorrow = n.getNumberValue(); },
+        "debtorsCount": n => { organizationDashboardResponse.debtorsCount = n.getNumberValue(); },
+        "monthExpenses": n => { organizationDashboardResponse.monthExpenses = n.getNumberValue(); },
+        "monthIncome": n => { organizationDashboardResponse.monthIncome = n.getNumberValue(); },
+        "monthNet": n => { organizationDashboardResponse.monthNet = n.getNumberValue(); },
+        "totalClients": n => { organizationDashboardResponse.totalClients = n.getNumberValue(); },
+        "totalDebt": n => { organizationDashboardResponse.totalDebt = n.getNumberValue(); },
+        "totalPositiveBalance": n => { organizationDashboardResponse.totalPositiveBalance = n.getNumberValue(); },
     }
 }
 /**
@@ -7786,9 +6338,9 @@ export function deserializeIntoPageMetadata(pageMetadata: Partial<PageMetadata> 
     return {
         "hasNextPage": n => { pageMetadata.hasNextPage = n.getBooleanValue(); },
         "hasPrevPage": n => { pageMetadata.hasPrevPage = n.getBooleanValue(); },
-        "page": n => { pageMetadata.page = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "pageSize": n => { pageMetadata.pageSize = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "total": n => { pageMetadata.total = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "page": n => { pageMetadata.page = n.getNumberValue(); },
+        "pageSize": n => { pageMetadata.pageSize = n.getNumberValue(); },
+        "total": n => { pageMetadata.total = n.getNumberValue(); },
     }
 }
 /**
@@ -7841,7 +6393,7 @@ export function deserializeIntoRecordActivityDto(recordActivityDto: Partial<Reco
         "category": n => { recordActivityDto.category = n.getStringValue(); },
         "createdAtUtc": n => { recordActivityDto.createdAtUtc = n.getDateValue(); },
         "details": n => { recordActivityDto.details = n.getStringValue(); },
-        "id": n => { recordActivityDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { recordActivityDto.id = n.getStringValue(); },
         "sourceIpAddress": n => { recordActivityDto.sourceIpAddress = n.getStringValue(); },
     }
 }
@@ -7903,7 +6455,7 @@ export function deserializeIntoRecoveryCodesResponse(recoveryCodesResponse: Part
 export function deserializeIntoRecurrenceType(recurrenceType: Partial<RecurrenceType> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "displayName": n => { recurrenceType.displayName = n.getStringValue(); },
-        "id": n => { recurrenceType.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { recurrenceType.id = n.getStringValue(); },
         "type": n => { recurrenceType.type = n.getNumberValue(); },
     }
 }
@@ -7926,9 +6478,9 @@ export function deserializeIntoRecurringTaskActionResponse(recurringTaskActionRe
 // @ts-ignore
 export function deserializeIntoRecurringTaskDto(recurringTaskDto: Partial<RecurringTaskDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointmentId": n => { recurringTaskDto.appointmentId = n.getObjectValue<RecurringTaskDto_appointmentIdMember1>(createRecurringTaskDto_appointmentIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "appointmentId": n => { recurringTaskDto.appointmentId = n.getStringValue(); },
         "businessDate": n => { recurringTaskDto.businessDate = n.getDateOnlyValue(); },
-        "clientId": n => { recurringTaskDto.clientId = n.getObjectValue<RecurringTaskDto_clientIdMember1>(createRecurringTaskDto_clientIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "clientId": n => { recurringTaskDto.clientId = n.getStringValue(); },
         "deduplicationKey": n => { recurringTaskDto.deduplicationKey = n.getStringValue(); },
         "delayedUntilUtc": n => { recurringTaskDto.delayedUntilUtc = n.getDateValue(); },
         "phone": n => { recurringTaskDto.phone = n.getStringValue(); },
@@ -7936,78 +6488,12 @@ export function deserializeIntoRecurringTaskDto(recurringTaskDto: Partial<Recurr
         "recipientType": n => { recurringTaskDto.recipientType = n.getStringValue(); },
         "relatedPersonDisplayName": n => { recurringTaskDto.relatedPersonDisplayName = n.getStringValue(); },
         "relevantAtUtc": n => { recurringTaskDto.relevantAtUtc = n.getDateValue(); },
-        "ruleId": n => { recurringTaskDto.ruleId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "teacherId": n => { recurringTaskDto.teacherId = n.getObjectValue<RecurringTaskDto_teacherIdMember1>(createRecurringTaskDto_teacherIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "ruleId": n => { recurringTaskDto.ruleId = n.getStringValue(); },
+        "teacherId": n => { recurringTaskDto.teacherId = n.getStringValue(); },
         "telegram": n => { recurringTaskDto.telegram = n.getStringValue(); },
         "title": n => { recurringTaskDto.title = n.getStringValue(); },
         "type": n => { recurringTaskDto.type = n.getStringValue(); },
         "vk": n => { recurringTaskDto.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_appointmentId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_appointmentId(recurringTaskDto_appointmentId: Partial<RecurringTaskDto_appointmentIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoRecurringTaskDto_appointmentIdMember1(recurringTaskDto_appointmentId as RecurringTaskDto_appointmentIdMember1),
-        ...deserializeIntoUlid(recurringTaskDto_appointmentId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_appointmentIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_appointmentIdMember1(recurringTaskDto_appointmentIdMember1: Partial<RecurringTaskDto_appointmentIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_clientId(recurringTaskDto_clientId: Partial<RecurringTaskDto_clientIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoRecurringTaskDto_clientIdMember1(recurringTaskDto_clientId as RecurringTaskDto_clientIdMember1),
-        ...deserializeIntoUlid(recurringTaskDto_clientId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_clientIdMember1(recurringTaskDto_clientIdMember1: Partial<RecurringTaskDto_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_teacherId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_teacherId(recurringTaskDto_teacherId: Partial<RecurringTaskDto_teacherIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoRecurringTaskDto_teacherIdMember1(recurringTaskDto_teacherId as RecurringTaskDto_teacherIdMember1),
-        ...deserializeIntoUlid(recurringTaskDto_teacherId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RecurringTaskDto_teacherIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRecurringTaskDto_teacherIdMember1(recurringTaskDto_teacherIdMember1: Partial<RecurringTaskDto_teacherIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8018,13 +6504,13 @@ export function deserializeIntoRecurringTaskDto_teacherIdMember1(recurringTaskDt
 // @ts-ignore
 export function deserializeIntoRecurringTaskRuleDto(recurringTaskRuleDto: Partial<RecurringTaskRuleDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "cooldownDays": n => { recurringTaskRuleDto.cooldownDays = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { recurringTaskRuleDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "cooldownDays": n => { recurringTaskRuleDto.cooldownDays = n.getNumberValue(); },
+        "id": n => { recurringTaskRuleDto.id = n.getStringValue(); },
         "isEnabled": n => { recurringTaskRuleDto.isEnabled = n.getBooleanValue(); },
         "lastActivity": n => { recurringTaskRuleDto.lastActivity = n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue) ?? n.getObjectValue<RecurringTaskRuleDto_lastActivityMember1>(createRecurringTaskRuleDto_lastActivityMember1FromDiscriminatorValue); },
         "messageTemplate": n => { recurringTaskRuleDto.messageTemplate = n.getStringValue(); },
         "name": n => { recurringTaskRuleDto.name = n.getStringValue(); },
-        "offsetMinutes": n => { recurringTaskRuleDto.offsetMinutes = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "offsetMinutes": n => { recurringTaskRuleDto.offsetMinutes = n.getNumberValue(); },
         "type": n => { recurringTaskRuleDto.type = n.getStringValue(); },
     }
 }
@@ -8058,7 +6544,7 @@ export function deserializeIntoRecurringTaskRuleDto_lastActivityMember1(recurrin
 // @ts-ignore
 export function deserializeIntoReferenceBookItemDto(referenceBookItemDto: Partial<ReferenceBookItemDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "id": n => { referenceBookItemDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { referenceBookItemDto.id = n.getStringValue(); },
         "lastActivity": n => { referenceBookItemDto.lastActivity = n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue) ?? n.getObjectValue<ReferenceBookItemDto_lastActivityMember1>(createReferenceBookItemDto_lastActivityMember1FromDiscriminatorValue); },
         "name": n => { referenceBookItemDto.name = n.getStringValue(); },
     }
@@ -8083,17 +6569,6 @@ export function deserializeIntoReferenceBookItemDto_lastActivity(referenceBookIt
 // @ts-ignore
 export function deserializeIntoReferenceBookItemDto_lastActivityMember1(referenceBookItemDto_lastActivityMember1: Partial<ReferenceBookItemDto_lastActivityMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param RefreshRequest The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoRefreshRequest(refreshRequest: Partial<RefreshRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "refreshToken": n => { refreshRequest.refreshToken = n.getStringValue(); },
     }
 }
 /**
@@ -8134,33 +6609,11 @@ export function deserializeIntoReportContextDto(reportContextDto: Partial<Report
     return {
         "endDate": n => { reportContextDto.endDate = n.getDateValue(); },
         "groupBy": n => { reportContextDto.groupBy = n.getStringValue(); },
-        "providerId": n => { reportContextDto.providerId = n.getObjectValue<ReportContextDto_providerIdMember1>(createReportContextDto_providerIdMember1FromDiscriminatorValue) ?? n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue); },
+        "providerId": n => { reportContextDto.providerId = n.getStringValue(); },
         "providers": n => { reportContextDto.providers = n.getCollectionOfObjectValues<ReportProviderDto>(createReportProviderDtoFromDiscriminatorValue); },
         "scopeLabel": n => { reportContextDto.scopeLabel = n.getStringValue(); },
         "startDate": n => { reportContextDto.startDate = n.getDateValue(); },
         "timezone": n => { reportContextDto.timezone = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ReportContextDto_providerId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoReportContextDto_providerId(reportContextDto_providerId: Partial<ReportContextDto_providerIdMember1 | Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoReportContextDto_providerIdMember1(reportContextDto_providerId as ReportContextDto_providerIdMember1),
-        ...deserializeIntoUlid(reportContextDto_providerId as Ulid),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ReportContextDto_providerIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoReportContextDto_providerIdMember1(reportContextDto_providerIdMember1: Partial<ReportContextDto_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8172,7 +6625,7 @@ export function deserializeIntoReportContextDto_providerIdMember1(reportContextD
 export function deserializeIntoReportProviderDto(reportProviderDto: Partial<ReportProviderDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "displayName": n => { reportProviderDto.displayName = n.getStringValue(); },
-        "id": n => { reportProviderDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { reportProviderDto.id = n.getStringValue(); },
     }
 }
 /**
@@ -8198,7 +6651,7 @@ export function deserializeIntoResetPasswordRequest(resetPasswordRequest: Partia
 export function deserializeIntoRole(role: Partial<Role> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "displayName": n => { role.displayName = n.getStringValue(); },
-        "id": n => { role.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { role.id = n.getStringValue(); },
         "roleName": n => { role.roleName = n.getNumberValue(); },
     }
 }
@@ -8225,7 +6678,7 @@ export function deserializeIntoSavedClientPortalIdentityResponse(savedClientPort
 export function deserializeIntoService(service: Partial<Service> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "description": n => { service.description = n.getStringValue(); },
-        "id": n => { service.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { service.id = n.getStringValue(); },
         "isConsultation": n => { service.isConsultation = n.getBooleanValue(); },
         "name": n => { service.name = n.getStringValue(); },
         "publicName": n => { service.publicName = n.getStringValue(); },
@@ -8240,11 +6693,11 @@ export function deserializeIntoService(service: Partial<Service> | undefined = {
 export function deserializeIntoServiceWithCurrentPriceDto(serviceWithCurrentPriceDto: Partial<ServiceWithCurrentPriceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "description": n => { serviceWithCurrentPriceDto.description = n.getStringValue(); },
-        "id": n => { serviceWithCurrentPriceDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { serviceWithCurrentPriceDto.id = n.getStringValue(); },
         "isConsultation": n => { serviceWithCurrentPriceDto.isConsultation = n.getBooleanValue(); },
         "lastActivity": n => { serviceWithCurrentPriceDto.lastActivity = n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue) ?? n.getObjectValue<ServiceWithCurrentPriceDto_lastActivityMember1>(createServiceWithCurrentPriceDto_lastActivityMember1FromDiscriminatorValue); },
         "name": n => { serviceWithCurrentPriceDto.name = n.getStringValue(); },
-        "price": n => { serviceWithCurrentPriceDto.price = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "price": n => { serviceWithCurrentPriceDto.price = n.getNumberValue(); },
         "publicName": n => { serviceWithCurrentPriceDto.publicName = n.getStringValue(); },
     }
 }
@@ -8279,7 +6732,7 @@ export function deserializeIntoServiceWithCurrentPriceDto_lastActivityMember1(se
 export function deserializeIntoSessionDto(sessionDto: Partial<SessionDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "deviceInfo": n => { sessionDto.deviceInfo = n.getStringValue(); },
-        "id": n => { sessionDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { sessionDto.id = n.getStringValue(); },
         "isCurrent": n => { sessionDto.isCurrent = n.getBooleanValue(); },
         "lastSeenAtUtc": n => { sessionDto.lastSeenAtUtc = n.getDateValue(); },
     }
@@ -8320,168 +6773,26 @@ export function deserializeIntoSetup2FaResponse(setup2FaResponse: Partial<Setup2
 }
 /**
  * The deserialization information for the current model
- * @param Ulid The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUlid(ulid: Partial<Ulid> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
  * @param UpdateAppointmentRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
 // @ts-ignore
 export function deserializeIntoUpdateAppointmentRequest(updateAppointmentRequest: Partial<UpdateAppointmentRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "clientId": n => { updateAppointmentRequest.clientId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_clientIdMember1>(createUpdateAppointmentRequest_clientIdMember1FromDiscriminatorValue); },
-        "courseThemeId": n => { updateAppointmentRequest.courseThemeId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_courseThemeIdMember1>(createUpdateAppointmentRequest_courseThemeIdMember1FromDiscriminatorValue); },
-        "expectedActivityId": n => { updateAppointmentRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_expectedActivityIdMember1>(createUpdateAppointmentRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "clientId": n => { updateAppointmentRequest.clientId = n.getStringValue(); },
+        "courseThemeId": n => { updateAppointmentRequest.courseThemeId = n.getStringValue(); },
+        "expectedActivityId": n => { updateAppointmentRequest.expectedActivityId = n.getStringValue(); },
         "hasCourseThemeSelection": n => { updateAppointmentRequest.hasCourseThemeSelection = n.getBooleanValue(); },
         "hasLessonNotes": n => { updateAppointmentRequest.hasLessonNotes = n.getBooleanValue(); },
         "lessonNotes": n => { updateAppointmentRequest.lessonNotes = n.getStringValue(); },
-        "providerId": n => { updateAppointmentRequest.providerId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_providerIdMember1>(createUpdateAppointmentRequest_providerIdMember1FromDiscriminatorValue); },
-        "recurrencePattern": n => { updateAppointmentRequest.recurrencePattern = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "recurrenceTypeId": n => { updateAppointmentRequest.recurrenceTypeId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_recurrenceTypeIdMember1>(createUpdateAppointmentRequest_recurrenceTypeIdMember1FromDiscriminatorValue); },
+        "providerId": n => { updateAppointmentRequest.providerId = n.getStringValue(); },
+        "recurrencePattern": n => { updateAppointmentRequest.recurrencePattern = n.getNumberValue(); },
+        "recurrenceTypeId": n => { updateAppointmentRequest.recurrenceTypeId = n.getStringValue(); },
         "scope": n => { updateAppointmentRequest.scope = n.getStringValue(); },
-        "serviceId": n => { updateAppointmentRequest.serviceId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateAppointmentRequest_serviceIdMember1>(createUpdateAppointmentRequest_serviceIdMember1FromDiscriminatorValue); },
+        "serviceId": n => { updateAppointmentRequest.serviceId = n.getStringValue(); },
         "startDate": n => { updateAppointmentRequest.startDate = n.getDateValue(); },
         "status": n => { updateAppointmentRequest.status = n.getStringValue(); },
         "timezone": n => { updateAppointmentRequest.timezone = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_clientId(updateAppointmentRequest_clientId: Partial<Ulid | UpdateAppointmentRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_clientId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_clientIdMember1(updateAppointmentRequest_clientId as UpdateAppointmentRequest_clientIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_clientIdMember1(updateAppointmentRequest_clientIdMember1: Partial<UpdateAppointmentRequest_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_courseThemeId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_courseThemeId(updateAppointmentRequest_courseThemeId: Partial<Ulid | UpdateAppointmentRequest_courseThemeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_courseThemeId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_courseThemeIdMember1(updateAppointmentRequest_courseThemeId as UpdateAppointmentRequest_courseThemeIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_courseThemeIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_courseThemeIdMember1(updateAppointmentRequest_courseThemeIdMember1: Partial<UpdateAppointmentRequest_courseThemeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_expectedActivityId(updateAppointmentRequest_expectedActivityId: Partial<Ulid | UpdateAppointmentRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_expectedActivityIdMember1(updateAppointmentRequest_expectedActivityId as UpdateAppointmentRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_expectedActivityIdMember1(updateAppointmentRequest_expectedActivityIdMember1: Partial<UpdateAppointmentRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_providerId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_providerId(updateAppointmentRequest_providerId: Partial<Ulid | UpdateAppointmentRequest_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_providerId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_providerIdMember1(updateAppointmentRequest_providerId as UpdateAppointmentRequest_providerIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_providerIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_providerIdMember1(updateAppointmentRequest_providerIdMember1: Partial<UpdateAppointmentRequest_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_recurrenceTypeId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_recurrenceTypeId(updateAppointmentRequest_recurrenceTypeId: Partial<Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_recurrenceTypeId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_recurrenceTypeIdMember1(updateAppointmentRequest_recurrenceTypeId as UpdateAppointmentRequest_recurrenceTypeIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_recurrenceTypeIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_recurrenceTypeIdMember1(updateAppointmentRequest_recurrenceTypeIdMember1: Partial<UpdateAppointmentRequest_recurrenceTypeIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_serviceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_serviceId(updateAppointmentRequest_serviceId: Partial<Ulid | UpdateAppointmentRequest_serviceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateAppointmentRequest_serviceId as Ulid),
-        ...deserializeIntoUpdateAppointmentRequest_serviceIdMember1(updateAppointmentRequest_serviceId as UpdateAppointmentRequest_serviceIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateAppointmentRequest_serviceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateAppointmentRequest_serviceIdMember1(updateAppointmentRequest_serviceIdMember1: Partial<UpdateAppointmentRequest_serviceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8494,59 +6805,15 @@ export function deserializeIntoUpdateClientRequest(updateClientRequest: Partial<
     return {
         "dateOfBirth": n => { updateClientRequest.dateOfBirth = n.getDateOnlyValue(); },
         "email": n => { updateClientRequest.email = n.getStringValue(); },
-        "expectedActivityId": n => { updateClientRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateClientRequest_expectedActivityIdMember1>(createUpdateClientRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "expectedActivityId": n => { updateClientRequest.expectedActivityId = n.getStringValue(); },
         "firstName": n => { updateClientRequest.firstName = n.getStringValue(); },
         "lastName": n => { updateClientRequest.lastName = n.getStringValue(); },
         "patronymic": n => { updateClientRequest.patronymic = n.getStringValue(); },
         "phone": n => { updateClientRequest.phone = n.getStringValue(); },
-        "sourceId": n => { updateClientRequest.sourceId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateClientRequest_sourceIdMember1>(createUpdateClientRequest_sourceIdMember1FromDiscriminatorValue); },
+        "sourceId": n => { updateClientRequest.sourceId = n.getStringValue(); },
         "telegram": n => { updateClientRequest.telegram = n.getStringValue(); },
         "vacations": n => { updateClientRequest.vacations = n.getCollectionOfObjectValues<ClientVacationRequest>(createClientVacationRequestFromDiscriminatorValue); },
         "vk": n => { updateClientRequest.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateClientRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateClientRequest_expectedActivityId(updateClientRequest_expectedActivityId: Partial<Ulid | UpdateClientRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateClientRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateClientRequest_expectedActivityIdMember1(updateClientRequest_expectedActivityId as UpdateClientRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateClientRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateClientRequest_expectedActivityIdMember1(updateClientRequest_expectedActivityIdMember1: Partial<UpdateClientRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateClientRequest_sourceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateClientRequest_sourceId(updateClientRequest_sourceId: Partial<Ulid | UpdateClientRequest_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateClientRequest_sourceId as Ulid),
-        ...deserializeIntoUpdateClientRequest_sourceIdMember1(updateClientRequest_sourceId as UpdateClientRequest_sourceIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateClientRequest_sourceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateClientRequest_sourceIdMember1(updateClientRequest_sourceIdMember1: Partial<UpdateClientRequest_sourceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8570,31 +6837,9 @@ export function deserializeIntoUpdateCourseRequest(updateCourseRequest: Partial<
     return {
         "blocks": n => { updateCourseRequest.blocks = n.getCollectionOfObjectValues<CreateCourseBlockRequest>(createCreateCourseBlockRequestFromDiscriminatorValue); },
         "description": n => { updateCourseRequest.description = n.getStringValue(); },
-        "expectedActivityId": n => { updateCourseRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateCourseRequest_expectedActivityIdMember1>(createUpdateCourseRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "expectedActivityId": n => { updateCourseRequest.expectedActivityId = n.getStringValue(); },
         "levels": n => { updateCourseRequest.levels = n.getCollectionOfObjectValues<CreateCourseLevelRequest>(createCreateCourseLevelRequestFromDiscriminatorValue); },
         "name": n => { updateCourseRequest.name = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateCourseRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateCourseRequest_expectedActivityId(updateCourseRequest_expectedActivityId: Partial<Ulid | UpdateCourseRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateCourseRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateCourseRequest_expectedActivityIdMember1(updateCourseRequest_expectedActivityId as UpdateCourseRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateCourseRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateCourseRequest_expectedActivityIdMember1(updateCourseRequest_expectedActivityIdMember1: Partial<UpdateCourseRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8605,55 +6850,11 @@ export function deserializeIntoUpdateCourseRequest_expectedActivityIdMember1(upd
 // @ts-ignore
 export function deserializeIntoUpdateExpenseRequest(updateExpenseRequest: Partial<UpdateExpenseRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { updateExpenseRequest.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "categoryId": n => { updateExpenseRequest.categoryId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateExpenseRequest_categoryIdMember1>(createUpdateExpenseRequest_categoryIdMember1FromDiscriminatorValue); },
+        "amount": n => { updateExpenseRequest.amount = n.getNumberValue(); },
+        "categoryId": n => { updateExpenseRequest.categoryId = n.getStringValue(); },
         "date": n => { updateExpenseRequest.date = n.getDateValue(); },
         "description": n => { updateExpenseRequest.description = n.getStringValue(); },
-        "expectedActivityId": n => { updateExpenseRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateExpenseRequest_expectedActivityIdMember1>(createUpdateExpenseRequest_expectedActivityIdMember1FromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateExpenseRequest_categoryId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateExpenseRequest_categoryId(updateExpenseRequest_categoryId: Partial<Ulid | UpdateExpenseRequest_categoryIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateExpenseRequest_categoryId as Ulid),
-        ...deserializeIntoUpdateExpenseRequest_categoryIdMember1(updateExpenseRequest_categoryId as UpdateExpenseRequest_categoryIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateExpenseRequest_categoryIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateExpenseRequest_categoryIdMember1(updateExpenseRequest_categoryIdMember1: Partial<UpdateExpenseRequest_categoryIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateExpenseRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateExpenseRequest_expectedActivityId(updateExpenseRequest_expectedActivityId: Partial<Ulid | UpdateExpenseRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateExpenseRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateExpenseRequest_expectedActivityIdMember1(updateExpenseRequest_expectedActivityId as UpdateExpenseRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateExpenseRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateExpenseRequest_expectedActivityIdMember1(updateExpenseRequest_expectedActivityIdMember1: Partial<UpdateExpenseRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "expectedActivityId": n => { updateExpenseRequest.expectedActivityId = n.getStringValue(); },
     }
 }
 /**
@@ -8676,56 +6877,12 @@ export function deserializeIntoUpdateOnboardingProgressRequest(updateOnboardingP
 // @ts-ignore
 export function deserializeIntoUpdatePaymentRequest(updatePaymentRequest: Partial<UpdatePaymentRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "amount": n => { updatePaymentRequest.amount = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "clientId": n => { updatePaymentRequest.clientId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "amount": n => { updatePaymentRequest.amount = n.getNumberValue(); },
+        "clientId": n => { updatePaymentRequest.clientId = n.getStringValue(); },
         "date": n => { updatePaymentRequest.date = n.getDateValue(); },
         "description": n => { updatePaymentRequest.description = n.getStringValue(); },
-        "expectedActivityId": n => { updatePaymentRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdatePaymentRequest_expectedActivityIdMember1>(createUpdatePaymentRequest_expectedActivityIdMember1FromDiscriminatorValue); },
-        "serviceId": n => { updatePaymentRequest.serviceId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdatePaymentRequest_serviceIdMember1>(createUpdatePaymentRequest_serviceIdMember1FromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdatePaymentRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdatePaymentRequest_expectedActivityId(updatePaymentRequest_expectedActivityId: Partial<Ulid | UpdatePaymentRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updatePaymentRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdatePaymentRequest_expectedActivityIdMember1(updatePaymentRequest_expectedActivityId as UpdatePaymentRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdatePaymentRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdatePaymentRequest_expectedActivityIdMember1(updatePaymentRequest_expectedActivityIdMember1: Partial<UpdatePaymentRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdatePaymentRequest_serviceId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdatePaymentRequest_serviceId(updatePaymentRequest_serviceId: Partial<Ulid | UpdatePaymentRequest_serviceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updatePaymentRequest_serviceId as Ulid),
-        ...deserializeIntoUpdatePaymentRequest_serviceIdMember1(updatePaymentRequest_serviceId as UpdatePaymentRequest_serviceIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdatePaymentRequest_serviceIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdatePaymentRequest_serviceIdMember1(updatePaymentRequest_serviceIdMember1: Partial<UpdatePaymentRequest_serviceIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "expectedActivityId": n => { updatePaymentRequest.expectedActivityId = n.getStringValue(); },
+        "serviceId": n => { updatePaymentRequest.serviceId = n.getStringValue(); },
     }
 }
 /**
@@ -8736,33 +6893,11 @@ export function deserializeIntoUpdatePaymentRequest_serviceIdMember1(updatePayme
 // @ts-ignore
 export function deserializeIntoUpdateRecurringTaskRuleRequest(updateRecurringTaskRuleRequest: Partial<UpdateRecurringTaskRuleRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "cooldownDays": n => { updateRecurringTaskRuleRequest.cooldownDays = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "expectedActivityId": n => { updateRecurringTaskRuleRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateRecurringTaskRuleRequest_expectedActivityIdMember1>(createUpdateRecurringTaskRuleRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "cooldownDays": n => { updateRecurringTaskRuleRequest.cooldownDays = n.getNumberValue(); },
+        "expectedActivityId": n => { updateRecurringTaskRuleRequest.expectedActivityId = n.getStringValue(); },
         "isEnabled": n => { updateRecurringTaskRuleRequest.isEnabled = n.getBooleanValue(); },
         "messageTemplate": n => { updateRecurringTaskRuleRequest.messageTemplate = n.getStringValue(); },
-        "offsetMinutes": n => { updateRecurringTaskRuleRequest.offsetMinutes = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateRecurringTaskRuleRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityId(updateRecurringTaskRuleRequest_expectedActivityId: Partial<Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateRecurringTaskRuleRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityIdMember1(updateRecurringTaskRuleRequest_expectedActivityId as UpdateRecurringTaskRuleRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateRecurringTaskRuleRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityIdMember1(updateRecurringTaskRuleRequest_expectedActivityIdMember1: Partial<UpdateRecurringTaskRuleRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "offsetMinutes": n => { updateRecurringTaskRuleRequest.offsetMinutes = n.getNumberValue(); },
     }
 }
 /**
@@ -8773,30 +6908,8 @@ export function deserializeIntoUpdateRecurringTaskRuleRequest_expectedActivityId
 // @ts-ignore
 export function deserializeIntoUpdateServicePriceRequest(updateServicePriceRequest: Partial<UpdateServicePriceRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "expectedActivityId": n => { updateServicePriceRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateServicePriceRequest_expectedActivityIdMember1>(createUpdateServicePriceRequest_expectedActivityIdMember1FromDiscriminatorValue); },
-        "price": n => { updateServicePriceRequest.price = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateServicePriceRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateServicePriceRequest_expectedActivityId(updateServicePriceRequest_expectedActivityId: Partial<Ulid | UpdateServicePriceRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateServicePriceRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateServicePriceRequest_expectedActivityIdMember1(updateServicePriceRequest_expectedActivityId as UpdateServicePriceRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateServicePriceRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateServicePriceRequest_expectedActivityIdMember1(updateServicePriceRequest_expectedActivityIdMember1: Partial<UpdateServicePriceRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "expectedActivityId": n => { updateServicePriceRequest.expectedActivityId = n.getStringValue(); },
+        "price": n => { updateServicePriceRequest.price = n.getNumberValue(); },
     }
 }
 /**
@@ -8808,32 +6921,10 @@ export function deserializeIntoUpdateServicePriceRequest_expectedActivityIdMembe
 export function deserializeIntoUpdateServiceRequest(updateServiceRequest: Partial<UpdateServiceRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "description": n => { updateServiceRequest.description = n.getStringValue(); },
-        "expectedActivityId": n => { updateServiceRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateServiceRequest_expectedActivityIdMember1>(createUpdateServiceRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "expectedActivityId": n => { updateServiceRequest.expectedActivityId = n.getStringValue(); },
         "isConsultation": n => { updateServiceRequest.isConsultation = n.getBooleanValue(); },
         "name": n => { updateServiceRequest.name = n.getStringValue(); },
         "publicName": n => { updateServiceRequest.publicName = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateServiceRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateServiceRequest_expectedActivityId(updateServiceRequest_expectedActivityId: Partial<Ulid | UpdateServiceRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateServiceRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateServiceRequest_expectedActivityIdMember1(updateServiceRequest_expectedActivityId as UpdateServiceRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateServiceRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateServiceRequest_expectedActivityIdMember1(updateServiceRequest_expectedActivityIdMember1: Partial<UpdateServiceRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8844,31 +6935,9 @@ export function deserializeIntoUpdateServiceRequest_expectedActivityIdMember1(up
 // @ts-ignore
 export function deserializeIntoUpdateUserAvailabilityRequest(updateUserAvailabilityRequest: Partial<UpdateUserAvailabilityRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "expectedActivityId": n => { updateUserAvailabilityRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateUserAvailabilityRequest_expectedActivityIdMember1>(createUpdateUserAvailabilityRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "expectedActivityId": n => { updateUserAvailabilityRequest.expectedActivityId = n.getStringValue(); },
         "vacations": n => { updateUserAvailabilityRequest.vacations = n.getCollectionOfObjectValues<UserVacationItem>(createUserVacationItemFromDiscriminatorValue); },
         "workingHours": n => { updateUserAvailabilityRequest.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDayItem>(createUserWorkingHoursDayItemFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateUserAvailabilityRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateUserAvailabilityRequest_expectedActivityId(updateUserAvailabilityRequest_expectedActivityId: Partial<Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateUserAvailabilityRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateUserAvailabilityRequest_expectedActivityIdMember1(updateUserAvailabilityRequest_expectedActivityId as UpdateUserAvailabilityRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateUserAvailabilityRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateUserAvailabilityRequest_expectedActivityIdMember1(updateUserAvailabilityRequest_expectedActivityIdMember1: Partial<UpdateUserAvailabilityRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8879,34 +6948,12 @@ export function deserializeIntoUpdateUserAvailabilityRequest_expectedActivityIdM
 // @ts-ignore
 export function deserializeIntoUpdateUserRequest(updateUserRequest: Partial<UpdateUserRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "expectedActivityId": n => { updateUserRequest.expectedActivityId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<UpdateUserRequest_expectedActivityIdMember1>(createUpdateUserRequest_expectedActivityIdMember1FromDiscriminatorValue); },
+        "expectedActivityId": n => { updateUserRequest.expectedActivityId = n.getStringValue(); },
         "firstName": n => { updateUserRequest.firstName = n.getStringValue(); },
         "lastName": n => { updateUserRequest.lastName = n.getStringValue(); },
         "phone": n => { updateUserRequest.phone = n.getStringValue(); },
         "telegram": n => { updateUserRequest.telegram = n.getStringValue(); },
         "vk": n => { updateUserRequest.vk = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateUserRequest_expectedActivityId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateUserRequest_expectedActivityId(updateUserRequest_expectedActivityId: Partial<Ulid | UpdateUserRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(updateUserRequest_expectedActivityId as Ulid),
-        ...deserializeIntoUpdateUserRequest_expectedActivityIdMember1(updateUserRequest_expectedActivityId as UpdateUserRequest_expectedActivityIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param UpdateUserRequest_expectedActivityIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUpdateUserRequest_expectedActivityIdMember1(updateUserRequest_expectedActivityIdMember1: Partial<UpdateUserRequest_expectedActivityIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -8918,11 +6965,11 @@ export function deserializeIntoUpdateUserRequest_expectedActivityIdMember1(updat
 export function deserializeIntoUser(user: Partial<User> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "client": n => { user.client = n.getObjectValue<Client>(createClientFromDiscriminatorValue) ?? n.getObjectValue<User_clientMember1>(createUser_clientMember1FromDiscriminatorValue); },
-        "clientId": n => { user.clientId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<User_clientIdMember1>(createUser_clientIdMember1FromDiscriminatorValue); },
+        "clientId": n => { user.clientId = n.getStringValue(); },
         "email": n => { user.email = n.getStringValue(); },
         "emailBlindIndex": n => { user.emailBlindIndex = n.getStringValue(); },
         "firstName": n => { user.firstName = n.getStringValue(); },
-        "id": n => { user.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { user.id = n.getStringValue(); },
         "lastName": n => { user.lastName = n.getStringValue(); },
         "lockedUntil": n => { user.lockedUntil = n.getDateValue(); },
         "onboardingState": n => { user.onboardingState = n.getObjectValue<UserOnboardingState>(createUserOnboardingStateFromDiscriminatorValue) ?? n.getObjectValue<User_onboardingStateMember1>(createUser_onboardingStateMember1FromDiscriminatorValue); },
@@ -8946,28 +6993,6 @@ export function deserializeIntoUser_client(user_client: Partial<Client | User_cl
     return {
         ...deserializeIntoClient(user_client as Client),
         ...deserializeIntoUser_clientMember1(user_client as User_clientMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param User_clientId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUser_clientId(user_clientId: Partial<Ulid | User_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(user_clientId as Ulid),
-        ...deserializeIntoUser_clientIdMember1(user_clientId as User_clientIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param User_clientIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUser_clientIdMember1(user_clientIdMember1: Partial<User_clientIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
     }
 }
 /**
@@ -9011,7 +7036,7 @@ export function deserializeIntoUser_onboardingStateMember1(user_onboardingStateM
 export function deserializeIntoUserAvailabilityResponse(userAvailabilityResponse: Partial<UserAvailabilityResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "lastActivity": n => { userAvailabilityResponse.lastActivity = n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue) ?? n.getObjectValue<UserAvailabilityResponse_lastActivityMember1>(createUserAvailabilityResponse_lastActivityMember1FromDiscriminatorValue); },
-        "userId": n => { userAvailabilityResponse.userId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "userId": n => { userAvailabilityResponse.userId = n.getStringValue(); },
         "vacations": n => { userAvailabilityResponse.vacations = n.getCollectionOfObjectValues<UserVacationDto>(createUserVacationDtoFromDiscriminatorValue); },
         "workingHours": n => { userAvailabilityResponse.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDayDto>(createUserWorkingHoursDayDtoFromDiscriminatorValue); },
     }
@@ -9050,12 +7075,12 @@ export function deserializeIntoUserOnboardingState(userOnboardingState: Partial<
         "createdAtUtc": n => { userOnboardingState.createdAtUtc = n.getDateValue(); },
         "currentPath": n => { userOnboardingState.currentPath = n.getStringValue(); },
         "currentStep": n => { userOnboardingState.currentStep = n.getStringValue(); },
-        "definitionVersion": n => { userOnboardingState.definitionVersion = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { userOnboardingState.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "definitionVersion": n => { userOnboardingState.definitionVersion = n.getNumberValue(); },
+        "id": n => { userOnboardingState.id = n.getStringValue(); },
         "status": n => { userOnboardingState.status = n.getNumberValue(); },
         "updatedAtUtc": n => { userOnboardingState.updatedAtUtc = n.getDateValue(); },
         "user": n => { userOnboardingState.user = n.getObjectValue<User>(createUserFromDiscriminatorValue); },
-        "userId": n => { userOnboardingState.userId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "userId": n => { userOnboardingState.userId = n.getStringValue(); },
     }
 }
 /**
@@ -9067,10 +7092,10 @@ export function deserializeIntoUserOnboardingState(userOnboardingState: Partial<
 export function deserializeIntoUserVacation(userVacation: Partial<UserVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { userVacation.endDate = n.getDateOnlyValue(); },
-        "id": n => { userVacation.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { userVacation.id = n.getStringValue(); },
         "startDate": n => { userVacation.startDate = n.getDateOnlyValue(); },
         "user": n => { userVacation.user = n.getObjectValue<User>(createUserFromDiscriminatorValue); },
-        "userId": n => { userVacation.userId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "userId": n => { userVacation.userId = n.getStringValue(); },
     }
 }
 /**
@@ -9082,7 +7107,7 @@ export function deserializeIntoUserVacation(userVacation: Partial<UserVacation> 
 export function deserializeIntoUserVacationDto(userVacationDto: Partial<UserVacationDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { userVacationDto.endDate = n.getDateOnlyValue(); },
-        "id": n => { userVacationDto.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "id": n => { userVacationDto.id = n.getStringValue(); },
         "startDate": n => { userVacationDto.startDate = n.getDateOnlyValue(); },
     }
 }
@@ -9107,12 +7132,12 @@ export function deserializeIntoUserVacationItem(userVacationItem: Partial<UserVa
 export function deserializeIntoUserWorkingHoursDay(userWorkingHoursDay: Partial<UserWorkingHoursDay> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "dayOfWeek": n => { userWorkingHoursDay.dayOfWeek = n.getNumberValue(); },
-        "endMinuteOfDay": n => { userWorkingHoursDay.endMinuteOfDay = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "id": n => { userWorkingHoursDay.id = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "endMinuteOfDay": n => { userWorkingHoursDay.endMinuteOfDay = n.getNumberValue(); },
+        "id": n => { userWorkingHoursDay.id = n.getStringValue(); },
         "isWorkingDay": n => { userWorkingHoursDay.isWorkingDay = n.getBooleanValue(); },
-        "startMinuteOfDay": n => { userWorkingHoursDay.startMinuteOfDay = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "startMinuteOfDay": n => { userWorkingHoursDay.startMinuteOfDay = n.getNumberValue(); },
         "user": n => { userWorkingHoursDay.user = n.getObjectValue<User>(createUserFromDiscriminatorValue); },
-        "userId": n => { userWorkingHoursDay.userId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "userId": n => { userWorkingHoursDay.userId = n.getStringValue(); },
     }
 }
 /**
@@ -9164,10 +7189,10 @@ export function deserializeIntoVerify2FaRequest(verify2FaRequest: Partial<Verify
 // @ts-ignore
 export function deserializeIntoWorkHourDto(workHourDto: Partial<WorkHourDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { workHourDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "cancelled": n => { workHourDto.cancelled = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "completed": n => { workHourDto.completed = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "hour": n => { workHourDto.hour = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointments": n => { workHourDto.appointments = n.getNumberValue(); },
+        "cancelled": n => { workHourDto.cancelled = n.getNumberValue(); },
+        "completed": n => { workHourDto.completed = n.getNumberValue(); },
+        "hour": n => { workHourDto.hour = n.getNumberValue(); },
     }
 }
 /**
@@ -9178,38 +7203,16 @@ export function deserializeIntoWorkHourDto(workHourDto: Partial<WorkHourDto> | u
 // @ts-ignore
 export function deserializeIntoWorkProviderDto(workProviderDto: Partial<WorkProviderDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { workProviderDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "burned": n => { workProviderDto.burned = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "cancelled": n => { workProviderDto.cancelled = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "completed": n => { workProviderDto.completed = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "freeWorkingHours": n => { workProviderDto.freeWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "occupiedWorkingHours": n => { workProviderDto.occupiedWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "providerId": n => { workProviderDto.providerId = n.getObjectValue<Ulid>(createUlidFromDiscriminatorValue) ?? n.getObjectValue<WorkProviderDto_providerIdMember1>(createWorkProviderDto_providerIdMember1FromDiscriminatorValue); },
+        "appointments": n => { workProviderDto.appointments = n.getNumberValue(); },
+        "burned": n => { workProviderDto.burned = n.getNumberValue(); },
+        "cancelled": n => { workProviderDto.cancelled = n.getNumberValue(); },
+        "completed": n => { workProviderDto.completed = n.getNumberValue(); },
+        "freeWorkingHours": n => { workProviderDto.freeWorkingHours = n.getNumberValue(); },
+        "occupiedWorkingHours": n => { workProviderDto.occupiedWorkingHours = n.getNumberValue(); },
+        "providerId": n => { workProviderDto.providerId = n.getStringValue(); },
         "providerName": n => { workProviderDto.providerName = n.getStringValue(); },
-        "utilizationPercent": n => { workProviderDto.utilizationPercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "workingCapacityHours": n => { workProviderDto.workingCapacityHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param WorkProviderDto_providerId The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoWorkProviderDto_providerId(workProviderDto_providerId: Partial<Ulid | WorkProviderDto_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        ...deserializeIntoUlid(workProviderDto_providerId as Ulid),
-        ...deserializeIntoWorkProviderDto_providerIdMember1(workProviderDto_providerId as WorkProviderDto_providerIdMember1),
-    }
-}
-/**
- * The deserialization information for the current model
- * @param WorkProviderDto_providerIdMember1 The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoWorkProviderDto_providerIdMember1(workProviderDto_providerIdMember1: Partial<WorkProviderDto_providerIdMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
+        "utilizationPercent": n => { workProviderDto.utilizationPercent = n.getNumberValue(); },
+        "workingCapacityHours": n => { workProviderDto.workingCapacityHours = n.getNumberValue(); },
     }
 }
 /**
@@ -9237,14 +7240,14 @@ export function deserializeIntoWorkReportResponse(workReportResponse: Partial<Wo
 // @ts-ignore
 export function deserializeIntoWorkReportSummaryDto(workReportSummaryDto: Partial<WorkReportSummaryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { workReportSummaryDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "burned": n => { workReportSummaryDto.burned = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "cancellationPercent": n => { workReportSummaryDto.cancellationPercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "completed": n => { workReportSummaryDto.completed = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "freeWorkingHours": n => { workReportSummaryDto.freeWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "occupiedWorkingHours": n => { workReportSummaryDto.occupiedWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "utilizationPercent": n => { workReportSummaryDto.utilizationPercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "workingCapacityHours": n => { workReportSummaryDto.workingCapacityHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointments": n => { workReportSummaryDto.appointments = n.getNumberValue(); },
+        "burned": n => { workReportSummaryDto.burned = n.getNumberValue(); },
+        "cancellationPercent": n => { workReportSummaryDto.cancellationPercent = n.getNumberValue(); },
+        "completed": n => { workReportSummaryDto.completed = n.getNumberValue(); },
+        "freeWorkingHours": n => { workReportSummaryDto.freeWorkingHours = n.getNumberValue(); },
+        "occupiedWorkingHours": n => { workReportSummaryDto.occupiedWorkingHours = n.getNumberValue(); },
+        "utilizationPercent": n => { workReportSummaryDto.utilizationPercent = n.getNumberValue(); },
+        "workingCapacityHours": n => { workReportSummaryDto.workingCapacityHours = n.getNumberValue(); },
     }
 }
 /**
@@ -9255,11 +7258,11 @@ export function deserializeIntoWorkReportSummaryDto(workReportSummaryDto: Partia
 // @ts-ignore
 export function deserializeIntoWorkServiceDto(workServiceDto: Partial<WorkServiceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { workServiceDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "burned": n => { workServiceDto.burned = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "completed": n => { workServiceDto.completed = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "revenue": n => { workServiceDto.revenue = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "serviceId": n => { workServiceDto.serviceId = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointments": n => { workServiceDto.appointments = n.getNumberValue(); },
+        "burned": n => { workServiceDto.burned = n.getNumberValue(); },
+        "completed": n => { workServiceDto.completed = n.getNumberValue(); },
+        "revenue": n => { workServiceDto.revenue = n.getNumberValue(); },
+        "serviceId": n => { workServiceDto.serviceId = n.getStringValue(); },
         "serviceName": n => { workServiceDto.serviceName = n.getStringValue(); },
     }
 }
@@ -9271,8 +7274,8 @@ export function deserializeIntoWorkServiceDto(workServiceDto: Partial<WorkServic
 // @ts-ignore
 export function deserializeIntoWorkStatusDto(workStatusDto: Partial<WorkStatusDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "count": n => { workStatusDto.count = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "sharePercent": n => { workStatusDto.sharePercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "count": n => { workStatusDto.count = n.getNumberValue(); },
+        "sharePercent": n => { workStatusDto.sharePercent = n.getNumberValue(); },
         "status": n => { workStatusDto.status = n.getStringValue(); },
     }
 }
@@ -9284,27 +7287,27 @@ export function deserializeIntoWorkStatusDto(workStatusDto: Partial<WorkStatusDt
 // @ts-ignore
 export function deserializeIntoWorkTrendDto(workTrendDto: Partial<WorkTrendDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "appointments": n => { workTrendDto.appointments = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "burned": n => { workTrendDto.burned = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "cancelled": n => { workTrendDto.cancelled = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "completed": n => { workTrendDto.completed = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "appointments": n => { workTrendDto.appointments = n.getNumberValue(); },
+        "burned": n => { workTrendDto.burned = n.getNumberValue(); },
+        "cancelled": n => { workTrendDto.cancelled = n.getNumberValue(); },
+        "completed": n => { workTrendDto.completed = n.getNumberValue(); },
         "endDate": n => { workTrendDto.endDate = n.getDateValue(); },
-        "freeWorkingHours": n => { workTrendDto.freeWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "occupiedWorkingHours": n => { workTrendDto.occupiedWorkingHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "freeWorkingHours": n => { workTrendDto.freeWorkingHours = n.getNumberValue(); },
+        "occupiedWorkingHours": n => { workTrendDto.occupiedWorkingHours = n.getNumberValue(); },
         "startDate": n => { workTrendDto.startDate = n.getDateValue(); },
-        "utilizationPercent": n => { workTrendDto.utilizationPercent = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
-        "workingCapacityHours": n => { workTrendDto.workingCapacityHours = n.getObjectValue<UntypedNode>(createUntypedNodeFromDiscriminatorValue); },
+        "utilizationPercent": n => { workTrendDto.utilizationPercent = n.getNumberValue(); },
+        "workingCapacityHours": n => { workTrendDto.workingCapacityHours = n.getNumberValue(); },
     }
 }
 export interface ExpenseDto extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The categoryId property
      */
-    categoryId?: ExpenseDto_categoryIdMember1 | Ulid | null;
+    categoryId?: string | null;
     /**
      * The categoryName property
      */
@@ -9320,14 +7323,11 @@ export interface ExpenseDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastActivity property
      */
     lastActivity?: ExpenseDto_lastActivityMember1 | RecordActivityDto | null;
-}
-export type ExpenseDto_categoryId = ExpenseDto_categoryIdMember1 | Ulid;
-export interface ExpenseDto_categoryIdMember1 extends AdditionalDataHolder, Parsable {
 }
 export type ExpenseDto_lastActivity = ExpenseDto_lastActivityMember1 | RecordActivityDto;
 export interface ExpenseDto_lastActivityMember1 extends AdditionalDataHolder, Parsable {
@@ -9336,7 +7336,7 @@ export interface FinanceDebtorDto extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The clientName property
      */
@@ -9344,21 +7344,21 @@ export interface FinanceDebtorDto extends AdditionalDataHolder, Parsable {
     /**
      * The debt property
      */
-    debt?: UntypedNode | null;
+    debt?: number | null;
     /**
      * The payments property
      */
-    payments?: UntypedNode | null;
+    payments?: number | null;
     /**
      * The revenue property
      */
-    revenue?: UntypedNode | null;
+    revenue?: number | null;
 }
 export interface FinanceExpenseCategoryDto extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The categoryName property
      */
@@ -9394,15 +7394,15 @@ export interface FinanceReportSummaryDto extends AdditionalDataHolder, Parsable 
     /**
      * The averageRevenuePerVisit property
      */
-    averageRevenuePerVisit?: UntypedNode | null;
+    averageRevenuePerVisit?: number | null;
     /**
      * The expenses property
      */
-    expenses?: UntypedNode | null;
+    expenses?: number | null;
     /**
      * The netProfit property
      */
-    netProfit?: UntypedNode | null;
+    netProfit?: number | null;
     /**
      * The organizationOnlyFiguresAvailable property
      */
@@ -9410,33 +7410,33 @@ export interface FinanceReportSummaryDto extends AdditionalDataHolder, Parsable 
     /**
      * The outstandingDebt property
      */
-    outstandingDebt?: UntypedNode | null;
+    outstandingDebt?: number | null;
     /**
      * The payments property
      */
-    payments?: UntypedNode | null;
+    payments?: number | null;
     /**
      * The revenue property
      */
-    revenue?: UntypedNode | null;
+    revenue?: number | null;
     /**
      * The revenueAppointments property
      */
-    revenueAppointments?: UntypedNode | null;
+    revenueAppointments?: number | null;
 }
 export interface FinanceServiceDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The revenue property
      */
-    revenue?: UntypedNode | null;
+    revenue?: number | null;
     /**
      * The serviceId property
      */
-    serviceId?: UntypedNode | null;
+    serviceId?: string | null;
     /**
      * The serviceName property
      */
@@ -9450,19 +7450,19 @@ export interface FinanceTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The expenses property
      */
-    expenses?: UntypedNode | null;
+    expenses?: number | null;
     /**
      * The netProfit property
      */
-    netProfit?: UntypedNode | null;
+    netProfit?: number | null;
     /**
      * The payments property
      */
-    payments?: UntypedNode | null;
+    payments?: number | null;
     /**
      * The revenue property
      */
-    revenue?: UntypedNode | null;
+    revenue?: number | null;
     /**
      * The startDate property
      */
@@ -9510,7 +7510,7 @@ export interface GetAuditLogsDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The sourceIpAddress property
      */
@@ -9579,7 +7579,7 @@ export interface GetDashboardStatsResponse extends AdditionalDataHolder, Parsabl
     /**
      * The monthIncome property
      */
-    monthIncome?: UntypedNode | null;
+    monthIncome?: number | null;
     /**
      * The organization property
      */
@@ -9587,7 +7587,7 @@ export interface GetDashboardStatsResponse extends AdditionalDataHolder, Parsabl
     /**
      * The personalClientsCount property
      */
-    personalClientsCount?: UntypedNode | null;
+    personalClientsCount?: number | null;
     /**
      * The today property
      */
@@ -9640,7 +7640,7 @@ export interface GetPaymentsClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -9654,7 +7654,7 @@ export interface GetPaymentsDto extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The client property
      */
@@ -9670,7 +7670,7 @@ export interface GetPaymentsDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastActivity property
      */
@@ -9704,7 +7704,7 @@ export interface GetPaymentsServiceDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -9742,7 +7742,7 @@ export interface GetUsersDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastActivity property
      */
@@ -9776,6 +7776,32 @@ export interface GetUsersResponse extends AdditionalDataHolder, Parsable {
      * The users property
      */
     users?: GetUsersDto[] | null;
+}
+export interface LoginAttemptResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The accessToken property
+     */
+    accessToken?: string | null;
+    /**
+     * The canUseOtp property
+     */
+    canUseOtp?: boolean | null;
+    /**
+     * The canUseRecoveryCode property
+     */
+    canUseRecoveryCode?: boolean | null;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null;
+    /**
+     * The requiresTwoFactor property
+     */
+    requiresTwoFactor?: boolean | null;
 }
 export interface LoginRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -9821,7 +7847,7 @@ export interface LookupClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -9833,7 +7859,7 @@ export interface LookupClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The sourceId property
      */
-    sourceId?: LookupClientDto_sourceIdMember1 | Ulid | null;
+    sourceId?: string | null;
     /**
      * The sourceName property
      */
@@ -9841,9 +7867,6 @@ export interface LookupClientDto extends AdditionalDataHolder, Parsable {
 }
 export type LookupClientDto_contacts = ClientHistoryContactsDto | LookupClientDto_contactsMember1;
 export interface LookupClientDto_contactsMember1 extends AdditionalDataHolder, Parsable {
-}
-export type LookupClientDto_sourceId = LookupClientDto_sourceIdMember1 | Ulid;
-export interface LookupClientDto_sourceIdMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface LookupClientsResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9859,7 +7882,7 @@ export interface LookupRecurrenceTypeDto extends AdditionalDataHolder, Parsable 
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The key property
      */
@@ -9879,7 +7902,7 @@ export interface LookupRolesDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
 }
 export interface LookupRolesResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9891,7 +7914,7 @@ export interface LookupServicesDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The name property
      */
@@ -9899,7 +7922,7 @@ export interface LookupServicesDto extends AdditionalDataHolder, Parsable {
     /**
      * The price property
      */
-    price?: UntypedNode | null;
+    price?: number | null;
 }
 export interface LookupServicesResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9911,7 +7934,7 @@ export interface MeResponse extends AdditionalDataHolder, Parsable {
     /**
      * The balance property
      */
-    balance?: UntypedNode | null;
+    balance?: number | null;
     /**
      * The email property
      */
@@ -9923,7 +7946,7 @@ export interface MeResponse extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isAdmin property
      */
@@ -9955,7 +7978,7 @@ export interface MeResponse extends AdditionalDataHolder, Parsable {
     /**
      * The linkedClientId property
      */
-    linkedClientId?: MeResponse_linkedClientIdMember1 | Ulid | null;
+    linkedClientId?: string | null;
     /**
      * The phone property
      */
@@ -9976,9 +7999,6 @@ export interface MeResponse extends AdditionalDataHolder, Parsable {
 export type MeResponse_lastActivity = MeResponse_lastActivityMember1 | RecordActivityDto;
 export interface MeResponse_lastActivityMember1 extends AdditionalDataHolder, Parsable {
 }
-export type MeResponse_linkedClientId = MeResponse_linkedClientIdMember1 | Ulid;
-export interface MeResponse_linkedClientIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface MoneyListSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The firstItemAtUtc property
@@ -9987,7 +8007,7 @@ export interface MoneyListSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The itemsCount property
      */
-    itemsCount?: UntypedNode | null;
+    itemsCount?: number | null;
     /**
      * The lastItemAtUtc property
      */
@@ -9995,7 +8015,7 @@ export interface MoneyListSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The totalAmount property
      */
-    totalAmount?: UntypedNode | null;
+    totalAmount?: number | null;
 }
 export interface OnboardingStateResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -10013,7 +8033,7 @@ export interface OnboardingStateResponse extends AdditionalDataHolder, Parsable 
     /**
      * The definitionVersion property
      */
-    definitionVersion?: UntypedNode | null;
+    definitionVersion?: number | null;
     /**
      * The shouldLaunch property
      */
@@ -10031,39 +8051,39 @@ export interface OrganizationDashboardResponse extends AdditionalDataHolder, Par
     /**
      * The appointmentsToday property
      */
-    appointmentsToday?: UntypedNode | null;
+    appointmentsToday?: number | null;
     /**
      * The appointmentsTomorrow property
      */
-    appointmentsTomorrow?: UntypedNode | null;
+    appointmentsTomorrow?: number | null;
     /**
      * The debtorsCount property
      */
-    debtorsCount?: UntypedNode | null;
+    debtorsCount?: number | null;
     /**
      * The monthExpenses property
      */
-    monthExpenses?: UntypedNode | null;
+    monthExpenses?: number | null;
     /**
      * The monthIncome property
      */
-    monthIncome?: UntypedNode | null;
+    monthIncome?: number | null;
     /**
      * The monthNet property
      */
-    monthNet?: UntypedNode | null;
+    monthNet?: number | null;
     /**
      * The totalClients property
      */
-    totalClients?: UntypedNode | null;
+    totalClients?: number | null;
     /**
      * The totalDebt property
      */
-    totalDebt?: UntypedNode | null;
+    totalDebt?: number | null;
     /**
      * The totalPositiveBalance property
      */
-    totalPositiveBalance?: UntypedNode | null;
+    totalPositiveBalance?: number | null;
 }
 export interface PageMetadata extends AdditionalDataHolder, Parsable {
     /**
@@ -10077,15 +8097,15 @@ export interface PageMetadata extends AdditionalDataHolder, Parsable {
     /**
      * The page property
      */
-    page?: UntypedNode | null;
+    page?: number | null;
     /**
      * The pageSize property
      */
-    pageSize?: UntypedNode | null;
+    pageSize?: number | null;
     /**
      * The total property
      */
-    total?: UntypedNode | null;
+    total?: number | null;
 }
 export interface PaginatedResponseOfClientFinancialHistoryEventDto extends AdditionalDataHolder, Parsable {
     /**
@@ -10145,7 +8165,7 @@ export interface RecordActivityDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The sourceIpAddress property
      */
@@ -10203,7 +8223,7 @@ export interface RecurrenceType extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The type property
      */
@@ -10219,7 +8239,7 @@ export interface RecurringTaskDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointmentId property
      */
-    appointmentId?: RecurringTaskDto_appointmentIdMember1 | Ulid | null;
+    appointmentId?: string | null;
     /**
      * The businessDate property
      */
@@ -10227,7 +8247,7 @@ export interface RecurringTaskDto extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: RecurringTaskDto_clientIdMember1 | Ulid | null;
+    clientId?: string | null;
     /**
      * The deduplicationKey property
      */
@@ -10259,11 +8279,11 @@ export interface RecurringTaskDto extends AdditionalDataHolder, Parsable {
     /**
      * The ruleId property
      */
-    ruleId?: UntypedNode | null;
+    ruleId?: string | null;
     /**
      * The teacherId property
      */
-    teacherId?: RecurringTaskDto_teacherIdMember1 | Ulid | null;
+    teacherId?: string | null;
     /**
      * The telegram property
      */
@@ -10281,24 +8301,15 @@ export interface RecurringTaskDto extends AdditionalDataHolder, Parsable {
      */
     vk?: string | null;
 }
-export type RecurringTaskDto_appointmentId = RecurringTaskDto_appointmentIdMember1 | Ulid;
-export interface RecurringTaskDto_appointmentIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type RecurringTaskDto_clientId = RecurringTaskDto_clientIdMember1 | Ulid;
-export interface RecurringTaskDto_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type RecurringTaskDto_teacherId = RecurringTaskDto_teacherIdMember1 | Ulid;
-export interface RecurringTaskDto_teacherIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface RecurringTaskRuleDto extends AdditionalDataHolder, Parsable {
     /**
      * The cooldownDays property
      */
-    cooldownDays?: UntypedNode | null;
+    cooldownDays?: number | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isEnabled property
      */
@@ -10318,7 +8329,7 @@ export interface RecurringTaskRuleDto extends AdditionalDataHolder, Parsable {
     /**
      * The offsetMinutes property
      */
-    offsetMinutes?: UntypedNode | null;
+    offsetMinutes?: number | null;
     /**
      * The type property
      */
@@ -10331,7 +8342,7 @@ export interface ReferenceBookItemDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastActivity property
      */
@@ -10343,12 +8354,6 @@ export interface ReferenceBookItemDto extends AdditionalDataHolder, Parsable {
 }
 export type ReferenceBookItemDto_lastActivity = RecordActivityDto | ReferenceBookItemDto_lastActivityMember1;
 export interface ReferenceBookItemDto_lastActivityMember1 extends AdditionalDataHolder, Parsable {
-}
-export interface RefreshRequest extends AdditionalDataHolder, Parsable {
-    /**
-     * The refreshToken property
-     */
-    refreshToken?: string | null;
 }
 export interface RegisterRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -10398,7 +8403,7 @@ export interface ReportContextDto extends AdditionalDataHolder, Parsable {
     /**
      * The providerId property
      */
-    providerId?: ReportContextDto_providerIdMember1 | Ulid | null;
+    providerId?: string | null;
     /**
      * The providers property
      */
@@ -10416,9 +8421,6 @@ export interface ReportContextDto extends AdditionalDataHolder, Parsable {
      */
     timezone?: string | null;
 }
-export type ReportContextDto_providerId = ReportContextDto_providerIdMember1 | Ulid;
-export interface ReportContextDto_providerIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface ReportProviderDto extends AdditionalDataHolder, Parsable {
     /**
      * The displayName property
@@ -10427,7 +8429,7 @@ export interface ReportProviderDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
 }
 export interface ResetPasswordRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -10455,7 +8457,7 @@ export interface Role extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The roleName property
      */
@@ -10492,7 +8494,7 @@ export function serializeApiProblemDetails(writer: SerializationWriter, apiProbl
     writer.writeStringValue("detail", apiProblemDetails.detail);
     writer.writeCollectionOfObjectValues<ApiValidationError>("errors", apiProblemDetails.errors, serializeApiValidationError);
     writer.writeStringValue("instance", apiProblemDetails.instance);
-    writer.writeObjectValue("status", apiProblemDetails.status);
+    writer.writeNumberValue("status", apiProblemDetails.status);
     writer.writeStringValue("title", apiProblemDetails.title);
     writer.writeStringValue("traceId", apiProblemDetails.traceId);
     writer.writeStringValue("type", apiProblemDetails.type);
@@ -10523,9 +8525,9 @@ export function serializeAppointment(writer: SerializationWriter, appointment: P
     if (!appointment || isSerializingDerivedType) { return; }
     writer.writeObjectValue<Client>("client", appointment.client, serializeClient);
     writer.writeObjectValue<Appointment_courseThemeMember1 | CourseTheme>("courseTheme", appointment.courseTheme, serializeAppointment_courseTheme);
-    writer.writeObjectValue<Appointment_courseThemeIdMember1 | Ulid>("courseThemeId", appointment.courseThemeId, serializeAppointment_courseThemeId);
+    writer.writeStringValue("courseThemeId", appointment.courseThemeId);
     writer.writeDateValue("endDate", appointment.endDate);
-    writer.writeObjectValue("id", appointment.id);
+    writer.writeStringValue("id", appointment.id);
     writer.writeBooleanValue("isDeleted", appointment.isDeleted);
     writer.writeStringValue("lessonNotes", appointment.lessonNotes);
     writer.writeObjectValue<Appointment_providerMember1 | User>("provider", appointment.provider, serializeAppointment_provider);
@@ -10545,28 +8547,6 @@ export function serializeAppointment(writer: SerializationWriter, appointment: P
 export function serializeAppointment_courseTheme(writer: SerializationWriter, appointment_courseTheme: Partial<Appointment_courseThemeMember1 | CourseTheme> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     serializeAppointment_courseThemeMember1(writer, appointment_courseTheme as Appointment_courseThemeMember1);
     serializeCourseTheme(writer, appointment_courseTheme as CourseTheme);
-}
-/**
- * Serializes information the current object
- * @param Appointment_courseThemeId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAppointment_courseThemeId(writer: SerializationWriter, appointment_courseThemeId: Partial<Appointment_courseThemeIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeAppointment_courseThemeIdMember1(writer, appointment_courseThemeId as Appointment_courseThemeIdMember1);
-    serializeUlid(writer, appointment_courseThemeId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param Appointment_courseThemeIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAppointment_courseThemeIdMember1(writer: SerializationWriter, appointment_courseThemeIdMember1: Partial<Appointment_courseThemeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!appointment_courseThemeIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(appointment_courseThemeIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -10632,33 +8612,11 @@ export function serializeAppointment_recurringRuleMember1(writer: SerializationW
 // @ts-ignore
 export function serializeAppointmentClientContactsDto(writer: SerializationWriter, appointmentClientContactsDto: Partial<AppointmentClientContactsDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentClientContactsDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<AppointmentClientContactsDto_idMember1 | Ulid>("id", appointmentClientContactsDto.id, serializeAppointmentClientContactsDto_id);
+    writer.writeStringValue("id", appointmentClientContactsDto.id);
     writer.writeStringValue("phone", appointmentClientContactsDto.phone);
     writer.writeStringValue("telegram", appointmentClientContactsDto.telegram);
     writer.writeStringValue("vk", appointmentClientContactsDto.vk);
     writer.writeAdditionalData(appointmentClientContactsDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param AppointmentClientContactsDto_id The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAppointmentClientContactsDto_id(writer: SerializationWriter, appointmentClientContactsDto_id: Partial<AppointmentClientContactsDto_idMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeAppointmentClientContactsDto_idMember1(writer, appointmentClientContactsDto_id as AppointmentClientContactsDto_idMember1);
-    serializeUlid(writer, appointmentClientContactsDto_id as Ulid);
-}
-/**
- * Serializes information the current object
- * @param AppointmentClientContactsDto_idMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAppointmentClientContactsDto_idMember1(writer: SerializationWriter, appointmentClientContactsDto_idMember1: Partial<AppointmentClientContactsDto_idMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!appointmentClientContactsDto_idMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(appointmentClientContactsDto_idMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -10671,7 +8629,7 @@ export function serializeAppointmentClientDto(writer: SerializationWriter, appoi
     if (!appointmentClientDto || isSerializingDerivedType) { return; }
     writer.writeObjectValue<AppointmentClientContactsDto | AppointmentClientDto_contactsMember1>("contacts", appointmentClientDto.contacts, serializeAppointmentClientDto_contacts);
     writer.writeStringValue("firstName", appointmentClientDto.firstName);
-    writer.writeObjectValue("id", appointmentClientDto.id);
+    writer.writeStringValue("id", appointmentClientDto.id);
     writer.writeStringValue("lastName", appointmentClientDto.lastName);
     writer.writeStringValue("patronymic", appointmentClientDto.patronymic);
     writer.writeAdditionalData(appointmentClientDto.additionalData);
@@ -10707,9 +8665,9 @@ export function serializeAppointmentClientDto_contactsMember1(writer: Serializat
 // @ts-ignore
 export function serializeAppointmentCourseThemeDto(writer: SerializationWriter, appointmentCourseThemeDto: Partial<AppointmentCourseThemeDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentCourseThemeDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("courseId", appointmentCourseThemeDto.courseId);
+    writer.writeStringValue("courseId", appointmentCourseThemeDto.courseId);
     writer.writeStringValue("courseName", appointmentCourseThemeDto.courseName);
-    writer.writeObjectValue("id", appointmentCourseThemeDto.id);
+    writer.writeStringValue("id", appointmentCourseThemeDto.id);
     writer.writeStringValue("title", appointmentCourseThemeDto.title);
     writer.writeAdditionalData(appointmentCourseThemeDto.additionalData);
 }
@@ -10725,7 +8683,7 @@ export function serializeAppointmentDto(writer: SerializationWriter, appointment
     writer.writeObjectValue<AppointmentClientDto>("client", appointmentDto.client, serializeAppointmentClientDto);
     writer.writeObjectValue<AppointmentCourseThemeDto | AppointmentDto_courseThemeMember1>("courseTheme", appointmentDto.courseTheme, serializeAppointmentDto_courseTheme);
     writer.writeDateValue("endDate", appointmentDto.endDate);
-    writer.writeObjectValue("id", appointmentDto.id);
+    writer.writeStringValue("id", appointmentDto.id);
     writer.writeObjectValue<AppointmentDto_lastActivityMember1 | RecordActivityDto>("lastActivity", appointmentDto.lastActivity, serializeAppointmentDto_lastActivity);
     writer.writeStringValue("lessonNotes", appointmentDto.lessonNotes);
     writer.writeObjectValue<AppointmentDto_providerMember1 | AppointmentProviderDto>("provider", appointmentDto.provider, serializeAppointmentDto_provider);
@@ -10833,7 +8791,7 @@ export function serializeAppointmentDto_recurringRuleMember1(writer: Serializati
 export function serializeAppointmentProviderDto(writer: SerializationWriter, appointmentProviderDto: Partial<AppointmentProviderDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentProviderDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("firstName", appointmentProviderDto.firstName);
-    writer.writeObjectValue("id", appointmentProviderDto.id);
+    writer.writeStringValue("id", appointmentProviderDto.id);
     writer.writeStringValue("lastName", appointmentProviderDto.lastName);
     writer.writeStringValue("roleDisplayName", appointmentProviderDto.roleDisplayName);
     writer.writeAdditionalData(appointmentProviderDto.additionalData);
@@ -10849,9 +8807,9 @@ export function serializeAppointmentRecurrenceRule(writer: SerializationWriter, 
     if (!appointmentRecurrenceRule || isSerializingDerivedType) { return; }
     writer.writeObjectValue<Client>("client", appointmentRecurrenceRule.client, serializeClient);
     writer.writeDateValue("endDate", appointmentRecurrenceRule.endDate);
-    writer.writeObjectValue("id", appointmentRecurrenceRule.id);
+    writer.writeStringValue("id", appointmentRecurrenceRule.id);
     writer.writeObjectValue<AppointmentRecurrenceRule_providerMember1 | User>("provider", appointmentRecurrenceRule.provider, serializeAppointmentRecurrenceRule_provider);
-    writer.writeObjectValue("recurrencePattern", appointmentRecurrenceRule.recurrencePattern);
+    writer.writeNumberValue("recurrencePattern", appointmentRecurrenceRule.recurrencePattern);
     writer.writeObjectValue<RecurrenceType>("recurrenceType", appointmentRecurrenceRule.recurrenceType, serializeRecurrenceType);
     writer.writeObjectValue<Service>("service", appointmentRecurrenceRule.service, serializeService);
     writer.writeDateValue("startDate", appointmentRecurrenceRule.startDate);
@@ -10889,9 +8847,9 @@ export function serializeAppointmentRecurrenceRule_providerMember1(writer: Seria
 export function serializeAppointmentRecurrenceRuleDto(writer: SerializationWriter, appointmentRecurrenceRuleDto: Partial<AppointmentRecurrenceRuleDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentRecurrenceRuleDto || isSerializingDerivedType) { return; }
     writer.writeDateValue("endDate", appointmentRecurrenceRuleDto.endDate);
-    writer.writeObjectValue("id", appointmentRecurrenceRuleDto.id);
+    writer.writeStringValue("id", appointmentRecurrenceRuleDto.id);
     writer.writeStringValue("key", appointmentRecurrenceRuleDto.key);
-    writer.writeObjectValue("recurrencePattern", appointmentRecurrenceRuleDto.recurrencePattern);
+    writer.writeNumberValue("recurrencePattern", appointmentRecurrenceRuleDto.recurrencePattern);
     writer.writeDateValue("startDate", appointmentRecurrenceRuleDto.startDate);
     writer.writeAdditionalData(appointmentRecurrenceRuleDto.additionalData);
 }
@@ -10904,7 +8862,7 @@ export function serializeAppointmentRecurrenceRuleDto(writer: SerializationWrite
 // @ts-ignore
 export function serializeAppointmentServiceDto(writer: SerializationWriter, appointmentServiceDto: Partial<AppointmentServiceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentServiceDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", appointmentServiceDto.id);
+    writer.writeStringValue("id", appointmentServiceDto.id);
     writer.writeStringValue("name", appointmentServiceDto.name);
     writer.writeAdditionalData(appointmentServiceDto.additionalData);
 }
@@ -10945,7 +8903,7 @@ export function serializeAuthenticateSavedClientPortalIdentityRequest(writer: Se
 export function serializeCalendarSubscriptionResponse(writer: SerializationWriter, calendarSubscriptionResponse: Partial<CalendarSubscriptionResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!calendarSubscriptionResponse || isSerializingDerivedType) { return; }
     writer.writeStringValue("feedType", calendarSubscriptionResponse.feedType);
-    writer.writeObjectValue("id", calendarSubscriptionResponse.id);
+    writer.writeStringValue("id", calendarSubscriptionResponse.id);
     writer.writeStringValue("token", calendarSubscriptionResponse.token);
     writer.writeStringValue("url", calendarSubscriptionResponse.url);
     writer.writeAdditionalData(calendarSubscriptionResponse.additionalData);
@@ -10959,79 +8917,13 @@ export function serializeCalendarSubscriptionResponse(writer: SerializationWrite
 // @ts-ignore
 export function serializeCancelRecurringTaskRequest(writer: SerializationWriter, cancelRecurringTaskRequest: Partial<CancelRecurringTaskRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!cancelRecurringTaskRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<CancelRecurringTaskRequest_appointmentIdMember1 | Ulid>("appointmentId", cancelRecurringTaskRequest.appointmentId, serializeCancelRecurringTaskRequest_appointmentId);
-    writer.writeObjectValue<CancelRecurringTaskRequest_clientIdMember1 | Ulid>("clientId", cancelRecurringTaskRequest.clientId, serializeCancelRecurringTaskRequest_clientId);
-    writer.writeObjectValue("ruleId", cancelRecurringTaskRequest.ruleId);
-    writer.writeObjectValue<CancelRecurringTaskRequest_teacherIdMember1 | Ulid>("teacherId", cancelRecurringTaskRequest.teacherId, serializeCancelRecurringTaskRequest_teacherId);
+    writer.writeStringValue("appointmentId", cancelRecurringTaskRequest.appointmentId);
+    writer.writeStringValue("clientId", cancelRecurringTaskRequest.clientId);
+    writer.writeStringValue("ruleId", cancelRecurringTaskRequest.ruleId);
+    writer.writeStringValue("teacherId", cancelRecurringTaskRequest.teacherId);
     writer.writeStringValue("timezone", cancelRecurringTaskRequest.timezone);
     writer.writeStringValue("type", cancelRecurringTaskRequest.type);
     writer.writeAdditionalData(cancelRecurringTaskRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_appointmentId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_appointmentId(writer: SerializationWriter, cancelRecurringTaskRequest_appointmentId: Partial<CancelRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCancelRecurringTaskRequest_appointmentIdMember1(writer, cancelRecurringTaskRequest_appointmentId as CancelRecurringTaskRequest_appointmentIdMember1);
-    serializeUlid(writer, cancelRecurringTaskRequest_appointmentId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_appointmentIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_appointmentIdMember1(writer: SerializationWriter, cancelRecurringTaskRequest_appointmentIdMember1: Partial<CancelRecurringTaskRequest_appointmentIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!cancelRecurringTaskRequest_appointmentIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(cancelRecurringTaskRequest_appointmentIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_clientId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_clientId(writer: SerializationWriter, cancelRecurringTaskRequest_clientId: Partial<CancelRecurringTaskRequest_clientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCancelRecurringTaskRequest_clientIdMember1(writer, cancelRecurringTaskRequest_clientId as CancelRecurringTaskRequest_clientIdMember1);
-    serializeUlid(writer, cancelRecurringTaskRequest_clientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_clientIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_clientIdMember1(writer: SerializationWriter, cancelRecurringTaskRequest_clientIdMember1: Partial<CancelRecurringTaskRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!cancelRecurringTaskRequest_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(cancelRecurringTaskRequest_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_teacherId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_teacherId(writer: SerializationWriter, cancelRecurringTaskRequest_teacherId: Partial<CancelRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCancelRecurringTaskRequest_teacherIdMember1(writer, cancelRecurringTaskRequest_teacherId as CancelRecurringTaskRequest_teacherIdMember1);
-    serializeUlid(writer, cancelRecurringTaskRequest_teacherId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CancelRecurringTaskRequest_teacherIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCancelRecurringTaskRequest_teacherIdMember1(writer: SerializationWriter, cancelRecurringTaskRequest_teacherIdMember1: Partial<CancelRecurringTaskRequest_teacherIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!cancelRecurringTaskRequest_teacherIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(cancelRecurringTaskRequest_teacherIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11060,12 +8952,12 @@ export function serializeClient(writer: SerializationWriter, client: Partial<Cli
     writer.writeDateValue("createdAtUtc", client.createdAtUtc);
     writer.writeDateOnlyValue("dateOfBirth", client.dateOfBirth);
     writer.writeStringValue("firstName", client.firstName);
-    writer.writeObjectValue("id", client.id);
+    writer.writeStringValue("id", client.id);
     writer.writeBooleanValue("isLeadClosed", client.isLeadClosed);
     writer.writeStringValue("lastName", client.lastName);
     writer.writeStringValue("patronymic", client.patronymic);
     writer.writeObjectValue<ClientSource | Client_sourceMember1>("source", client.source, serializeClient_source);
-    writer.writeObjectValue<Client_sourceIdMember1 | Ulid>("sourceId", client.sourceId, serializeClient_sourceId);
+    writer.writeStringValue("sourceId", client.sourceId);
     writer.writeCollectionOfObjectValues<ClientVacation>("vacations", client.vacations, serializeClientVacation);
     writer.writeAdditionalData(client.additionalData);
 }
@@ -11079,28 +8971,6 @@ export function serializeClient(writer: SerializationWriter, client: Partial<Cli
 export function serializeClient_source(writer: SerializationWriter, client_source: Partial<ClientSource | Client_sourceMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     serializeClientSource(writer, client_source as ClientSource);
     serializeClient_sourceMember1(writer, client_source as Client_sourceMember1);
-}
-/**
- * Serializes information the current object
- * @param Client_sourceId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClient_sourceId(writer: SerializationWriter, client_sourceId: Partial<Client_sourceIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeClient_sourceIdMember1(writer, client_sourceId as Client_sourceIdMember1);
-    serializeUlid(writer, client_sourceId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param Client_sourceIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClient_sourceIdMember1(writer: SerializationWriter, client_sourceIdMember1: Partial<Client_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!client_sourceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(client_sourceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11122,11 +8992,11 @@ export function serializeClient_sourceMember1(writer: SerializationWriter, clien
 // @ts-ignore
 export function serializeClientActivityTrendDto(writer: SerializationWriter, clientActivityTrendDto: Partial<ClientActivityTrendDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientActivityTrendDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("acquiredClients", clientActivityTrendDto.acquiredClients);
-    writer.writeObjectValue("activeClients", clientActivityTrendDto.activeClients);
+    writer.writeNumberValue("acquiredClients", clientActivityTrendDto.acquiredClients);
+    writer.writeNumberValue("activeClients", clientActivityTrendDto.activeClients);
     writer.writeDateValue("endDate", clientActivityTrendDto.endDate);
     writer.writeDateValue("startDate", clientActivityTrendDto.startDate);
-    writer.writeObjectValue("visits", clientActivityTrendDto.visits);
+    writer.writeNumberValue("visits", clientActivityTrendDto.visits);
     writer.writeAdditionalData(clientActivityTrendDto.additionalData);
 }
 /**
@@ -11139,7 +9009,7 @@ export function serializeClientActivityTrendDto(writer: SerializationWriter, cli
 export function serializeClientContacts(writer: SerializationWriter, clientContacts: Partial<ClientContacts> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientContacts || isSerializingDerivedType) { return; }
     writer.writeStringValue("email", clientContacts.email);
-    writer.writeObjectValue("id", clientContacts.id);
+    writer.writeStringValue("id", clientContacts.id);
     writer.writeStringValue("phone", clientContacts.phone);
     writer.writeStringValue("telegram", clientContacts.telegram);
     writer.writeStringValue("vk", clientContacts.vk);
@@ -11154,11 +9024,11 @@ export function serializeClientContacts(writer: SerializationWriter, clientConta
 // @ts-ignore
 export function serializeClientFinancialHistoryEventDto(writer: SerializationWriter, clientFinancialHistoryEventDto: Partial<ClientFinancialHistoryEventDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientFinancialHistoryEventDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", clientFinancialHistoryEventDto.amount);
+    writer.writeNumberValue("amount", clientFinancialHistoryEventDto.amount);
     writer.writeStringValue("appointmentStatus", clientFinancialHistoryEventDto.appointmentStatus);
     writer.writeDateValue("date", clientFinancialHistoryEventDto.date);
     writer.writeStringValue("description", clientFinancialHistoryEventDto.description);
-    writer.writeObjectValue("id", clientFinancialHistoryEventDto.id);
+    writer.writeStringValue("id", clientFinancialHistoryEventDto.id);
     writer.writeStringValue("providerDisplayName", clientFinancialHistoryEventDto.providerDisplayName);
     writer.writeStringValue("serviceName", clientFinancialHistoryEventDto.serviceName);
     writer.writeStringValue("type", clientFinancialHistoryEventDto.type);
@@ -11174,33 +9044,11 @@ export function serializeClientFinancialHistoryEventDto(writer: SerializationWri
 export function serializeClientHistoryContactsDto(writer: SerializationWriter, clientHistoryContactsDto: Partial<ClientHistoryContactsDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientHistoryContactsDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("email", clientHistoryContactsDto.email);
-    writer.writeObjectValue<ClientHistoryContactsDto_idMember1 | Ulid>("id", clientHistoryContactsDto.id, serializeClientHistoryContactsDto_id);
+    writer.writeStringValue("id", clientHistoryContactsDto.id);
     writer.writeStringValue("phone", clientHistoryContactsDto.phone);
     writer.writeStringValue("telegram", clientHistoryContactsDto.telegram);
     writer.writeStringValue("vk", clientHistoryContactsDto.vk);
     writer.writeAdditionalData(clientHistoryContactsDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param ClientHistoryContactsDto_id The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientHistoryContactsDto_id(writer: SerializationWriter, clientHistoryContactsDto_id: Partial<ClientHistoryContactsDto_idMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeClientHistoryContactsDto_idMember1(writer, clientHistoryContactsDto_id as ClientHistoryContactsDto_idMember1);
-    serializeUlid(writer, clientHistoryContactsDto_id as Ulid);
-}
-/**
- * Serializes information the current object
- * @param ClientHistoryContactsDto_idMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientHistoryContactsDto_idMember1(writer: SerializationWriter, clientHistoryContactsDto_idMember1: Partial<ClientHistoryContactsDto_idMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!clientHistoryContactsDto_idMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(clientHistoryContactsDto_idMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11225,13 +9073,13 @@ export function serializeClientHistoryResponse(writer: SerializationWriter, clie
 // @ts-ignore
 export function serializeClientHistorySummaryDto(writer: SerializationWriter, clientHistorySummaryDto: Partial<ClientHistorySummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientHistorySummaryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("completedAppointmentsCount", clientHistorySummaryDto.completedAppointmentsCount);
+    writer.writeNumberValue("completedAppointmentsCount", clientHistorySummaryDto.completedAppointmentsCount);
     writer.writeDateValue("lastPaymentAtUtc", clientHistorySummaryDto.lastPaymentAtUtc);
     writer.writeDateValue("lastVisitAtUtc", clientHistorySummaryDto.lastVisitAtUtc);
     writer.writeDateValue("nextAppointmentAtUtc", clientHistorySummaryDto.nextAppointmentAtUtc);
-    writer.writeObjectValue("paymentsCount", clientHistorySummaryDto.paymentsCount);
-    writer.writeObjectValue("totalPayments", clientHistorySummaryDto.totalPayments);
-    writer.writeObjectValue("upcomingAppointmentsCount", clientHistorySummaryDto.upcomingAppointmentsCount);
+    writer.writeNumberValue("paymentsCount", clientHistorySummaryDto.paymentsCount);
+    writer.writeNumberValue("totalPayments", clientHistorySummaryDto.totalPayments);
+    writer.writeNumberValue("upcomingAppointmentsCount", clientHistorySummaryDto.upcomingAppointmentsCount);
     writer.writeAdditionalData(clientHistorySummaryDto.additionalData);
 }
 /**
@@ -11245,7 +9093,7 @@ export function serializeClientPortalAppointmentDto(writer: SerializationWriter,
     if (!clientPortalAppointmentDto || isSerializingDerivedType) { return; }
     writer.writeObjectValue<ClientPortalAppointmentDto_courseThemeMember1 | ClientPortalCourseThemeDto>("courseTheme", clientPortalAppointmentDto.courseTheme, serializeClientPortalAppointmentDto_courseTheme);
     writer.writeDateValue("endDate", clientPortalAppointmentDto.endDate);
-    writer.writeObjectValue("id", clientPortalAppointmentDto.id);
+    writer.writeStringValue("id", clientPortalAppointmentDto.id);
     writer.writeDateValue("startDate", clientPortalAppointmentDto.startDate);
     writer.writeStringValue("status", clientPortalAppointmentDto.status);
     writer.writeAdditionalData(clientPortalAppointmentDto.additionalData);
@@ -11296,7 +9144,7 @@ export function serializeClientPortalAuthenticationResponse(writer: Serializatio
 // @ts-ignore
 export function serializeClientPortalCourseThemeDto(writer: SerializationWriter, clientPortalCourseThemeDto: Partial<ClientPortalCourseThemeDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientPortalCourseThemeDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", clientPortalCourseThemeDto.id);
+    writer.writeStringValue("id", clientPortalCourseThemeDto.id);
     writer.writeStringValue("title", clientPortalCourseThemeDto.title);
     writer.writeAdditionalData(clientPortalCourseThemeDto.additionalData);
 }
@@ -11309,7 +9157,7 @@ export function serializeClientPortalCourseThemeDto(writer: SerializationWriter,
 // @ts-ignore
 export function serializeClientSource(writer: SerializationWriter, clientSource: Partial<ClientSource> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientSource || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", clientSource.id);
+    writer.writeStringValue("id", clientSource.id);
     writer.writeStringValue("name", clientSource.name);
     writer.writeAdditionalData(clientSource.additionalData);
 }
@@ -11322,9 +9170,9 @@ export function serializeClientSource(writer: SerializationWriter, clientSource:
 // @ts-ignore
 export function serializeClientSourceReportDto(writer: SerializationWriter, clientSourceReportDto: Partial<ClientSourceReportDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientSourceReportDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("acquiredClients", clientSourceReportDto.acquiredClients);
-    writer.writeObjectValue("activeClients", clientSourceReportDto.activeClients);
-    writer.writeObjectValue("clientValue", clientSourceReportDto.clientValue);
+    writer.writeNumberValue("acquiredClients", clientSourceReportDto.acquiredClients);
+    writer.writeNumberValue("activeClients", clientSourceReportDto.activeClients);
+    writer.writeNumberValue("clientValue", clientSourceReportDto.clientValue);
     writer.writeStringValue("sourceName", clientSourceReportDto.sourceName);
     writer.writeAdditionalData(clientSourceReportDto.additionalData);
 }
@@ -11353,15 +9201,15 @@ export function serializeClientsReportResponse(writer: SerializationWriter, clie
 // @ts-ignore
 export function serializeClientsReportSummaryDto(writer: SerializationWriter, clientsReportSummaryDto: Partial<ClientsReportSummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientsReportSummaryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("acquiredClients", clientsReportSummaryDto.acquiredClients);
-    writer.writeObjectValue("activeClients", clientsReportSummaryDto.activeClients);
-    writer.writeObjectValue("atRiskClients", clientsReportSummaryDto.atRiskClients);
-    writer.writeObjectValue("averageClientValue", clientsReportSummaryDto.averageClientValue);
-    writer.writeObjectValue("averageVisitFrequency", clientsReportSummaryDto.averageVisitFrequency);
-    writer.writeObjectValue("lostClients", clientsReportSummaryDto.lostClients);
-    writer.writeObjectValue("onVacationClients", clientsReportSummaryDto.onVacationClients);
-    writer.writeObjectValue("retainedClients", clientsReportSummaryDto.retainedClients);
-    writer.writeObjectValue("retentionPercent", clientsReportSummaryDto.retentionPercent);
+    writer.writeNumberValue("acquiredClients", clientsReportSummaryDto.acquiredClients);
+    writer.writeNumberValue("activeClients", clientsReportSummaryDto.activeClients);
+    writer.writeNumberValue("atRiskClients", clientsReportSummaryDto.atRiskClients);
+    writer.writeNumberValue("averageClientValue", clientsReportSummaryDto.averageClientValue);
+    writer.writeNumberValue("averageVisitFrequency", clientsReportSummaryDto.averageVisitFrequency);
+    writer.writeNumberValue("lostClients", clientsReportSummaryDto.lostClients);
+    writer.writeNumberValue("onVacationClients", clientsReportSummaryDto.onVacationClients);
+    writer.writeNumberValue("retainedClients", clientsReportSummaryDto.retainedClients);
+    writer.writeNumberValue("retentionPercent", clientsReportSummaryDto.retentionPercent);
     writer.writeAdditionalData(clientsReportSummaryDto.additionalData);
 }
 /**
@@ -11373,9 +9221,9 @@ export function serializeClientsReportSummaryDto(writer: SerializationWriter, cl
 // @ts-ignore
 export function serializeClientVacation(writer: SerializationWriter, clientVacation: Partial<ClientVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientVacation || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("clientId", clientVacation.clientId);
+    writer.writeStringValue("clientId", clientVacation.clientId);
     writer.writeDateOnlyValue("endDate", clientVacation.endDate);
-    writer.writeObjectValue("id", clientVacation.id);
+    writer.writeStringValue("id", clientVacation.id);
     writer.writeDateOnlyValue("startDate", clientVacation.startDate);
     writer.writeAdditionalData(clientVacation.additionalData);
 }
@@ -11402,13 +9250,13 @@ export function serializeClientVacationRequest(writer: SerializationWriter, clie
 export function serializeClientValueReportDto(writer: SerializationWriter, clientValueReportDto: Partial<ClientValueReportDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientValueReportDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("activityState", clientValueReportDto.activityState);
-    writer.writeObjectValue("averageIntervalDays", clientValueReportDto.averageIntervalDays);
-    writer.writeObjectValue("clientId", clientValueReportDto.clientId);
+    writer.writeNumberValue("averageIntervalDays", clientValueReportDto.averageIntervalDays);
+    writer.writeStringValue("clientId", clientValueReportDto.clientId);
     writer.writeStringValue("clientName", clientValueReportDto.clientName);
     writer.writeDateValue("lastVisitAtUtc", clientValueReportDto.lastVisitAtUtc);
     writer.writeStringValue("sourceName", clientValueReportDto.sourceName);
-    writer.writeObjectValue("value", clientValueReportDto.value);
-    writer.writeObjectValue("visits", clientValueReportDto.visits);
+    writer.writeNumberValue("value", clientValueReportDto.value);
+    writer.writeNumberValue("visits", clientValueReportDto.visits);
     writer.writeAdditionalData(clientValueReportDto.additionalData);
 }
 /**
@@ -11421,11 +9269,11 @@ export function serializeClientValueReportDto(writer: SerializationWriter, clien
 export function serializeClientWithBalanceDto(writer: SerializationWriter, clientWithBalanceDto: Partial<ClientWithBalanceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientWithBalanceDto || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<Appointment>("appointments", clientWithBalanceDto.appointments, serializeAppointment);
-    writer.writeObjectValue("balance", clientWithBalanceDto.balance);
+    writer.writeNumberValue("balance", clientWithBalanceDto.balance);
     writer.writeDateValue("createdAtUtc", clientWithBalanceDto.createdAtUtc);
     writer.writeDateOnlyValue("dateOfBirth", clientWithBalanceDto.dateOfBirth);
     writer.writeStringValue("firstName", clientWithBalanceDto.firstName);
-    writer.writeObjectValue("id", clientWithBalanceDto.id);
+    writer.writeStringValue("id", clientWithBalanceDto.id);
     writer.writeBooleanValue("isLeadClosed", clientWithBalanceDto.isLeadClosed);
     writer.writeObjectValue<ClientWithBalanceDto_lastActivityMember1 | RecordActivityDto>("lastActivity", clientWithBalanceDto.lastActivity, serializeClientWithBalanceDto_lastActivity);
     writer.writeDateValue("lastAppointmentAtUtc", clientWithBalanceDto.lastAppointmentAtUtc);
@@ -11435,7 +9283,7 @@ export function serializeClientWithBalanceDto(writer: SerializationWriter, clien
     writer.writeStringValue("patronymic", clientWithBalanceDto.patronymic);
     writer.writeStringValue("phone", clientWithBalanceDto.phone);
     writer.writeObjectValue<ClientSource | ClientWithBalanceDto_sourceMember1>("source", clientWithBalanceDto.source, serializeClientWithBalanceDto_source);
-    writer.writeObjectValue<ClientWithBalanceDto_sourceIdMember1 | Ulid>("sourceId", clientWithBalanceDto.sourceId, serializeClientWithBalanceDto_sourceId);
+    writer.writeStringValue("sourceId", clientWithBalanceDto.sourceId);
     writer.writeStringValue("sourceName", clientWithBalanceDto.sourceName);
     writer.writeStringValue("telegram", clientWithBalanceDto.telegram);
     writer.writeCollectionOfObjectValues<ClientVacation>("vacations", clientWithBalanceDto.vacations, serializeClientVacation);
@@ -11477,28 +9325,6 @@ export function serializeClientWithBalanceDto_source(writer: SerializationWriter
 }
 /**
  * Serializes information the current object
- * @param ClientWithBalanceDto_sourceId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientWithBalanceDto_sourceId(writer: SerializationWriter, clientWithBalanceDto_sourceId: Partial<ClientWithBalanceDto_sourceIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeClientWithBalanceDto_sourceIdMember1(writer, clientWithBalanceDto_sourceId as ClientWithBalanceDto_sourceIdMember1);
-    serializeUlid(writer, clientWithBalanceDto_sourceId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param ClientWithBalanceDto_sourceIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientWithBalanceDto_sourceIdMember1(writer: SerializationWriter, clientWithBalanceDto_sourceIdMember1: Partial<ClientWithBalanceDto_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!clientWithBalanceDto_sourceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(clientWithBalanceDto_sourceIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
  * @param ClientWithBalanceDto_sourceMember1 The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11517,80 +9343,14 @@ export function serializeClientWithBalanceDto_sourceMember1(writer: Serializatio
 // @ts-ignore
 export function serializeCompleteRecurringTaskRequest(writer: SerializationWriter, completeRecurringTaskRequest: Partial<CompleteRecurringTaskRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!completeRecurringTaskRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid>("appointmentId", completeRecurringTaskRequest.appointmentId, serializeCompleteRecurringTaskRequest_appointmentId);
-    writer.writeObjectValue<CompleteRecurringTaskRequest_clientIdMember1 | Ulid>("clientId", completeRecurringTaskRequest.clientId, serializeCompleteRecurringTaskRequest_clientId);
+    writer.writeStringValue("appointmentId", completeRecurringTaskRequest.appointmentId);
+    writer.writeStringValue("clientId", completeRecurringTaskRequest.clientId);
     writer.writeStringValue("preparedMessage", completeRecurringTaskRequest.preparedMessage);
-    writer.writeObjectValue("ruleId", completeRecurringTaskRequest.ruleId);
-    writer.writeObjectValue<CompleteRecurringTaskRequest_teacherIdMember1 | Ulid>("teacherId", completeRecurringTaskRequest.teacherId, serializeCompleteRecurringTaskRequest_teacherId);
+    writer.writeStringValue("ruleId", completeRecurringTaskRequest.ruleId);
+    writer.writeStringValue("teacherId", completeRecurringTaskRequest.teacherId);
     writer.writeStringValue("timezone", completeRecurringTaskRequest.timezone);
     writer.writeStringValue("type", completeRecurringTaskRequest.type);
     writer.writeAdditionalData(completeRecurringTaskRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_appointmentId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_appointmentId(writer: SerializationWriter, completeRecurringTaskRequest_appointmentId: Partial<CompleteRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCompleteRecurringTaskRequest_appointmentIdMember1(writer, completeRecurringTaskRequest_appointmentId as CompleteRecurringTaskRequest_appointmentIdMember1);
-    serializeUlid(writer, completeRecurringTaskRequest_appointmentId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_appointmentIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_appointmentIdMember1(writer: SerializationWriter, completeRecurringTaskRequest_appointmentIdMember1: Partial<CompleteRecurringTaskRequest_appointmentIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!completeRecurringTaskRequest_appointmentIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(completeRecurringTaskRequest_appointmentIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_clientId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_clientId(writer: SerializationWriter, completeRecurringTaskRequest_clientId: Partial<CompleteRecurringTaskRequest_clientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCompleteRecurringTaskRequest_clientIdMember1(writer, completeRecurringTaskRequest_clientId as CompleteRecurringTaskRequest_clientIdMember1);
-    serializeUlid(writer, completeRecurringTaskRequest_clientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_clientIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_clientIdMember1(writer: SerializationWriter, completeRecurringTaskRequest_clientIdMember1: Partial<CompleteRecurringTaskRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!completeRecurringTaskRequest_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(completeRecurringTaskRequest_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_teacherId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_teacherId(writer: SerializationWriter, completeRecurringTaskRequest_teacherId: Partial<CompleteRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCompleteRecurringTaskRequest_teacherIdMember1(writer, completeRecurringTaskRequest_teacherId as CompleteRecurringTaskRequest_teacherIdMember1);
-    serializeUlid(writer, completeRecurringTaskRequest_teacherId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CompleteRecurringTaskRequest_teacherIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCompleteRecurringTaskRequest_teacherIdMember1(writer: SerializationWriter, completeRecurringTaskRequest_teacherIdMember1: Partial<CompleteRecurringTaskRequest_teacherIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!completeRecurringTaskRequest_teacherIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(completeRecurringTaskRequest_teacherIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11604,7 +9364,7 @@ export function serializeCourse(writer: SerializationWriter, course: Partial<Cou
     writer.writeCollectionOfObjectValues<CourseBlock>("blocks", course.blocks, serializeCourseBlock);
     writer.writeDateValue("createdAtUtc", course.createdAtUtc);
     writer.writeStringValue("description", course.description);
-    writer.writeObjectValue("id", course.id);
+    writer.writeStringValue("id", course.id);
     writer.writeCollectionOfObjectValues<CourseLevel>("levels", course.levels, serializeCourseLevel);
     writer.writeStringValue("name", course.name);
     writer.writeDateValue("updatedAtUtc", course.updatedAtUtc);
@@ -11621,10 +9381,10 @@ export function serializeCourseBlock(writer: SerializationWriter, courseBlock: P
     if (!courseBlock || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<CourseBranch>("branches", courseBlock.branches, serializeCourseBranch);
     writer.writeObjectValue<Course>("course", courseBlock.course, serializeCourse);
-    writer.writeObjectValue("courseId", courseBlock.courseId);
+    writer.writeStringValue("courseId", courseBlock.courseId);
     writer.writeStringValue("description", courseBlock.description);
-    writer.writeObjectValue("id", courseBlock.id);
-    writer.writeObjectValue("order", courseBlock.order);
+    writer.writeStringValue("id", courseBlock.id);
+    writer.writeNumberValue("order", courseBlock.order);
     writer.writeStringValue("title", courseBlock.title);
     writer.writeAdditionalData(courseBlock.additionalData);
 }
@@ -11639,8 +9399,8 @@ export function serializeCourseBlockDto(writer: SerializationWriter, courseBlock
     if (!courseBlockDto || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<CourseBranchDto>("branches", courseBlockDto.branches, serializeCourseBranchDto);
     writer.writeStringValue("description", courseBlockDto.description);
-    writer.writeObjectValue("id", courseBlockDto.id);
-    writer.writeObjectValue("order", courseBlockDto.order);
+    writer.writeStringValue("id", courseBlockDto.id);
+    writer.writeNumberValue("order", courseBlockDto.order);
     writer.writeStringValue("title", courseBlockDto.title);
     writer.writeAdditionalData(courseBlockDto.additionalData);
 }
@@ -11654,10 +9414,10 @@ export function serializeCourseBlockDto(writer: SerializationWriter, courseBlock
 export function serializeCourseBranch(writer: SerializationWriter, courseBranch: Partial<CourseBranch> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseBranch || isSerializingDerivedType) { return; }
     writer.writeObjectValue<CourseBlock>("block", courseBranch.block, serializeCourseBlock);
-    writer.writeObjectValue("blockId", courseBranch.blockId);
+    writer.writeStringValue("blockId", courseBranch.blockId);
     writer.writeStringValue("description", courseBranch.description);
-    writer.writeObjectValue("id", courseBranch.id);
-    writer.writeObjectValue("order", courseBranch.order);
+    writer.writeStringValue("id", courseBranch.id);
+    writer.writeNumberValue("order", courseBranch.order);
     writer.writeCollectionOfObjectValues<CourseTheme>("themes", courseBranch.themes, serializeCourseTheme);
     writer.writeStringValue("title", courseBranch.title);
     writer.writeAdditionalData(courseBranch.additionalData);
@@ -11672,8 +9432,8 @@ export function serializeCourseBranch(writer: SerializationWriter, courseBranch:
 export function serializeCourseBranchDto(writer: SerializationWriter, courseBranchDto: Partial<CourseBranchDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseBranchDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("description", courseBranchDto.description);
-    writer.writeObjectValue("id", courseBranchDto.id);
-    writer.writeObjectValue("order", courseBranchDto.order);
+    writer.writeStringValue("id", courseBranchDto.id);
+    writer.writeNumberValue("order", courseBranchDto.order);
     writer.writeCollectionOfObjectValues<CourseThemeDto>("themes", courseBranchDto.themes, serializeCourseThemeDto);
     writer.writeStringValue("title", courseBranchDto.title);
     writer.writeAdditionalData(courseBranchDto.additionalData);
@@ -11690,7 +9450,7 @@ export function serializeCourseDto(writer: SerializationWriter, courseDto: Parti
     writer.writeCollectionOfObjectValues<CourseBlockDto>("blocks", courseDto.blocks, serializeCourseBlockDto);
     writer.writeDateValue("createdAtUtc", courseDto.createdAtUtc);
     writer.writeStringValue("description", courseDto.description);
-    writer.writeObjectValue("id", courseDto.id);
+    writer.writeStringValue("id", courseDto.id);
     writer.writeCollectionOfObjectValues<CourseLevelDto>("levels", courseDto.levels, serializeCourseLevelDto);
     writer.writeStringValue("name", courseDto.name);
     writer.writeDateValue("updatedAtUtc", courseDto.updatedAtUtc);
@@ -11706,14 +9466,14 @@ export function serializeCourseDto(writer: SerializationWriter, courseDto: Parti
 export function serializeCourseEnrollmentDto(writer: SerializationWriter, courseEnrollmentDto: Partial<CourseEnrollmentDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseEnrollmentDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("clientDisplayName", courseEnrollmentDto.clientDisplayName);
-    writer.writeObjectValue("clientId", courseEnrollmentDto.clientId);
+    writer.writeStringValue("clientId", courseEnrollmentDto.clientId);
     writer.writeObjectValue<CourseDto>("course", courseEnrollmentDto.course, serializeCourseDto);
-    writer.writeObjectValue("courseId", courseEnrollmentDto.courseId);
+    writer.writeStringValue("courseId", courseEnrollmentDto.courseId);
     writer.writeStringValue("courseName", courseEnrollmentDto.courseName);
     writer.writeDateValue("createdAtUtc", courseEnrollmentDto.createdAtUtc);
     writer.writeObjectValue<CourseEnrollmentDto_currentLevelMember1 | CourseEnrollmentLevelDto>("currentLevel", courseEnrollmentDto.currentLevel, serializeCourseEnrollmentDto_currentLevel);
-    writer.writeObjectValue("earnedExperiencePoints", courseEnrollmentDto.earnedExperiencePoints);
-    writer.writeObjectValue("id", courseEnrollmentDto.id);
+    writer.writeNumberValue("earnedExperiencePoints", courseEnrollmentDto.earnedExperiencePoints);
+    writer.writeStringValue("id", courseEnrollmentDto.id);
     writer.writeCollectionOfObjectValues<CourseEnrollmentThemeDto>("themes", courseEnrollmentDto.themes, serializeCourseEnrollmentThemeDto);
     writer.writeAdditionalData(courseEnrollmentDto.additionalData);
 }
@@ -11748,9 +9508,9 @@ export function serializeCourseEnrollmentDto_currentLevelMember1(writer: Seriali
 // @ts-ignore
 export function serializeCourseEnrollmentLevelDto(writer: SerializationWriter, courseEnrollmentLevelDto: Partial<CourseEnrollmentLevelDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseEnrollmentLevelDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", courseEnrollmentLevelDto.id);
-    writer.writeObjectValue("order", courseEnrollmentLevelDto.order);
-    writer.writeObjectValue("requiredExperiencePoints", courseEnrollmentLevelDto.requiredExperiencePoints);
+    writer.writeStringValue("id", courseEnrollmentLevelDto.id);
+    writer.writeNumberValue("order", courseEnrollmentLevelDto.order);
+    writer.writeNumberValue("requiredExperiencePoints", courseEnrollmentLevelDto.requiredExperiencePoints);
     writer.writeStringValue("title", courseEnrollmentLevelDto.title);
     writer.writeAdditionalData(courseEnrollmentLevelDto.additionalData);
 }
@@ -11763,7 +9523,7 @@ export function serializeCourseEnrollmentLevelDto(writer: SerializationWriter, c
 // @ts-ignore
 export function serializeCourseEnrollmentThemeAppointmentDto(writer: SerializationWriter, courseEnrollmentThemeAppointmentDto: Partial<CourseEnrollmentThemeAppointmentDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseEnrollmentThemeAppointmentDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", courseEnrollmentThemeAppointmentDto.id);
+    writer.writeStringValue("id", courseEnrollmentThemeAppointmentDto.id);
     writer.writeStringValue("lessonNotes", courseEnrollmentThemeAppointmentDto.lessonNotes);
     writer.writeStringValue("providerDisplayName", courseEnrollmentThemeAppointmentDto.providerDisplayName);
     writer.writeDateValue("startDateUtc", courseEnrollmentThemeAppointmentDto.startDateUtc);
@@ -11780,11 +9540,11 @@ export function serializeCourseEnrollmentThemeAppointmentDto(writer: Serializati
 export function serializeCourseEnrollmentThemeDto(writer: SerializationWriter, courseEnrollmentThemeDto: Partial<CourseEnrollmentThemeDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseEnrollmentThemeDto || isSerializingDerivedType) { return; }
     writer.writeDateValue("completedAtUtc", courseEnrollmentThemeDto.completedAtUtc);
-    writer.writeObjectValue("courseThemeId", courseEnrollmentThemeDto.courseThemeId);
-    writer.writeObjectValue("earnedExperiencePoints", courseEnrollmentThemeDto.earnedExperiencePoints);
-    writer.writeObjectValue("experiencePointsReward", courseEnrollmentThemeDto.experiencePointsReward);
+    writer.writeStringValue("courseThemeId", courseEnrollmentThemeDto.courseThemeId);
+    writer.writeNumberValue("earnedExperiencePoints", courseEnrollmentThemeDto.earnedExperiencePoints);
+    writer.writeNumberValue("experiencePointsReward", courseEnrollmentThemeDto.experiencePointsReward);
     writer.writeStringValue("homeworkContent", courseEnrollmentThemeDto.homeworkContent);
-    writer.writeObjectValue("id", courseEnrollmentThemeDto.id);
+    writer.writeStringValue("id", courseEnrollmentThemeDto.id);
     writer.writeStringValue("lessonContent", courseEnrollmentThemeDto.lessonContent);
     writer.writeCollectionOfObjectValues<CourseEnrollmentThemeAppointmentDto>("recentAppointments", courseEnrollmentThemeDto.recentAppointments, serializeCourseEnrollmentThemeAppointmentDto);
     writer.writeDateValue("startedAtUtc", courseEnrollmentThemeDto.startedAtUtc);
@@ -11805,10 +9565,10 @@ export function serializeCourseEnrollmentThemeDto(writer: SerializationWriter, c
 export function serializeCourseLevel(writer: SerializationWriter, courseLevel: Partial<CourseLevel> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseLevel || isSerializingDerivedType) { return; }
     writer.writeObjectValue<Course>("course", courseLevel.course, serializeCourse);
-    writer.writeObjectValue("courseId", courseLevel.courseId);
-    writer.writeObjectValue("id", courseLevel.id);
-    writer.writeObjectValue("order", courseLevel.order);
-    writer.writeObjectValue("requiredExperiencePoints", courseLevel.requiredExperiencePoints);
+    writer.writeStringValue("courseId", courseLevel.courseId);
+    writer.writeStringValue("id", courseLevel.id);
+    writer.writeNumberValue("order", courseLevel.order);
+    writer.writeNumberValue("requiredExperiencePoints", courseLevel.requiredExperiencePoints);
     writer.writeStringValue("title", courseLevel.title);
     writer.writeAdditionalData(courseLevel.additionalData);
 }
@@ -11821,9 +9581,9 @@ export function serializeCourseLevel(writer: SerializationWriter, courseLevel: P
 // @ts-ignore
 export function serializeCourseLevelDto(writer: SerializationWriter, courseLevelDto: Partial<CourseLevelDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseLevelDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", courseLevelDto.id);
-    writer.writeObjectValue("order", courseLevelDto.order);
-    writer.writeObjectValue("requiredExperiencePoints", courseLevelDto.requiredExperiencePoints);
+    writer.writeStringValue("id", courseLevelDto.id);
+    writer.writeNumberValue("order", courseLevelDto.order);
+    writer.writeNumberValue("requiredExperiencePoints", courseLevelDto.requiredExperiencePoints);
     writer.writeStringValue("title", courseLevelDto.title);
     writer.writeAdditionalData(courseLevelDto.additionalData);
 }
@@ -11836,11 +9596,11 @@ export function serializeCourseLevelDto(writer: SerializationWriter, courseLevel
 // @ts-ignore
 export function serializeCourseSummaryDto(writer: SerializationWriter, courseSummaryDto: Partial<CourseSummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseSummaryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("blockCount", courseSummaryDto.blockCount);
+    writer.writeNumberValue("blockCount", courseSummaryDto.blockCount);
     writer.writeStringValue("description", courseSummaryDto.description);
-    writer.writeObjectValue("id", courseSummaryDto.id);
+    writer.writeStringValue("id", courseSummaryDto.id);
     writer.writeStringValue("name", courseSummaryDto.name);
-    writer.writeObjectValue("themeCount", courseSummaryDto.themeCount);
+    writer.writeNumberValue("themeCount", courseSummaryDto.themeCount);
     writer.writeDateValue("updatedAtUtc", courseSummaryDto.updatedAtUtc);
     writer.writeAdditionalData(courseSummaryDto.additionalData);
 }
@@ -11854,15 +9614,15 @@ export function serializeCourseSummaryDto(writer: SerializationWriter, courseSum
 export function serializeCourseTheme(writer: SerializationWriter, courseTheme: Partial<CourseTheme> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseTheme || isSerializingDerivedType) { return; }
     writer.writeObjectValue<CourseBranch>("branch", courseTheme.branch, serializeCourseBranch);
-    writer.writeObjectValue("branchId", courseTheme.branchId);
+    writer.writeStringValue("branchId", courseTheme.branchId);
     writer.writeCollectionOfObjectValues<CourseThemeDependency>("dependencies", courseTheme.dependencies, serializeCourseThemeDependency);
     writer.writeStringValue("description", courseTheme.description);
-    writer.writeObjectValue("experiencePointsReward", courseTheme.experiencePointsReward);
+    writer.writeNumberValue("experiencePointsReward", courseTheme.experiencePointsReward);
     writer.writeStringValue("homeworkContent", courseTheme.homeworkContent);
-    writer.writeObjectValue("id", courseTheme.id);
+    writer.writeStringValue("id", courseTheme.id);
     writer.writeStringValue("key", courseTheme.key);
     writer.writeStringValue("lessonContent", courseTheme.lessonContent);
-    writer.writeObjectValue("order", courseTheme.order);
+    writer.writeNumberValue("order", courseTheme.order);
     writer.writeCollectionOfObjectValues<CourseThemeDependency>("requiredForThemes", courseTheme.requiredForThemes, serializeCourseThemeDependency);
     writer.writeStringValue("title", courseTheme.title);
     writer.writeAdditionalData(courseTheme.additionalData);
@@ -11877,10 +9637,10 @@ export function serializeCourseTheme(writer: SerializationWriter, courseTheme: P
 export function serializeCourseThemeDependency(writer: SerializationWriter, courseThemeDependency: Partial<CourseThemeDependency> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!courseThemeDependency || isSerializingDerivedType) { return; }
     writer.writeObjectValue<CourseTheme>("dependsOnTheme", courseThemeDependency.dependsOnTheme, serializeCourseTheme);
-    writer.writeObjectValue("dependsOnThemeId", courseThemeDependency.dependsOnThemeId);
-    writer.writeObjectValue("id", courseThemeDependency.id);
+    writer.writeStringValue("dependsOnThemeId", courseThemeDependency.dependsOnThemeId);
+    writer.writeStringValue("id", courseThemeDependency.id);
     writer.writeObjectValue<CourseTheme>("theme", courseThemeDependency.theme, serializeCourseTheme);
-    writer.writeObjectValue("themeId", courseThemeDependency.themeId);
+    writer.writeStringValue("themeId", courseThemeDependency.themeId);
     writer.writeAdditionalData(courseThemeDependency.additionalData);
 }
 /**
@@ -11894,12 +9654,12 @@ export function serializeCourseThemeDto(writer: SerializationWriter, courseTheme
     if (!courseThemeDto || isSerializingDerivedType) { return; }
     writer.writeObjectValue("dependencyThemeIds", courseThemeDto.dependencyThemeIds);
     writer.writeStringValue("description", courseThemeDto.description);
-    writer.writeObjectValue("experiencePointsReward", courseThemeDto.experiencePointsReward);
+    writer.writeNumberValue("experiencePointsReward", courseThemeDto.experiencePointsReward);
     writer.writeStringValue("homeworkContent", courseThemeDto.homeworkContent);
-    writer.writeObjectValue("id", courseThemeDto.id);
+    writer.writeStringValue("id", courseThemeDto.id);
     writer.writeStringValue("key", courseThemeDto.key);
     writer.writeStringValue("lessonContent", courseThemeDto.lessonContent);
-    writer.writeObjectValue("order", courseThemeDto.order);
+    writer.writeNumberValue("order", courseThemeDto.order);
     writer.writeStringValue("title", courseThemeDto.title);
     writer.writeAdditionalData(courseThemeDto.additionalData);
 }
@@ -11912,83 +9672,17 @@ export function serializeCourseThemeDto(writer: SerializationWriter, courseTheme
 // @ts-ignore
 export function serializeCreateAppointmentRequest(writer: SerializationWriter, createAppointmentRequest: Partial<CreateAppointmentRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createAppointmentRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("clientId", createAppointmentRequest.clientId);
-    writer.writeObjectValue<CreateAppointmentRequest_courseThemeIdMember1 | Ulid>("courseThemeId", createAppointmentRequest.courseThemeId, serializeCreateAppointmentRequest_courseThemeId);
+    writer.writeStringValue("clientId", createAppointmentRequest.clientId);
+    writer.writeStringValue("courseThemeId", createAppointmentRequest.courseThemeId);
     writer.writeStringValue("lessonNotes", createAppointmentRequest.lessonNotes);
     writer.writeDateValue("patternEndDate", createAppointmentRequest.patternEndDate);
-    writer.writeObjectValue<CreateAppointmentRequest_providerIdMember1 | Ulid>("providerId", createAppointmentRequest.providerId, serializeCreateAppointmentRequest_providerId);
-    writer.writeObjectValue("recurrencePattern", createAppointmentRequest.recurrencePattern);
-    writer.writeObjectValue<CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid>("recurrenceTypeId", createAppointmentRequest.recurrenceTypeId, serializeCreateAppointmentRequest_recurrenceTypeId);
-    writer.writeObjectValue("serviceId", createAppointmentRequest.serviceId);
+    writer.writeStringValue("providerId", createAppointmentRequest.providerId);
+    writer.writeNumberValue("recurrencePattern", createAppointmentRequest.recurrencePattern);
+    writer.writeStringValue("recurrenceTypeId", createAppointmentRequest.recurrenceTypeId);
+    writer.writeStringValue("serviceId", createAppointmentRequest.serviceId);
     writer.writeDateValue("startDate", createAppointmentRequest.startDate);
     writer.writeStringValue("timezone", createAppointmentRequest.timezone);
     writer.writeAdditionalData(createAppointmentRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_courseThemeId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_courseThemeId(writer: SerializationWriter, createAppointmentRequest_courseThemeId: Partial<CreateAppointmentRequest_courseThemeIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateAppointmentRequest_courseThemeIdMember1(writer, createAppointmentRequest_courseThemeId as CreateAppointmentRequest_courseThemeIdMember1);
-    serializeUlid(writer, createAppointmentRequest_courseThemeId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_courseThemeIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_courseThemeIdMember1(writer: SerializationWriter, createAppointmentRequest_courseThemeIdMember1: Partial<CreateAppointmentRequest_courseThemeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createAppointmentRequest_courseThemeIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createAppointmentRequest_courseThemeIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_providerId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_providerId(writer: SerializationWriter, createAppointmentRequest_providerId: Partial<CreateAppointmentRequest_providerIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateAppointmentRequest_providerIdMember1(writer, createAppointmentRequest_providerId as CreateAppointmentRequest_providerIdMember1);
-    serializeUlid(writer, createAppointmentRequest_providerId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_providerIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_providerIdMember1(writer: SerializationWriter, createAppointmentRequest_providerIdMember1: Partial<CreateAppointmentRequest_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createAppointmentRequest_providerIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createAppointmentRequest_providerIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_recurrenceTypeId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_recurrenceTypeId(writer: SerializationWriter, createAppointmentRequest_recurrenceTypeId: Partial<CreateAppointmentRequest_recurrenceTypeIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateAppointmentRequest_recurrenceTypeIdMember1(writer, createAppointmentRequest_recurrenceTypeId as CreateAppointmentRequest_recurrenceTypeIdMember1);
-    serializeUlid(writer, createAppointmentRequest_recurrenceTypeId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateAppointmentRequest_recurrenceTypeIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateAppointmentRequest_recurrenceTypeIdMember1(writer: SerializationWriter, createAppointmentRequest_recurrenceTypeIdMember1: Partial<CreateAppointmentRequest_recurrenceTypeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createAppointmentRequest_recurrenceTypeIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createAppointmentRequest_recurrenceTypeIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12017,32 +9711,10 @@ export function serializeCreateClientRequest(writer: SerializationWriter, create
     writer.writeStringValue("lastName", createClientRequest.lastName);
     writer.writeStringValue("patronymic", createClientRequest.patronymic);
     writer.writeStringValue("phone", createClientRequest.phone);
-    writer.writeObjectValue<CreateClientRequest_sourceIdMember1 | Ulid>("sourceId", createClientRequest.sourceId, serializeCreateClientRequest_sourceId);
+    writer.writeStringValue("sourceId", createClientRequest.sourceId);
     writer.writeStringValue("telegram", createClientRequest.telegram);
     writer.writeStringValue("vk", createClientRequest.vk);
     writer.writeAdditionalData(createClientRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreateClientRequest_sourceId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateClientRequest_sourceId(writer: SerializationWriter, createClientRequest_sourceId: Partial<CreateClientRequest_sourceIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateClientRequest_sourceIdMember1(writer, createClientRequest_sourceId as CreateClientRequest_sourceIdMember1);
-    serializeUlid(writer, createClientRequest_sourceId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateClientRequest_sourceIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateClientRequest_sourceIdMember1(writer: SerializationWriter, createClientRequest_sourceIdMember1: Partial<CreateClientRequest_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createClientRequest_sourceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createClientRequest_sourceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12067,7 +9739,7 @@ export function serializeCreateCourseBlockRequest(writer: SerializationWriter, c
     if (!createCourseBlockRequest || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<CreateCourseBranchRequest>("branches", createCourseBlockRequest.branches, serializeCreateCourseBranchRequest);
     writer.writeStringValue("description", createCourseBlockRequest.description);
-    writer.writeObjectValue("order", createCourseBlockRequest.order);
+    writer.writeNumberValue("order", createCourseBlockRequest.order);
     writer.writeStringValue("title", createCourseBlockRequest.title);
     writer.writeAdditionalData(createCourseBlockRequest.additionalData);
 }
@@ -12081,7 +9753,7 @@ export function serializeCreateCourseBlockRequest(writer: SerializationWriter, c
 export function serializeCreateCourseBranchRequest(writer: SerializationWriter, createCourseBranchRequest: Partial<CreateCourseBranchRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createCourseBranchRequest || isSerializingDerivedType) { return; }
     writer.writeStringValue("description", createCourseBranchRequest.description);
-    writer.writeObjectValue("order", createCourseBranchRequest.order);
+    writer.writeNumberValue("order", createCourseBranchRequest.order);
     writer.writeCollectionOfObjectValues<CreateCourseThemeRequest>("themes", createCourseBranchRequest.themes, serializeCreateCourseThemeRequest);
     writer.writeStringValue("title", createCourseBranchRequest.title);
     writer.writeAdditionalData(createCourseBranchRequest.additionalData);
@@ -12095,8 +9767,8 @@ export function serializeCreateCourseBranchRequest(writer: SerializationWriter, 
 // @ts-ignore
 export function serializeCreateCourseEnrollmentRequest(writer: SerializationWriter, createCourseEnrollmentRequest: Partial<CreateCourseEnrollmentRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createCourseEnrollmentRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("clientId", createCourseEnrollmentRequest.clientId);
-    writer.writeObjectValue("courseId", createCourseEnrollmentRequest.courseId);
+    writer.writeStringValue("clientId", createCourseEnrollmentRequest.clientId);
+    writer.writeStringValue("courseId", createCourseEnrollmentRequest.courseId);
     writer.writeAdditionalData(createCourseEnrollmentRequest.additionalData);
 }
 /**
@@ -12108,8 +9780,8 @@ export function serializeCreateCourseEnrollmentRequest(writer: SerializationWrit
 // @ts-ignore
 export function serializeCreateCourseLevelRequest(writer: SerializationWriter, createCourseLevelRequest: Partial<CreateCourseLevelRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createCourseLevelRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("order", createCourseLevelRequest.order);
-    writer.writeObjectValue("requiredExperiencePoints", createCourseLevelRequest.requiredExperiencePoints);
+    writer.writeNumberValue("order", createCourseLevelRequest.order);
+    writer.writeNumberValue("requiredExperiencePoints", createCourseLevelRequest.requiredExperiencePoints);
     writer.writeStringValue("title", createCourseLevelRequest.title);
     writer.writeAdditionalData(createCourseLevelRequest.additionalData);
 }
@@ -12139,11 +9811,11 @@ export function serializeCreateCourseThemeRequest(writer: SerializationWriter, c
     if (!createCourseThemeRequest || isSerializingDerivedType) { return; }
     writer.writeCollectionOfPrimitiveValues<string>("dependencyKeys", createCourseThemeRequest.dependencyKeys);
     writer.writeStringValue("description", createCourseThemeRequest.description);
-    writer.writeObjectValue("experiencePointsReward", createCourseThemeRequest.experiencePointsReward);
+    writer.writeNumberValue("experiencePointsReward", createCourseThemeRequest.experiencePointsReward);
     writer.writeStringValue("homeworkContent", createCourseThemeRequest.homeworkContent);
     writer.writeStringValue("key", createCourseThemeRequest.key);
     writer.writeStringValue("lessonContent", createCourseThemeRequest.lessonContent);
-    writer.writeObjectValue("order", createCourseThemeRequest.order);
+    writer.writeNumberValue("order", createCourseThemeRequest.order);
     writer.writeStringValue("title", createCourseThemeRequest.title);
     writer.writeAdditionalData(createCourseThemeRequest.additionalData);
 }
@@ -12156,7 +9828,7 @@ export function serializeCreateCourseThemeRequest(writer: SerializationWriter, c
 // @ts-ignore
 export function serializeCreateCustomTaskRequest(writer: SerializationWriter, createCustomTaskRequest: Partial<CreateCustomTaskRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createCustomTaskRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<CreateCustomTaskRequest_clientIdMember1 | Ulid>("clientId", createCustomTaskRequest.clientId, serializeCreateCustomTaskRequest_clientId);
+    writer.writeStringValue("clientId", createCustomTaskRequest.clientId);
     writer.writeDateValue("dueAtUtc", createCustomTaskRequest.dueAtUtc);
     writer.writeStringValue("messageText", createCustomTaskRequest.messageText);
     writer.writeStringValue("phone", createCustomTaskRequest.phone);
@@ -12168,28 +9840,6 @@ export function serializeCreateCustomTaskRequest(writer: SerializationWriter, cr
 }
 /**
  * Serializes information the current object
- * @param CreateCustomTaskRequest_clientId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateCustomTaskRequest_clientId(writer: SerializationWriter, createCustomTaskRequest_clientId: Partial<CreateCustomTaskRequest_clientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateCustomTaskRequest_clientIdMember1(writer, createCustomTaskRequest_clientId as CreateCustomTaskRequest_clientIdMember1);
-    serializeUlid(writer, createCustomTaskRequest_clientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateCustomTaskRequest_clientIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateCustomTaskRequest_clientIdMember1(writer: SerializationWriter, createCustomTaskRequest_clientIdMember1: Partial<CreateCustomTaskRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createCustomTaskRequest_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createCustomTaskRequest_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
  * @param CreateEntityResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -12197,7 +9847,7 @@ export function serializeCreateCustomTaskRequest_clientIdMember1(writer: Seriali
 // @ts-ignore
 export function serializeCreateEntityResponse(writer: SerializationWriter, createEntityResponse: Partial<CreateEntityResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createEntityResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", createEntityResponse.id);
+    writer.writeStringValue("id", createEntityResponse.id);
     writer.writeAdditionalData(createEntityResponse.additionalData);
 }
 /**
@@ -12221,33 +9871,11 @@ export function serializeCreateExpenseCategoryRequest(writer: SerializationWrite
 // @ts-ignore
 export function serializeCreateExpenseRequest(writer: SerializationWriter, createExpenseRequest: Partial<CreateExpenseRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createExpenseRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", createExpenseRequest.amount);
-    writer.writeObjectValue<CreateExpenseRequest_categoryIdMember1 | Ulid>("categoryId", createExpenseRequest.categoryId, serializeCreateExpenseRequest_categoryId);
+    writer.writeNumberValue("amount", createExpenseRequest.amount);
+    writer.writeStringValue("categoryId", createExpenseRequest.categoryId);
     writer.writeDateValue("date", createExpenseRequest.date);
     writer.writeStringValue("description", createExpenseRequest.description);
     writer.writeAdditionalData(createExpenseRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreateExpenseRequest_categoryId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateExpenseRequest_categoryId(writer: SerializationWriter, createExpenseRequest_categoryId: Partial<CreateExpenseRequest_categoryIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreateExpenseRequest_categoryIdMember1(writer, createExpenseRequest_categoryId as CreateExpenseRequest_categoryIdMember1);
-    serializeUlid(writer, createExpenseRequest_categoryId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreateExpenseRequest_categoryIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreateExpenseRequest_categoryIdMember1(writer: SerializationWriter, createExpenseRequest_categoryIdMember1: Partial<CreateExpenseRequest_categoryIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createExpenseRequest_categoryIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createExpenseRequest_categoryIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12259,7 +9887,7 @@ export function serializeCreateExpenseRequest_categoryIdMember1(writer: Serializ
 export function serializeCreateInviteRequest(writer: SerializationWriter, createInviteRequest: Partial<CreateInviteRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createInviteRequest || isSerializingDerivedType) { return; }
     writer.writeStringValue("email", createInviteRequest.email);
-    writer.writeObjectValue("role", createInviteRequest.role);
+    writer.writeStringValue("role", createInviteRequest.role);
     writer.writeAdditionalData(createInviteRequest.additionalData);
 }
 /**
@@ -12295,34 +9923,12 @@ export function serializeCreatePasswordResetLinkResponse(writer: SerializationWr
 // @ts-ignore
 export function serializeCreatePaymentRequest(writer: SerializationWriter, createPaymentRequest: Partial<CreatePaymentRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createPaymentRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", createPaymentRequest.amount);
-    writer.writeObjectValue("clientId", createPaymentRequest.clientId);
+    writer.writeNumberValue("amount", createPaymentRequest.amount);
+    writer.writeStringValue("clientId", createPaymentRequest.clientId);
     writer.writeDateValue("date", createPaymentRequest.date);
     writer.writeStringValue("description", createPaymentRequest.description);
-    writer.writeObjectValue<CreatePaymentRequest_serviceIdMember1 | Ulid>("serviceId", createPaymentRequest.serviceId, serializeCreatePaymentRequest_serviceId);
+    writer.writeStringValue("serviceId", createPaymentRequest.serviceId);
     writer.writeAdditionalData(createPaymentRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param CreatePaymentRequest_serviceId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreatePaymentRequest_serviceId(writer: SerializationWriter, createPaymentRequest_serviceId: Partial<CreatePaymentRequest_serviceIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeCreatePaymentRequest_serviceIdMember1(writer, createPaymentRequest_serviceId as CreatePaymentRequest_serviceIdMember1);
-    serializeUlid(writer, createPaymentRequest_serviceId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param CreatePaymentRequest_serviceIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeCreatePaymentRequest_serviceIdMember1(writer: SerializationWriter, createPaymentRequest_serviceIdMember1: Partial<CreatePaymentRequest_serviceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!createPaymentRequest_serviceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(createPaymentRequest_serviceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12336,7 +9942,7 @@ export function serializeCreateServiceRequest(writer: SerializationWriter, creat
     writer.writeStringValue("description", createServiceRequest.description);
     writer.writeBooleanValue("isConsultation", createServiceRequest.isConsultation);
     writer.writeStringValue("name", createServiceRequest.name);
-    writer.writeObjectValue("price", createServiceRequest.price);
+    writer.writeNumberValue("price", createServiceRequest.price);
     writer.writeStringValue("publicName", createServiceRequest.publicName);
     writer.writeAdditionalData(createServiceRequest.additionalData);
 }
@@ -12364,7 +9970,7 @@ export function serializeDashboardAppointmentResponse(writer: SerializationWrite
     if (!dashboardAppointmentResponse || isSerializingDerivedType) { return; }
     writer.writeObjectValue<DashboardClientResponse>("client", dashboardAppointmentResponse.client, serializeDashboardClientResponse);
     writer.writeDateValue("endDate", dashboardAppointmentResponse.endDate);
-    writer.writeObjectValue("id", dashboardAppointmentResponse.id);
+    writer.writeStringValue("id", dashboardAppointmentResponse.id);
     writer.writeObjectValue<DashboardServiceResponse>("service", dashboardAppointmentResponse.service, serializeDashboardServiceResponse);
     writer.writeDateValue("startDate", dashboardAppointmentResponse.startDate);
     writer.writeStringValue("status", dashboardAppointmentResponse.status);
@@ -12395,7 +10001,7 @@ export function serializeDashboardClientResponse(writer: SerializationWriter, da
     if (!dashboardClientResponse || isSerializingDerivedType) { return; }
     writer.writeObjectValue<DashboardClientContactsResponse | DashboardClientResponse_contactsMember1>("contacts", dashboardClientResponse.contacts, serializeDashboardClientResponse_contacts);
     writer.writeStringValue("firstName", dashboardClientResponse.firstName);
-    writer.writeObjectValue("id", dashboardClientResponse.id);
+    writer.writeStringValue("id", dashboardClientResponse.id);
     writer.writeStringValue("lastName", dashboardClientResponse.lastName);
     writer.writeAdditionalData(dashboardClientResponse.additionalData);
 }
@@ -12431,7 +10037,7 @@ export function serializeDashboardClientResponse_contactsMember1(writer: Seriali
 export function serializeDashboardScheduleDayResponse(writer: SerializationWriter, dashboardScheduleDayResponse: Partial<DashboardScheduleDayResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!dashboardScheduleDayResponse || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<DashboardAppointmentResponse>("appointments", dashboardScheduleDayResponse.appointments, serializeDashboardAppointmentResponse);
-    writer.writeObjectValue("count", dashboardScheduleDayResponse.count);
+    writer.writeNumberValue("count", dashboardScheduleDayResponse.count);
     writer.writeDateOnlyValue("date", dashboardScheduleDayResponse.date);
     writer.writeAdditionalData(dashboardScheduleDayResponse.additionalData);
 }
@@ -12444,7 +10050,7 @@ export function serializeDashboardScheduleDayResponse(writer: SerializationWrite
 // @ts-ignore
 export function serializeDashboardServiceResponse(writer: SerializationWriter, dashboardServiceResponse: Partial<DashboardServiceResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!dashboardServiceResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", dashboardServiceResponse.id);
+    writer.writeStringValue("id", dashboardServiceResponse.id);
     writer.writeStringValue("name", dashboardServiceResponse.name);
     writer.writeAdditionalData(dashboardServiceResponse.additionalData);
 }
@@ -12457,80 +10063,14 @@ export function serializeDashboardServiceResponse(writer: SerializationWriter, d
 // @ts-ignore
 export function serializeDelayRecurringTaskRequest(writer: SerializationWriter, delayRecurringTaskRequest: Partial<DelayRecurringTaskRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!delayRecurringTaskRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<DelayRecurringTaskRequest_appointmentIdMember1 | Ulid>("appointmentId", delayRecurringTaskRequest.appointmentId, serializeDelayRecurringTaskRequest_appointmentId);
-    writer.writeObjectValue<DelayRecurringTaskRequest_clientIdMember1 | Ulid>("clientId", delayRecurringTaskRequest.clientId, serializeDelayRecurringTaskRequest_clientId);
+    writer.writeStringValue("appointmentId", delayRecurringTaskRequest.appointmentId);
+    writer.writeStringValue("clientId", delayRecurringTaskRequest.clientId);
     writer.writeDateValue("delayUntilUtc", delayRecurringTaskRequest.delayUntilUtc);
-    writer.writeObjectValue("ruleId", delayRecurringTaskRequest.ruleId);
-    writer.writeObjectValue<DelayRecurringTaskRequest_teacherIdMember1 | Ulid>("teacherId", delayRecurringTaskRequest.teacherId, serializeDelayRecurringTaskRequest_teacherId);
+    writer.writeStringValue("ruleId", delayRecurringTaskRequest.ruleId);
+    writer.writeStringValue("teacherId", delayRecurringTaskRequest.teacherId);
     writer.writeStringValue("timezone", delayRecurringTaskRequest.timezone);
     writer.writeStringValue("type", delayRecurringTaskRequest.type);
     writer.writeAdditionalData(delayRecurringTaskRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_appointmentId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_appointmentId(writer: SerializationWriter, delayRecurringTaskRequest_appointmentId: Partial<DelayRecurringTaskRequest_appointmentIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeDelayRecurringTaskRequest_appointmentIdMember1(writer, delayRecurringTaskRequest_appointmentId as DelayRecurringTaskRequest_appointmentIdMember1);
-    serializeUlid(writer, delayRecurringTaskRequest_appointmentId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_appointmentIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_appointmentIdMember1(writer: SerializationWriter, delayRecurringTaskRequest_appointmentIdMember1: Partial<DelayRecurringTaskRequest_appointmentIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!delayRecurringTaskRequest_appointmentIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(delayRecurringTaskRequest_appointmentIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_clientId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_clientId(writer: SerializationWriter, delayRecurringTaskRequest_clientId: Partial<DelayRecurringTaskRequest_clientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeDelayRecurringTaskRequest_clientIdMember1(writer, delayRecurringTaskRequest_clientId as DelayRecurringTaskRequest_clientIdMember1);
-    serializeUlid(writer, delayRecurringTaskRequest_clientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_clientIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_clientIdMember1(writer: SerializationWriter, delayRecurringTaskRequest_clientIdMember1: Partial<DelayRecurringTaskRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!delayRecurringTaskRequest_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(delayRecurringTaskRequest_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_teacherId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_teacherId(writer: SerializationWriter, delayRecurringTaskRequest_teacherId: Partial<DelayRecurringTaskRequest_teacherIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeDelayRecurringTaskRequest_teacherIdMember1(writer, delayRecurringTaskRequest_teacherId as DelayRecurringTaskRequest_teacherIdMember1);
-    serializeUlid(writer, delayRecurringTaskRequest_teacherId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param DelayRecurringTaskRequest_teacherIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeDelayRecurringTaskRequest_teacherIdMember1(writer: SerializationWriter, delayRecurringTaskRequest_teacherIdMember1: Partial<DelayRecurringTaskRequest_teacherIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!delayRecurringTaskRequest_teacherIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(delayRecurringTaskRequest_teacherIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12541,36 +10081,14 @@ export function serializeDelayRecurringTaskRequest_teacherIdMember1(writer: Seri
 // @ts-ignore
 export function serializeExpenseDto(writer: SerializationWriter, expenseDto: Partial<ExpenseDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!expenseDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", expenseDto.amount);
-    writer.writeObjectValue<ExpenseDto_categoryIdMember1 | Ulid>("categoryId", expenseDto.categoryId, serializeExpenseDto_categoryId);
+    writer.writeNumberValue("amount", expenseDto.amount);
+    writer.writeStringValue("categoryId", expenseDto.categoryId);
     writer.writeStringValue("categoryName", expenseDto.categoryName);
     writer.writeDateValue("date", expenseDto.date);
     writer.writeStringValue("description", expenseDto.description);
-    writer.writeObjectValue("id", expenseDto.id);
+    writer.writeStringValue("id", expenseDto.id);
     writer.writeObjectValue<ExpenseDto_lastActivityMember1 | RecordActivityDto>("lastActivity", expenseDto.lastActivity, serializeExpenseDto_lastActivity);
     writer.writeAdditionalData(expenseDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param ExpenseDto_categoryId The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeExpenseDto_categoryId(writer: SerializationWriter, expenseDto_categoryId: Partial<ExpenseDto_categoryIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeExpenseDto_categoryIdMember1(writer, expenseDto_categoryId as ExpenseDto_categoryIdMember1);
-    serializeUlid(writer, expenseDto_categoryId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param ExpenseDto_categoryIdMember1 The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeExpenseDto_categoryIdMember1(writer: SerializationWriter, expenseDto_categoryIdMember1: Partial<ExpenseDto_categoryIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!expenseDto_categoryIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(expenseDto_categoryIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12603,11 +10121,11 @@ export function serializeExpenseDto_lastActivityMember1(writer: SerializationWri
 // @ts-ignore
 export function serializeFinanceDebtorDto(writer: SerializationWriter, financeDebtorDto: Partial<FinanceDebtorDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!financeDebtorDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("clientId", financeDebtorDto.clientId);
+    writer.writeStringValue("clientId", financeDebtorDto.clientId);
     writer.writeStringValue("clientName", financeDebtorDto.clientName);
-    writer.writeObjectValue("debt", financeDebtorDto.debt);
-    writer.writeObjectValue("payments", financeDebtorDto.payments);
-    writer.writeObjectValue("revenue", financeDebtorDto.revenue);
+    writer.writeNumberValue("debt", financeDebtorDto.debt);
+    writer.writeNumberValue("payments", financeDebtorDto.payments);
+    writer.writeNumberValue("revenue", financeDebtorDto.revenue);
     writer.writeAdditionalData(financeDebtorDto.additionalData);
 }
 /**
@@ -12619,7 +10137,7 @@ export function serializeFinanceDebtorDto(writer: SerializationWriter, financeDe
 // @ts-ignore
 export function serializeFinanceExpenseCategoryDto(writer: SerializationWriter, financeExpenseCategoryDto: Partial<FinanceExpenseCategoryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!financeExpenseCategoryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", financeExpenseCategoryDto.amount);
+    writer.writeNumberValue("amount", financeExpenseCategoryDto.amount);
     writer.writeStringValue("categoryName", financeExpenseCategoryDto.categoryName);
     writer.writeAdditionalData(financeExpenseCategoryDto.additionalData);
 }
@@ -12649,14 +10167,14 @@ export function serializeFinanceReportResponse(writer: SerializationWriter, fina
 // @ts-ignore
 export function serializeFinanceReportSummaryDto(writer: SerializationWriter, financeReportSummaryDto: Partial<FinanceReportSummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!financeReportSummaryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("averageRevenuePerVisit", financeReportSummaryDto.averageRevenuePerVisit);
-    writer.writeObjectValue("expenses", financeReportSummaryDto.expenses);
-    writer.writeObjectValue("netProfit", financeReportSummaryDto.netProfit);
+    writer.writeNumberValue("averageRevenuePerVisit", financeReportSummaryDto.averageRevenuePerVisit);
+    writer.writeNumberValue("expenses", financeReportSummaryDto.expenses);
+    writer.writeNumberValue("netProfit", financeReportSummaryDto.netProfit);
     writer.writeBooleanValue("organizationOnlyFiguresAvailable", financeReportSummaryDto.organizationOnlyFiguresAvailable);
-    writer.writeObjectValue("outstandingDebt", financeReportSummaryDto.outstandingDebt);
-    writer.writeObjectValue("payments", financeReportSummaryDto.payments);
-    writer.writeObjectValue("revenue", financeReportSummaryDto.revenue);
-    writer.writeObjectValue("revenueAppointments", financeReportSummaryDto.revenueAppointments);
+    writer.writeNumberValue("outstandingDebt", financeReportSummaryDto.outstandingDebt);
+    writer.writeNumberValue("payments", financeReportSummaryDto.payments);
+    writer.writeNumberValue("revenue", financeReportSummaryDto.revenue);
+    writer.writeNumberValue("revenueAppointments", financeReportSummaryDto.revenueAppointments);
     writer.writeAdditionalData(financeReportSummaryDto.additionalData);
 }
 /**
@@ -12668,9 +10186,9 @@ export function serializeFinanceReportSummaryDto(writer: SerializationWriter, fi
 // @ts-ignore
 export function serializeFinanceServiceDto(writer: SerializationWriter, financeServiceDto: Partial<FinanceServiceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!financeServiceDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", financeServiceDto.appointments);
-    writer.writeObjectValue("revenue", financeServiceDto.revenue);
-    writer.writeObjectValue("serviceId", financeServiceDto.serviceId);
+    writer.writeNumberValue("appointments", financeServiceDto.appointments);
+    writer.writeNumberValue("revenue", financeServiceDto.revenue);
+    writer.writeStringValue("serviceId", financeServiceDto.serviceId);
     writer.writeStringValue("serviceName", financeServiceDto.serviceName);
     writer.writeAdditionalData(financeServiceDto.additionalData);
 }
@@ -12684,10 +10202,10 @@ export function serializeFinanceServiceDto(writer: SerializationWriter, financeS
 export function serializeFinanceTrendDto(writer: SerializationWriter, financeTrendDto: Partial<FinanceTrendDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!financeTrendDto || isSerializingDerivedType) { return; }
     writer.writeDateValue("endDate", financeTrendDto.endDate);
-    writer.writeObjectValue("expenses", financeTrendDto.expenses);
-    writer.writeObjectValue("netProfit", financeTrendDto.netProfit);
-    writer.writeObjectValue("payments", financeTrendDto.payments);
-    writer.writeObjectValue("revenue", financeTrendDto.revenue);
+    writer.writeNumberValue("expenses", financeTrendDto.expenses);
+    writer.writeNumberValue("netProfit", financeTrendDto.netProfit);
+    writer.writeNumberValue("payments", financeTrendDto.payments);
+    writer.writeNumberValue("revenue", financeTrendDto.revenue);
     writer.writeDateValue("startDate", financeTrendDto.startDate);
     writer.writeAdditionalData(financeTrendDto.additionalData);
 }
@@ -12720,7 +10238,7 @@ export function serializeGetAuditLogsDto(writer: SerializationWriter, getAuditLo
     writer.writeStringValue("details", getAuditLogsDto.details);
     writer.writeStringValue("entityId", getAuditLogsDto.entityId);
     writer.writeStringValue("entityType", getAuditLogsDto.entityType);
-    writer.writeObjectValue("id", getAuditLogsDto.id);
+    writer.writeStringValue("id", getAuditLogsDto.id);
     writer.writeStringValue("sourceIpAddress", getAuditLogsDto.sourceIpAddress);
     writer.writeAdditionalData(getAuditLogsDto.additionalData);
 }
@@ -12853,9 +10371,9 @@ export function serializeGetCoursesResponse(writer: SerializationWriter, getCour
 // @ts-ignore
 export function serializeGetDashboardStatsResponse(writer: SerializationWriter, getDashboardStatsResponse: Partial<GetDashboardStatsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getDashboardStatsResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("monthIncome", getDashboardStatsResponse.monthIncome);
+    writer.writeNumberValue("monthIncome", getDashboardStatsResponse.monthIncome);
     writer.writeObjectValue<GetDashboardStatsResponse_organizationMember1 | OrganizationDashboardResponse>("organization", getDashboardStatsResponse.organization, serializeGetDashboardStatsResponse_organization);
-    writer.writeObjectValue("personalClientsCount", getDashboardStatsResponse.personalClientsCount);
+    writer.writeNumberValue("personalClientsCount", getDashboardStatsResponse.personalClientsCount);
     writer.writeObjectValue<DashboardScheduleDayResponse>("today", getDashboardStatsResponse.today, serializeDashboardScheduleDayResponse);
     writer.writeObjectValue<DashboardScheduleDayResponse>("tomorrow", getDashboardStatsResponse.tomorrow, serializeDashboardScheduleDayResponse);
     writer.writeAdditionalData(getDashboardStatsResponse.additionalData);
@@ -12942,7 +10460,7 @@ export function serializeGetInviteCodeInformationResponse(writer: SerializationW
 export function serializeGetPaymentsClientDto(writer: SerializationWriter, getPaymentsClientDto: Partial<GetPaymentsClientDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getPaymentsClientDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("firstName", getPaymentsClientDto.firstName);
-    writer.writeObjectValue("id", getPaymentsClientDto.id);
+    writer.writeStringValue("id", getPaymentsClientDto.id);
     writer.writeStringValue("lastName", getPaymentsClientDto.lastName);
     writer.writeStringValue("patronymic", getPaymentsClientDto.patronymic);
     writer.writeAdditionalData(getPaymentsClientDto.additionalData);
@@ -12956,11 +10474,11 @@ export function serializeGetPaymentsClientDto(writer: SerializationWriter, getPa
 // @ts-ignore
 export function serializeGetPaymentsDto(writer: SerializationWriter, getPaymentsDto: Partial<GetPaymentsDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getPaymentsDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", getPaymentsDto.amount);
+    writer.writeNumberValue("amount", getPaymentsDto.amount);
     writer.writeObjectValue<GetPaymentsClientDto>("client", getPaymentsDto.client, serializeGetPaymentsClientDto);
     writer.writeDateValue("date", getPaymentsDto.date);
     writer.writeStringValue("description", getPaymentsDto.description);
-    writer.writeObjectValue("id", getPaymentsDto.id);
+    writer.writeStringValue("id", getPaymentsDto.id);
     writer.writeObjectValue<GetPaymentsDto_lastActivityMember1 | RecordActivityDto>("lastActivity", getPaymentsDto.lastActivity, serializeGetPaymentsDto_lastActivity);
     writer.writeObjectValue<GetPaymentsDto_serviceMember1 | GetPaymentsServiceDto>("service", getPaymentsDto.service, serializeGetPaymentsDto_service);
     writer.writeAdditionalData(getPaymentsDto.additionalData);
@@ -13032,7 +10550,7 @@ export function serializeGetPaymentsResponse(writer: SerializationWriter, getPay
 // @ts-ignore
 export function serializeGetPaymentsServiceDto(writer: SerializationWriter, getPaymentsServiceDto: Partial<GetPaymentsServiceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getPaymentsServiceDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", getPaymentsServiceDto.id);
+    writer.writeStringValue("id", getPaymentsServiceDto.id);
     writer.writeStringValue("name", getPaymentsServiceDto.name);
     writer.writeAdditionalData(getPaymentsServiceDto.additionalData);
 }
@@ -13094,7 +10612,7 @@ export function serializeGetUsersAvailabilityResponse(writer: SerializationWrite
 export function serializeGetUsersDto(writer: SerializationWriter, getUsersDto: Partial<GetUsersDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getUsersDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("firstName", getUsersDto.firstName);
-    writer.writeObjectValue("id", getUsersDto.id);
+    writer.writeStringValue("id", getUsersDto.id);
     writer.writeObjectValue<GetUsersDto_lastActivityMember1 | RecordActivityDto>("lastActivity", getUsersDto.lastActivity, serializeGetUsersDto_lastActivity);
     writer.writeStringValue("lastName", getUsersDto.lastName);
     writer.writeStringValue("phone", getUsersDto.phone);
@@ -13140,6 +10658,23 @@ export function serializeGetUsersResponse(writer: SerializationWriter, getUsersR
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param LoginAttemptResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeLoginAttemptResponse(writer: SerializationWriter, loginAttemptResponse: Partial<LoginAttemptResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!loginAttemptResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("accessToken", loginAttemptResponse.accessToken);
+    writer.writeBooleanValue("canUseOtp", loginAttemptResponse.canUseOtp);
+    writer.writeBooleanValue("canUseRecoveryCode", loginAttemptResponse.canUseRecoveryCode);
+    writer.writeStringValue("firstName", loginAttemptResponse.firstName);
+    writer.writeStringValue("lastName", loginAttemptResponse.lastName);
+    writer.writeBooleanValue("requiresTwoFactor", loginAttemptResponse.requiresTwoFactor);
+    writer.writeAdditionalData(loginAttemptResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param LoginRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13177,10 +10712,10 @@ export function serializeLookupClientDto(writer: SerializationWriter, lookupClie
     if (!lookupClientDto || isSerializingDerivedType) { return; }
     writer.writeObjectValue<ClientHistoryContactsDto | LookupClientDto_contactsMember1>("contacts", lookupClientDto.contacts, serializeLookupClientDto_contacts);
     writer.writeStringValue("firstName", lookupClientDto.firstName);
-    writer.writeObjectValue("id", lookupClientDto.id);
+    writer.writeStringValue("id", lookupClientDto.id);
     writer.writeStringValue("lastName", lookupClientDto.lastName);
     writer.writeStringValue("patronymic", lookupClientDto.patronymic);
-    writer.writeObjectValue<LookupClientDto_sourceIdMember1 | Ulid>("sourceId", lookupClientDto.sourceId, serializeLookupClientDto_sourceId);
+    writer.writeStringValue("sourceId", lookupClientDto.sourceId);
     writer.writeStringValue("sourceName", lookupClientDto.sourceName);
     writer.writeAdditionalData(lookupClientDto.additionalData);
 }
@@ -13209,28 +10744,6 @@ export function serializeLookupClientDto_contactsMember1(writer: SerializationWr
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param LookupClientDto_sourceId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeLookupClientDto_sourceId(writer: SerializationWriter, lookupClientDto_sourceId: Partial<LookupClientDto_sourceIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeLookupClientDto_sourceIdMember1(writer, lookupClientDto_sourceId as LookupClientDto_sourceIdMember1);
-    serializeUlid(writer, lookupClientDto_sourceId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param LookupClientDto_sourceIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeLookupClientDto_sourceIdMember1(writer: SerializationWriter, lookupClientDto_sourceIdMember1: Partial<LookupClientDto_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!lookupClientDto_sourceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(lookupClientDto_sourceIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param LookupClientsResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13250,7 +10763,7 @@ export function serializeLookupClientsResponse(writer: SerializationWriter, look
 export function serializeLookupRecurrenceTypeDto(writer: SerializationWriter, lookupRecurrenceTypeDto: Partial<LookupRecurrenceTypeDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!lookupRecurrenceTypeDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("displayName", lookupRecurrenceTypeDto.displayName);
-    writer.writeObjectValue("id", lookupRecurrenceTypeDto.id);
+    writer.writeStringValue("id", lookupRecurrenceTypeDto.id);
     writer.writeStringValue("key", lookupRecurrenceTypeDto.key);
     writer.writeAdditionalData(lookupRecurrenceTypeDto.additionalData);
 }
@@ -13276,7 +10789,7 @@ export function serializeLookupRecurrenceTypesResponse(writer: SerializationWrit
 export function serializeLookupRolesDto(writer: SerializationWriter, lookupRolesDto: Partial<LookupRolesDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!lookupRolesDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("displayName", lookupRolesDto.displayName);
-    writer.writeObjectValue("id", lookupRolesDto.id);
+    writer.writeStringValue("id", lookupRolesDto.id);
     writer.writeAdditionalData(lookupRolesDto.additionalData);
 }
 /**
@@ -13300,9 +10813,9 @@ export function serializeLookupRolesResponse(writer: SerializationWriter, lookup
 // @ts-ignore
 export function serializeLookupServicesDto(writer: SerializationWriter, lookupServicesDto: Partial<LookupServicesDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!lookupServicesDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", lookupServicesDto.id);
+    writer.writeStringValue("id", lookupServicesDto.id);
     writer.writeStringValue("name", lookupServicesDto.name);
-    writer.writeObjectValue("price", lookupServicesDto.price);
+    writer.writeNumberValue("price", lookupServicesDto.price);
     writer.writeAdditionalData(lookupServicesDto.additionalData);
 }
 /**
@@ -13326,10 +10839,10 @@ export function serializeLookupServicesResponse(writer: SerializationWriter, loo
 // @ts-ignore
 export function serializeMeResponse(writer: SerializationWriter, meResponse: Partial<MeResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!meResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("balance", meResponse.balance);
+    writer.writeNumberValue("balance", meResponse.balance);
     writer.writeStringValue("email", meResponse.email);
     writer.writeStringValue("firstName", meResponse.firstName);
-    writer.writeObjectValue("id", meResponse.id);
+    writer.writeStringValue("id", meResponse.id);
     writer.writeBooleanValue("isAdmin", meResponse.isAdmin);
     writer.writeBooleanValue("isClientPortal", meResponse.isClientPortal);
     writer.writeBooleanValue("isSuperuser", meResponse.isSuperuser);
@@ -13337,7 +10850,7 @@ export function serializeMeResponse(writer: SerializationWriter, meResponse: Par
     writer.writeBooleanValue("isTwoFactorRequired", meResponse.isTwoFactorRequired);
     writer.writeObjectValue<MeResponse_lastActivityMember1 | RecordActivityDto>("lastActivity", meResponse.lastActivity, serializeMeResponse_lastActivity);
     writer.writeStringValue("lastName", meResponse.lastName);
-    writer.writeObjectValue<MeResponse_linkedClientIdMember1 | Ulid>("linkedClientId", meResponse.linkedClientId, serializeMeResponse_linkedClientId);
+    writer.writeStringValue("linkedClientId", meResponse.linkedClientId);
     writer.writeStringValue("phone", meResponse.phone);
     writer.writeStringValue("roleDisplayName", meResponse.roleDisplayName);
     writer.writeStringValue("telegram", meResponse.telegram);
@@ -13369,28 +10882,6 @@ export function serializeMeResponse_lastActivityMember1(writer: SerializationWri
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param MeResponse_linkedClientId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeMeResponse_linkedClientId(writer: SerializationWriter, meResponse_linkedClientId: Partial<MeResponse_linkedClientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeMeResponse_linkedClientIdMember1(writer, meResponse_linkedClientId as MeResponse_linkedClientIdMember1);
-    serializeUlid(writer, meResponse_linkedClientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param MeResponse_linkedClientIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeMeResponse_linkedClientIdMember1(writer: SerializationWriter, meResponse_linkedClientIdMember1: Partial<MeResponse_linkedClientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!meResponse_linkedClientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(meResponse_linkedClientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param MoneyListSummaryDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -13398,9 +10889,9 @@ export function serializeMeResponse_linkedClientIdMember1(writer: SerializationW
 export function serializeMoneyListSummaryDto(writer: SerializationWriter, moneyListSummaryDto: Partial<MoneyListSummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!moneyListSummaryDto || isSerializingDerivedType) { return; }
     writer.writeDateValue("firstItemAtUtc", moneyListSummaryDto.firstItemAtUtc);
-    writer.writeObjectValue("itemsCount", moneyListSummaryDto.itemsCount);
+    writer.writeNumberValue("itemsCount", moneyListSummaryDto.itemsCount);
     writer.writeDateValue("lastItemAtUtc", moneyListSummaryDto.lastItemAtUtc);
-    writer.writeObjectValue("totalAmount", moneyListSummaryDto.totalAmount);
+    writer.writeNumberValue("totalAmount", moneyListSummaryDto.totalAmount);
     writer.writeAdditionalData(moneyListSummaryDto.additionalData);
 }
 /**
@@ -13415,7 +10906,7 @@ export function serializeOnboardingStateResponse(writer: SerializationWriter, on
     writer.writeDateValue("completedAtUtc", onboardingStateResponse.completedAtUtc);
     writer.writeStringValue("currentPath", onboardingStateResponse.currentPath);
     writer.writeStringValue("currentStep", onboardingStateResponse.currentStep);
-    writer.writeObjectValue("definitionVersion", onboardingStateResponse.definitionVersion);
+    writer.writeNumberValue("definitionVersion", onboardingStateResponse.definitionVersion);
     writer.writeBooleanValue("shouldLaunch", onboardingStateResponse.shouldLaunch);
     writer.writeStringValue("status", onboardingStateResponse.status);
     writer.writeDateValue("updatedAtUtc", onboardingStateResponse.updatedAtUtc);
@@ -13430,15 +10921,15 @@ export function serializeOnboardingStateResponse(writer: SerializationWriter, on
 // @ts-ignore
 export function serializeOrganizationDashboardResponse(writer: SerializationWriter, organizationDashboardResponse: Partial<OrganizationDashboardResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!organizationDashboardResponse || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointmentsToday", organizationDashboardResponse.appointmentsToday);
-    writer.writeObjectValue("appointmentsTomorrow", organizationDashboardResponse.appointmentsTomorrow);
-    writer.writeObjectValue("debtorsCount", organizationDashboardResponse.debtorsCount);
-    writer.writeObjectValue("monthExpenses", organizationDashboardResponse.monthExpenses);
-    writer.writeObjectValue("monthIncome", organizationDashboardResponse.monthIncome);
-    writer.writeObjectValue("monthNet", organizationDashboardResponse.monthNet);
-    writer.writeObjectValue("totalClients", organizationDashboardResponse.totalClients);
-    writer.writeObjectValue("totalDebt", organizationDashboardResponse.totalDebt);
-    writer.writeObjectValue("totalPositiveBalance", organizationDashboardResponse.totalPositiveBalance);
+    writer.writeNumberValue("appointmentsToday", organizationDashboardResponse.appointmentsToday);
+    writer.writeNumberValue("appointmentsTomorrow", organizationDashboardResponse.appointmentsTomorrow);
+    writer.writeNumberValue("debtorsCount", organizationDashboardResponse.debtorsCount);
+    writer.writeNumberValue("monthExpenses", organizationDashboardResponse.monthExpenses);
+    writer.writeNumberValue("monthIncome", organizationDashboardResponse.monthIncome);
+    writer.writeNumberValue("monthNet", organizationDashboardResponse.monthNet);
+    writer.writeNumberValue("totalClients", organizationDashboardResponse.totalClients);
+    writer.writeNumberValue("totalDebt", organizationDashboardResponse.totalDebt);
+    writer.writeNumberValue("totalPositiveBalance", organizationDashboardResponse.totalPositiveBalance);
     writer.writeAdditionalData(organizationDashboardResponse.additionalData);
 }
 /**
@@ -13452,9 +10943,9 @@ export function serializePageMetadata(writer: SerializationWriter, pageMetadata:
     if (!pageMetadata || isSerializingDerivedType) { return; }
     writer.writeBooleanValue("hasNextPage", pageMetadata.hasNextPage);
     writer.writeBooleanValue("hasPrevPage", pageMetadata.hasPrevPage);
-    writer.writeObjectValue("page", pageMetadata.page);
-    writer.writeObjectValue("pageSize", pageMetadata.pageSize);
-    writer.writeObjectValue("total", pageMetadata.total);
+    writer.writeNumberValue("page", pageMetadata.page);
+    writer.writeNumberValue("pageSize", pageMetadata.pageSize);
+    writer.writeNumberValue("total", pageMetadata.total);
     writer.writeAdditionalData(pageMetadata.additionalData);
 }
 /**
@@ -13511,7 +11002,7 @@ export function serializeRecordActivityDto(writer: SerializationWriter, recordAc
     writer.writeStringValue("category", recordActivityDto.category);
     writer.writeDateValue("createdAtUtc", recordActivityDto.createdAtUtc);
     writer.writeStringValue("details", recordActivityDto.details);
-    writer.writeObjectValue("id", recordActivityDto.id);
+    writer.writeStringValue("id", recordActivityDto.id);
     writer.writeStringValue("sourceIpAddress", recordActivityDto.sourceIpAddress);
     writer.writeAdditionalData(recordActivityDto.additionalData);
 }
@@ -13578,7 +11069,7 @@ export function serializeRecoveryCodesResponse(writer: SerializationWriter, reco
 export function serializeRecurrenceType(writer: SerializationWriter, recurrenceType: Partial<RecurrenceType> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!recurrenceType || isSerializingDerivedType) { return; }
     writer.writeStringValue("displayName", recurrenceType.displayName);
-    writer.writeObjectValue("id", recurrenceType.id);
+    writer.writeStringValue("id", recurrenceType.id);
     writer.writeNumberValue("type", recurrenceType.type);
     writer.writeAdditionalData(recurrenceType.additionalData);
 }
@@ -13603,9 +11094,9 @@ export function serializeRecurringTaskActionResponse(writer: SerializationWriter
 // @ts-ignore
 export function serializeRecurringTaskDto(writer: SerializationWriter, recurringTaskDto: Partial<RecurringTaskDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!recurringTaskDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<RecurringTaskDto_appointmentIdMember1 | Ulid>("appointmentId", recurringTaskDto.appointmentId, serializeRecurringTaskDto_appointmentId);
+    writer.writeStringValue("appointmentId", recurringTaskDto.appointmentId);
     writer.writeDateOnlyValue("businessDate", recurringTaskDto.businessDate);
-    writer.writeObjectValue<RecurringTaskDto_clientIdMember1 | Ulid>("clientId", recurringTaskDto.clientId, serializeRecurringTaskDto_clientId);
+    writer.writeStringValue("clientId", recurringTaskDto.clientId);
     writer.writeStringValue("deduplicationKey", recurringTaskDto.deduplicationKey);
     writer.writeDateValue("delayedUntilUtc", recurringTaskDto.delayedUntilUtc);
     writer.writeStringValue("phone", recurringTaskDto.phone);
@@ -13613,79 +11104,13 @@ export function serializeRecurringTaskDto(writer: SerializationWriter, recurring
     writer.writeStringValue("recipientType", recurringTaskDto.recipientType);
     writer.writeStringValue("relatedPersonDisplayName", recurringTaskDto.relatedPersonDisplayName);
     writer.writeDateValue("relevantAtUtc", recurringTaskDto.relevantAtUtc);
-    writer.writeObjectValue("ruleId", recurringTaskDto.ruleId);
-    writer.writeObjectValue<RecurringTaskDto_teacherIdMember1 | Ulid>("teacherId", recurringTaskDto.teacherId, serializeRecurringTaskDto_teacherId);
+    writer.writeStringValue("ruleId", recurringTaskDto.ruleId);
+    writer.writeStringValue("teacherId", recurringTaskDto.teacherId);
     writer.writeStringValue("telegram", recurringTaskDto.telegram);
     writer.writeStringValue("title", recurringTaskDto.title);
     writer.writeStringValue("type", recurringTaskDto.type);
     writer.writeStringValue("vk", recurringTaskDto.vk);
     writer.writeAdditionalData(recurringTaskDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_appointmentId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_appointmentId(writer: SerializationWriter, recurringTaskDto_appointmentId: Partial<RecurringTaskDto_appointmentIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeRecurringTaskDto_appointmentIdMember1(writer, recurringTaskDto_appointmentId as RecurringTaskDto_appointmentIdMember1);
-    serializeUlid(writer, recurringTaskDto_appointmentId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_appointmentIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_appointmentIdMember1(writer: SerializationWriter, recurringTaskDto_appointmentIdMember1: Partial<RecurringTaskDto_appointmentIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!recurringTaskDto_appointmentIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(recurringTaskDto_appointmentIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_clientId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_clientId(writer: SerializationWriter, recurringTaskDto_clientId: Partial<RecurringTaskDto_clientIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeRecurringTaskDto_clientIdMember1(writer, recurringTaskDto_clientId as RecurringTaskDto_clientIdMember1);
-    serializeUlid(writer, recurringTaskDto_clientId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_clientIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_clientIdMember1(writer: SerializationWriter, recurringTaskDto_clientIdMember1: Partial<RecurringTaskDto_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!recurringTaskDto_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(recurringTaskDto_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_teacherId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_teacherId(writer: SerializationWriter, recurringTaskDto_teacherId: Partial<RecurringTaskDto_teacherIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeRecurringTaskDto_teacherIdMember1(writer, recurringTaskDto_teacherId as RecurringTaskDto_teacherIdMember1);
-    serializeUlid(writer, recurringTaskDto_teacherId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RecurringTaskDto_teacherIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRecurringTaskDto_teacherIdMember1(writer: SerializationWriter, recurringTaskDto_teacherIdMember1: Partial<RecurringTaskDto_teacherIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!recurringTaskDto_teacherIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(recurringTaskDto_teacherIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -13696,13 +11121,13 @@ export function serializeRecurringTaskDto_teacherIdMember1(writer: Serialization
 // @ts-ignore
 export function serializeRecurringTaskRuleDto(writer: SerializationWriter, recurringTaskRuleDto: Partial<RecurringTaskRuleDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!recurringTaskRuleDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("cooldownDays", recurringTaskRuleDto.cooldownDays);
-    writer.writeObjectValue("id", recurringTaskRuleDto.id);
+    writer.writeNumberValue("cooldownDays", recurringTaskRuleDto.cooldownDays);
+    writer.writeStringValue("id", recurringTaskRuleDto.id);
     writer.writeBooleanValue("isEnabled", recurringTaskRuleDto.isEnabled);
     writer.writeObjectValue<RecordActivityDto | RecurringTaskRuleDto_lastActivityMember1>("lastActivity", recurringTaskRuleDto.lastActivity, serializeRecurringTaskRuleDto_lastActivity);
     writer.writeStringValue("messageTemplate", recurringTaskRuleDto.messageTemplate);
     writer.writeStringValue("name", recurringTaskRuleDto.name);
-    writer.writeObjectValue("offsetMinutes", recurringTaskRuleDto.offsetMinutes);
+    writer.writeNumberValue("offsetMinutes", recurringTaskRuleDto.offsetMinutes);
     writer.writeStringValue("type", recurringTaskRuleDto.type);
     writer.writeAdditionalData(recurringTaskRuleDto.additionalData);
 }
@@ -13737,7 +11162,7 @@ export function serializeRecurringTaskRuleDto_lastActivityMember1(writer: Serial
 // @ts-ignore
 export function serializeReferenceBookItemDto(writer: SerializationWriter, referenceBookItemDto: Partial<ReferenceBookItemDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!referenceBookItemDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("id", referenceBookItemDto.id);
+    writer.writeStringValue("id", referenceBookItemDto.id);
     writer.writeObjectValue<RecordActivityDto | ReferenceBookItemDto_lastActivityMember1>("lastActivity", referenceBookItemDto.lastActivity, serializeReferenceBookItemDto_lastActivity);
     writer.writeStringValue("name", referenceBookItemDto.name);
     writer.writeAdditionalData(referenceBookItemDto.additionalData);
@@ -13763,18 +11188,6 @@ export function serializeReferenceBookItemDto_lastActivity(writer: Serialization
 export function serializeReferenceBookItemDto_lastActivityMember1(writer: SerializationWriter, referenceBookItemDto_lastActivityMember1: Partial<ReferenceBookItemDto_lastActivityMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!referenceBookItemDto_lastActivityMember1 || isSerializingDerivedType) { return; }
     writer.writeAdditionalData(referenceBookItemDto_lastActivityMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param RefreshRequest The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeRefreshRequest(writer: SerializationWriter, refreshRequest: Partial<RefreshRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!refreshRequest || isSerializingDerivedType) { return; }
-    writer.writeStringValue("refreshToken", refreshRequest.refreshToken);
-    writer.writeAdditionalData(refreshRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -13817,34 +11230,12 @@ export function serializeReportContextDto(writer: SerializationWriter, reportCon
     if (!reportContextDto || isSerializingDerivedType) { return; }
     writer.writeDateValue("endDate", reportContextDto.endDate);
     writer.writeStringValue("groupBy", reportContextDto.groupBy);
-    writer.writeObjectValue<ReportContextDto_providerIdMember1 | Ulid>("providerId", reportContextDto.providerId, serializeReportContextDto_providerId);
+    writer.writeStringValue("providerId", reportContextDto.providerId);
     writer.writeCollectionOfObjectValues<ReportProviderDto>("providers", reportContextDto.providers, serializeReportProviderDto);
     writer.writeStringValue("scopeLabel", reportContextDto.scopeLabel);
     writer.writeDateValue("startDate", reportContextDto.startDate);
     writer.writeStringValue("timezone", reportContextDto.timezone);
     writer.writeAdditionalData(reportContextDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ReportContextDto_providerId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeReportContextDto_providerId(writer: SerializationWriter, reportContextDto_providerId: Partial<ReportContextDto_providerIdMember1 | Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeReportContextDto_providerIdMember1(writer, reportContextDto_providerId as ReportContextDto_providerIdMember1);
-    serializeUlid(writer, reportContextDto_providerId as Ulid);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param ReportContextDto_providerIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeReportContextDto_providerIdMember1(writer: SerializationWriter, reportContextDto_providerIdMember1: Partial<ReportContextDto_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!reportContextDto_providerIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(reportContextDto_providerIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -13856,7 +11247,7 @@ export function serializeReportContextDto_providerIdMember1(writer: Serializatio
 export function serializeReportProviderDto(writer: SerializationWriter, reportProviderDto: Partial<ReportProviderDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!reportProviderDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("displayName", reportProviderDto.displayName);
-    writer.writeObjectValue("id", reportProviderDto.id);
+    writer.writeStringValue("id", reportProviderDto.id);
     writer.writeAdditionalData(reportProviderDto.additionalData);
 }
 /**
@@ -13884,7 +11275,7 @@ export function serializeResetPasswordRequest(writer: SerializationWriter, reset
 export function serializeRole(writer: SerializationWriter, role: Partial<Role> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!role || isSerializingDerivedType) { return; }
     writer.writeStringValue("displayName", role.displayName);
-    writer.writeObjectValue("id", role.id);
+    writer.writeStringValue("id", role.id);
     writer.writeNumberValue("roleName", role.roleName);
     writer.writeAdditionalData(role.additionalData);
 }
@@ -13913,7 +11304,7 @@ export function serializeSavedClientPortalIdentityResponse(writer: Serialization
 export function serializeService(writer: SerializationWriter, service: Partial<Service> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!service || isSerializingDerivedType) { return; }
     writer.writeStringValue("description", service.description);
-    writer.writeObjectValue("id", service.id);
+    writer.writeStringValue("id", service.id);
     writer.writeBooleanValue("isConsultation", service.isConsultation);
     writer.writeStringValue("name", service.name);
     writer.writeStringValue("publicName", service.publicName);
@@ -13929,11 +11320,11 @@ export function serializeService(writer: SerializationWriter, service: Partial<S
 export function serializeServiceWithCurrentPriceDto(writer: SerializationWriter, serviceWithCurrentPriceDto: Partial<ServiceWithCurrentPriceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!serviceWithCurrentPriceDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("description", serviceWithCurrentPriceDto.description);
-    writer.writeObjectValue("id", serviceWithCurrentPriceDto.id);
+    writer.writeStringValue("id", serviceWithCurrentPriceDto.id);
     writer.writeBooleanValue("isConsultation", serviceWithCurrentPriceDto.isConsultation);
     writer.writeObjectValue<RecordActivityDto | ServiceWithCurrentPriceDto_lastActivityMember1>("lastActivity", serviceWithCurrentPriceDto.lastActivity, serializeServiceWithCurrentPriceDto_lastActivity);
     writer.writeStringValue("name", serviceWithCurrentPriceDto.name);
-    writer.writeObjectValue("price", serviceWithCurrentPriceDto.price);
+    writer.writeNumberValue("price", serviceWithCurrentPriceDto.price);
     writer.writeStringValue("publicName", serviceWithCurrentPriceDto.publicName);
     writer.writeAdditionalData(serviceWithCurrentPriceDto.additionalData);
 }
@@ -13969,7 +11360,7 @@ export function serializeServiceWithCurrentPriceDto_lastActivityMember1(writer: 
 export function serializeSessionDto(writer: SerializationWriter, sessionDto: Partial<SessionDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!sessionDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("deviceInfo", sessionDto.deviceInfo);
-    writer.writeObjectValue("id", sessionDto.id);
+    writer.writeStringValue("id", sessionDto.id);
     writer.writeBooleanValue("isCurrent", sessionDto.isCurrent);
     writer.writeDateValue("lastSeenAtUtc", sessionDto.lastSeenAtUtc);
     writer.writeAdditionalData(sessionDto.additionalData);
@@ -14014,170 +11405,27 @@ export function serializeSetup2FaResponse(writer: SerializationWriter, setup2FaR
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param Ulid The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUlid(writer: SerializationWriter, ulid: Partial<Ulid> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!ulid || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(ulid.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateAppointmentRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
 // @ts-ignore
 export function serializeUpdateAppointmentRequest(writer: SerializationWriter, updateAppointmentRequest: Partial<UpdateAppointmentRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateAppointmentRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_clientIdMember1>("clientId", updateAppointmentRequest.clientId, serializeUpdateAppointmentRequest_clientId);
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_courseThemeIdMember1>("courseThemeId", updateAppointmentRequest.courseThemeId, serializeUpdateAppointmentRequest_courseThemeId);
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_expectedActivityIdMember1>("expectedActivityId", updateAppointmentRequest.expectedActivityId, serializeUpdateAppointmentRequest_expectedActivityId);
+    writer.writeStringValue("clientId", updateAppointmentRequest.clientId);
+    writer.writeStringValue("courseThemeId", updateAppointmentRequest.courseThemeId);
+    writer.writeStringValue("expectedActivityId", updateAppointmentRequest.expectedActivityId);
     writer.writeBooleanValue("hasCourseThemeSelection", updateAppointmentRequest.hasCourseThemeSelection);
     writer.writeBooleanValue("hasLessonNotes", updateAppointmentRequest.hasLessonNotes);
     writer.writeStringValue("lessonNotes", updateAppointmentRequest.lessonNotes);
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_providerIdMember1>("providerId", updateAppointmentRequest.providerId, serializeUpdateAppointmentRequest_providerId);
-    writer.writeObjectValue("recurrencePattern", updateAppointmentRequest.recurrencePattern);
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1>("recurrenceTypeId", updateAppointmentRequest.recurrenceTypeId, serializeUpdateAppointmentRequest_recurrenceTypeId);
+    writer.writeStringValue("providerId", updateAppointmentRequest.providerId);
+    writer.writeNumberValue("recurrencePattern", updateAppointmentRequest.recurrencePattern);
+    writer.writeStringValue("recurrenceTypeId", updateAppointmentRequest.recurrenceTypeId);
     writer.writeStringValue("scope", updateAppointmentRequest.scope);
-    writer.writeObjectValue<Ulid | UpdateAppointmentRequest_serviceIdMember1>("serviceId", updateAppointmentRequest.serviceId, serializeUpdateAppointmentRequest_serviceId);
+    writer.writeStringValue("serviceId", updateAppointmentRequest.serviceId);
     writer.writeDateValue("startDate", updateAppointmentRequest.startDate);
     writer.writeStringValue("status", updateAppointmentRequest.status);
     writer.writeStringValue("timezone", updateAppointmentRequest.timezone);
     writer.writeAdditionalData(updateAppointmentRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_clientId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_clientId(writer: SerializationWriter, updateAppointmentRequest_clientId: Partial<Ulid | UpdateAppointmentRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_clientId as Ulid);
-    serializeUpdateAppointmentRequest_clientIdMember1(writer, updateAppointmentRequest_clientId as UpdateAppointmentRequest_clientIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_clientIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_clientIdMember1(writer: SerializationWriter, updateAppointmentRequest_clientIdMember1: Partial<UpdateAppointmentRequest_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_clientIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_courseThemeId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_courseThemeId(writer: SerializationWriter, updateAppointmentRequest_courseThemeId: Partial<Ulid | UpdateAppointmentRequest_courseThemeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_courseThemeId as Ulid);
-    serializeUpdateAppointmentRequest_courseThemeIdMember1(writer, updateAppointmentRequest_courseThemeId as UpdateAppointmentRequest_courseThemeIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_courseThemeIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_courseThemeIdMember1(writer: SerializationWriter, updateAppointmentRequest_courseThemeIdMember1: Partial<UpdateAppointmentRequest_courseThemeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_courseThemeIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_courseThemeIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_expectedActivityId(writer: SerializationWriter, updateAppointmentRequest_expectedActivityId: Partial<Ulid | UpdateAppointmentRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_expectedActivityId as Ulid);
-    serializeUpdateAppointmentRequest_expectedActivityIdMember1(writer, updateAppointmentRequest_expectedActivityId as UpdateAppointmentRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_expectedActivityIdMember1(writer: SerializationWriter, updateAppointmentRequest_expectedActivityIdMember1: Partial<UpdateAppointmentRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_expectedActivityIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_providerId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_providerId(writer: SerializationWriter, updateAppointmentRequest_providerId: Partial<Ulid | UpdateAppointmentRequest_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_providerId as Ulid);
-    serializeUpdateAppointmentRequest_providerIdMember1(writer, updateAppointmentRequest_providerId as UpdateAppointmentRequest_providerIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_providerIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_providerIdMember1(writer: SerializationWriter, updateAppointmentRequest_providerIdMember1: Partial<UpdateAppointmentRequest_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_providerIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_providerIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_recurrenceTypeId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_recurrenceTypeId(writer: SerializationWriter, updateAppointmentRequest_recurrenceTypeId: Partial<Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_recurrenceTypeId as Ulid);
-    serializeUpdateAppointmentRequest_recurrenceTypeIdMember1(writer, updateAppointmentRequest_recurrenceTypeId as UpdateAppointmentRequest_recurrenceTypeIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_recurrenceTypeIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_recurrenceTypeIdMember1(writer: SerializationWriter, updateAppointmentRequest_recurrenceTypeIdMember1: Partial<UpdateAppointmentRequest_recurrenceTypeIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_recurrenceTypeIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_recurrenceTypeIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_serviceId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_serviceId(writer: SerializationWriter, updateAppointmentRequest_serviceId: Partial<Ulid | UpdateAppointmentRequest_serviceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateAppointmentRequest_serviceId as Ulid);
-    serializeUpdateAppointmentRequest_serviceIdMember1(writer, updateAppointmentRequest_serviceId as UpdateAppointmentRequest_serviceIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateAppointmentRequest_serviceIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateAppointmentRequest_serviceIdMember1(writer: SerializationWriter, updateAppointmentRequest_serviceIdMember1: Partial<UpdateAppointmentRequest_serviceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateAppointmentRequest_serviceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateAppointmentRequest_serviceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14190,60 +11438,16 @@ export function serializeUpdateClientRequest(writer: SerializationWriter, update
     if (!updateClientRequest || isSerializingDerivedType) { return; }
     writer.writeDateOnlyValue("dateOfBirth", updateClientRequest.dateOfBirth);
     writer.writeStringValue("email", updateClientRequest.email);
-    writer.writeObjectValue<Ulid | UpdateClientRequest_expectedActivityIdMember1>("expectedActivityId", updateClientRequest.expectedActivityId, serializeUpdateClientRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateClientRequest.expectedActivityId);
     writer.writeStringValue("firstName", updateClientRequest.firstName);
     writer.writeStringValue("lastName", updateClientRequest.lastName);
     writer.writeStringValue("patronymic", updateClientRequest.patronymic);
     writer.writeStringValue("phone", updateClientRequest.phone);
-    writer.writeObjectValue<Ulid | UpdateClientRequest_sourceIdMember1>("sourceId", updateClientRequest.sourceId, serializeUpdateClientRequest_sourceId);
+    writer.writeStringValue("sourceId", updateClientRequest.sourceId);
     writer.writeStringValue("telegram", updateClientRequest.telegram);
     writer.writeCollectionOfObjectValues<ClientVacationRequest>("vacations", updateClientRequest.vacations, serializeClientVacationRequest);
     writer.writeStringValue("vk", updateClientRequest.vk);
     writer.writeAdditionalData(updateClientRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateClientRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateClientRequest_expectedActivityId(writer: SerializationWriter, updateClientRequest_expectedActivityId: Partial<Ulid | UpdateClientRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateClientRequest_expectedActivityId as Ulid);
-    serializeUpdateClientRequest_expectedActivityIdMember1(writer, updateClientRequest_expectedActivityId as UpdateClientRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateClientRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateClientRequest_expectedActivityIdMember1(writer: SerializationWriter, updateClientRequest_expectedActivityIdMember1: Partial<UpdateClientRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateClientRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateClientRequest_expectedActivityIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateClientRequest_sourceId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateClientRequest_sourceId(writer: SerializationWriter, updateClientRequest_sourceId: Partial<Ulid | UpdateClientRequest_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateClientRequest_sourceId as Ulid);
-    serializeUpdateClientRequest_sourceIdMember1(writer, updateClientRequest_sourceId as UpdateClientRequest_sourceIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateClientRequest_sourceIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateClientRequest_sourceIdMember1(writer: SerializationWriter, updateClientRequest_sourceIdMember1: Partial<UpdateClientRequest_sourceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateClientRequest_sourceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateClientRequest_sourceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14268,32 +11472,10 @@ export function serializeUpdateCourseRequest(writer: SerializationWriter, update
     if (!updateCourseRequest || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<CreateCourseBlockRequest>("blocks", updateCourseRequest.blocks, serializeCreateCourseBlockRequest);
     writer.writeStringValue("description", updateCourseRequest.description);
-    writer.writeObjectValue<Ulid | UpdateCourseRequest_expectedActivityIdMember1>("expectedActivityId", updateCourseRequest.expectedActivityId, serializeUpdateCourseRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateCourseRequest.expectedActivityId);
     writer.writeCollectionOfObjectValues<CreateCourseLevelRequest>("levels", updateCourseRequest.levels, serializeCreateCourseLevelRequest);
     writer.writeStringValue("name", updateCourseRequest.name);
     writer.writeAdditionalData(updateCourseRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateCourseRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateCourseRequest_expectedActivityId(writer: SerializationWriter, updateCourseRequest_expectedActivityId: Partial<Ulid | UpdateCourseRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateCourseRequest_expectedActivityId as Ulid);
-    serializeUpdateCourseRequest_expectedActivityIdMember1(writer, updateCourseRequest_expectedActivityId as UpdateCourseRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateCourseRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateCourseRequest_expectedActivityIdMember1(writer: SerializationWriter, updateCourseRequest_expectedActivityIdMember1: Partial<UpdateCourseRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateCourseRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateCourseRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14304,56 +11486,12 @@ export function serializeUpdateCourseRequest_expectedActivityIdMember1(writer: S
 // @ts-ignore
 export function serializeUpdateExpenseRequest(writer: SerializationWriter, updateExpenseRequest: Partial<UpdateExpenseRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateExpenseRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", updateExpenseRequest.amount);
-    writer.writeObjectValue<Ulid | UpdateExpenseRequest_categoryIdMember1>("categoryId", updateExpenseRequest.categoryId, serializeUpdateExpenseRequest_categoryId);
+    writer.writeNumberValue("amount", updateExpenseRequest.amount);
+    writer.writeStringValue("categoryId", updateExpenseRequest.categoryId);
     writer.writeDateValue("date", updateExpenseRequest.date);
     writer.writeStringValue("description", updateExpenseRequest.description);
-    writer.writeObjectValue<Ulid | UpdateExpenseRequest_expectedActivityIdMember1>("expectedActivityId", updateExpenseRequest.expectedActivityId, serializeUpdateExpenseRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateExpenseRequest.expectedActivityId);
     writer.writeAdditionalData(updateExpenseRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateExpenseRequest_categoryId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateExpenseRequest_categoryId(writer: SerializationWriter, updateExpenseRequest_categoryId: Partial<Ulid | UpdateExpenseRequest_categoryIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateExpenseRequest_categoryId as Ulid);
-    serializeUpdateExpenseRequest_categoryIdMember1(writer, updateExpenseRequest_categoryId as UpdateExpenseRequest_categoryIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateExpenseRequest_categoryIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateExpenseRequest_categoryIdMember1(writer: SerializationWriter, updateExpenseRequest_categoryIdMember1: Partial<UpdateExpenseRequest_categoryIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateExpenseRequest_categoryIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateExpenseRequest_categoryIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateExpenseRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateExpenseRequest_expectedActivityId(writer: SerializationWriter, updateExpenseRequest_expectedActivityId: Partial<Ulid | UpdateExpenseRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateExpenseRequest_expectedActivityId as Ulid);
-    serializeUpdateExpenseRequest_expectedActivityIdMember1(writer, updateExpenseRequest_expectedActivityId as UpdateExpenseRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateExpenseRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateExpenseRequest_expectedActivityIdMember1(writer: SerializationWriter, updateExpenseRequest_expectedActivityIdMember1: Partial<UpdateExpenseRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateExpenseRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateExpenseRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14377,57 +11515,13 @@ export function serializeUpdateOnboardingProgressRequest(writer: SerializationWr
 // @ts-ignore
 export function serializeUpdatePaymentRequest(writer: SerializationWriter, updatePaymentRequest: Partial<UpdatePaymentRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updatePaymentRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("amount", updatePaymentRequest.amount);
-    writer.writeObjectValue("clientId", updatePaymentRequest.clientId);
+    writer.writeNumberValue("amount", updatePaymentRequest.amount);
+    writer.writeStringValue("clientId", updatePaymentRequest.clientId);
     writer.writeDateValue("date", updatePaymentRequest.date);
     writer.writeStringValue("description", updatePaymentRequest.description);
-    writer.writeObjectValue<Ulid | UpdatePaymentRequest_expectedActivityIdMember1>("expectedActivityId", updatePaymentRequest.expectedActivityId, serializeUpdatePaymentRequest_expectedActivityId);
-    writer.writeObjectValue<Ulid | UpdatePaymentRequest_serviceIdMember1>("serviceId", updatePaymentRequest.serviceId, serializeUpdatePaymentRequest_serviceId);
+    writer.writeStringValue("expectedActivityId", updatePaymentRequest.expectedActivityId);
+    writer.writeStringValue("serviceId", updatePaymentRequest.serviceId);
     writer.writeAdditionalData(updatePaymentRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdatePaymentRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdatePaymentRequest_expectedActivityId(writer: SerializationWriter, updatePaymentRequest_expectedActivityId: Partial<Ulid | UpdatePaymentRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updatePaymentRequest_expectedActivityId as Ulid);
-    serializeUpdatePaymentRequest_expectedActivityIdMember1(writer, updatePaymentRequest_expectedActivityId as UpdatePaymentRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdatePaymentRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdatePaymentRequest_expectedActivityIdMember1(writer: SerializationWriter, updatePaymentRequest_expectedActivityIdMember1: Partial<UpdatePaymentRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updatePaymentRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updatePaymentRequest_expectedActivityIdMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdatePaymentRequest_serviceId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdatePaymentRequest_serviceId(writer: SerializationWriter, updatePaymentRequest_serviceId: Partial<Ulid | UpdatePaymentRequest_serviceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updatePaymentRequest_serviceId as Ulid);
-    serializeUpdatePaymentRequest_serviceIdMember1(writer, updatePaymentRequest_serviceId as UpdatePaymentRequest_serviceIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdatePaymentRequest_serviceIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdatePaymentRequest_serviceIdMember1(writer: SerializationWriter, updatePaymentRequest_serviceIdMember1: Partial<UpdatePaymentRequest_serviceIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updatePaymentRequest_serviceIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updatePaymentRequest_serviceIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14438,34 +11532,12 @@ export function serializeUpdatePaymentRequest_serviceIdMember1(writer: Serializa
 // @ts-ignore
 export function serializeUpdateRecurringTaskRuleRequest(writer: SerializationWriter, updateRecurringTaskRuleRequest: Partial<UpdateRecurringTaskRuleRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateRecurringTaskRuleRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("cooldownDays", updateRecurringTaskRuleRequest.cooldownDays);
-    writer.writeObjectValue<Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1>("expectedActivityId", updateRecurringTaskRuleRequest.expectedActivityId, serializeUpdateRecurringTaskRuleRequest_expectedActivityId);
+    writer.writeNumberValue("cooldownDays", updateRecurringTaskRuleRequest.cooldownDays);
+    writer.writeStringValue("expectedActivityId", updateRecurringTaskRuleRequest.expectedActivityId);
     writer.writeBooleanValue("isEnabled", updateRecurringTaskRuleRequest.isEnabled);
     writer.writeStringValue("messageTemplate", updateRecurringTaskRuleRequest.messageTemplate);
-    writer.writeObjectValue("offsetMinutes", updateRecurringTaskRuleRequest.offsetMinutes);
+    writer.writeNumberValue("offsetMinutes", updateRecurringTaskRuleRequest.offsetMinutes);
     writer.writeAdditionalData(updateRecurringTaskRuleRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateRecurringTaskRuleRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateRecurringTaskRuleRequest_expectedActivityId(writer: SerializationWriter, updateRecurringTaskRuleRequest_expectedActivityId: Partial<Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateRecurringTaskRuleRequest_expectedActivityId as Ulid);
-    serializeUpdateRecurringTaskRuleRequest_expectedActivityIdMember1(writer, updateRecurringTaskRuleRequest_expectedActivityId as UpdateRecurringTaskRuleRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateRecurringTaskRuleRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateRecurringTaskRuleRequest_expectedActivityIdMember1(writer: SerializationWriter, updateRecurringTaskRuleRequest_expectedActivityIdMember1: Partial<UpdateRecurringTaskRuleRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateRecurringTaskRuleRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateRecurringTaskRuleRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14476,31 +11548,9 @@ export function serializeUpdateRecurringTaskRuleRequest_expectedActivityIdMember
 // @ts-ignore
 export function serializeUpdateServicePriceRequest(writer: SerializationWriter, updateServicePriceRequest: Partial<UpdateServicePriceRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateServicePriceRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<Ulid | UpdateServicePriceRequest_expectedActivityIdMember1>("expectedActivityId", updateServicePriceRequest.expectedActivityId, serializeUpdateServicePriceRequest_expectedActivityId);
-    writer.writeObjectValue("price", updateServicePriceRequest.price);
+    writer.writeStringValue("expectedActivityId", updateServicePriceRequest.expectedActivityId);
+    writer.writeNumberValue("price", updateServicePriceRequest.price);
     writer.writeAdditionalData(updateServicePriceRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateServicePriceRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateServicePriceRequest_expectedActivityId(writer: SerializationWriter, updateServicePriceRequest_expectedActivityId: Partial<Ulid | UpdateServicePriceRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateServicePriceRequest_expectedActivityId as Ulid);
-    serializeUpdateServicePriceRequest_expectedActivityIdMember1(writer, updateServicePriceRequest_expectedActivityId as UpdateServicePriceRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateServicePriceRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateServicePriceRequest_expectedActivityIdMember1(writer: SerializationWriter, updateServicePriceRequest_expectedActivityIdMember1: Partial<UpdateServicePriceRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateServicePriceRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateServicePriceRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14512,33 +11562,11 @@ export function serializeUpdateServicePriceRequest_expectedActivityIdMember1(wri
 export function serializeUpdateServiceRequest(writer: SerializationWriter, updateServiceRequest: Partial<UpdateServiceRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateServiceRequest || isSerializingDerivedType) { return; }
     writer.writeStringValue("description", updateServiceRequest.description);
-    writer.writeObjectValue<Ulid | UpdateServiceRequest_expectedActivityIdMember1>("expectedActivityId", updateServiceRequest.expectedActivityId, serializeUpdateServiceRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateServiceRequest.expectedActivityId);
     writer.writeBooleanValue("isConsultation", updateServiceRequest.isConsultation);
     writer.writeStringValue("name", updateServiceRequest.name);
     writer.writeStringValue("publicName", updateServiceRequest.publicName);
     writer.writeAdditionalData(updateServiceRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateServiceRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateServiceRequest_expectedActivityId(writer: SerializationWriter, updateServiceRequest_expectedActivityId: Partial<Ulid | UpdateServiceRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateServiceRequest_expectedActivityId as Ulid);
-    serializeUpdateServiceRequest_expectedActivityIdMember1(writer, updateServiceRequest_expectedActivityId as UpdateServiceRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateServiceRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateServiceRequest_expectedActivityIdMember1(writer: SerializationWriter, updateServiceRequest_expectedActivityIdMember1: Partial<UpdateServiceRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateServiceRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateServiceRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14549,32 +11577,10 @@ export function serializeUpdateServiceRequest_expectedActivityIdMember1(writer: 
 // @ts-ignore
 export function serializeUpdateUserAvailabilityRequest(writer: SerializationWriter, updateUserAvailabilityRequest: Partial<UpdateUserAvailabilityRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateUserAvailabilityRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1>("expectedActivityId", updateUserAvailabilityRequest.expectedActivityId, serializeUpdateUserAvailabilityRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateUserAvailabilityRequest.expectedActivityId);
     writer.writeCollectionOfObjectValues<UserVacationItem>("vacations", updateUserAvailabilityRequest.vacations, serializeUserVacationItem);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDayItem>("workingHours", updateUserAvailabilityRequest.workingHours, serializeUserWorkingHoursDayItem);
     writer.writeAdditionalData(updateUserAvailabilityRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateUserAvailabilityRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateUserAvailabilityRequest_expectedActivityId(writer: SerializationWriter, updateUserAvailabilityRequest_expectedActivityId: Partial<Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateUserAvailabilityRequest_expectedActivityId as Ulid);
-    serializeUpdateUserAvailabilityRequest_expectedActivityIdMember1(writer, updateUserAvailabilityRequest_expectedActivityId as UpdateUserAvailabilityRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateUserAvailabilityRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateUserAvailabilityRequest_expectedActivityIdMember1(writer: SerializationWriter, updateUserAvailabilityRequest_expectedActivityIdMember1: Partial<UpdateUserAvailabilityRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateUserAvailabilityRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateUserAvailabilityRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14585,35 +11591,13 @@ export function serializeUpdateUserAvailabilityRequest_expectedActivityIdMember1
 // @ts-ignore
 export function serializeUpdateUserRequest(writer: SerializationWriter, updateUserRequest: Partial<UpdateUserRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateUserRequest || isSerializingDerivedType) { return; }
-    writer.writeObjectValue<Ulid | UpdateUserRequest_expectedActivityIdMember1>("expectedActivityId", updateUserRequest.expectedActivityId, serializeUpdateUserRequest_expectedActivityId);
+    writer.writeStringValue("expectedActivityId", updateUserRequest.expectedActivityId);
     writer.writeStringValue("firstName", updateUserRequest.firstName);
     writer.writeStringValue("lastName", updateUserRequest.lastName);
     writer.writeStringValue("phone", updateUserRequest.phone);
     writer.writeStringValue("telegram", updateUserRequest.telegram);
     writer.writeStringValue("vk", updateUserRequest.vk);
     writer.writeAdditionalData(updateUserRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateUserRequest_expectedActivityId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateUserRequest_expectedActivityId(writer: SerializationWriter, updateUserRequest_expectedActivityId: Partial<Ulid | UpdateUserRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, updateUserRequest_expectedActivityId as Ulid);
-    serializeUpdateUserRequest_expectedActivityIdMember1(writer, updateUserRequest_expectedActivityId as UpdateUserRequest_expectedActivityIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UpdateUserRequest_expectedActivityIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUpdateUserRequest_expectedActivityIdMember1(writer: SerializationWriter, updateUserRequest_expectedActivityIdMember1: Partial<UpdateUserRequest_expectedActivityIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!updateUserRequest_expectedActivityIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(updateUserRequest_expectedActivityIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14625,11 +11609,11 @@ export function serializeUpdateUserRequest_expectedActivityIdMember1(writer: Ser
 export function serializeUser(writer: SerializationWriter, user: Partial<User> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!user || isSerializingDerivedType) { return; }
     writer.writeObjectValue<Client | User_clientMember1>("client", user.client, serializeUser_client);
-    writer.writeObjectValue<Ulid | User_clientIdMember1>("clientId", user.clientId, serializeUser_clientId);
+    writer.writeStringValue("clientId", user.clientId);
     writer.writeStringValue("email", user.email);
     writer.writeStringValue("emailBlindIndex", user.emailBlindIndex);
     writer.writeStringValue("firstName", user.firstName);
-    writer.writeObjectValue("id", user.id);
+    writer.writeStringValue("id", user.id);
     writer.writeStringValue("lastName", user.lastName);
     writer.writeDateValue("lockedUntil", user.lockedUntil);
     writer.writeObjectValue<UserOnboardingState | User_onboardingStateMember1>("onboardingState", user.onboardingState, serializeUser_onboardingState);
@@ -14653,28 +11637,6 @@ export function serializeUser(writer: SerializationWriter, user: Partial<User> |
 export function serializeUser_client(writer: SerializationWriter, user_client: Partial<Client | User_clientMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     serializeClient(writer, user_client as Client);
     serializeUser_clientMember1(writer, user_client as User_clientMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param User_clientId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUser_clientId(writer: SerializationWriter, user_clientId: Partial<Ulid | User_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, user_clientId as Ulid);
-    serializeUser_clientIdMember1(writer, user_clientId as User_clientIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param User_clientIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUser_clientIdMember1(writer: SerializationWriter, user_clientIdMember1: Partial<User_clientIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!user_clientIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(user_clientIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14719,7 +11681,7 @@ export function serializeUser_onboardingStateMember1(writer: SerializationWriter
 export function serializeUserAvailabilityResponse(writer: SerializationWriter, userAvailabilityResponse: Partial<UserAvailabilityResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userAvailabilityResponse || isSerializingDerivedType) { return; }
     writer.writeObjectValue<RecordActivityDto | UserAvailabilityResponse_lastActivityMember1>("lastActivity", userAvailabilityResponse.lastActivity, serializeUserAvailabilityResponse_lastActivity);
-    writer.writeObjectValue("userId", userAvailabilityResponse.userId);
+    writer.writeStringValue("userId", userAvailabilityResponse.userId);
     writer.writeCollectionOfObjectValues<UserVacationDto>("vacations", userAvailabilityResponse.vacations, serializeUserVacationDto);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDayDto>("workingHours", userAvailabilityResponse.workingHours, serializeUserWorkingHoursDayDto);
     writer.writeAdditionalData(userAvailabilityResponse.additionalData);
@@ -14759,12 +11721,12 @@ export function serializeUserOnboardingState(writer: SerializationWriter, userOn
     writer.writeDateValue("createdAtUtc", userOnboardingState.createdAtUtc);
     writer.writeStringValue("currentPath", userOnboardingState.currentPath);
     writer.writeStringValue("currentStep", userOnboardingState.currentStep);
-    writer.writeObjectValue("definitionVersion", userOnboardingState.definitionVersion);
-    writer.writeObjectValue("id", userOnboardingState.id);
+    writer.writeNumberValue("definitionVersion", userOnboardingState.definitionVersion);
+    writer.writeStringValue("id", userOnboardingState.id);
     writer.writeNumberValue("status", userOnboardingState.status);
     writer.writeDateValue("updatedAtUtc", userOnboardingState.updatedAtUtc);
     writer.writeObjectValue<User>("user", userOnboardingState.user, serializeUser);
-    writer.writeObjectValue("userId", userOnboardingState.userId);
+    writer.writeStringValue("userId", userOnboardingState.userId);
     writer.writeAdditionalData(userOnboardingState.additionalData);
 }
 /**
@@ -14777,10 +11739,10 @@ export function serializeUserOnboardingState(writer: SerializationWriter, userOn
 export function serializeUserVacation(writer: SerializationWriter, userVacation: Partial<UserVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacation || isSerializingDerivedType) { return; }
     writer.writeDateOnlyValue("endDate", userVacation.endDate);
-    writer.writeObjectValue("id", userVacation.id);
+    writer.writeStringValue("id", userVacation.id);
     writer.writeDateOnlyValue("startDate", userVacation.startDate);
     writer.writeObjectValue<User>("user", userVacation.user, serializeUser);
-    writer.writeObjectValue("userId", userVacation.userId);
+    writer.writeStringValue("userId", userVacation.userId);
     writer.writeAdditionalData(userVacation.additionalData);
 }
 /**
@@ -14793,7 +11755,7 @@ export function serializeUserVacation(writer: SerializationWriter, userVacation:
 export function serializeUserVacationDto(writer: SerializationWriter, userVacationDto: Partial<UserVacationDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacationDto || isSerializingDerivedType) { return; }
     writer.writeDateOnlyValue("endDate", userVacationDto.endDate);
-    writer.writeObjectValue("id", userVacationDto.id);
+    writer.writeStringValue("id", userVacationDto.id);
     writer.writeDateOnlyValue("startDate", userVacationDto.startDate);
     writer.writeAdditionalData(userVacationDto.additionalData);
 }
@@ -14820,12 +11782,12 @@ export function serializeUserVacationItem(writer: SerializationWriter, userVacat
 export function serializeUserWorkingHoursDay(writer: SerializationWriter, userWorkingHoursDay: Partial<UserWorkingHoursDay> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userWorkingHoursDay || isSerializingDerivedType) { return; }
     writer.writeNumberValue("dayOfWeek", userWorkingHoursDay.dayOfWeek);
-    writer.writeObjectValue("endMinuteOfDay", userWorkingHoursDay.endMinuteOfDay);
-    writer.writeObjectValue("id", userWorkingHoursDay.id);
+    writer.writeNumberValue("endMinuteOfDay", userWorkingHoursDay.endMinuteOfDay);
+    writer.writeStringValue("id", userWorkingHoursDay.id);
     writer.writeBooleanValue("isWorkingDay", userWorkingHoursDay.isWorkingDay);
-    writer.writeObjectValue("startMinuteOfDay", userWorkingHoursDay.startMinuteOfDay);
+    writer.writeNumberValue("startMinuteOfDay", userWorkingHoursDay.startMinuteOfDay);
     writer.writeObjectValue<User>("user", userWorkingHoursDay.user, serializeUser);
-    writer.writeObjectValue("userId", userWorkingHoursDay.userId);
+    writer.writeStringValue("userId", userWorkingHoursDay.userId);
     writer.writeAdditionalData(userWorkingHoursDay.additionalData);
 }
 /**
@@ -14881,10 +11843,10 @@ export function serializeVerify2FaRequest(writer: SerializationWriter, verify2Fa
 // @ts-ignore
 export function serializeWorkHourDto(writer: SerializationWriter, workHourDto: Partial<WorkHourDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workHourDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", workHourDto.appointments);
-    writer.writeObjectValue("cancelled", workHourDto.cancelled);
-    writer.writeObjectValue("completed", workHourDto.completed);
-    writer.writeObjectValue("hour", workHourDto.hour);
+    writer.writeNumberValue("appointments", workHourDto.appointments);
+    writer.writeNumberValue("cancelled", workHourDto.cancelled);
+    writer.writeNumberValue("completed", workHourDto.completed);
+    writer.writeNumberValue("hour", workHourDto.hour);
     writer.writeAdditionalData(workHourDto.additionalData);
 }
 /**
@@ -14896,39 +11858,17 @@ export function serializeWorkHourDto(writer: SerializationWriter, workHourDto: P
 // @ts-ignore
 export function serializeWorkProviderDto(writer: SerializationWriter, workProviderDto: Partial<WorkProviderDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workProviderDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", workProviderDto.appointments);
-    writer.writeObjectValue("burned", workProviderDto.burned);
-    writer.writeObjectValue("cancelled", workProviderDto.cancelled);
-    writer.writeObjectValue("completed", workProviderDto.completed);
-    writer.writeObjectValue("freeWorkingHours", workProviderDto.freeWorkingHours);
-    writer.writeObjectValue("occupiedWorkingHours", workProviderDto.occupiedWorkingHours);
-    writer.writeObjectValue<Ulid | WorkProviderDto_providerIdMember1>("providerId", workProviderDto.providerId, serializeWorkProviderDto_providerId);
+    writer.writeNumberValue("appointments", workProviderDto.appointments);
+    writer.writeNumberValue("burned", workProviderDto.burned);
+    writer.writeNumberValue("cancelled", workProviderDto.cancelled);
+    writer.writeNumberValue("completed", workProviderDto.completed);
+    writer.writeNumberValue("freeWorkingHours", workProviderDto.freeWorkingHours);
+    writer.writeNumberValue("occupiedWorkingHours", workProviderDto.occupiedWorkingHours);
+    writer.writeStringValue("providerId", workProviderDto.providerId);
     writer.writeStringValue("providerName", workProviderDto.providerName);
-    writer.writeObjectValue("utilizationPercent", workProviderDto.utilizationPercent);
-    writer.writeObjectValue("workingCapacityHours", workProviderDto.workingCapacityHours);
+    writer.writeNumberValue("utilizationPercent", workProviderDto.utilizationPercent);
+    writer.writeNumberValue("workingCapacityHours", workProviderDto.workingCapacityHours);
     writer.writeAdditionalData(workProviderDto.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param WorkProviderDto_providerId The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeWorkProviderDto_providerId(writer: SerializationWriter, workProviderDto_providerId: Partial<Ulid | WorkProviderDto_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    serializeUlid(writer, workProviderDto_providerId as Ulid);
-    serializeWorkProviderDto_providerIdMember1(writer, workProviderDto_providerId as WorkProviderDto_providerIdMember1);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param WorkProviderDto_providerIdMember1 The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeWorkProviderDto_providerIdMember1(writer: SerializationWriter, workProviderDto_providerIdMember1: Partial<WorkProviderDto_providerIdMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!workProviderDto_providerIdMember1 || isSerializingDerivedType) { return; }
-    writer.writeAdditionalData(workProviderDto_providerIdMember1.additionalData);
 }
 /**
  * Serializes information the current object
@@ -14957,14 +11897,14 @@ export function serializeWorkReportResponse(writer: SerializationWriter, workRep
 // @ts-ignore
 export function serializeWorkReportSummaryDto(writer: SerializationWriter, workReportSummaryDto: Partial<WorkReportSummaryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workReportSummaryDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", workReportSummaryDto.appointments);
-    writer.writeObjectValue("burned", workReportSummaryDto.burned);
-    writer.writeObjectValue("cancellationPercent", workReportSummaryDto.cancellationPercent);
-    writer.writeObjectValue("completed", workReportSummaryDto.completed);
-    writer.writeObjectValue("freeWorkingHours", workReportSummaryDto.freeWorkingHours);
-    writer.writeObjectValue("occupiedWorkingHours", workReportSummaryDto.occupiedWorkingHours);
-    writer.writeObjectValue("utilizationPercent", workReportSummaryDto.utilizationPercent);
-    writer.writeObjectValue("workingCapacityHours", workReportSummaryDto.workingCapacityHours);
+    writer.writeNumberValue("appointments", workReportSummaryDto.appointments);
+    writer.writeNumberValue("burned", workReportSummaryDto.burned);
+    writer.writeNumberValue("cancellationPercent", workReportSummaryDto.cancellationPercent);
+    writer.writeNumberValue("completed", workReportSummaryDto.completed);
+    writer.writeNumberValue("freeWorkingHours", workReportSummaryDto.freeWorkingHours);
+    writer.writeNumberValue("occupiedWorkingHours", workReportSummaryDto.occupiedWorkingHours);
+    writer.writeNumberValue("utilizationPercent", workReportSummaryDto.utilizationPercent);
+    writer.writeNumberValue("workingCapacityHours", workReportSummaryDto.workingCapacityHours);
     writer.writeAdditionalData(workReportSummaryDto.additionalData);
 }
 /**
@@ -14976,11 +11916,11 @@ export function serializeWorkReportSummaryDto(writer: SerializationWriter, workR
 // @ts-ignore
 export function serializeWorkServiceDto(writer: SerializationWriter, workServiceDto: Partial<WorkServiceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workServiceDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", workServiceDto.appointments);
-    writer.writeObjectValue("burned", workServiceDto.burned);
-    writer.writeObjectValue("completed", workServiceDto.completed);
-    writer.writeObjectValue("revenue", workServiceDto.revenue);
-    writer.writeObjectValue("serviceId", workServiceDto.serviceId);
+    writer.writeNumberValue("appointments", workServiceDto.appointments);
+    writer.writeNumberValue("burned", workServiceDto.burned);
+    writer.writeNumberValue("completed", workServiceDto.completed);
+    writer.writeNumberValue("revenue", workServiceDto.revenue);
+    writer.writeStringValue("serviceId", workServiceDto.serviceId);
     writer.writeStringValue("serviceName", workServiceDto.serviceName);
     writer.writeAdditionalData(workServiceDto.additionalData);
 }
@@ -14993,8 +11933,8 @@ export function serializeWorkServiceDto(writer: SerializationWriter, workService
 // @ts-ignore
 export function serializeWorkStatusDto(writer: SerializationWriter, workStatusDto: Partial<WorkStatusDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workStatusDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("count", workStatusDto.count);
-    writer.writeObjectValue("sharePercent", workStatusDto.sharePercent);
+    writer.writeNumberValue("count", workStatusDto.count);
+    writer.writeNumberValue("sharePercent", workStatusDto.sharePercent);
     writer.writeStringValue("status", workStatusDto.status);
     writer.writeAdditionalData(workStatusDto.additionalData);
 }
@@ -15007,16 +11947,16 @@ export function serializeWorkStatusDto(writer: SerializationWriter, workStatusDt
 // @ts-ignore
 export function serializeWorkTrendDto(writer: SerializationWriter, workTrendDto: Partial<WorkTrendDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workTrendDto || isSerializingDerivedType) { return; }
-    writer.writeObjectValue("appointments", workTrendDto.appointments);
-    writer.writeObjectValue("burned", workTrendDto.burned);
-    writer.writeObjectValue("cancelled", workTrendDto.cancelled);
-    writer.writeObjectValue("completed", workTrendDto.completed);
+    writer.writeNumberValue("appointments", workTrendDto.appointments);
+    writer.writeNumberValue("burned", workTrendDto.burned);
+    writer.writeNumberValue("cancelled", workTrendDto.cancelled);
+    writer.writeNumberValue("completed", workTrendDto.completed);
     writer.writeDateValue("endDate", workTrendDto.endDate);
-    writer.writeObjectValue("freeWorkingHours", workTrendDto.freeWorkingHours);
-    writer.writeObjectValue("occupiedWorkingHours", workTrendDto.occupiedWorkingHours);
+    writer.writeNumberValue("freeWorkingHours", workTrendDto.freeWorkingHours);
+    writer.writeNumberValue("occupiedWorkingHours", workTrendDto.occupiedWorkingHours);
     writer.writeDateValue("startDate", workTrendDto.startDate);
-    writer.writeObjectValue("utilizationPercent", workTrendDto.utilizationPercent);
-    writer.writeObjectValue("workingCapacityHours", workTrendDto.workingCapacityHours);
+    writer.writeNumberValue("utilizationPercent", workTrendDto.utilizationPercent);
+    writer.writeNumberValue("workingCapacityHours", workTrendDto.workingCapacityHours);
     writer.writeAdditionalData(workTrendDto.additionalData);
 }
 export interface Service extends AdditionalDataHolder, Parsable {
@@ -15027,7 +11967,7 @@ export interface Service extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isConsultation property
      */
@@ -15049,7 +11989,7 @@ export interface ServiceWithCurrentPriceDto extends AdditionalDataHolder, Parsab
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isConsultation property
      */
@@ -15065,7 +12005,7 @@ export interface ServiceWithCurrentPriceDto extends AdditionalDataHolder, Parsab
     /**
      * The price property
      */
-    price?: UntypedNode | null;
+    price?: number | null;
     /**
      * The publicName property
      */
@@ -15082,7 +12022,7 @@ export interface SessionDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isCurrent property
      */
@@ -15114,21 +12054,19 @@ export interface Setup2FaResponse extends AdditionalDataHolder, Parsable {
      */
     secret?: string | null;
 }
-export interface Ulid extends AdditionalDataHolder, Parsable {
-}
 export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: Ulid | UpdateAppointmentRequest_clientIdMember1 | null;
+    clientId?: string | null;
     /**
      * The courseThemeId property
      */
-    courseThemeId?: Ulid | UpdateAppointmentRequest_courseThemeIdMember1 | null;
+    courseThemeId?: string | null;
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateAppointmentRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The hasCourseThemeSelection property
      */
@@ -15144,15 +12082,15 @@ export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable
     /**
      * The providerId property
      */
-    providerId?: Ulid | UpdateAppointmentRequest_providerIdMember1 | null;
+    providerId?: string | null;
     /**
      * The recurrencePattern property
      */
-    recurrencePattern?: UntypedNode | null;
+    recurrencePattern?: number | null;
     /**
      * The recurrenceTypeId property
      */
-    recurrenceTypeId?: Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1 | null;
+    recurrenceTypeId?: string | null;
     /**
      * The scope property
      */
@@ -15160,7 +12098,7 @@ export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable
     /**
      * The serviceId property
      */
-    serviceId?: Ulid | UpdateAppointmentRequest_serviceIdMember1 | null;
+    serviceId?: string | null;
     /**
      * The startDate property
      */
@@ -15174,24 +12112,6 @@ export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable
      */
     timezone?: string | null;
 }
-export type UpdateAppointmentRequest_clientId = Ulid | UpdateAppointmentRequest_clientIdMember1;
-export interface UpdateAppointmentRequest_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateAppointmentRequest_courseThemeId = Ulid | UpdateAppointmentRequest_courseThemeIdMember1;
-export interface UpdateAppointmentRequest_courseThemeIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateAppointmentRequest_expectedActivityId = Ulid | UpdateAppointmentRequest_expectedActivityIdMember1;
-export interface UpdateAppointmentRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateAppointmentRequest_providerId = Ulid | UpdateAppointmentRequest_providerIdMember1;
-export interface UpdateAppointmentRequest_providerIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateAppointmentRequest_recurrenceTypeId = Ulid | UpdateAppointmentRequest_recurrenceTypeIdMember1;
-export interface UpdateAppointmentRequest_recurrenceTypeIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateAppointmentRequest_serviceId = Ulid | UpdateAppointmentRequest_serviceIdMember1;
-export interface UpdateAppointmentRequest_serviceIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface UpdateClientRequest extends AdditionalDataHolder, Parsable {
     /**
      * The dateOfBirth property
@@ -15204,7 +12124,7 @@ export interface UpdateClientRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateClientRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The firstName property
      */
@@ -15224,7 +12144,7 @@ export interface UpdateClientRequest extends AdditionalDataHolder, Parsable {
     /**
      * The sourceId property
      */
-    sourceId?: Ulid | UpdateClientRequest_sourceIdMember1 | null;
+    sourceId?: string | null;
     /**
      * The telegram property
      */
@@ -15237,12 +12157,6 @@ export interface UpdateClientRequest extends AdditionalDataHolder, Parsable {
      * The vk property
      */
     vk?: string | null;
-}
-export type UpdateClientRequest_expectedActivityId = Ulid | UpdateClientRequest_expectedActivityIdMember1;
-export interface UpdateClientRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateClientRequest_sourceId = Ulid | UpdateClientRequest_sourceIdMember1;
-export interface UpdateClientRequest_sourceIdMember1 extends AdditionalDataHolder, Parsable {
 }
 export interface UpdateCourseEnrollmentThemeProgressRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -15262,7 +12176,7 @@ export interface UpdateCourseRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateCourseRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The levels property
      */
@@ -15272,18 +12186,15 @@ export interface UpdateCourseRequest extends AdditionalDataHolder, Parsable {
      */
     name?: string | null;
 }
-export type UpdateCourseRequest_expectedActivityId = Ulid | UpdateCourseRequest_expectedActivityIdMember1;
-export interface UpdateCourseRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface UpdateExpenseRequest extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The categoryId property
      */
-    categoryId?: Ulid | UpdateExpenseRequest_categoryIdMember1 | null;
+    categoryId?: string | null;
     /**
      * The date property
      */
@@ -15295,13 +12206,7 @@ export interface UpdateExpenseRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateExpenseRequest_expectedActivityIdMember1 | null;
-}
-export type UpdateExpenseRequest_categoryId = Ulid | UpdateExpenseRequest_categoryIdMember1;
-export interface UpdateExpenseRequest_categoryIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdateExpenseRequest_expectedActivityId = Ulid | UpdateExpenseRequest_expectedActivityIdMember1;
-export interface UpdateExpenseRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
+    expectedActivityId?: string | null;
 }
 export interface UpdateOnboardingProgressRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -15317,11 +12222,11 @@ export interface UpdatePaymentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The amount property
      */
-    amount?: UntypedNode | null;
+    amount?: number | null;
     /**
      * The clientId property
      */
-    clientId?: UntypedNode | null;
+    clientId?: string | null;
     /**
      * The date property
      */
@@ -15333,27 +12238,21 @@ export interface UpdatePaymentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdatePaymentRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The serviceId property
      */
-    serviceId?: Ulid | UpdatePaymentRequest_serviceIdMember1 | null;
-}
-export type UpdatePaymentRequest_expectedActivityId = Ulid | UpdatePaymentRequest_expectedActivityIdMember1;
-export interface UpdatePaymentRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
-export type UpdatePaymentRequest_serviceId = Ulid | UpdatePaymentRequest_serviceIdMember1;
-export interface UpdatePaymentRequest_serviceIdMember1 extends AdditionalDataHolder, Parsable {
+    serviceId?: string | null;
 }
 export interface UpdateRecurringTaskRuleRequest extends AdditionalDataHolder, Parsable {
     /**
      * The cooldownDays property
      */
-    cooldownDays?: UntypedNode | null;
+    cooldownDays?: number | null;
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The isEnabled property
      */
@@ -15365,23 +12264,17 @@ export interface UpdateRecurringTaskRuleRequest extends AdditionalDataHolder, Pa
     /**
      * The offsetMinutes property
      */
-    offsetMinutes?: UntypedNode | null;
-}
-export type UpdateRecurringTaskRuleRequest_expectedActivityId = Ulid | UpdateRecurringTaskRuleRequest_expectedActivityIdMember1;
-export interface UpdateRecurringTaskRuleRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
+    offsetMinutes?: number | null;
 }
 export interface UpdateServicePriceRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateServicePriceRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The price property
      */
-    price?: UntypedNode | null;
-}
-export type UpdateServicePriceRequest_expectedActivityId = Ulid | UpdateServicePriceRequest_expectedActivityIdMember1;
-export interface UpdateServicePriceRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
+    price?: number | null;
 }
 export interface UpdateServiceRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -15391,7 +12284,7 @@ export interface UpdateServiceRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateServiceRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The isConsultation property
      */
@@ -15405,14 +12298,11 @@ export interface UpdateServiceRequest extends AdditionalDataHolder, Parsable {
      */
     publicName?: string | null;
 }
-export type UpdateServiceRequest_expectedActivityId = Ulid | UpdateServiceRequest_expectedActivityIdMember1;
-export interface UpdateServiceRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface UpdateUserAvailabilityRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The vacations property
      */
@@ -15422,14 +12312,11 @@ export interface UpdateUserAvailabilityRequest extends AdditionalDataHolder, Par
      */
     workingHours?: UserWorkingHoursDayItem[] | null;
 }
-export type UpdateUserAvailabilityRequest_expectedActivityId = Ulid | UpdateUserAvailabilityRequest_expectedActivityIdMember1;
-export interface UpdateUserAvailabilityRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface UpdateUserRequest extends AdditionalDataHolder, Parsable {
     /**
      * The expectedActivityId property
      */
-    expectedActivityId?: Ulid | UpdateUserRequest_expectedActivityIdMember1 | null;
+    expectedActivityId?: string | null;
     /**
      * The firstName property
      */
@@ -15451,9 +12338,6 @@ export interface UpdateUserRequest extends AdditionalDataHolder, Parsable {
      */
     vk?: string | null;
 }
-export type UpdateUserRequest_expectedActivityId = Ulid | UpdateUserRequest_expectedActivityIdMember1;
-export interface UpdateUserRequest_expectedActivityIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface User extends AdditionalDataHolder, Parsable {
     /**
      * The client property
@@ -15462,7 +12346,7 @@ export interface User extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
      */
-    clientId?: Ulid | User_clientIdMember1 | null;
+    clientId?: string | null;
     /**
      * The email property
      */
@@ -15478,7 +12362,7 @@ export interface User extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The lastName property
      */
@@ -15525,9 +12409,6 @@ export interface User extends AdditionalDataHolder, Parsable {
     workingHours?: UserWorkingHoursDay[] | null;
 }
 export type User_client = Client | User_clientMember1;
-export type User_clientId = Ulid | User_clientIdMember1;
-export interface User_clientIdMember1 extends AdditionalDataHolder, Parsable {
-}
 export interface User_clientMember1 extends AdditionalDataHolder, Parsable {
 }
 export type User_onboardingState = UserOnboardingState | User_onboardingStateMember1;
@@ -15541,7 +12422,7 @@ export interface UserAvailabilityResponse extends AdditionalDataHolder, Parsable
     /**
      * The userId property
      */
-    userId?: UntypedNode | null;
+    userId?: string | null;
     /**
      * The vacations property
      */
@@ -15574,11 +12455,11 @@ export interface UserOnboardingState extends AdditionalDataHolder, Parsable {
     /**
      * The definitionVersion property
      */
-    definitionVersion?: UntypedNode | null;
+    definitionVersion?: number | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The status property
      */
@@ -15594,7 +12475,7 @@ export interface UserOnboardingState extends AdditionalDataHolder, Parsable {
     /**
      * The userId property
      */
-    userId?: UntypedNode | null;
+    userId?: string | null;
 }
 export interface UserVacation extends AdditionalDataHolder, Parsable {
     /**
@@ -15604,7 +12485,7 @@ export interface UserVacation extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The startDate property
      */
@@ -15616,7 +12497,7 @@ export interface UserVacation extends AdditionalDataHolder, Parsable {
     /**
      * The userId property
      */
-    userId?: UntypedNode | null;
+    userId?: string | null;
 }
 export interface UserVacationDto extends AdditionalDataHolder, Parsable {
     /**
@@ -15626,7 +12507,7 @@ export interface UserVacationDto extends AdditionalDataHolder, Parsable {
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The startDate property
      */
@@ -15650,11 +12531,11 @@ export interface UserWorkingHoursDay extends AdditionalDataHolder, Parsable {
     /**
      * The endMinuteOfDay property
      */
-    endMinuteOfDay?: UntypedNode | null;
+    endMinuteOfDay?: number | null;
     /**
      * The id property
      */
-    id?: UntypedNode | null;
+    id?: string | null;
     /**
      * The isWorkingDay property
      */
@@ -15662,7 +12543,7 @@ export interface UserWorkingHoursDay extends AdditionalDataHolder, Parsable {
     /**
      * The startMinuteOfDay property
      */
-    startMinuteOfDay?: UntypedNode | null;
+    startMinuteOfDay?: number | null;
     /**
      * The user property
      */
@@ -15670,7 +12551,7 @@ export interface UserWorkingHoursDay extends AdditionalDataHolder, Parsable {
     /**
      * The userId property
      */
-    userId?: UntypedNode | null;
+    userId?: string | null;
 }
 export interface UserWorkingHoursDayDto extends AdditionalDataHolder, Parsable {
     /**
@@ -15726,49 +12607,49 @@ export interface WorkHourDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The cancelled property
      */
-    cancelled?: UntypedNode | null;
+    cancelled?: number | null;
     /**
      * The completed property
      */
-    completed?: UntypedNode | null;
+    completed?: number | null;
     /**
      * The hour property
      */
-    hour?: UntypedNode | null;
+    hour?: number | null;
 }
 export interface WorkProviderDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The burned property
      */
-    burned?: UntypedNode | null;
+    burned?: number | null;
     /**
      * The cancelled property
      */
-    cancelled?: UntypedNode | null;
+    cancelled?: number | null;
     /**
      * The completed property
      */
-    completed?: UntypedNode | null;
+    completed?: number | null;
     /**
      * The freeWorkingHours property
      */
-    freeWorkingHours?: UntypedNode | null;
+    freeWorkingHours?: number | null;
     /**
      * The occupiedWorkingHours property
      */
-    occupiedWorkingHours?: UntypedNode | null;
+    occupiedWorkingHours?: number | null;
     /**
      * The providerId property
      */
-    providerId?: Ulid | WorkProviderDto_providerIdMember1 | null;
+    providerId?: string | null;
     /**
      * The providerName property
      */
@@ -15776,14 +12657,11 @@ export interface WorkProviderDto extends AdditionalDataHolder, Parsable {
     /**
      * The utilizationPercent property
      */
-    utilizationPercent?: UntypedNode | null;
+    utilizationPercent?: number | null;
     /**
      * The workingCapacityHours property
      */
-    workingCapacityHours?: UntypedNode | null;
-}
-export type WorkProviderDto_providerId = Ulid | WorkProviderDto_providerIdMember1;
-export interface WorkProviderDto_providerIdMember1 extends AdditionalDataHolder, Parsable {
+    workingCapacityHours?: number | null;
 }
 export interface WorkReportResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -15819,57 +12697,57 @@ export interface WorkReportSummaryDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The burned property
      */
-    burned?: UntypedNode | null;
+    burned?: number | null;
     /**
      * The cancellationPercent property
      */
-    cancellationPercent?: UntypedNode | null;
+    cancellationPercent?: number | null;
     /**
      * The completed property
      */
-    completed?: UntypedNode | null;
+    completed?: number | null;
     /**
      * The freeWorkingHours property
      */
-    freeWorkingHours?: UntypedNode | null;
+    freeWorkingHours?: number | null;
     /**
      * The occupiedWorkingHours property
      */
-    occupiedWorkingHours?: UntypedNode | null;
+    occupiedWorkingHours?: number | null;
     /**
      * The utilizationPercent property
      */
-    utilizationPercent?: UntypedNode | null;
+    utilizationPercent?: number | null;
     /**
      * The workingCapacityHours property
      */
-    workingCapacityHours?: UntypedNode | null;
+    workingCapacityHours?: number | null;
 }
 export interface WorkServiceDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The burned property
      */
-    burned?: UntypedNode | null;
+    burned?: number | null;
     /**
      * The completed property
      */
-    completed?: UntypedNode | null;
+    completed?: number | null;
     /**
      * The revenue property
      */
-    revenue?: UntypedNode | null;
+    revenue?: number | null;
     /**
      * The serviceId property
      */
-    serviceId?: UntypedNode | null;
+    serviceId?: string | null;
     /**
      * The serviceName property
      */
@@ -15879,11 +12757,11 @@ export interface WorkStatusDto extends AdditionalDataHolder, Parsable {
     /**
      * The count property
      */
-    count?: UntypedNode | null;
+    count?: number | null;
     /**
      * The sharePercent property
      */
-    sharePercent?: UntypedNode | null;
+    sharePercent?: number | null;
     /**
      * The status property
      */
@@ -15893,19 +12771,19 @@ export interface WorkTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
      */
-    appointments?: UntypedNode | null;
+    appointments?: number | null;
     /**
      * The burned property
      */
-    burned?: UntypedNode | null;
+    burned?: number | null;
     /**
      * The cancelled property
      */
-    cancelled?: UntypedNode | null;
+    cancelled?: number | null;
     /**
      * The completed property
      */
-    completed?: UntypedNode | null;
+    completed?: number | null;
     /**
      * The endDate property
      */
@@ -15913,11 +12791,11 @@ export interface WorkTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The freeWorkingHours property
      */
-    freeWorkingHours?: UntypedNode | null;
+    freeWorkingHours?: number | null;
     /**
      * The occupiedWorkingHours property
      */
-    occupiedWorkingHours?: UntypedNode | null;
+    occupiedWorkingHours?: number | null;
     /**
      * The startDate property
      */
@@ -15925,11 +12803,11 @@ export interface WorkTrendDto extends AdditionalDataHolder, Parsable {
     /**
      * The utilizationPercent property
      */
-    utilizationPercent?: UntypedNode | null;
+    utilizationPercent?: number | null;
     /**
      * The workingCapacityHours property
      */
-    workingCapacityHours?: UntypedNode | null;
+    workingCapacityHours?: number | null;
 }
 /* tslint:enable */
 /* eslint-enable */

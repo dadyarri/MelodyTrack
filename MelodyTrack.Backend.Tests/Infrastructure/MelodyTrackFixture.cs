@@ -70,7 +70,8 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
 
             await ResetDatabaseAsync(db, cancellationToken);
             await SeedBaselineAsync(db, cancellationToken);
-            Client.DefaultRequestHeaders.Clear();
+            Client.Dispose();
+            Client = CreateClient();
             SetThrottleIdentity();
         }
         finally

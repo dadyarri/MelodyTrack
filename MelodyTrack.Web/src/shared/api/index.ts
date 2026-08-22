@@ -1,4 +1,5 @@
 export {
+  AppError,
   authExpiredEventName,
   configureHttpSession,
   discardLegacyHttpCache,
@@ -9,10 +10,13 @@ export {
   getStaleEntityConflict,
   http,
   isHttpRequestCanceled,
+  normalizeAppError,
   probeBackendReachable,
+  requestAdapter,
   restoreAccessToken,
   type ApiProblemDetails,
   type ApiValidationError,
+  type AppErrorKind,
   type HttpSession,
   type StaleEntityConflict,
 } from "./http";

@@ -66,8 +66,8 @@ export interface ClientsRequestBuilderGetQueryParameters {
     isLeadClosed?: boolean;
     lastName?: string;
     lifecycleStatus?: number;
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
     search?: string;
     sourceId?: string;
 }

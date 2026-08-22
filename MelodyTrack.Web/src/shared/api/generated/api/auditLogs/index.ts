@@ -26,8 +26,8 @@ export interface AuditLogsRequestBuilder extends BaseRequestBuilder<AuditLogsReq
      toGetRequestInformation(requestConfiguration?: RequestConfiguration<AuditLogsRequestBuilderGetQueryParameters> | undefined) : RequestInformation;
 }
 export interface AuditLogsRequestBuilderGetQueryParameters {
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
     search?: string;
     timezone?: string;
 }

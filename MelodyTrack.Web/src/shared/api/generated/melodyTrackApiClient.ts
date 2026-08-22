@@ -40,6 +40,9 @@ export function createMelodyTrackApiClient(requestAdapter: RequestAdapter) {
         serializationWriterFactory.registerDefaultSerializer(MultipartSerializationWriterFactory);
     }
     
+    if (requestAdapter.baseUrl === undefined || requestAdapter.baseUrl === null || requestAdapter.baseUrl === "") {
+        requestAdapter.baseUrl = "https://localhost";
+    }
     const pathParameters: Record<string, unknown> = {
         "baseurl": requestAdapter.baseUrl,
     };

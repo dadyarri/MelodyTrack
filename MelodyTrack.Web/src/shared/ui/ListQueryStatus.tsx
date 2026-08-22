@@ -1,18 +1,21 @@
 import { Alert, Button, Space, Spin, Typography } from "antd";
 
+import { ApiErrorDetails } from "./ApiErrorDetails";
+
 export type ListQueryStatusProps = {
-  isError?: boolean;
+  error?: unknown;
   isFetching?: boolean;
   onRetry?: () => void;
 };
 
-export function ListQueryStatus({ isError = false, isFetching = false, onRetry }: ListQueryStatusProps) {
-  if (isError) {
+export function ListQueryStatus({ error, isFetching = false, onRetry }: ListQueryStatusProps) {
+  if (error) {
     return (
       <Alert
         type="error"
         showIcon
         title="Не удалось обновить данные."
+        description={<ApiErrorDetails error={error} />}
         action={
           onRetry ? (
             <Button size="small" onClick={onRetry}>

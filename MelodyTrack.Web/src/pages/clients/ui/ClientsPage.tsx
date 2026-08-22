@@ -67,7 +67,7 @@ export function ClientsPage() {
             }
             loading={controller.query.isLoading}
             queryStatus={{
-              isError: controller.query.isError,
+              error: controller.query.error,
               isFetching: controller.query.isFetching,
               onRetry: () => {
                 void controller.query.refetch();
@@ -229,7 +229,7 @@ export function ClientsPage() {
         client={controller.historyClient}
         data={controller.historyQuery.data}
         isLoading={controller.historyQuery.isLoading}
-        isError={controller.historyQuery.isError}
+        error={controller.historyQuery.error}
         courseEnrollments={controller.courseEnrollmentsQuery.data}
         isCourseEnrollmentsLoading={controller.courseEnrollmentsQuery.isLoading}
         isCourseEnrollmentsError={controller.courseEnrollmentsQuery.isError}

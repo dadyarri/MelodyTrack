@@ -119,7 +119,7 @@ export function PaymentsPage() {
             }
             loading={controller.query.isLoading}
             queryStatus={{
-              isError: controller.query.isError,
+              error: controller.query.error,
               isFetching: controller.query.isFetching,
               onRetry: () => {
                 void controller.query.refetch();

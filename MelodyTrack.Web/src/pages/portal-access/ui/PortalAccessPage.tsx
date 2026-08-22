@@ -1,11 +1,10 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { App, Button, Card, Form, Input, Result, Space, Spin, Typography } from "antd";
-import axios from "axios";
 import { useEffect, useState } from "react";
 import { Navigate, useNavigate, useParams } from "react-router";
 
 import { authApi, type ClientPortalPinAuthInput, type SavedClientIdentity, savedClientStorage, useAuth } from "@/entities/session";
-import { getApiErrorMessage, getApiFieldErrors } from "@/shared/api";
+import { getApiErrorMessage, getApiFieldErrors, normalizeAppError } from "@/shared/api";
 import { AuthScreenLayout } from "@/shared/ui";
 
 type PortalPinFormValues = {
@@ -141,7 +140,7 @@ function SavedClientPinForm({
       setPinError(getFieldErrors(getApiFieldErrors(error), "pin")[0] ?? getApiErrorMessage(error));
     },
   });
-  const isOfflineFailure = statusQuery.isError && axios.isAxiosError(statusQuery.error) && !statusQuery.error.response;
+  const isOfflineFailure = statusQuery.isError && normalizeAppError(statusQuery.error).kind === "network";
 
   return (
     <AuthScreenLayout title="Вход на портал ученика">

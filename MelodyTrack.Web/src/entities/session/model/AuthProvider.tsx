@@ -1,8 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
-import { authExpiredEventName, configureHttpSession, http, restoreAccessToken } from "@/shared/api";
+import { authExpiredEventName, configureHttpSession, http, normalizeAppError, restoreAccessToken } from "@/shared/api";
 import { clearReferenceLabels } from "@/shared/lib";
 
 import { authQueryKeys } from "../api/queryKeys";
@@ -42,7 +41,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [queryClient]);
 
   const handleSessionExpired = useCallback(() => {
-    authStore.clear();
+    if (authStore.hasSession() || authStore.getAccessToken()) {
+      authStore.clear();
+    }
   }, []);
 
   const meQuery = useQuery({
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    if (meQuery.error instanceof SessionRestoreError || (axios.isAxiosError(meQuery.error) && meQuery.error.response?.status === 401)) {
+    if (meQuery.error instanceof SessionRestoreError || normalizeAppError(meQuery.error).status === 401) {
       const timeoutId = window.setTimeout(() => {
         handleSessionExpired();
       }, 0);

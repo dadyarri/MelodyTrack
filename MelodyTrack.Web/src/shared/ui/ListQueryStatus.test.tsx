@@ -7,7 +7,7 @@ describe("ListQueryStatus", () => {
   it("keeps a failed refresh visible and retryable", () => {
     const onRetry = vi.fn();
 
-    render(<ListQueryStatus isError isFetching onRetry={onRetry} />);
+    render(<ListQueryStatus error={new Error("Сервер недоступен")} isFetching onRetry={onRetry} />);
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
 
     expect(screen.getByText("Не удалось обновить данные.")).toBeInTheDocument();

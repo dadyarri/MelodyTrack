@@ -165,6 +165,48 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task OpenApiDocument_IsKiotaCompatible()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var root = document.RootElement;
+        var servers = root.GetProperty("servers");
+        servers.GetArrayLength().ShouldBe(1);
+        servers[0].GetProperty("url").GetString().ShouldBe("http://localhost:5000");
+
+        var schemas = root.GetProperty("components").GetProperty("schemas");
+
+        if (schemas.TryGetProperty(nameof(Ulid), out var ulid))
+        {
+            ulid.GetProperty("type").GetString().ShouldBe("string");
+            ulid.TryGetProperty("format", out _).ShouldBeFalse();
+        }
+
+        var clientId = schemas.GetProperty("ClientWithBalanceDto").GetProperty("properties").GetProperty("id");
+        clientId.GetProperty("type").GetString().ShouldBe("string");
+        clientId.TryGetProperty("format", out _).ShouldBeFalse();
+
+        var problemStatus = schemas.GetProperty(nameof(ApiProblemDetails)).GetProperty("properties").GetProperty("status");
+        problemStatus.GetProperty("type").GetString().ShouldBe("integer");
+
+        var clientBalance = schemas.GetProperty("ClientWithBalanceDto").GetProperty("properties").GetProperty("balance");
+        clientBalance.GetProperty("type").GetString().ShouldBe("number");
+
+        var clientContacts = schemas.GetProperty("ClientContacts").GetProperty("properties");
+        clientContacts.GetProperty("telegram").TryGetProperty("format", out _).ShouldBeFalse();
+        clientContacts.GetProperty("vk").TryGetProperty("format", out _).ShouldBeFalse();
+
+        var loginResponses = root.GetProperty("paths")
+            .EnumerateObject()
+            .Single(path => path.Name.EndsWith("/auth/login", StringComparison.Ordinal))
+            .Value
+            .GetProperty("post")
+            .GetProperty("responses");
+        var okSchema = GetJsonResponseSchema(loginResponses.GetProperty("200"));
+        var acceptedSchema = GetJsonResponseSchema(loginResponses.GetProperty("202"));
+        acceptedSchema.ToString().ShouldBe(okSchema.ToString());
+    }
+
+    [Fact]
     public async Task OpenApiRoutes_FollowResourceConventions()
     {
         using var document = await GetOpenApiDocumentAsync();
@@ -212,6 +254,11 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         response.TryGetProperty("headers", out var headers).ShouldBeTrue($"{operationId} response {statusCode} must describe headers");
         headers.TryGetProperty(header, out _).ShouldBeTrue($"{operationId} response {statusCode} must describe {header}");
     }
+
+    private static JsonElement GetJsonResponseSchema(JsonElement response) => response
+        .GetProperty("content")
+        .GetProperty("application/json")
+        .GetProperty("schema");
 
     private async Task<JsonDocument> GetOpenApiDocumentAsync()
     {

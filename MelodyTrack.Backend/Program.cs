@@ -137,8 +137,13 @@ try
     builder.Services.AddOpenApi("v1", options =>
     {
         options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_1;
+        options.CreateSchemaReferenceId = typeInfo =>
+            (Nullable.GetUnderlyingType(typeInfo.Type) ?? typeInfo.Type) == typeof(Ulid)
+            ? null
+            : Microsoft.AspNetCore.OpenApi.OpenApiOptions.CreateDefaultSchemaReferenceId(typeInfo);
         options.AddDocumentTransformer<MelodyTrackOpenApiTransformer>();
         options.AddOperationTransformer<MelodyTrackOpenApiTransformer>();
+        options.AddSchemaTransformer<MelodyTrackOpenApiTransformer>();
     });
     builder.Services.AddSerilog();
     builder.Services.AddResponseCompression(options =>

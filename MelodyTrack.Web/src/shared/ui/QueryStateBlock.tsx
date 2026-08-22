@@ -1,10 +1,11 @@
 import { Empty, Typography } from "antd";
 
+import { ApiErrorDetails } from "./ApiErrorDetails";
 import { StatusBanner } from "./StatusBanner";
 
 type QueryStateBlockProps = {
   isLoading?: boolean;
-  isError?: boolean;
+  error?: unknown;
   isEmpty?: boolean;
   loadingText?: string;
   emptyText?: string;
@@ -13,7 +14,7 @@ type QueryStateBlockProps = {
 
 export function QueryStateBlock({
   isLoading = false,
-  isError = false,
+  error,
   isEmpty = false,
   loadingText = "Загрузка...",
   emptyText = "Нет данных",
@@ -23,8 +24,10 @@ export function QueryStateBlock({
     return <Typography.Text type="secondary">{loadingText}</Typography.Text>;
   }
 
-  if (isError) {
-    return <StatusBanner type="error" title={errorMessage} />;
+  if (error) {
+    return (
+      <StatusBanner type="error" title={errorMessage} description={<ApiErrorDetails error={error} fallbackMessage={errorMessage} />} />
+    );
   }
 
   if (isEmpty) {

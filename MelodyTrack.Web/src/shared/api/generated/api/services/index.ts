@@ -59,8 +59,8 @@ export interface ServicesRequestBuilder extends BaseRequestBuilder<ServicesReque
 }
 export interface ServicesRequestBuilderGetQueryParameters {
     name?: string;
-    page?: string;
-    pageSize?: string;
+    page?: number;
+    pageSize?: number;
 }
 /**
  * Uri template for the request builder.
