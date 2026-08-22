@@ -1,0 +1,7 @@
+interface:
+  display_name: "MelodyTrack Commit"
+  short_description: "Verify and create focused local commits"
+  default_prompt: "Use $melodytrack-commit to verify and commit the current MelodyTrack change batch."
+
+policy:
+  allow_implicit_invocation: false
