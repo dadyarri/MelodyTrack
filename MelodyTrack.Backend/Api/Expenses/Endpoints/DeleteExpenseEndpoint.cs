@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,14 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class DeleteExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Delete, "/expenses/{id}")]
+public sealed class DeleteExpenseEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/expenses/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        ILogger<DeleteExpenseEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -30,7 +36,7 @@ public class DeleteExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Attempting to delete expense with ID: {ExpenseId}", req.Id);
+        logger.LogDebug("Attempting to delete expense with ID: {ExpenseId}", req.Id);
         var expense = await db.Expenses
             .AsNoTracking()
             .Where(e => e.Id == req.Id)
@@ -39,7 +45,7 @@ public class DeleteExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
 
         if (expense is null)
         {
-            Logger.LogInformation("Expense with ID {ExpenseId} was already deleted or not found", req.Id);
+            logger.LogInformation("Expense with ID {ExpenseId} was already deleted or not found", req.Id);
             return TypedResults.NoContent();
         }
 
@@ -57,7 +63,7 @@ public class DeleteExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
 
         await db.Expenses.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);
 
-        Logger.LogInformation("Successfully deleted expense with ID: {ExpenseId}", req.Id);
+        logger.LogInformation("Successfully deleted expense with ID: {ExpenseId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "expenses",

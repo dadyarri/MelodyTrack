@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Roles.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,26 +10,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Roles.Endpoints;
 
-public class LookupRolesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/roles/options")]
+public sealed class LookupRolesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/roles/options");
-    }
 
-    public override async Task<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<LookupRolesEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Role lookup request without a current user");
+            logger.LogWarning("Role lookup request without a current user");
             return TypedResults.Unauthorized();
         }
 
         if (!user.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Role lookup request denied for non-admin {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+            logger.LogWarning("Role lookup request denied for non-admin {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Forbid();
         }
 
@@ -45,7 +47,7 @@ public class LookupRolesEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
             })
             .ToListAsync(ct);
 
-        Logger.LogInformation("Returned {Count} assignable roles to {EmailRef}", roles.Count, UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("Returned {Count} assignable roles to {EmailRef}", roles.Count, UserUtils.DescribeEmailForLogs(user.Email));
         return TypedResults.Ok(new LookupRolesResponse { Roles = roles });
     }
 }

@@ -20,7 +20,9 @@ public static class QueryableExtensions
     public static IQueryable<TEntity> ApplyPagination<TEntity>(this IQueryable<TEntity> queryable,
         PaginatedRequest req)
     {
-        return queryable.Skip(req.PageSize * (req.Page - 1)).Take(req.PageSize);
+        return queryable
+            .Skip(req.EffectivePageSize * (req.EffectivePage - 1))
+            .Take(req.EffectivePageSize);
     }
 
     public static IQueryable<TEntity> ApplyFuzzySearchFilters<TEntity>(

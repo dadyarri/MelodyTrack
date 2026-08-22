@@ -27,7 +27,7 @@ public static class UnifiedRuntimeExtensions
                 headers.TryAdd("X-Frame-Options", "DENY");
                 headers.TryAdd("Referrer-Policy", "no-referrer");
                 headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-                headers.TryAdd("X-Trace-Id", context.TraceIdentifier);
+                headers.TryAdd("X-Trace-Id", ApiTraceContext.GetTraceId(context));
 
                 if (context.Response.StatusCode >= StatusCodes.Status400BadRequest
                     && context.Response.ContentType?.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) == true)

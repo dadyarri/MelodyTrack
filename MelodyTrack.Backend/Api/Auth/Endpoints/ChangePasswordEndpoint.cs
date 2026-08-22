@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
@@ -8,25 +8,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ChangePasswordEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.Req<ChangePasswordRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/password-change")]
+public sealed class ChangePasswordEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/password-change");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(ChangePasswordRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult>> HandleAsync(
+        ChangePasswordRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        RefreshSessionCookieService refreshCookieService,
+        ILogger<ChangePasswordEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.CurrentPassword))
         {
-            Logger.LogWarning("Password change failed for current user: invalid current password");
+            logger.LogWarning("Password change failed for current user: invalid current password");
             return TypedResults.Unauthorized();
         }
 
@@ -37,9 +38,9 @@ public class ChangePasswordEndpoint(
         await db.Sessions
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
-        refreshCookieService.Clear(HttpContext.Response);
+        refreshCookieService.Clear(httpContext.Response);
 
-        Logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

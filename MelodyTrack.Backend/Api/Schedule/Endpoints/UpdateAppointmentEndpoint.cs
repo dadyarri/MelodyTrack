@@ -1,5 +1,5 @@
-using FastEndpoints;
-using FluentValidation.Results;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Schedule.Requests;
@@ -13,12 +13,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class UpdateAppointmentEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IEntityFreshnessService entityFreshnessService,
-    AppointmentUpdatePreparationService preparationService)
-    : Ep.Req<UpdateAppointmentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/appointments/{id}")]
+public sealed class UpdateAppointmentEndpoint
 {
     private static readonly IReadOnlyDictionary<AppointmentUpdatePreparationError, (string Field, string Message, int Status)> PreparationErrors =
         new Dictionary<AppointmentUpdatePreparationError, (string, string, int)>
@@ -36,13 +32,19 @@ public class UpdateAppointmentEndpoint(
             [AppointmentUpdatePreparationError.RecurrenceTypeNotFound] = (nameof(UpdateAppointmentRequest.RecurrenceTypeId), "Тип повторения не найден", StatusCodes.Status404NotFound)
         };
 
-    public override void Configure()
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        UpdateAppointmentRequest req,
+        Ulid id,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        AppointmentUpdatePreparationService preparationService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Patch("/appointments/{id}");
-    }
-
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateAppointmentRequest req, CancellationToken ct)
-    {
+        req.Id = id;
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id && !e.IsDeleted)
             .Include(e => e.Service)
@@ -63,8 +65,8 @@ public class UpdateAppointmentEndpoint(
 
         if (appointment is null)
         {
-            AddError(r => r.Id, "Встреча не найдена");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Встреча не найдена");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -82,12 +84,12 @@ public class UpdateAppointmentEndpoint(
         var preparation = await preparationService.PrepareAsync(appointment, req, ct);
         if (preparation.Error != AppointmentUpdatePreparationError.None)
         {
-            return CreatePreparationError(preparation.Error);
+            return CreatePreparationError(preparation.Error, validationErrors, httpContext);
         }
 
         if (appointment.RecurringRule is not null && preparation.Changes.StartDateChanged && preparation.Scope != AppointmentUpdateScope.Single)
         {
-            await RescheduleRecurringSeriesAsync(appointment, req.StartDate!.Value, preparation.Scope, ct);
+            await RescheduleRecurringSeriesAsync(db, appointment, req.StartDate!.Value, preparation.Scope, ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
                 Category = "schedule",
@@ -163,7 +165,7 @@ public class UpdateAppointmentEndpoint(
         var recurrenceError = await preparationService.ApplyRecurrenceAsync(appointment, req, ct);
         if (recurrenceError != AppointmentUpdatePreparationError.None)
         {
-            return CreatePreparationError(recurrenceError);
+            return CreatePreparationError(recurrenceError, validationErrors, httpContext);
         }
 
         await db.SaveChangesAsync(ct);
@@ -189,14 +191,18 @@ public class UpdateAppointmentEndpoint(
         return TypedResults.NoContent();
     }
 
-    private ApiProblemDetails CreatePreparationError(AppointmentUpdatePreparationError error)
+    private static ApiProblemDetails CreatePreparationError(
+        AppointmentUpdatePreparationError error,
+        ApiValidationErrorCollection validationErrors,
+        HttpContext httpContext)
     {
         var (field, message, status) = PreparationErrors[error];
-        ValidationFailures.Add(new ValidationFailure(field, message));
-        return new ApiProblemDetails(ValidationFailures, HttpContext, status);
+        validationErrors.Add(field, message);
+        return new ApiProblemDetails(validationErrors, httpContext, status);
     }
 
-    private async Task RescheduleRecurringSeriesAsync(
+    private static async Task RescheduleRecurringSeriesAsync(
+        AppDbContext db,
         Appointment appointment,
         DateTime nextStartDate,
         AppointmentUpdateScope scope,

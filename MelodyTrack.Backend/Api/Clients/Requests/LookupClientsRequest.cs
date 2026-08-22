@@ -1,9 +1,10 @@
-using FastEndpoints;
+
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 
 public class LookupClientsRequest
 {
-    [BindFrom("search")]
+    [FromQuery(Name = "search")]
     public string? Search { get; set; }
 }

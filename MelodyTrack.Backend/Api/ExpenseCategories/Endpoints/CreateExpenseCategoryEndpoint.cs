@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.ExpenseCategories.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,17 +11,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ExpenseCategories.Endpoints;
 
-public class CreateExpenseCategoryEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService)
-    : Ep.Req<CreateExpenseCategoryRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/expense-categories")]
+public sealed class CreateExpenseCategoryEndpoint
 {
     private const string ReplayEndpoint = "expenseCategory:create";
 
-    public override void Configure()
-    {
-        Post("/expense-categories");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CreateExpenseCategoryRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        CreateExpenseCategoryRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        ILogger<CreateExpenseCategoryEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -34,7 +38,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, ICurrentUserAccessor
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -60,7 +64,7 @@ public class CreateExpenseCategoryEndpoint(AppDbContext db, ICurrentUserAccessor
         await db.ExpenseCategories.AddAsync(expenseCategory, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Created new expense category: {Name}", expenseCategory.Name);
+        logger.LogInformation("Created new expense category: {Name}", expenseCategory.Name);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "expense_category",

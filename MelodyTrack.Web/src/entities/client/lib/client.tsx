@@ -34,7 +34,7 @@ export function renderClientSocialLink(value: string | null | undefined, type: "
   );
 }
 
-export function renderClientHistoryAppointmentStatus(status: NonNullable<ClientHistory["events"]["data"][number]["appointmentStatus"]>) {
+export function renderClientHistoryAppointmentStatus(status: NonNullable<ClientHistory["events"]["items"][number]["appointmentStatus"]>) {
   return getClientHistoryAppointmentStatusLabel(status);
 }
 

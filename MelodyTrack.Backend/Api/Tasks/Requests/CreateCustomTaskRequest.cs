@@ -1,6 +1,8 @@
+using MelodyTrack.Backend.Validation;
+
 namespace MelodyTrack.Backend.Api.Tasks.Requests;
 
-public class CreateCustomTaskRequest
+public class CreateCustomTaskRequest : IValidatableRequest
 {
     public Ulid? ClientId { get; set; }
     public string? RecipientName { get; set; }

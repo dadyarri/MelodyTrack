@@ -1,10 +1,12 @@
-using FastEndpoints;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Validation;
 
 namespace MelodyTrack.Backend.Api.Payments.Requests;
 
-public class UpdatePaymentRequest
+public class UpdatePaymentRequest : IValidatableRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
     public required Ulid ClientId { get; set; }

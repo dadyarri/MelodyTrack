@@ -278,10 +278,10 @@ export function ClientHistoryPanel({
       </Card>
 
       <Card size="small" title="Финансовая история">
-        {data.events.data.length > 0 ? (
+        {data.events.items.length > 0 ? (
           <Space orientation="vertical" size={16} className="wide">
             <List
-              dataSource={data.events.data}
+              dataSource={data.events.items}
               renderItem={(event) => (
                 <List.Item>
                   <div className="wide">
@@ -311,12 +311,12 @@ export function ClientHistoryPanel({
                 </List.Item>
               )}
             />
-            {data.events.info.total > data.events.info.pageSize ? (
+            {data.events.page.total > data.events.page.pageSize ? (
               <Pagination
                 align="end"
-                current={data.events.info.page}
-                pageSize={data.events.info.pageSize}
-                total={data.events.info.total}
+                current={data.events.page.page}
+                pageSize={data.events.page.pageSize}
+                total={data.events.page.total}
                 onChange={onEventsPageChange}
                 showSizeChanger={false}
               />

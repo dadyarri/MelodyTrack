@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,24 +13,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class AuthenticateSavedClientPortalIdentityEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ClientPortalSessionService sessionService,
-    TimeProvider timeProvider)
-    : Ep.Req<AuthenticateSavedClientPortalIdentityRequest>.Res<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/client-portal/auth/saved")]
+public sealed class AuthenticateSavedClientPortalIdentityEndpoint
 {
-    public override void Configure()
-    {
-        Post("/client-portal/auth/saved");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalAuthentication));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>> ExecuteAsync(
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.PortalAuthentication)]
+    public static async Task<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>> HandleAsync(
         AuthenticateSavedClientPortalIdentityRequest req,
-        CancellationToken ct)
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ClientPortalSessionService sessionService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var referenceHash = UserUtils.HashOpaqueToken(req.Reference);
         var savedIdentity = await db.ClientPortalSavedIdentityReferences
@@ -43,10 +43,10 @@ public class AuthenticateSavedClientPortalIdentityEndpoint(
             savedIdentity.LoginLink.User.ClientId is null ||
             string.IsNullOrWhiteSpace(savedIdentity.LoginLink.PinHash))
         {
-            AddError(item => item.Reference, "Сохраненный профиль больше недоступен. Удалите его или откройте новую ссылку от преподавателя.");
+            validationErrors.Add(nameof(req.Reference), "Сохраненный профиль больше недоступен. Удалите его или откройте новую ссылку от преподавателя.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -68,10 +68,10 @@ public class AuthenticateSavedClientPortalIdentityEndpoint(
                 ActorDisplayName = $"{link.User.LastName} {link.User.FirstName}".Trim(),
                 Details = $"Неудачных попыток с момента последнего успешного входа: {link.FailedPinAttempts}; источник: сохраненный профиль"
             }, ct);
-            AddError(item => item.Pin, "PIN-код неверный.");
+            validationErrors.Add(nameof(req.Pin), "PIN-код неверный.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status401Unauthorized);
         }
 

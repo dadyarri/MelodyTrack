@@ -9,7 +9,7 @@ using Microsoft.EntityFrameworkCore;
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
 [ApiEndpoint(ApiMethod.Get, "/appointment-recurrence-types/options")]
-public static class LookupRecurrenceTypesEndpoint
+public sealed class LookupRecurrenceTypesEndpoint
 {
     [Authorize]
     public static async Task<Ok<LookupRecurrenceTypesResponse>> HandleAsync(AppDbContext db, CancellationToken cancellationToken)

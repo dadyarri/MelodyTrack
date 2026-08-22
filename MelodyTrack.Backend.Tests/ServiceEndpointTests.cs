@@ -294,8 +294,8 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         var body = await response.Content.ReadFromJsonAsync<GetAuditLogsResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body.ShouldNotBeNull();
-        body.Data.ShouldNotBeEmpty();
-        body.Data[0].Details.ShouldBe("Клиент: Иванова Анна; Начало: воскресенье, 24.05.2026 15:00 → воскресенье, 24.05.2026 16:30");
+        body.Items.ShouldNotBeEmpty();
+        body.Items[0].Details.ShouldBe("Клиент: Иванова Анна; Начало: воскресенье, 24.05.2026 15:00 → воскресенье, 24.05.2026 16:30");
     }
 
     [Fact]

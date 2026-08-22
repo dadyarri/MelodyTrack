@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,21 +12,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CreateCustomTaskEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    TimeProvider timeProvider)
-    : Ep.Req<CreateCustomTaskRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/tasks")]
+public sealed class CreateCustomTaskEndpoint
 {
-    public override void Configure()
-    {
-        Post("/tasks");
-    }
 
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         CreateCustomTaskRequest req,
-        CancellationToken ct)
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -47,8 +47,8 @@ public class CreateCustomTaskEndpoint(
 
             if (client is null)
             {
-                AddError(item => item.ClientId, "Клиент не найден");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.ClientId), "Клиент не найден");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 

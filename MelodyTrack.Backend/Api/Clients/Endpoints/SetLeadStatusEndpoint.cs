@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,13 +10,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class SetLeadStatusEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService)
-    : Ep.Req<SetLeadStatusRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Patch, "/clients/{id}/lead-status")]
+public sealed class SetLeadStatusEndpoint
 {
-    public override void Configure() => Patch("/clients/{id}/lead-status");
 
-    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(SetLeadStatusRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        SetLeadStatusRequest req,
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var role = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (role is null) return TypedResults.Unauthorized();
         if (!role.Value.IsAnyAdmin()) return TypedResults.Forbid();
@@ -23,8 +33,8 @@ public class SetLeadStatusEndpoint(AppDbContext db, ICurrentUserAccessor current
         var client = await db.Clients.FirstOrDefaultAsync(item => item.Id == req.Id, ct);
         if (client is null)
         {
-            AddError(item => item.Id, "Клиент не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Клиент не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         if (client.IsLeadClosed == req.IsClosed) return TypedResults.NoContent();

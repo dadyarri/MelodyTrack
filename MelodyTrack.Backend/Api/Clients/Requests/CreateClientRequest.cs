@@ -1,6 +1,8 @@
+using MelodyTrack.Backend.Validation;
+
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 
-public class CreateClientRequest
+public class CreateClientRequest : IValidatableRequest
 {
     public required string FirstName { get; set; }
     public required string LastName { get; set; }

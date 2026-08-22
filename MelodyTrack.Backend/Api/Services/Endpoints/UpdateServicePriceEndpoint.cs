@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,20 +11,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class UpdateServicePriceEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IEntityFreshnessService entityFreshnessService,
-    TimeProvider timeProvider)
-    : Ep.Req<UpdateServicePriceRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/services/{id}/price")]
+public sealed class UpdateServicePriceEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/services/{id}/price");
-    }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateServicePriceRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        UpdateServicePriceRequest req,
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        TimeProvider timeProvider,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {

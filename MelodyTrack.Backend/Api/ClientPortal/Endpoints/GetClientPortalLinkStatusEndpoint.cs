@@ -1,4 +1,7 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,18 +13,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
-    : Ep.Req<GetClientPortalLinkStatusRequest>.Res<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Get, "/client-portal/auth/link")]
+public sealed class GetClientPortalLinkStatusEndpoint
 {
-    public override void Configure()
-    {
-        Get("/client-portal/auth/link");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalLinkStatus));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>> ExecuteAsync(GetClientPortalLinkStatusRequest req, CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.PortalLinkStatus)]
+    public static async Task<Results<Ok<GetClientPortalLinkStatusResponse>, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetClientPortalLinkStatusRequest req,
+        AppDbContext db,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var tokenHash = UserUtils.HashOpaqueToken(req.Token);
         var link = await db.ClientPortalLoginLinks
@@ -32,10 +36,10 @@ public class GetClientPortalLinkStatusEndpoint(AppDbContext db)
 
         if (link is null || !link.User.Role.RoleName.IsClient() || link.User.ClientId is null)
         {
-            AddError(item => item.Token, "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
+            validationErrors.Add(nameof(req.Token), "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 

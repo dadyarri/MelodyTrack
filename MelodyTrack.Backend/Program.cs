@@ -1,11 +1,9 @@
 using System.IO.Compression;
-using FastEndpoints;
-using FastEndpoints.Security;
-using FastEndpoints.Swagger;
+using System.Reflection;
+using System.Text;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
-using MelodyTrack.Backend.Api.Auth.PreProcessors;
 using MelodyTrack.Backend.Api.ClientPortal;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Dashboard;
@@ -17,18 +15,20 @@ using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Hosting;
 using MelodyTrack.Backend.Jobs;
+using MelodyTrack.Backend.OpenApi;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Backend.Validation;
 using MelodyTrack.Core.Configuration;
 using MelodyTrack.Data;
 using MelodyTrack.Data.Configuration;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Options;
-using NJsonSchema;
-using NSwag;
+using Microsoft.IdentityModel.Tokens;
 using Quartz;
 using Quartz.AspNetCore;
 using Serilog;
@@ -37,12 +37,28 @@ using Serilog.Events;
 using Serilog.Templates.Themes;
 using SerilogTracing;
 using SerilogTracing.Expressions;
+using Scalar.AspNetCore;
 using UaDetector;
+using HttpOptions = MelodyTrack.Backend.Configuration.HttpOptions;
 
 var logLevelSwitch = new LoggingLevelSwitch();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
+var isOpenApiGeneration = string.Equals(
+    Assembly.GetEntryAssembly()?.GetName().Name,
+    "GetDocument.Insider",
+    StringComparison.Ordinal);
+if (isOpenApiGeneration)
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        [$"{AuthenticationSecretsOptions.SectionName}:JwtSigningKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
+        [$"{PersonalDataOptions.SectionName}:CurrentKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
+        [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Host=localhost;Database=openapi;Username=openapi;Password=openapi",
+        [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost"
+    });
+}
 builder.AddServiceDefaults();
 var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
 var environment = builder.Environment.EnvironmentName;
@@ -71,10 +87,20 @@ try
     var personalDataKey = builder.Configuration[$"{PersonalDataOptions.SectionName}:CurrentKey"] ?? string.Empty;
     UserUtils.ConfigureLegacySecrets(jwtSigningKey, personalDataKey);
 
-    builder.Services.AddAuthenticationJwtBearer(opts =>
-    {
-        opts.SigningKey = jwtSigningKey;
-    });
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = "MelodyTrack",
+                ValidateAudience = false,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
+                ValidateLifetime = true
+            };
+        });
 
     builder.Services.AddAuthorization();
     builder.Services.AddHttpContextAccessor();
@@ -92,7 +118,28 @@ try
             "Http:PathBase must be empty or start with '/' and must not end with '/'.")
         .ValidateOnStart();
     builder.Services.AddMelodyTrackData(builder.Configuration);
-    builder.Services.AddFastEndpoints(DiscoveredTypes.All);
+    builder.Services.AddValidation();
+    builder.Services.AddProblemDetails(options =>
+    {
+        options.CustomizeProblemDetails = context =>
+        {
+            var statusCode = context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode;
+            context.ProblemDetails.Status = statusCode;
+            context.ProblemDetails.Type = ApiProblemTypes.ForStatus(statusCode);
+            context.ProblemDetails.Title = ApiErrorResponseFactory.GetTitle(statusCode);
+            context.ProblemDetails.Detail ??= ApiErrorResponseFactory.GetDefaultDetail(statusCode);
+            context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+            context.ProblemDetails.Extensions["code"] = ApiProblemCodes.ForStatus(statusCode);
+            context.ProblemDetails.Extensions["traceId"] = ApiTraceContext.GetTraceId(context.HttpContext);
+            context.ProblemDetails.Extensions["errors"] = Array.Empty<ApiValidationError>();
+        };
+    });
+    builder.Services.AddOpenApi("v1", options =>
+    {
+        options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_1;
+        options.AddDocumentTransformer<MelodyTrackOpenApiTransformer>();
+        options.AddOperationTransformer<MelodyTrackOpenApiTransformer>();
+    });
     builder.Services.AddSerilog();
     builder.Services.AddResponseCompression(options =>
     {
@@ -110,34 +157,6 @@ try
     {
         options.Level = CompressionLevel.Fastest;
     });
-    var configuredApiPathBase = builder.Configuration[$"{HttpOptions.SectionName}:PathBase"] ?? string.Empty;
-    builder.Services.SwaggerDocument(o =>
-    {
-        o.DocumentSettings = s =>
-        {
-            s.Title = "Melody Track API";
-            s.Version = "v2";
-            s.DocumentName = "v2";
-            s.PostProcess = document =>
-            {
-                ConfigureOpenApiContract(document, configuredApiPathBase);
-                foreach (var op in document.Operations)
-                {
-                    if (op.Operation.Security is not null && op.Operation.Security.Count > 0)
-                    {
-                        op.Operation.Parameters.Add(new OpenApiHeader
-                        {
-                            Name = "Authorization",
-                            Description = "Bearer token",
-                            IsRequired = true,
-                            Kind = OpenApiParameterKind.Header
-                        });
-                    }
-                }
-            };
-        };
-        o.ShortSchemaNames = true;
-    });
     // Database configuration
 
     var connectionString = builder.Configuration[$"{DatabaseOptions.SectionName}:ConnectionString"] ?? string.Empty;
@@ -146,6 +165,8 @@ try
     // Custom services
     builder.Services.AddUaDetector();
     builder.Services.AddScoped<ActiveSessionValidator>();
+    builder.Services.AddScoped<ApiValidationErrorCollection>();
+    builder.Services.AddSingleton<ICommonPasswordService, CommonPasswordService>();
     builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
     builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
@@ -203,7 +224,7 @@ try
             opts.WithCronSchedule("0 0 12 ? * 1");
         });
     });
-    if (environment != "Test")
+    if (environment != "Test" && !isOpenApiGeneration)
     {
         builder.Services.AddQuartzServer(q =>
         {
@@ -215,35 +236,6 @@ try
     var httpOptions = app.Services.GetRequiredService<IOptions<HttpOptions>>().Value;
 
     app.UseTrustedReverseProxy();
-
-    app.UseFastEndpoints(x =>
-    {
-        x.Errors.UseProblemDetails(pdc =>
-            {
-                pdc.AllowDuplicateErrors = false;
-                pdc.IndicateErrorCode = true;
-                pdc.IndicateErrorSeverity = false;
-                pdc.TypeValue = ApiProblemTypes.Validation;
-                pdc.TitleValue = ApiErrorResponseFactory.GetTitle(StatusCodes.Status400BadRequest);
-                pdc.TitleTransformer = pd => ApiErrorResponseFactory.GetTitle(pd.Status);
-                pdc.ResponseBuilder = ApiErrorResponseFactory.CreateValidationProblemDetails;
-            }
-        );
-        x.Errors.ContentType = ApiMediaTypes.ProblemJson;
-        x.Errors.ProducesMetadataType = typeof(ApiProblemDetails);
-        x.Endpoints.ShortNames = true;
-        if (!string.IsNullOrEmpty(httpOptions.PathBase))
-        {
-            x.Endpoints.RoutePrefix = httpOptions.PathBase.Trim('/');
-        }
-        x.Endpoints.Configurator = ep =>
-        {
-            if (ep.AnonymousVerbs is null)
-            {
-                ep.PreProcessor<ActiveSessionPreProcessor>(Order.Before);
-            }
-        };
-    });
 
     app.UseSerilogRequestLogging();
     app.UseResponseCompression();
@@ -268,24 +260,16 @@ try
                 return;
             }
 
-            if (exception is not null)
+            if (exception is not null and not BadHttpRequestException)
             {
                 Log.Error(exception, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
             }
 
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            context.Response.ContentType = "application/problem+json";
-
-            var detail = environment is "Development" or "Test"
-                ? exception?.Message
-                : null;
-
-            var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
-                context,
-                StatusCodes.Status500InternalServerError,
-                detail);
-
-            await problemDetails.ExecuteAsync(context);
+            context.Response.StatusCode = exception is BadHttpRequestException badRequest
+                ? badRequest.StatusCode
+                : StatusCodes.Status500InternalServerError;
+            await context.RequestServices.GetRequiredService<IProblemDetailsService>().WriteAsync(
+                new ProblemDetailsContext { HttpContext = context });
         });
     });
     app.Use(async (context, next) =>
@@ -305,22 +289,24 @@ try
             response.Headers.WWWAuthenticate = "Bearer";
         }
 
-        var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
-            context,
-            response.StatusCode);
-
-        await problemDetails.ExecuteAsync(context);
+        await context.RequestServices.GetRequiredService<IProblemDetailsService>().WriteAsync(
+            new ProblemDetailsContext { HttpContext = context });
     });
     app.UseSpaStaticFiles();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
-    app.UseSwaggerGen();
     app.MapDefaultEndpoints();
+    if (app.Environment.IsDevelopment())
+    {
+        app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
+    }
     var apiEndpoints = app.MapGroup(httpOptions.PathBase);
     apiEndpoints.RequireAuthorization();
     apiEndpoints.AddEndpointFilter<ActiveSessionEndpointFilter>();
+    apiEndpoints.AddEndpointFilter<NativeValidationEndpointFilter>();
     apiEndpoints.MapGeneratedApiEndpoints();
     app.MapSpaFallback();
 
@@ -349,196 +335,5 @@ static string FindReleaseDirectory()
         ? workingDirectoryPath
         : Path.Combine(AppContext.BaseDirectory, "changelog", "releases");
 }
-
-static void ConfigureOpenApiContract(OpenApiDocument document, string apiPathBase)
-{
-    if (!document.Components.Schemas.TryGetValue(nameof(ApiProblemDetails), out var problemSchema))
-    {
-        throw new InvalidOperationException($"OpenAPI generation did not register {nameof(ApiProblemDetails)}.");
-    }
-
-    foreach (var description in document.Operations)
-    {
-        var operation = description.Operation;
-        var contractPath = RemoveApiPathBase(description.Path, apiPathBase);
-        if (string.IsNullOrWhiteSpace(operation.OperationId))
-        {
-            operation.OperationId = CreateOperationId(description.Method, contractPath);
-        }
-
-        EnsureProblemResponse(operation, problemSchema, StatusCodes.Status405MethodNotAllowed);
-        if (operation.Security is { Count: > 0 })
-        {
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status401Unauthorized);
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status403Forbidden);
-        }
-        if (operation.RequestBody is not null)
-        {
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status400BadRequest);
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status415UnsupportedMediaType);
-        }
-
-        foreach (var responseEntry in operation.Responses.ToArray())
-        {
-            if (!int.TryParse(responseEntry.Key, out var statusCode) || statusCode < StatusCodes.Status400BadRequest)
-            {
-                AddTraceHeader(responseEntry.Value);
-                continue;
-            }
-
-            ConfigureProblemResponse(responseEntry.Value, problemSchema, statusCode);
-        }
-
-        if (operation.Responses.TryGetValue(StatusCodes.Status201Created.ToString(), out var createdResponse))
-        {
-            createdResponse.Headers["Location"] = new OpenApiHeader
-            {
-                Description = "URI of the created resource"
-            };
-
-            if (description.Method.Equals("post", StringComparison.OrdinalIgnoreCase)
-                && SupportsIdempotency(contractPath)
-                && operation.Parameters.All(parameter => !parameter.Name.Equals("Idempotency-Key", StringComparison.OrdinalIgnoreCase)))
-            {
-                operation.Parameters.Add(new OpenApiHeader
-                {
-                    Name = "Idempotency-Key",
-                    Description = "Optional caller-chosen key. Reusing it with the same payload replays the completed creation; a different payload returns 409.",
-                    IsRequired = false,
-                    Kind = OpenApiParameterKind.Header
-                });
-            }
-        }
-
-        if (GetDownloadMediaType(contractPath) is { } downloadMediaType)
-        {
-            if (!operation.Responses.TryGetValue(StatusCodes.Status200OK.ToString(), out var downloadResponse))
-            {
-                downloadResponse = new OpenApiResponse { Description = "Download" };
-                operation.Responses[StatusCodes.Status200OK.ToString()] = downloadResponse;
-            }
-            downloadResponse.Content.Clear();
-            downloadResponse.Content[downloadMediaType] = new OpenApiMediaType
-            {
-                Schema = new JsonSchema
-                {
-                    Type = JsonObjectType.String,
-                    Format = "binary"
-                }
-            };
-            AddTraceHeader(downloadResponse);
-        }
-
-        foreach (var successResponseEntry in operation.Responses.Where(entry => int.TryParse(entry.Key, out var code) && code is >= 200 and < 300))
-        {
-            var response = successResponseEntry.Value;
-            if (response.Content.Keys.Any(mediaType => mediaType is not "application/json" and not ApiMediaTypes.ProblemJson))
-            {
-                response.Headers["Content-Disposition"] = new OpenApiHeader
-                {
-                    Description = "Attachment filename using standard filename encoding"
-                };
-                response.Headers["Cache-Control"] = new OpenApiHeader
-                {
-                    Description = "Download caching policy; generated and private downloads use no-store"
-                };
-            }
-        }
-
-        if (!operation.Responses.TryGetValue(StatusCodes.Status500InternalServerError.ToString(), out var serverErrorResponse))
-        {
-            serverErrorResponse = new OpenApiResponse
-            {
-                Description = ApiErrorResponseFactory.GetTitle(StatusCodes.Status500InternalServerError)
-            };
-            operation.Responses[StatusCodes.Status500InternalServerError.ToString()] = serverErrorResponse;
-        }
-        ConfigureProblemResponse(serverErrorResponse, problemSchema, StatusCodes.Status500InternalServerError);
-    }
-}
-
-static void EnsureProblemResponse(OpenApiOperation operation, JsonSchema problemSchema, int statusCode)
-{
-    var responseKey = statusCode.ToString();
-    if (!operation.Responses.TryGetValue(responseKey, out var response))
-    {
-        response = new OpenApiResponse();
-        operation.Responses[responseKey] = response;
-    }
-    ConfigureProblemResponse(response, problemSchema, statusCode);
-}
-
-static void ConfigureProblemResponse(OpenApiResponse response, JsonSchema problemSchema, int statusCode)
-{
-    response.Description = ApiErrorResponseFactory.GetTitle(statusCode);
-    response.Content.Clear();
-    response.Content[ApiMediaTypes.ProblemJson] = new OpenApiMediaType
-    {
-        Schema = new JsonSchema { Reference = problemSchema }
-    };
-    AddTraceHeader(response);
-
-    if (statusCode == StatusCodes.Status401Unauthorized)
-    {
-        response.Headers["WWW-Authenticate"] = new OpenApiHeader
-        {
-            Description = "Bearer authentication challenge"
-        };
-    }
-
-    if (statusCode is StatusCodes.Status429TooManyRequests or StatusCodes.Status503ServiceUnavailable)
-    {
-        response.Headers["Retry-After"] = new OpenApiHeader
-        {
-            Description = "Delay in seconds or an HTTP date when retry timing is known"
-        };
-    }
-}
-
-static void AddTraceHeader(OpenApiResponse response)
-{
-    response.Headers["X-Trace-Id"] = new OpenApiHeader
-    {
-        Description = "Request trace identifier also returned in Problem Details"
-    };
-}
-
-static string CreateOperationId(string method, string path)
-{
-    var normalizedPath = string.Join(
-        '_',
-        path.Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Select(segment => segment.Trim('{', '}').Replace('-', '_')));
-    return $"{method.ToLowerInvariant()}_{normalizedPath}";
-}
-
-static string RemoveApiPathBase(string path, string apiPathBase)
-{
-    var normalizedPathBase = apiPathBase.TrimEnd('/');
-    return !string.IsNullOrEmpty(normalizedPathBase)
-           && path.StartsWith($"{normalizedPathBase}/", StringComparison.OrdinalIgnoreCase)
-        ? path[normalizedPathBase.Length..]
-        : path;
-}
-
-static bool SupportsIdempotency(string path) => path is
-    "/appointments"
-    or "/clients"
-    or "/payments"
-    or "/expenses"
-    or "/course-enrollments"
-    or "/courses"
-    or "/services"
-    or "/expense-categories"
-    or "/client-sources";
-
-static string? GetDownloadMediaType(string path) => path switch
-{
-    "/exports/client-debts" or "/exports/expenses" or "/exports/payments" =>
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "/exports/teacher-schedule" => "image/png",
-    "/calendar-subscriptions/{token}.ics" => "text/calendar",
-    _ => null
-};
 
 public partial class Program;

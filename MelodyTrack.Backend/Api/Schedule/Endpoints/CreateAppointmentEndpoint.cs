@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,23 +12,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class CreateAppointmentEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IRequestReplayService requestReplayService,
-    IUserAvailabilityService userAvailabilityService)
-    : Ep.Req<CreateAppointmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/appointments")]
+public sealed class CreateAppointmentEndpoint
 {
     private const string ReplayEndpoint = "appointments:create";
 
-    public override void Configure()
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
+        CreateAppointmentRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        IUserAvailabilityService userAvailabilityService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Post("/appointments");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(CreateAppointmentRequest req, CancellationToken ct)
-    {
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -48,16 +49,16 @@ public class CreateAppointmentEndpoint(
 
         if (client is null)
         {
-            AddError(e => e.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.ClientId), "Клиент не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var service = await db.Services.Where(e => e.Id == req.ServiceId).FirstOrDefaultAsync(ct);
 
         if (service is null)
         {
-            AddError(e => e.ServiceId, "Сервис не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.ServiceId), "Сервис не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var provider = await db.Users.Where(e => e.Id == req.ProviderId).FirstOrDefaultAsync(ct);
@@ -73,8 +74,8 @@ public class CreateAppointmentEndpoint(
 
             if (!isAvailable)
             {
-                AddError(e => e.StartDate, "Запись попадает в нерабочее время преподавателя или в отпуск.");
-                return new ApiProblemDetails(ValidationFailures);
+                validationErrors.Add(nameof(req.StartDate), "Запись попадает в нерабочее время преподавателя или в отпуск.");
+                return new ApiProblemDetails(validationErrors);
             }
         }
 
@@ -91,8 +92,8 @@ public class CreateAppointmentEndpoint(
 
             if (courseTheme is null)
             {
-                AddError(e => e.CourseThemeId, "Тема курса не найдена");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.CourseThemeId), "Тема курса не найдена");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
 
             var hasEnrollment = await db.CourseEnrollments
@@ -101,8 +102,8 @@ public class CreateAppointmentEndpoint(
 
             if (!hasEnrollment)
             {
-                AddError(e => e.CourseThemeId, "Эта тема недоступна для выбранного клиента.");
-                return new ApiProblemDetails(ValidationFailures);
+                validationErrors.Add(nameof(req.CourseThemeId), "Эта тема недоступна для выбранного клиента.");
+                return new ApiProblemDetails(validationErrors);
             }
         }
 

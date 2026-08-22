@@ -1,6 +1,8 @@
+using MelodyTrack.Backend.Validation;
+
 namespace MelodyTrack.Backend.Api.Schedule.Requests;
 
-public class CreateAppointmentRequest
+public class CreateAppointmentRequest : IValidatableRequest
 {
     public Ulid ClientId { get; set; }
     public Ulid ServiceId { get; set; }

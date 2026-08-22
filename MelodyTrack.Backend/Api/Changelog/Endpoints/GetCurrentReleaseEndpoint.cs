@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.RateLimiting;
 namespace MelodyTrack.Backend.Api.Releases.Endpoints;
 
 [ApiEndpoint(ApiMethod.Get, "/releases/current")]
-public static class GetCurrentReleaseEndpoint
+public sealed class GetCurrentReleaseEndpoint
 {
     [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Releases)]

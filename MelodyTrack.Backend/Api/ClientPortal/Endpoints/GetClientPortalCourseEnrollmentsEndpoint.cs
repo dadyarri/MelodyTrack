@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,18 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class GetClientPortalCourseEnrollmentsEndpoint(
-    AppDbContext db,
-    CourseProgressService courseProgressService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/client-portal/course-enrollments")]
+public sealed class GetClientPortalCourseEnrollmentsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/client-portal/course-enrollments");
-    }
 
-    public override async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        CourseProgressService courseProgressService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -51,7 +50,7 @@ public class GetClientPortalCourseEnrollmentsEndpoint(
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(ct);
 
-        var linkedAppointments = await LoadLinkedAppointmentsAsync(currentUser.ClientId.Value, enrollments, ct);
+        var linkedAppointments = await LoadLinkedAppointmentsAsync(db, currentUser.ClientId.Value, enrollments, ct);
 
         return TypedResults.Ok(new GetCourseEnrollmentsResponse
         {
@@ -108,7 +107,8 @@ public class GetClientPortalCourseEnrollmentsEndpoint(
         });
     }
 
-    private async Task<Dictionary<Ulid, List<LinkedAppointmentRow>>> LoadLinkedAppointmentsAsync(
+    private static async Task<Dictionary<Ulid, List<LinkedAppointmentRow>>> LoadLinkedAppointmentsAsync(
+        AppDbContext db,
         Ulid clientId,
         List<Data.Models.CourseEnrollment> enrollments,
         CancellationToken ct)

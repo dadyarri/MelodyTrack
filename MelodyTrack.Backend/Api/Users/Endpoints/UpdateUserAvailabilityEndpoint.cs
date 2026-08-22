@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,20 +12,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class UpdateUserAvailabilityEndpoint(
-    AppDbContext db,
-    IEntityFreshnessService entityFreshnessService,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<UpdateUserAvailabilityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Put, "/users/{id}/availability")]
+public sealed class UpdateUserAvailabilityEndpoint
 {
-    public override void Configure()
-    {
-        Put("/users/{id}/availability");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateUserAvailabilityRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        UpdateUserAvailabilityRequest req,
+        Ulid id,
+        AppDbContext db,
+        IEntityFreshnessService entityFreshnessService,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
@@ -44,8 +48,8 @@ public class UpdateUserAvailabilityEndpoint(
 
         if (user is null)
         {
-            AddError(r => r.Id, "Пользователь не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Пользователь не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         if (user.Role.RoleName.IsSuperuser() && !currentUser.Role.RoleName.IsSuperuser())

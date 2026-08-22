@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,15 +12,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class GetServiceEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/services/{id}")]
+public sealed class GetServiceEndpoint
 {
-    public override void Configure()
-    {
-        Get("/services/{id}");
-    }
 
-    public override async Task<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<ServiceWithCurrentPriceDto>, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecordActivityService recordActivityService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -37,8 +43,8 @@ public class GetServiceEndpoint(AppDbContext db, ICurrentUserAccessor currentUse
 
         if (service is null)
         {
-            AddError(item => item.Id, "Сервис не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Сервис не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var latestPrice = await db.ServicePriceHistory

@@ -24,11 +24,11 @@ public sealed class MinimalApiEndpointTests(MelodyTrackFixture app) : Integratio
         var endpoints = App.Services.GetRequiredService<EndpointDataSource>().Endpoints;
 
         var currentRelease = endpoints.Single(endpoint =>
-            endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == nameof(GetCurrentReleaseEndpoint));
+            endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == "GetCurrentRelease");
         currentRelease.Metadata.GetMetadata<IAllowAnonymous>().ShouldNotBeNull();
 
         var recurrenceTypes = endpoints.Single(endpoint =>
-            endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == nameof(LookupRecurrenceTypesEndpoint));
+            endpoint.Metadata.GetMetadata<IEndpointNameMetadata>()?.EndpointName == "LookupRecurrenceTypes");
         recurrenceTypes.Metadata.GetOrderedMetadata<IAuthorizeData>().ShouldNotBeEmpty();
         recurrenceTypes.Metadata.GetMetadata<IAllowAnonymous>().ShouldBeNull();
     }

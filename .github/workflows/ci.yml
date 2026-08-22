@@ -291,8 +291,32 @@ jobs:
       - backend-verify
       - frontend-verify
     steps:
-      - name: Reserve cross-stack contract lane
-        run: echo "Build-time OpenAPI and generated-client verification will be added during the API contract migration."
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Setup .NET
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: "10.0.x"
+          cache: true
+          cache-dependency-path: |
+            global.json
+            dotnet-tools.json
+            Directory.Packages.props
+            MelodyTrack.slnx
+      - name: Setup Node.js 26
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 26
+          cache: npm
+          cache-dependency-path: MelodyTrack.Web/package-lock.json
+      - name: Restore dependencies
+        run: dotnet restore MelodyTrack.slnx
+      - name: Regenerate API contract and client
+        run: dotnet build MelodyTrack.slnx --no-restore -c Release
+      - name: Reject stale generated client
+        run: git diff --exit-code -- MelodyTrack.Web/src/shared/api/generated
 
   image-integration:
     name: unified image integration

@@ -1,12 +1,16 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Validation;
 
 namespace MelodyTrack.Backend.Api.Releases.Requests;
 
-public sealed class GetReleasesRequest
+public sealed class GetReleasesRequest : IValidatableRequest
 {
-    [BindFrom("page")]
-    public int Page { get; set; } = 1;
+    [FromQuery(Name = "page")]
+    public int? Page { get; set; }
 
-    [BindFrom("page_size")]
-    public int PageSize { get; set; } = 2;
+    [FromQuery(Name = "page_size")]
+    public int? PageSize { get; set; }
+
+    internal int EffectivePage => Page ?? 1;
+    internal int EffectivePageSize => PageSize ?? 2;
 }

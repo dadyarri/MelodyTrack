@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using ClosedXML.Excel;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Clients.Endpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;

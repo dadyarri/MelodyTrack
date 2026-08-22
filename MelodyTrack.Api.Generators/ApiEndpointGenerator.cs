@@ -121,7 +121,9 @@ public sealed class ApiEndpointGenerator : IIncrementalGenerator
             classSymbol.ToDisplayString(SymbolDisplayFormat.FullyQualifiedFormat),
             methodValue,
             route,
-            classSymbol.Name,
+            classSymbol.Name.EndsWith("Endpoint", StringComparison.Ordinal)
+                ? classSymbol.Name.Substring(0, classSymbol.Name.Length - "Endpoint".Length)
+                : classSymbol.Name,
             handlers,
             classSymbol.Locations.FirstOrDefault(static location => location.IsInSource) ?? Location.None);
     }
@@ -182,7 +184,8 @@ public sealed class ApiEndpointGenerator : IIncrementalGenerator
                 .AppendLine()
                 .Append("            .WithName(")
                 .Append(SymbolDisplay.FormatLiteral(endpoint.OperationId, true))
-                .AppendLine(");");
+                .AppendLine(")")
+                .AppendLine("            .DisableValidation();");
         }
 
         source.AppendLine();

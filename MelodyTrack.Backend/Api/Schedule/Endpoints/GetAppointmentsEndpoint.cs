@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,14 +10,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Get, "/appointments")]
+public sealed class GetAppointmentsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/appointments");
-    }
 
-    public override async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetAppointmentsRequest req,
+        AppDbContext db,
+        IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
         var startUtc = DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc);
         var endUtc = DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc);

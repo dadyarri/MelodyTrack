@@ -108,11 +108,11 @@ export function ExpensesPage() {
                 void controller.query.refetch();
               },
             }}
-            dataSource={controller.query.data?.data}
+            dataSource={controller.query.data?.items}
             pagination={{
               current: controller.page,
               pageSize: 10,
-              total: controller.query.data?.info.total,
+              total: controller.query.data?.page.total,
               onChange: controller.setPage,
             }}
             columns={[

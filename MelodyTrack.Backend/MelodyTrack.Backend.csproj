@@ -5,6 +5,10 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+        <OpenApiGenerateDocuments>false</OpenApiGenerateDocuments>
+        <OpenApiGenerateDocuments Condition="'$(DesignTimeBuild)' != 'true' AND '$(IsCrossTargetingBuild)' != 'true' AND '$(SkipApiContractGeneration)' != 'true' AND '$(Restore)' != 'true'">true</OpenApiGenerateDocuments>
+        <OpenApiGenerateDocumentsOnBuild>$(OpenApiGenerateDocuments)</OpenApiGenerateDocumentsOnBuild>
+        <OpenApiDocumentsDirectory>$(BaseIntermediateOutputPath)$(Configuration)/$(TargetFramework)/openapi</OpenApiDocumentsDirectory>
     </PropertyGroup>
 
     <ItemGroup>
@@ -12,24 +16,23 @@
         <PackageReference Include="Facet" />
         <PackageReference Include="Facet.Extensions.EFCore" />
         <PackageReference Include="Facet.Mapping" />
-        <PackageReference Include="FastEndpoints" />
-        <PackageReference Include="FastEndpoints.Generator">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-        <PackageReference Include="FastEndpoints.Security" />
-        <PackageReference Include="FastEndpoints.Swagger" />
         <PackageReference Include="Humanizer.Core" />
         <PackageReference Include="Humanizer.Core.ru" />
         <PackageReference Include="Ical.Net" />
         <PackageReference Include="Isopoh.Cryptography.Argon2" />
         <PackageReference Include="JetBrains.Annotations" />
         <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+        <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+        <PackageReference Include="Microsoft.Extensions.ApiDescription.Server">
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+            <PrivateAssets>all</PrivateAssets>
+        </PackageReference>
         <PackageReference Include="Otp.NET" />
         <PackageReference Include="QRCoder" />
         <PackageReference Include="Quartz" />
         <PackageReference Include="Quartz.AspNetCore" />
         <PackageReference Include="Quartz.Serialization.SystemTextJson" />
+        <PackageReference Include="Scalar.AspNetCore" />
         <PackageReference Include="Serilog" />
         <PackageReference Include="Serilog.AspNetCore" />
         <PackageReference Include="Serilog.Sinks.Console" />
@@ -69,9 +72,7 @@
       <ProjectReference Include="..\MelodyTrack.Core\MelodyTrack.Core.csproj" />
       <ProjectReference Include="..\MelodyTrack.Data\MelodyTrack.Data.csproj" />
       <ProjectReference Include="..\MelodyTrack.ServiceDefaults\MelodyTrack.ServiceDefaults.csproj" />
-      <ProjectReference Include="..\MelodyTrack.Api.Generators\MelodyTrack.Api.Generators.csproj"
-                        OutputItemType="Analyzer"
-                        ReferenceOutputAssembly="false" />
+      <ProjectReference Include="..\MelodyTrack.Api.Generators\MelodyTrack.Api.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
     </ItemGroup>
 
     <Import Project="..\build\Frontend.targets" />

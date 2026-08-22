@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
@@ -8,19 +8,26 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Backend.ErrorHandling;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class CreateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService) : Ep.Req<CreateExpenseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/expenses")]
+public sealed class CreateExpenseEndpoint
 {
     private const string ReplayEndpoint = "expenses:create";
 
-    public override void Configure()
-    {
-        Post("/expenses");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CreateExpenseRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        CreateExpenseRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        ILogger<CreateExpenseEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -33,7 +40,7 @@ public class CreateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -60,7 +67,8 @@ public class CreateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
 
             if (categoryName is null)
             {
-                ThrowError("Категория расхода не найдена");
+                validationErrors.Add(nameof(req.CategoryId), "Категория расхода не найдена");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -76,7 +84,7 @@ public class CreateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
         await db.Expenses.AddAsync(expense, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
+        logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "expenses",

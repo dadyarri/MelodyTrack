@@ -1,9 +1,10 @@
-using FastEndpoints;
+
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Courses.Requests;
 
 public class GetCoursesRequest
 {
-    [BindFrom("search")]
+    [FromQuery(Name = "search")]
     public string? Search { get; set; }
 }

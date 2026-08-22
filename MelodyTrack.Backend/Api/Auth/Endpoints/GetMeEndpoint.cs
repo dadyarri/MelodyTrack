@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
@@ -10,20 +11,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetMeEndpoint(AppDbContext db, IRecordActivityService recordActivityService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<MeResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/auth/me")]
+public sealed class GetMeEndpoint
 {
-    public override void Configure()
-    {
-        Get("/auth/me");
-    }
 
-    public override async Task<Results<Ok<MeResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<MeResponse>, UnauthorizedHttpResult>> HandleAsync(
+        AppDbContext db,
+        IRecordActivityService recordActivityService,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<GetMeEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Profile request without a current user");
+            logger.LogWarning("Profile request without a current user");
             return TypedResults.Unauthorized();
         }
 

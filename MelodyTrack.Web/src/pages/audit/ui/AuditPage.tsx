@@ -128,8 +128,8 @@ export function AuditPage() {
               void controller.query.refetch();
             },
           }}
-          dataSource={controller.query.data?.data}
-          pagination={{ current: controller.page, pageSize: 20, total: controller.query.data?.info.total, onChange: controller.setPage }}
+          dataSource={controller.query.data?.items}
+          pagination={{ current: controller.page, pageSize: 20, total: controller.query.data?.page.total, onChange: controller.setPage }}
           columns={[
             { title: "Когда", dataIndex: "createdAtUtc", width: 170, render: (value: string) => formatDateTime(value) },
             {

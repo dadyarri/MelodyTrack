@@ -1,4 +1,7 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Reports.Requests;
 using MelodyTrack.Backend.Api.Reports.Responses;
@@ -8,21 +11,19 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Reports.Endpoints;
 
-public sealed class GetFinanceReportEndpoint(
-    ICurrentUserAccessor currentUserAccessor,
-    IReportContextFactory contextFactory,
-    IFinanceReportQueryService reportService)
-    : Ep.Req<GetReportRequest>.Res<Results<Ok<FinanceReportResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Get, "/reports/finance")]
+public sealed class GetFinanceReportEndpoint
 {
-    public override void Configure()
-    {
-        Get("/reports/finance");
-        Options(builder => builder.RequireRateLimiting("expensive-read"));
-    }
 
-    public override async Task<Results<Ok<FinanceReportResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> ExecuteAsync(
-        GetReportRequest req,
-        CancellationToken ct)
+        [EnableRateLimiting("expensive-read")]
+    public static async Task<Results<Ok<FinanceReportResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetReportRequest req,
+        ICurrentUserAccessor currentUserAccessor,
+        IReportContextFactory contextFactory,
+        IFinanceReportQueryService reportService,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -38,8 +39,8 @@ public sealed class GetFinanceReportEndpoint(
         var result = contextFactory.Create(req, currentUser);
         if (!result.IsSuccess)
         {
-            AddError(result.Field!, result.Error!);
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(result.Field!, result.Error!);
+            return new ApiProblemDetails(validationErrors);
         }
 
         return TypedResults.Ok(await reportService.GetAsync(result.Context!, ct));

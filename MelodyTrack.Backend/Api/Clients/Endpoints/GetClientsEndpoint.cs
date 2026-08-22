@@ -1,5 +1,6 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using Facet.Mapping;
-using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -13,22 +14,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientsEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    ClientToClientWithBalanceDtoMapConfig mapper,
-    IRecordActivityService recordActivityService,
-    TimeProvider timeProvider)
-    : Ep.Req<GetClientsPaginatedRequest>.Res<
-        Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/clients")]
+public sealed class GetClientsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/clients");
-    }
 
-    public override async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
-        ExecuteAsync(GetClientsPaginatedRequest req,
-            CancellationToken ct)
+    public static async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
+        HandleAsync(
+        [AsParameters] GetClientsPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ClientToClientWithBalanceDtoMapConfig mapper,
+        IRecordActivityService recordActivityService,
+        TimeProvider timeProvider,
+        ILogger<GetClientsEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -41,7 +41,7 @@ public class GetClientsEndpoint(
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug(
+        logger.LogDebug(
             "Fetching paginated list of clients with filters - Page: {Page}, PageSize: {PageSize}, FirstName: {FirstName}, LastName: {LastName}, Search: {Search}",
             req.Page, req.PageSize,
             req.FirstName ?? "not specified", req.LastName ?? "not specified", req.Search ?? "not specified");
@@ -134,11 +134,11 @@ public class GetClientsEndpoint(
             }
         }
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Retrieved {Count} clients (Page {Page} of {TotalPages}, Total: {TotalCount})",
             clients.Count,
-            req.Page,
-            (int)Math.Ceiling(totalCount / (double)req.PageSize),
+            req.EffectivePage,
+            (int)Math.Ceiling(totalCount / (double)req.EffectivePageSize),
             totalCount
         );
 

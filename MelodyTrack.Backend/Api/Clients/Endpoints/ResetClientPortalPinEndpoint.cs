@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -10,20 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ResetClientPortalPinEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/clients/{id}/portal-pin-resets")]
+public sealed class ResetClientPortalPinEndpoint
 {
-    public override void Configure()
-    {
-        Post("/clients/{id}/portal-pin-resets");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -42,10 +42,10 @@ public class ResetClientPortalPinEndpoint(
 
         if (loginLink is null)
         {
-            AddError(item => item.Id, "Кабинет для этого клиента еще не создан.");
+            validationErrors.Add(nameof(req.Id), "Кабинет для этого клиента еще не создан.");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 

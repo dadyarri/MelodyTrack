@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,21 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class GetClientPortalScheduleEndpoint(
-    AppDbContext db,
-    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
-    ICurrentUserAccessor currentUserAccessor,
-    TimeProvider timeProvider)
-    : Ep.Req<GetClientPortalScheduleRequest>.Res<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/client-portal/schedule")]
+public sealed class GetClientPortalScheduleEndpoint
 {
     private const int RecurrenceMaterializationHorizonDays = 45;
 
-    public override void Configure()
-    {
-        Get("/client-portal/schedule");
-    }
-
-    public override async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetClientPortalScheduleRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetClientPortalScheduleRequest req,
+        AppDbContext db,
+        IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+        ICurrentUserAccessor currentUserAccessor,
+        TimeProvider timeProvider,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)

@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,26 +13,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<Verify2FaRequest>.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/2fa/verify")]
+public sealed class Verify2FaEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/2fa/verify");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.VerifyTwoFactor));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
-        Verify2FaRequest req, CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.VerifyTwoFactor)]
+    public static async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> HandleAsync(
+        Verify2FaRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<Verify2FaEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var authenticatedEmail = currentUserAccessor.Email;
         var email = authenticatedEmail ?? req.Email;
 
         if (email is null)
         {
-            Logger.LogWarning("2FA verification attempt without email");
+            logger.LogWarning("2FA verification attempt without email");
             return TypedResults.Unauthorized();
         }
 
@@ -38,7 +40,7 @@ public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
             && req.Email is not null
             && !string.Equals(UserUtils.NormalizeEmail(authenticatedEmail), UserUtils.NormalizeEmail(req.Email), StringComparison.Ordinal))
         {
-            Logger.LogWarning(
+            logger.LogWarning(
                 "Authenticated 2FA verification attempt with mismatched email claim {AuthenticatedEmail} and payload {PayloadEmail}",
                 authenticatedEmail,
                 req.Email);
@@ -50,19 +52,19 @@ public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
 
         if (user is null)
         {
-            Logger.LogWarning("2FA verification attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("2FA verification attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
         if (authenticatedEmail is null && user.TotpSecret != req.OtpSecret)
         {
-            Logger.LogWarning("Anonymous 2FA verification attempt with mismatched secret for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("Anonymous 2FA verification attempt with mismatched secret for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
         if (!UserUtils.VerifyTotpCode(req.OtpSecret, req.Otp))
         {
-            Logger.LogWarning("Invalid 2FA code provided for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("Invalid 2FA code provided for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -81,7 +83,7 @@ public class Verify2FaEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
         user.TotpSecret = req.OtpSecret;
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("auth.2fa.enrolled {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+        logger.LogInformation("auth.2fa.enrolled {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
         return TypedResults.Ok(new RecoveryCodesResponse
         {
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto

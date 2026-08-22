@@ -14,6 +14,7 @@ const intentionalFocusedSlices = [
 ];
 
 export default defineConfig([
+  { ignores: ["./src/shared/api/generated/**"] },
   ...fsd.configs.recommended,
   {
     files: ["./src/pages/**"],

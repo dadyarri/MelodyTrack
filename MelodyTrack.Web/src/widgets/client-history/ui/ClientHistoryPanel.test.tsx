@@ -60,8 +60,8 @@ function createHistory(contacts: { telegram: string; vk: string }): ClientHistor
       upcomingAppointmentsCount: 0,
     },
     events: {
-      data: [],
-      info: {
+      items: [],
+      page: {
         page: 1,
         pageSize: 20,
         total: 0,

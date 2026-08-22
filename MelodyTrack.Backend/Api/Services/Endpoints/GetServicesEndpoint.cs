@@ -1,5 +1,6 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using Facet.Mapping;
-using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Api.Services.Responses;
@@ -13,17 +14,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class GetServicesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, ServiceToServiceWithCurrentPriceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetServicesPaginatedRequest>.Res<
-        Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/services")]
+public sealed class GetServicesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/services");
-    }
 
-    public override async Task<Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
-        ExecuteAsync(GetServicesPaginatedRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<PaginatedResponse<ServiceWithCurrentPriceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
+        HandleAsync(
+        [AsParameters] GetServicesPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ServiceToServiceWithCurrentPriceDtoMapConfig mapper,
+        IRecordActivityService recordActivityService,
+        ILogger<GetServicesEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -36,7 +40,7 @@ public class GetServicesEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug(
+        logger.LogDebug(
             "Fetching paginated list of services with filters - Page: {Page}, PageSize: {PageSize}, Name: {Name}",
             req.Page, req.PageSize,
             req.Name ?? "not specified");
@@ -60,11 +64,11 @@ public class GetServicesEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
 
         var totalCount = await db.Services.CountAsync(ct);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Retrieved {Count} services (Page {Page} of {TotalPages}, Total: {TotalCount})",
             services.Count,
-            req.Page,
-            (int)Math.Ceiling(totalCount / (double)req.PageSize),
+            req.EffectivePage,
+            (int)Math.Ceiling(totalCount / (double)req.EffectivePageSize),
             totalCount
         );
 

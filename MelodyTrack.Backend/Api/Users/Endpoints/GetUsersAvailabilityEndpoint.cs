@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,19 +10,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUsersAvailabilityEndpoint(
-    AppDbContext db,
-    IUserAvailabilityService userAvailabilityService,
-    IRecordActivityService recordActivityService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/users/availability")]
+public sealed class GetUsersAvailabilityEndpoint
 {
-    public override void Configure()
-    {
-        Get("/users/availability");
-    }
 
-    public override async Task<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<GetUsersAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        IUserAvailabilityService userAvailabilityService,
+        IRecordActivityService recordActivityService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null || !currentUser.Role.RoleName.IsAnyAdmin())

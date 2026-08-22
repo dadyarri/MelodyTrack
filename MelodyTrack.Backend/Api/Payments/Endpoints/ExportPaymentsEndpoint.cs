@@ -1,5 +1,7 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using ClosedXML.Excel;
-using FastEndpoints;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -11,19 +13,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class ExportPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, TimeProvider timeProvider)
-    : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/exports/payments")]
+public sealed class ExportPaymentsEndpoint
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-    public override void Configure()
-    {
-        Get("/exports/payments");
-        Options(builder => builder.RequireRateLimiting("expensive-read"));
-        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: ExcelContentType));
-    }
-
-    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
+        [EnableRateLimiting("expensive-read")]
+    public static async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetPaymentsPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        TimeProvider timeProvider,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)

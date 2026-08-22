@@ -1,13 +1,13 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 
 namespace MelodyTrack.Backend.Api.Audit.Requests;
 
 public class GetAuditLogsPaginatedRequest : PaginatedRequest
 {
-    [BindFrom("search")]
+    [FromQuery(Name = "search")]
     public string? Search { get; set; }
 
-    [BindFrom("timezone")]
+    [FromQuery(Name = "timezone")]
     public string? Timezone { get; set; }
 }

@@ -44,6 +44,12 @@
     "Firefox >= 115"
   ],
   "dependencies": {
+    "@microsoft/kiota-abstractions": "1.0.0-preview.103",
+    "@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.103",
+    "@microsoft/kiota-serialization-form": "1.0.0-preview.103",
+    "@microsoft/kiota-serialization-json": "1.0.0-preview.103",
+    "@microsoft/kiota-serialization-multipart": "1.0.0-preview.103",
+    "@microsoft/kiota-serialization-text": "1.0.0-preview.103",
     "@tanstack/react-query": "^5.100.10",
     "@xyflow/react": "^12.11.0",
     "antd": "^6.4.2",

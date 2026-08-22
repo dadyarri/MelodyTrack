@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -12,21 +13,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class CreateClientPortalLinkEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IPublicUrlBuilder publicUrlBuilder,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/clients/{id}/portal-links")]
+public sealed class CreateClientPortalLinkEndpoint
 {
-    public override void Configure()
-    {
-        Post("/clients/{id}/portal-links");
-    }
 
-    public override async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
+    public static async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IPublicUrlBuilder publicUrlBuilder,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -45,10 +45,10 @@ public class CreateClientPortalLinkEndpoint(
 
         if (client is null)
         {
-            AddError(r => r.Id, "Клиент не найден");
+            validationErrors.Add(nameof(req.Id), "Клиент не найден");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
@@ -66,19 +66,19 @@ public class CreateClientPortalLinkEndpoint(
 
         if (hasRealEmail && existingUser is not null && existingUser.Role.RoleName != UserRoles.Client)
         {
-            AddError(r => r.Id, "Этот email уже используется в рабочем аккаунте. Для клиента нужен отдельный email.");
+            validationErrors.Add(nameof(req.Id), "Этот email уже используется в рабочем аккаунте. Для клиента нужен отдельный email.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status409Conflict);
         }
 
         if (existingUser is not null && existingUser.ClientId is not null && existingUser.ClientId != client.Id)
         {
-            AddError(r => r.Id, "Этот email уже привязан к другому клиентскому кабинету.");
+            validationErrors.Add(nameof(req.Id), "Этот email уже привязан к другому клиентскому кабинету.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status409Conflict);
         }
 

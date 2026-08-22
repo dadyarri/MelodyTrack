@@ -1,5 +1,4 @@
 using System.Data;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
@@ -7,6 +6,7 @@ using MelodyTrack.Data;
 using MelodyTrack.Data.Configuration;
 using MelodyTrack.Data.Initialization;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -15,7 +15,7 @@ using Testcontainers.PostgreSql;
 
 namespace MelodyTrack.Backend.Tests.Infrastructure;
 
-public sealed class MelodyTrackFixture : AppFixture<Program>
+public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string PostgreSqlImage = "postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50";
     private const string ThrottleBypassHeaderName = "X-Forwarded-For";
@@ -23,8 +23,9 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
     private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
 
     private PostgreSqlContainer? _dbContainer;
+    public HttpClient Client { get; private set; } = null!;
 
-    protected override async ValueTask PreSetupAsync()
+    public async ValueTask InitializeAsync()
     {
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
 
@@ -42,19 +43,11 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         Environment.SetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY", "super-secret-pii-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
         await RunInitializationAsync(InitializationMode.Test, projectDir, connectionString, TestContext.Current.CancellationToken);
+        Client = CreateClient();
+        SetThrottleIdentity();
     }
 
-    protected override ValueTask SetupAsync()
-    {
-        Client = CreateClient(new ClientOptions
-        {
-            ThrottleBypassHeaderName = ThrottleBypassHeaderName
-        });
-
-        return ValueTask.CompletedTask;
-    }
-
-    protected override void ConfigureApp(IWebHostBuilder app)
+    protected override void ConfigureWebHost(IWebHostBuilder app)
     {
         app.UseEnvironment("Test");
         app.ConfigureAppConfiguration((_, configuration) =>
@@ -78,11 +71,17 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
             await ResetDatabaseAsync(db, cancellationToken);
             await SeedBaselineAsync(db, cancellationToken);
             Client.DefaultRequestHeaders.Clear();
+            SetThrottleIdentity();
         }
         finally
         {
             ResetLock.Release();
         }
+    }
+
+    private void SetThrottleIdentity()
+    {
+        Client.DefaultRequestHeaders.TryAddWithoutValidation(ThrottleBypassHeaderName, $"test-{Ulid.NewUlid()}");
     }
 
     public async Task RunInitializationAsync(InitializationMode mode, CancellationToken cancellationToken)
@@ -95,9 +94,10 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         await RunInitializationAsync(mode, projectDir, connectionString, cancellationToken);
     }
 
-    protected override async ValueTask TearDownAsync()
+    public override async ValueTask DisposeAsync()
     {
-        await base.TearDownAsync();
+        Client?.Dispose();
+        await base.DisposeAsync();
 
         if (_dbContainer is not null)
         {

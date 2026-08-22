@@ -1,6 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using FluentValidation.Results;
 
 namespace MelodyTrack.Backend.ErrorHandling;
 
@@ -23,17 +23,17 @@ public class ApiProblemDetails : IResult
     {
     }
 
-    public ApiProblemDetails(IReadOnlyList<ValidationFailure> failures, int statusCode = StatusCodes.Status400BadRequest)
+    public ApiProblemDetails(IReadOnlyList<ApiValidationError> failures, int statusCode = StatusCodes.Status400BadRequest)
     {
         Status = statusCode;
         Type = ApiProblemTypes.ForStatus(statusCode, hasValidationErrors: true);
         Title = ApiErrorResponseFactory.GetTitle(statusCode);
         Code = ApiProblemCodes.ForStatus(statusCode, hasValidationErrors: true);
         Detail = ApiErrorResponseFactory.BuildValidationDetail(failures, statusCode);
-        Errors = ApiErrorResponseFactory.CreateValidationErrors(failures);
+        Errors = failures.DistinctBy(error => new { error.Path, error.Code, error.Message }).ToArray();
     }
 
-    public ApiProblemDetails(IReadOnlyList<ValidationFailure> failures, HttpContext httpContext, int statusCode)
+    public ApiProblemDetails(IReadOnlyList<ApiValidationError> failures, HttpContext httpContext, int statusCode)
         : this(failures, statusCode)
     {
         ApiErrorResponseFactory.ApplyRequestContext(this, httpContext);
@@ -53,6 +53,17 @@ public class ApiProblemDetails : IResult
     }
 }
 
+public sealed class ApiValidationErrorCollection : List<ApiValidationError>
+{
+    public void Add(string path, string message, string code = "validation_error") =>
+        Add(new ApiValidationError
+        {
+            Path = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(path),
+            Code = code,
+            Message = message
+        });
+}
+
 public sealed class ApiValidationError
 {
     public required string Path { get; init; }
@@ -69,6 +80,12 @@ public sealed class ApiValidationError
 public static class ApiMediaTypes
 {
     public const string ProblemJson = "application/problem+json";
+}
+
+public static class ApiTraceContext
+{
+    public static string GetTraceId(HttpContext context) =>
+        Activity.Current?.TraceId.ToString() ?? context.TraceIdentifier;
 }
 
 public static class ApiProblemCodes

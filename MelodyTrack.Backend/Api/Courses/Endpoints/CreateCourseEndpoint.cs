@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,22 +11,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class CreateCourseEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IRequestReplayService requestReplayService,
-    TimeProvider timeProvider)
-    : Ep.Req<CreateCourseRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/courses")]
+public sealed class CreateCourseEndpoint
 {
     private const string ReplayEndpoint = "courses:create";
 
-    public override void Configure()
-    {
-        Post("/courses");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        CreateCourseRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        CreateCourseRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -39,7 +38,7 @@ public class CreateCourseEndpoint(
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)

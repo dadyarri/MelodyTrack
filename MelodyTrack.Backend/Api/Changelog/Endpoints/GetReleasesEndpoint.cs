@@ -1,4 +1,7 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Releases.Requests;
 using MelodyTrack.Backend.Api.Releases.Responses;
 using MelodyTrack.Backend.ErrorHandling;
@@ -6,28 +9,27 @@ using MelodyTrack.Backend.Services;
 
 namespace MelodyTrack.Backend.Api.Releases.Endpoints;
 
-public sealed class GetReleasesEndpoint(ReleaseChangelog changelog) : Endpoint<GetReleasesRequest, ReleasesResponse>
+[ApiEndpoint(ApiMethod.Get, "/releases")]
+public sealed class GetReleasesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/releases");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Releases));
-        Validator<GetReleasesValidator>();
-        Description(builder => builder.Produces(StatusCodes.Status304NotModified));
-    }
 
-    public override async Task HandleAsync(GetReleasesRequest req, CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.Releases)]
+    public static IResult HandleAsync(
+        [AsParameters] GetReleasesRequest req,
+        ReleaseChangelog changelog,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
-        if (GetCurrentReleaseEndpoint.ApplyCaching(HttpContext, changelog.Etag))
+        if (GetCurrentReleaseEndpoint.ApplyCaching(httpContext, changelog.Etag))
         {
-            await Send.ResultAsync(TypedResults.StatusCode(StatusCodes.Status304NotModified));
-            return;
+            return TypedResults.StatusCode(StatusCodes.Status304NotModified);
         }
 
         var releases = changelog.Releases
-            .Skip((req.Page - 1) * req.PageSize)
-            .Take(req.PageSize)
+            .Skip((req.EffectivePage - 1) * req.EffectivePageSize)
+            .Take(req.EffectivePageSize)
             .Select(release => new ReleaseResponse(
                 release.Version,
                 release.ResolvedCodename,
@@ -36,13 +38,13 @@ public sealed class GetReleasesEndpoint(ReleaseChangelog changelog) : Endpoint<G
                 release.ParentVersion))
             .ToArray();
         var totalCount = changelog.Releases.Count;
-        await Send.OkAsync(new ReleasesResponse(
+        return TypedResults.Ok(new ReleasesResponse(
             changelog.Current.Version,
             releases,
-            req.Page,
-            req.PageSize,
+            req.EffectivePage,
+            req.EffectivePageSize,
             totalCount,
-            (int)Math.Ceiling(totalCount / (double)req.PageSize),
-            req.Page * req.PageSize < totalCount), ct);
+            (int)Math.Ceiling(totalCount / (double)req.EffectivePageSize),
+            req.EffectivePage * req.EffectivePageSize < totalCount));
     }
 }

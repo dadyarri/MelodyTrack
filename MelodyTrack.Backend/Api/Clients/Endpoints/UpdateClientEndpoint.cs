@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -11,17 +12,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/clients/{id}")]
+public sealed class UpdateClientEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/clients/{id}");
-    }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
-        CancellationToken ct)
+    public static async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        UpdateClientRequest req,
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        ILogger<UpdateClientEndpoint> logger,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -33,7 +40,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             return TypedResults.Forbid();
         }
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Updating client {ClientId}; fields present firstName={HasFirstName} lastName={HasLastName} patronymic={HasPatronymic} dateOfBirth={HasDateOfBirth} email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             req.Id,
             req.FirstName is not null,
@@ -63,7 +70,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             var sourceExists = await db.ClientSources.AnyAsync(e => e.Id == req.SourceId.Value, ct);
             if (!sourceExists)
             {
-                AddError(e => e.SourceId, "Источник не найден");
+                validationErrors.Add(nameof(req.SourceId), "Источник не найден");
                 return TypedResults.NotFound();
             }
         }

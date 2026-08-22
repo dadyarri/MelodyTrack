@@ -73,7 +73,8 @@ public sealed class ApiEndpointGeneratorTests
         Assert.Contains("endpoints.MapPut(\"/things/{id}\"", generated, StringComparison.Ordinal);
         Assert.Contains("endpoints.MapDelete(\"/things/{id}\"", generated, StringComparison.Ordinal);
         Assert.Contains("endpoints.MapPatch(\"/things/{id}\"", generated, StringComparison.Ordinal);
-        Assert.Contains(".WithName(\"GetThingsEndpoint\")", generated, StringComparison.Ordinal);
+        Assert.Contains(".WithName(\"GetThings\")", generated, StringComparison.Ordinal);
+        Assert.Contains(".DisableValidation()", generated, StringComparison.Ordinal);
     }
 
     [Fact]

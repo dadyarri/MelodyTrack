@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Data;
@@ -10,23 +11,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class UpdateRecurringTaskRuleEndpoint(
-    AppDbContext db,
-    IEntityFreshnessService entityFreshnessService,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    TimeProvider timeProvider)
-    : Ep.Req<UpdateRecurringTaskRuleRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/recurring-task-rules/{id}")]
+public sealed class UpdateRecurringTaskRuleEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/recurring-task-rules/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         UpdateRecurringTaskRuleRequest req,
-        CancellationToken ct)
+        Ulid id,
+        AppDbContext db,
+        IEntityFreshnessService entityFreshnessService,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {
@@ -41,14 +43,14 @@ public class UpdateRecurringTaskRuleEndpoint(
         var rule = await db.RecurringTaskRules.FirstOrDefaultAsync(item => item.Id == req.Id, ct);
         if (rule is null)
         {
-            AddError(item => item.Id, "Правило не найдено");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Правило не найдено");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         if (!IsTimingSupported(rule.Type, req))
         {
-            AddError(item => item.OffsetMinutes, "Это поле недоступно для данного правила.");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.OffsetMinutes), "Это поле недоступно для данного правила.");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(

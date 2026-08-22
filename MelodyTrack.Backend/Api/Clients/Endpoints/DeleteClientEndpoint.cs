@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,14 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class DeleteClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService) : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Delete, "/clients/{id}")]
+public sealed class DeleteClientEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/clients/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        ILogger<DeleteClientEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -30,7 +36,7 @@ public class DeleteClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Attempting to delete client with ID: {ClientId}", req.Id);
+        logger.LogDebug("Attempting to delete client with ID: {ClientId}", req.Id);
         var client = await db.Clients
             .AsNoTracking()
             .Where(e => e.Id == req.Id)
@@ -39,7 +45,7 @@ public class DeleteClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 
         if (client is null)
         {
-            Logger.LogInformation("Client with ID {ClientId} was already deleted or not found", req.Id);
+            logger.LogInformation("Client with ID {ClientId} was already deleted or not found", req.Id);
             return TypedResults.NoContent();
         }
 
@@ -57,7 +63,7 @@ public class DeleteClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 
         await db.Clients.Where(e => e.Id == req.Id).ExecuteDeleteAsync(ct);
 
-        Logger.LogInformation("Successfully deleted client with ID: {ClientId}", req.Id);
+        logger.LogInformation("Successfully deleted client with ID: {ClientId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "clients",

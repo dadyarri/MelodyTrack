@@ -108,13 +108,13 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         secondPageResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         firstPage.ShouldNotBeNull();
         secondPage.ShouldNotBeNull();
-        firstPage.Info.Total.ShouldBe(2);
-        firstPage.Info.HasNextPage.ShouldBeTrue();
-        firstPage.Info.HasPrevPage.ShouldBeFalse();
-        secondPage.Info.HasNextPage.ShouldBeFalse();
-        secondPage.Info.HasPrevPage.ShouldBeTrue();
-        firstPage.Data.ShouldHaveSingleItem().FirstName.ShouldBe("Alex");
-        secondPage.Data.ShouldHaveSingleItem().FirstName.ShouldBe("Alice");
+        firstPage.Page.Total.ShouldBe(2);
+        firstPage.Page.HasNextPage.ShouldBeTrue();
+        firstPage.Page.HasPrevPage.ShouldBeFalse();
+        secondPage.Page.HasNextPage.ShouldBeFalse();
+        secondPage.Page.HasPrevPage.ShouldBeTrue();
+        firstPage.Items.ShouldHaveSingleItem().FirstName.ShouldBe("Alex");
+        secondPage.Items.ShouldHaveSingleItem().FirstName.ShouldBe("Alice");
     }
 
     [Fact]
@@ -160,7 +160,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             var page = await response.Content.ReadFromJsonAsync<PaginatedResponse<ClientWithBalanceDto>>(TestContext.Current.CancellationToken);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             page.ShouldNotBeNull();
-            page.Data.Select(client => client.Id).ShouldBe(clientIds, ignoreOrder: true);
+            page.Items.Select(client => client.Id).ShouldBe(clientIds, ignoreOrder: true);
         }
     }
 

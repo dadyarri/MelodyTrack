@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Responses;
@@ -12,14 +13,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class GetExpensesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService) : Ep.Req<GetExpensesPaginatedRequest>.Res<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/expenses")]
+public sealed class GetExpensesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/expenses");
-    }
 
-    public override async Task<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetExpensesPaginatedRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetExpensesPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -83,8 +87,8 @@ public class GetExpensesEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
 
         return TypedResults.Ok(new GetExpensesResponse
         {
-            Data = response.Data,
-            Info = response.Info,
+            Items = response.Items,
+            Page = response.Page,
             Summary = new MoneyListSummaryDto
             {
                 TotalAmount = totalAmount,

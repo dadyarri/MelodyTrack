@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,16 +10,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Services.Endpoints;
 
-public class LookupServicesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/services/options")]
+public sealed class LookupServicesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/services/options");
-    }
 
-    public override async Task<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        CancellationToken ct)
+    public static async Task<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<LookupServicesEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -31,7 +32,7 @@ public class LookupServicesEndpoint(AppDbContext db, ICurrentUserAccessor curren
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Fetching lookup list of all services");
+        logger.LogDebug("Fetching lookup list of all services");
         var services = await db.Services
             .AsNoTracking()
             .Select(service => new LookupServicesDto
@@ -47,7 +48,7 @@ public class LookupServicesEndpoint(AppDbContext db, ICurrentUserAccessor curren
             .OrderBy(e => e.Name)
             .ToListAsync(ct);
 
-        Logger.LogInformation("Retrieved {Count} services for lookup list", services.Count);
+        logger.LogInformation("Retrieved {Count} services for lookup list", services.Count);
 
         return TypedResults.Ok(new LookupServicesResponse
         {

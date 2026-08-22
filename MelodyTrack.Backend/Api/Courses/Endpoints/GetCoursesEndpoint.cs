@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Api.Courses.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,16 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class GetCoursesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetCoursesRequest>.Res<Results<Ok<GetCoursesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/courses")]
+public sealed class GetCoursesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/courses");
-    }
 
-    public override async Task<Results<Ok<GetCoursesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        GetCoursesRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetCoursesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetCoursesRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)

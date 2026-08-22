@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -11,24 +13,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ResetPasswordEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    RefreshSessionCookieService refreshCookieService,
-    TimeProvider timeProvider)
-    : Ep.Req<ResetPasswordRequest>.Res<Results<NoContent, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/auth/password-reset")]
+public sealed class ResetPasswordEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/password-reset");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.ResetPassword));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<NoContent, ApiProblemDetails>> ExecuteAsync(
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.ResetPassword)]
+    public static async Task<Results<NoContent, ApiProblemDetails>> HandleAsync(
         ResetPasswordRequest req,
-        CancellationToken ct)
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        RefreshSessionCookieService refreshCookieService,
+        TimeProvider timeProvider,
+        ILogger<ResetPasswordEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var tokenHash = UserUtils.HashOpaqueToken(req.Token);
         var restoreCode = await db.PasswordRestorationRequests
@@ -37,11 +38,11 @@ public class ResetPasswordEndpoint(
 
         if (restoreCode is null || restoreCode.ValidUntil < timeProvider.GetUtcNow().UtcDateTime)
         {
-            Logger.LogWarning("Password reset attempt with invalid, used or expired token");
-            AddError(r => r.Token, "Ссылка восстановления больше не действует. Запросите новую ссылку.");
+            logger.LogWarning("Password reset attempt with invalid, used or expired token");
+            validationErrors.Add(nameof(req.Token), "Ссылка восстановления больше не действует. Запросите новую ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -53,11 +54,11 @@ public class ResetPasswordEndpoint(
         if (user is null || (user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null) &&
             req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
         {
-            Logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for {EmailRef}", UserUtils.DescribeEmailForLogs(restoreCode.Email));
-            AddError(r => r.Otp, "Для этого аккаунта нужен код 2FA или код восстановления.");
+            logger.LogWarning("Password reset attempt for non-existent user or missing 2FA code for {EmailRef}", UserUtils.DescribeEmailForLogs(restoreCode.Email));
+            validationErrors.Add(nameof(req.Otp), "Для этого аккаунта нужен код 2FA или код восстановления.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -70,11 +71,11 @@ public class ResetPasswordEndpoint(
 
                 if (recoveryCode is null)
                 {
-                    Logger.LogWarning("Invalid recovery code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
-                    AddError(r => r.RecoveryCode, "Код восстановления неверный или уже использован.");
+                    logger.LogWarning("Invalid recovery code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+                    validationErrors.Add(nameof(req.RecoveryCode), "Код восстановления неверный или уже использован.");
                     return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                        ValidationFailures,
-                        HttpContext,
+                        validationErrors,
+                        httpContext,
                         StatusCodes.Status401Unauthorized);
                 }
 
@@ -82,11 +83,11 @@ public class ResetPasswordEndpoint(
             }
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
-                Logger.LogWarning("Invalid 2FA code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
-                AddError(r => r.Otp, "Код 2FA неверный. Проверьте код из приложения-аутентификатора и попробуйте снова.");
+                logger.LogWarning("Invalid 2FA code provided during password reset for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+                validationErrors.Add(nameof(req.Otp), "Код 2FA неверный. Проверьте код из приложения-аутентификатора и попробуйте снова.");
                 return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                    ValidationFailures,
-                    HttpContext,
+                    validationErrors,
+                    httpContext,
                     StatusCodes.Status401Unauthorized);
             }
         }
@@ -98,9 +99,9 @@ public class ResetPasswordEndpoint(
 
         await db.Sessions.Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
-        refreshCookieService.Clear(HttpContext.Response);
+        refreshCookieService.Clear(httpContext.Response);
 
-        Logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,23 +12,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class UpdateCourseEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IEntityFreshnessService entityFreshnessService,
-    CourseProgressService courseProgressService,
-    TimeProvider timeProvider)
-    : Ep.Req<UpdateCourseRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/courses/{id}")]
+public sealed class UpdateCourseEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/courses/{id}");
-    }
 
-    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         UpdateCourseRequest req,
-        CancellationToken ct)
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        CourseProgressService courseProgressService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -49,8 +52,8 @@ public class UpdateCourseEndpoint(
 
         if (course is null)
         {
-            AddError(item => item.Id, "Курс не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Курс не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
@@ -92,8 +95,8 @@ public class UpdateCourseEndpoint(
             var hasLinkedProgress = await db.CourseEnrollmentThemes.AnyAsync(item => removedThemeIds.Contains(item.CourseThemeId), ct);
             if (hasLinkedProgress)
             {
-                AddError(item => item.Id, "Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов. Измените существующую тему вместо удаления.");
-                return new ApiProblemDetails(ValidationFailures);
+                validationErrors.Add(nameof(req.Id), "Нельзя удалять темы курса, которые уже участвуют в прогрессе клиентов. Измените существующую тему вместо удаления.");
+                return new ApiProblemDetails(validationErrors);
             }
         }
 
@@ -157,7 +160,7 @@ public class UpdateCourseEndpoint(
 
         await db.SaveChangesAsync(ct);
 
-        await SyncEnrollmentThemesAsync(course.Id, course.UpdatedAtUtc, ct);
+        await SyncEnrollmentThemesAsync(db, courseProgressService, course.Id, course.UpdatedAtUtc, ct);
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
@@ -176,7 +179,12 @@ public class UpdateCourseEndpoint(
         return TypedResults.NoContent();
     }
 
-    private async Task SyncEnrollmentThemesAsync(Ulid courseId, DateTime nowUtc, CancellationToken ct)
+    private static async Task SyncEnrollmentThemesAsync(
+        AppDbContext db,
+        CourseProgressService courseProgressService,
+        Ulid courseId,
+        DateTime nowUtc,
+        CancellationToken ct)
     {
         var courseThemes = await db.CourseThemes
             .Include(item => item.Dependencies)

@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,28 +13,27 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RefreshEndpoint(
-    AppDbContext db,
-    IUaDetector uaDetector,
-    IAuditLogService auditLogService,
-    SessionSecurityMonitor sessionSecurityMonitor,
-    RefreshSessionCookieService refreshCookieService,
-    TimeProvider timeProvider)
-    : Ep.Req<RefreshRequest>.Res<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/refresh")]
+public sealed class RefreshEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/refresh");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Refresh));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(RefreshRequest req,
-        CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.Refresh)]
+    public static async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        RefreshRequest req,
+        AppDbContext db,
+        [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
+        IAuditLogService auditLogService,
+        SessionSecurityMonitor sessionSecurityMonitor,
+        RefreshSessionCookieService refreshCookieService,
+        TimeProvider timeProvider,
+        ILogger<RefreshEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
-        Logger.LogDebug("Attempting to refresh token");
-        var cookieRefreshToken = refreshCookieService.ReadRefreshToken(HttpContext.Request);
+        logger.LogDebug("Attempting to refresh token");
+        var cookieRefreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);
         var isLegacyMigration = !string.IsNullOrWhiteSpace(req.RefreshToken);
         var presentedRefreshToken = isLegacyMigration ? req.RefreshToken : cookieRefreshToken;
         if (string.IsNullOrWhiteSpace(presentedRefreshToken))
@@ -40,9 +41,9 @@ public class RefreshEndpoint(
             return TypedResults.Unauthorized();
         }
 
-        if (!isLegacyMigration && !refreshCookieService.HasValidCsrfToken(HttpContext.Request, presentedRefreshToken))
+        if (!isLegacyMigration && !refreshCookieService.HasValidCsrfToken(httpContext.Request, presentedRefreshToken))
         {
-            Logger.LogWarning("auth.refresh.csrf_rejected");
+            logger.LogWarning("auth.refresh.csrf_rejected");
             return TypedResults.Forbid();
         }
 
@@ -54,16 +55,15 @@ public class RefreshEndpoint(
             .FirstOrDefaultAsync(ct);
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
-
         if (session is null)
         {
-            Logger.LogWarning("Unknown refresh token used in refresh attempt");
+            logger.LogWarning("Unknown refresh token used in refresh attempt");
             return TypedResults.Unauthorized();
         }
 
         if (session.WasRevoked)
         {
-            Logger.LogWarning(
+            logger.LogWarning(
                 "Revoked refresh token replay detected for {EmailRef}. Revoking all sessions.",
                 UserUtils.DescribeEmailForLogs(session.User.Email));
             await db.Sessions
@@ -86,7 +86,7 @@ public class RefreshEndpoint(
 
         if (session.ValidUntil < nowUtc)
         {
-            Logger.LogWarning("Expired refresh token used in refresh attempt for {EmailRef}", UserUtils.DescribeEmailForLogs(session.User.Email));
+            logger.LogWarning("Expired refresh token used in refresh attempt for {EmailRef}", UserUtils.DescribeEmailForLogs(session.User.Email));
             session.WasRevoked = true;
             await db.SaveChangesAsync(ct);
 
@@ -97,7 +97,7 @@ public class RefreshEndpoint(
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
 
         var refreshToken = UserUtils.GenerateRandomString(32);
-        var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+        var deviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector);
 
         await db.Sessions
             .Where(e => e.User.Id == session.User.Id && !e.WasRevoked && e.ValidUntil >= nowUtc && e.DeviceInfo == deviceInfo)
@@ -114,10 +114,10 @@ public class RefreshEndpoint(
 
         await db.Sessions.AddAsync(newSession, ct);
         await db.SaveChangesAsync(ct);
-        refreshCookieService.Issue(HttpContext.Response, refreshToken, newSession.ValidUntil);
+        refreshCookieService.Issue(httpContext.Response, refreshToken, newSession.ValidUntil);
         await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(session.User, ct);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "auth.refresh.succeeded {EmailRef} device {DeviceInfo} legacyMigration {LegacyMigration}",
             UserUtils.DescribeEmailForLogs(session.User.Email),
             newSession.DeviceInfo,

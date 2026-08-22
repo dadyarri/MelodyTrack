@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.ClientSources.Endpoints;
 using MelodyTrack.Backend.Api.ClientSources.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;

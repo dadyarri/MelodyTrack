@@ -1,6 +1,6 @@
 export type Ulid = string;
 
-export interface PagedInfo {
+export interface PageMetadata {
   page: number;
   pageSize: number;
   total: number;
@@ -9,8 +9,8 @@ export interface PagedInfo {
 }
 
 export interface PaginatedResponse<T> {
-  data: T[];
-  info: PagedInfo;
+  items: T[];
+  page: PageMetadata;
 }
 
 export interface PaginatedParams {

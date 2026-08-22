@@ -1,5 +1,6 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using Facet.Mapping;
-using FastEndpoints;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -14,21 +15,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientHistoryEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    ClientToClientWithBalanceDtoMapConfig mapper,
-    IRecordActivityService recordActivityService,
-    TimeProvider timeProvider)
-    : Ep.Req<GetClientHistoryRequest>.Res<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Get, "/clients/{id}/history")]
+public sealed class GetClientHistoryEndpoint
 {
-    public override void Configure()
-    {
-        Get("/clients/{id}/history");
-    }
 
-    public override async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetClientHistoryRequest req,
-        CancellationToken ct)
+    public static async Task<Results<Ok<ClientHistoryResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetClientHistoryRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ClientToClientWithBalanceDtoMapConfig mapper,
+        IRecordActivityService recordActivityService,
+        TimeProvider timeProvider,
+        ILogger<GetClientHistoryEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -41,7 +43,7 @@ public class GetClientHistoryEndpoint(
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Fetching history for client {ClientId}", req.Id);
+        logger.LogDebug("Fetching history for client {ClientId}", req.Id);
 
         var client = await db.Clients
             .AsNoTracking()
@@ -51,17 +53,17 @@ public class GetClientHistoryEndpoint(
 
         if (client is null)
         {
-            AddError(r => r.Id, "Клиент не найден");
+            validationErrors.Add(nameof(req.Id), "Клиент не найден");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
         var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
-        var sourceEventCount = req.Page * req.PageSize;
+        var sourceEventCount = req.EffectivePage * req.EffectivePageSize;
         var paymentEvents = await db.Payments
             .AsNoTracking()
             .Where(e => e.Client.Id == client.Id)
@@ -128,8 +130,8 @@ public class GetClientHistoryEndpoint(
             .Concat(appointmentEvents)
             .OrderByDescending(e => e.Date)
             .ThenByDescending(e => e.Id)
-            .Skip(req.PageSize * (req.Page - 1))
-            .Take(req.PageSize)
+            .Skip(req.EffectivePageSize * (req.EffectivePage - 1))
+            .Take(req.EffectivePageSize)
             .ToList();
 
         var totalPayments = await db.Payments

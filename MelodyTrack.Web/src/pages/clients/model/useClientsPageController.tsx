@@ -195,7 +195,7 @@ export function useClientsPageController() {
     staleTime: 60_000,
   });
 
-  const currentEditingClient = editing ? (query.data?.data.find((client) => client.id === editing.id) ?? editing) : null;
+  const currentEditingClient = editing ? (query.data?.items.find((client) => client.id === editing.id) ?? editing) : null;
   const isEditingClientStale = currentEditingClient
     ? isActivityStale(currentEditingClient.lastActivity?.id, editingBaselineActivityId)
     : false;
@@ -242,7 +242,7 @@ export function useClientsPageController() {
         },
         onReload: () => {
           const freshClient =
-            findItemInQueryData(queryClient, clientQueryKeys.all, (data) => (data as { data: Client[] } | undefined)?.data, editing.id) ??
+            findItemInQueryData(queryClient, clientQueryKeys.all, (data) => (data as { items: Client[] } | undefined)?.items, editing.id) ??
             currentEditingClient;
           if (!freshClient) {
             return;
@@ -501,11 +501,11 @@ export function useClientsPageController() {
     setPage,
     search,
     query,
-    clients: query.data?.data,
+    clients: query.data?.items,
     pagination: {
-      current: query.data?.info.page ?? page,
-      pageSize: query.data?.info.pageSize ?? 10,
-      total: query.data?.info.total,
+      current: query.data?.page.page ?? page,
+      pageSize: query.data?.page.pageSize ?? 10,
+      total: query.data?.page.total,
     },
     historyQuery,
     historyClient,

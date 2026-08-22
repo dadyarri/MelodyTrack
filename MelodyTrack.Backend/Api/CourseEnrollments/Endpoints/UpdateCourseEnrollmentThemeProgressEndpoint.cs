@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,21 +10,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class UpdateCourseEnrollmentThemeProgressEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    CourseProgressService courseProgressService,
-    TimeProvider timeProvider)
-    : Ep.Req<UpdateCourseEnrollmentThemeProgressRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Patch, "/course-enrollment-themes/{id}/progress")]
+public sealed class UpdateCourseEnrollmentThemeProgressEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/course-enrollment-themes/{id}/progress");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(
-        UpdateCourseEnrollmentThemeProgressRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
+        UpdateCourseEnrollmentThemeProgressRequest req,
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        CourseProgressService courseProgressService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -54,14 +58,14 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
         var theme = enrollment?.Themes.SingleOrDefault(item => item.Id == req.Id);
         if (enrollment is null || theme is null)
         {
-            AddError(item => item.Id, "Тема прогресса не найдена");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Тема прогресса не найдена");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         if (!CourseEnrollmentThemeProgressActionExtensions.TryParseApiKey(req.Action, out var action))
         {
-            AddError(item => item.Action, "Некорректное действие прогресса.");
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(nameof(req.Action), "Некорректное действие прогресса.");
+            return new ApiProblemDetails(validationErrors);
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
@@ -77,8 +81,8 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
 
                 if (theme.State != CourseThemeProgressState.AvailableToUnlock)
                 {
-                    AddError(item => item.Action, "Эту тему сейчас нельзя открыть.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Эту тему сейчас нельзя открыть.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 theme.State = CourseThemeProgressState.Unlocked;
@@ -88,8 +92,8 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
             case CourseEnrollmentThemeProgressAction.Start:
                 if (theme.State != CourseThemeProgressState.Unlocked)
                 {
-                    AddError(item => item.Action, "Эту тему сейчас нельзя перевести в работу.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Эту тему сейчас нельзя перевести в работу.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 theme.State = CourseThemeProgressState.InProgress;
@@ -99,8 +103,8 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
             case CourseEnrollmentThemeProgressAction.SendToHomework:
                 if (theme.State is not (CourseThemeProgressState.Unlocked or CourseThemeProgressState.InProgress))
                 {
-                    AddError(item => item.Action, "Эту тему сейчас нельзя отправить на домашнее задание.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Эту тему сейчас нельзя отправить на домашнее задание.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 theme.State = CourseThemeProgressState.WaitingForHomework;
@@ -111,14 +115,14 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
             case CourseEnrollmentThemeProgressAction.PassHomework:
                 if (theme.State != CourseThemeProgressState.WaitingForHomework)
                 {
-                    AddError(item => item.Action, "Домашнее задание по этой теме еще не ожидается.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Домашнее задание по этой теме еще не ожидается.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 if (!courseProgressService.IsEligibleForProgress(enrollment, theme))
                 {
-                    AddError(item => item.Action, "Нельзя завершить тему, пока не выполнены предыдущие темы и зависимости.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Нельзя завершить тему, пока не выполнены предыдущие темы и зависимости.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 theme.State = CourseThemeProgressState.Completed;
@@ -129,8 +133,8 @@ public class UpdateCourseEnrollmentThemeProgressEndpoint(
             case CourseEnrollmentThemeProgressAction.ReturnToProgress:
                 if (theme.State != CourseThemeProgressState.WaitingForHomework)
                 {
-                    AddError(item => item.Action, "Эту тему сейчас нельзя вернуть в работу.");
-                    return new ApiProblemDetails(ValidationFailures);
+                    validationErrors.Add(nameof(req.Action), "Эту тему сейчас нельзя вернуть в работу.");
+                    return new ApiProblemDetails(validationErrors);
                 }
 
                 theme.State = CourseThemeProgressState.InProgress;

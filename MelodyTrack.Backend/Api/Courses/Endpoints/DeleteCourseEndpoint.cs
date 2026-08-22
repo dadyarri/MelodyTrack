@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,17 +12,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Courses.Endpoints;
 
-public class DeleteCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Delete, "/courses/{id}")]
+public sealed class DeleteCourseEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/courses/{id}");
-    }
 
-    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
+    public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -61,8 +65,8 @@ public class DeleteCourseEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 
         if (hasEnrollments || hasLinkedAppointments)
         {
-            AddError(item => item.Id, "Нельзя удалить курс, который уже назначен клиентам или связан с занятиями.");
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(nameof(req.Id), "Нельзя удалить курс, который уже назначен клиентам или связан с занятиями.");
+            return new ApiProblemDetails(validationErrors);
         }
 
         var themeIds = await db.CourseThemes

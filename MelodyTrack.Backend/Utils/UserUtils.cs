@@ -1,10 +1,11 @@
 ﻿using System.Security.Claims;
+using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
-using FastEndpoints.Security;
 using Isopoh.Cryptography.Argon2;
 using Isopoh.Cryptography.SecureArray;
 using MelodyTrack.Backend.Data.Models;
+using Microsoft.IdentityModel.Tokens;
 using OtpNet;
 using QRCoder;
 
@@ -156,18 +157,22 @@ public static class UserUtils
     public static string CreateAccessToken(User user, Ulid? sessionId = null, TimeProvider? timeProvider = null)
     {
         var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
-        return JwtBearer.CreateToken(opts =>
+        var claims = new List<Claim> { new(ClaimTypes.Name, user.Email) };
+        if (sessionId.HasValue)
         {
-            opts.SigningKey = GetAuthenticationKey();
-            opts.Issuer = "MelodyTrack";
-            opts.ExpireAt = expireAt;
-            opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
+            claims.Add(new Claim(ClaimTypes.Sid, sessionId.Value.ToString()));
+        }
 
-            if (sessionId.HasValue)
-            {
-                opts.User.Claims.Add(new Claim(ClaimTypes.Sid, sessionId.Value.ToString()));
-            }
-        });
+        var credentials = new SigningCredentials(
+            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(GetAuthenticationKey())),
+            SecurityAlgorithms.HmacSha256);
+        var token = new JwtSecurityToken(
+            issuer: "MelodyTrack",
+            audience: null,
+            claims: claims,
+            expires: expireAt,
+            signingCredentials: credentials);
+        return new JwtSecurityTokenHandler().WriteToken(token);
     }
 
     public static (string Secret, string OtpUrl) GenerateTotp(string email)

@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
@@ -7,21 +9,19 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class GetTeacherScheduleImageEndpoint(ITeacherScheduleImageGenerator teacherScheduleImageGenerator, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetTeacherScheduleImageRequest>.Res<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Get, "/exports/teacher-schedule")]
+public sealed class GetTeacherScheduleImageEndpoint
 {
     private const string PngContentType = "image/png";
 
-    public override void Configure()
-    {
-        Get("/exports/teacher-schedule");
-        Options(builder => builder.RequireRateLimiting("expensive-read"));
-        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: PngContentType));
-    }
-
-    public override async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetTeacherScheduleImageRequest req,
-        CancellationToken ct)
+        [EnableRateLimiting("expensive-read")]
+    public static async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetTeacherScheduleImageRequest req,
+        ITeacherScheduleImageGenerator teacherScheduleImageGenerator,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -38,7 +38,7 @@ public class GetTeacherScheduleImageEndpoint(ITeacherScheduleImageGenerator teac
         if (image is null)
         {
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateProblemDetails(
-                HttpContext,
+                httpContext,
                 StatusCodes.Status404NotFound,
                 "Не удалось построить расписание преподавателя на выбранную дату."));
         }

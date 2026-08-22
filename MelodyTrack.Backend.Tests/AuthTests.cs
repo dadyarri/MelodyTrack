@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.Auth.Endpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
@@ -43,7 +41,11 @@ namespace MelodyTrack.Backend.Tests;
 [Collection(IntegrationTestCollection.Name)]
 public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
+    private static int _emailSequence;
+
     private static string HashRefreshToken(string token) => UserUtils.HashOpaqueToken(token);
+
+    private static string UniqueEmail() => $"auth-{Interlocked.Increment(ref _emailSequence)}@example.test";
 
     private static string GetResponseCookie(HttpResponseMessage response, string cookieName)
     {
@@ -97,7 +99,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCodeEntity!.Code.ToString()
         });
@@ -119,7 +121,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var inviteCode = new InviteCode
@@ -179,7 +181,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Admin role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var inviteCode = new InviteCode
@@ -239,7 +241,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var inviteCode = new InviteCode
@@ -291,7 +293,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Admin role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var inviteCode = new InviteCode
@@ -344,7 +346,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var inviteCode = new InviteCode
@@ -407,7 +409,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var (regRsp, regRes) = await App.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
@@ -463,7 +465,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Rate",
             LastName = "Limited",
             Password = passwordHash,
@@ -558,12 +560,12 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Reuse",
             LastName = "Blocked",
             Password = hash,
             Role = userRole!,
-            TotpSecret = UserUtils.GenerateTotp(Fake.Internet.Email()).Secret
+            TotpSecret = UserUtils.GenerateTotp(UniqueEmail()).Secret
         };
 
         var recoveryCode = new RecoveryCode
@@ -604,7 +606,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Victim",
             LastName = "User",
             Password = "hash",
@@ -648,7 +650,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Inv",
             LastName = "Caller",
             Role = adminRole,
@@ -684,7 +686,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Inv",
             LastName = "Caller",
             Role = adminRole,
@@ -731,7 +733,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Regular",
             LastName = "Caller",
             Role = userRole,
@@ -768,7 +770,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Admin",
             LastName = "Caller",
             Role = adminRole,
@@ -804,7 +806,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Super",
             LastName = "Caller",
             Role = superuserRole,
@@ -839,7 +841,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Regular",
             LastName = "Lookup",
             Role = userRole,
@@ -872,7 +874,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Admin",
             LastName = "Lookup",
             Role = adminRole,
@@ -903,7 +905,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var caller = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Super",
             LastName = "Lookup",
             Role = superuserRole,
@@ -935,7 +937,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var admin = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Reset",
             LastName = "Admin",
             Role = adminRole,
@@ -944,7 +946,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var target = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Reset",
             LastName = "Target",
             Role = userRole,
@@ -1042,7 +1044,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Ref",
             LastName = "Resh",
             Role = role,
@@ -1088,7 +1090,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Csrf",
             LastName = "Rejected",
             Role = role,
@@ -1131,7 +1133,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Csrf",
             LastName = "Accepted",
             Role = role,
@@ -1190,7 +1192,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Legacy",
             LastName = "Session",
             Role = role,
@@ -1231,7 +1233,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Expired",
             LastName = "Refresh",
             Role = role,
@@ -1277,7 +1279,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Replay",
             LastName = "Victim",
             Role = role,
@@ -1335,7 +1337,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "No",
             LastName = "Agent",
             Role = role,
@@ -1384,7 +1386,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Rec",
             LastName = "User",
             Role = role,
@@ -1418,7 +1420,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "R2",
             LastName = "Fa",
             Role = role,
@@ -1466,7 +1468,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Used",
             LastName = "Recovery",
             Role = role,
@@ -1503,7 +1505,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = App.Services.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var email = Fake.Internet.Email().ToLowerInvariant();
+        var email = UniqueEmail().ToLowerInvariant();
         var password = "PlainPass1!";
 
         // create user with hashed password using utils
@@ -1532,7 +1534,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = App.Services.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var email = Fake.Internet.Email().ToLowerInvariant();
+        var email = UniqueEmail().ToLowerInvariant();
         var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "Rem", LastName = "Fa", Role = role, Password = "hash", TotpSecret = "secret" };
         var activeSession = new Session
         {
@@ -1583,7 +1585,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var adminRole = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.Admin, TestContext.Current.CancellationToken);
-        var email = Fake.Internet.Email().ToLowerInvariant();
+        var email = UniqueEmail().ToLowerInvariant();
         var user = new User { Id = Ulid.NewUlid(), Email = email, FirstName = "Rem", LastName = "Fa", Role = adminRole, Password = "hash", TotpSecret = "secret" };
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -1606,7 +1608,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         const string rawRefreshToken2 = "r2";
 
         var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "L", LastName = "O", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "L", LastName = "O", Role = role, Password = "hash" };
         await dbContextForSetup.Users.AddAsync(user, TestContext.Current.CancellationToken);
 
         var session1 = new Session
@@ -1665,8 +1667,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         const string rawTargetRefreshToken = "foreign-refresh-token";
 
         var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var caller = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
-        var target = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
+        var caller = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
+        var target = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
 
         var targetSession = new Session
         {
@@ -1710,7 +1712,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "G", LastName = "S", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "G", LastName = "S", Role = role, Password = "hash" };
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
 
         var currentSession = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-current"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev-current" };
@@ -1744,7 +1746,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "R", LastName = "S", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "R", LastName = "S", Role = role, Password = "hash" };
         var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-owned"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
 
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
@@ -1772,7 +1774,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Me", LastName = "Gone", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Me", LastName = "Gone", Role = role, Password = "hash" };
         var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-me"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
 
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
@@ -1798,7 +1800,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var user = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Sessions", LastName = "Gone", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Sessions", LastName = "Gone", Role = role, Password = "hash" };
         var session = new Session { Id = Ulid.NewUlid(), User = user, RefreshToken = HashRefreshToken("r-sessions"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "dev" };
 
         await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
@@ -1824,8 +1826,8 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var role = await db.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var caller = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
-        var target = new User { Id = Ulid.NewUlid(), Email = Fake.Internet.Email().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
+        var caller = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
+        var target = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
         var targetSession = new Session { Id = Ulid.NewUlid(), User = target, RefreshToken = HashRefreshToken("r-foreign"), ValidUntil = DateTime.UtcNow.AddDays(1), DeviceInfo = "foreign" };
 
         await db.Users.AddRangeAsync([caller, target], TestContext.Current.CancellationToken);
@@ -1873,7 +1875,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = password,
             InviteCode = inviteCode.Code.ToString()
         });
@@ -1893,7 +1895,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode
         });
@@ -1929,7 +1931,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode.Code.ToString()
         });
@@ -1970,7 +1972,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.InviteCodes.AddAsync(inviteCode2, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var (rsp, res) = await App.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
             FirstName = "test",
@@ -2025,7 +2027,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "john",
             LastName = "doe",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode.Code.ToString()
         });
@@ -2061,7 +2063,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "admin",
             LastName = "user",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode.Code.ToString()
         });
@@ -2098,7 +2100,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode.Code.ToString()
         });
@@ -2257,7 +2259,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("User role should exist in migrations.");
 
-        var presetEmail = Fake.Internet.Email();
+        var presetEmail = UniqueEmail();
         var inviteCode = new InviteCode
         {
             Id = Ulid.NewUlid(),
@@ -2274,7 +2276,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         {
             FirstName = "test",
             LastName = "test",
-            Email = Fake.Internet.Email(),
+            Email = UniqueEmail(),
             Password = "cOmp1exP@ssw0rd",
             InviteCode = inviteCode.Code.ToString()
         });
@@ -2311,7 +2313,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         var firstName = "John";
         var lastName = "Doe";
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var password = "cOmp1exP@ssw0rd";
 
         var (rsp, _) = await App.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
@@ -2359,7 +2361,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         await db.InviteCodes.AddAsync(inviteCode, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
         var (rsp, _) = await App.Client.POSTAsync<RegisterEndpoint, RegisterRequest, RegisterResponse>(new RegisterRequest
         {
             FirstName = "test",
@@ -2396,7 +2398,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Expired",
             LastName = "Reset",
             Password = originalHash,
@@ -2449,7 +2451,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var user = new User
         {
             Id = Ulid.NewUlid(),
-            Email = Fake.Internet.Email().ToLowerInvariant(),
+            Email = UniqueEmail().ToLowerInvariant(),
             FirstName = "Legacy",
             LastName = "Reset",
             Password = originalHash,
@@ -2491,7 +2493,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser, TestContext.Current.CancellationToken)
             .ShouldNotBeNull("Superuser role should exist in migrations.");
 
-        var email = Fake.Internet.Email();
+        var email = UniqueEmail();
 
         var inviteCode = new InviteCode
         {
@@ -2722,7 +2724,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             var operatorUser = new User
             {
                 Id = Ulid.NewUlid(),
-                Email = Fake.Internet.Email().ToLowerInvariant(),
+                Email = UniqueEmail().ToLowerInvariant(),
                 FirstName = "Reset",
                 LastName = "Operator",
                 Role = operatorRole,
@@ -3086,19 +3088,19 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         res.Summary.LastPaymentAtUtc.Value.ShouldBe(newPayment.Date, TimeSpan.FromSeconds(1));
         res.Summary.LastVisitAtUtc.Value.ShouldBe(burnedAppointment.StartDate, TimeSpan.FromSeconds(1));
         res.Summary.NextAppointmentAtUtc.Value.ShouldBe(upcomingAppointment.StartDate, TimeSpan.FromSeconds(1));
-        res.Events.Info.Page.ShouldBe(1);
-        res.Events.Info.PageSize.ShouldBe(2);
-        res.Events.Info.Total.ShouldBe(4);
-        res.Events.Data.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
-        res.Events.Data.Select(e => e.Type).ShouldBe(["top_up", "top_up"]);
-        res.Events.Data.Select(e => e.Amount).ShouldBe([1200m, 900m]);
-        res.Events.Data.Select(e => e.AppointmentStatus).ShouldBe([null, null]);
+        res.Events.Page.Page.ShouldBe(1);
+        res.Events.Page.PageSize.ShouldBe(2);
+        res.Events.Page.Total.ShouldBe(4);
+        res.Events.Items.Select(e => e.Id).ShouldBe([newPayment.Id, oldPayment.Id]);
+        res.Events.Items.Select(e => e.Type).ShouldBe(["top_up", "top_up"]);
+        res.Events.Items.Select(e => e.Amount).ShouldBe([1200m, 900m]);
+        res.Events.Items.Select(e => e.AppointmentStatus).ShouldBe([null, null]);
         secondPageRsp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        secondPage.Events.Info.Page.ShouldBe(2);
-        secondPage.Events.Data.Select(e => e.Id).ShouldBe([burnedAppointment.Id, completedAppointment.Id]);
-        secondPage.Events.Data.Select(e => e.Type).ShouldBe(["appointment", "appointment"]);
-        secondPage.Events.Data.Select(e => e.Amount).ShouldBe([-1500m, -1500m]);
-        secondPage.Events.Data.Select(e => e.AppointmentStatus).ShouldBe(["burned", "completed"]);
+        secondPage.Events.Page.Page.ShouldBe(2);
+        secondPage.Events.Items.Select(e => e.Id).ShouldBe([burnedAppointment.Id, completedAppointment.Id]);
+        secondPage.Events.Items.Select(e => e.Type).ShouldBe(["appointment", "appointment"]);
+        secondPage.Events.Items.Select(e => e.Amount).ShouldBe([-1500m, -1500m]);
+        secondPage.Events.Items.Select(e => e.AppointmentStatus).ShouldBe(["burned", "completed"]);
     }
 
     [Fact]
@@ -3173,9 +3175,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
         res.ShouldNotBeNull();
-        res.Data.Count.ShouldBe(1);
-        res.Data[0].Id.ShouldBe(paymentA.Id);
-        res.Info.Total.ShouldBe(1);
+        res.Items.Count.ShouldBe(1);
+        res.Items[0].Id.ShouldBe(paymentA.Id);
+        res.Page.Total.ShouldBe(1);
         res.Summary.TotalAmount.ShouldBe(1200m);
         res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.FirstItemAtUtc.ShouldBe(paymentA.Date);
@@ -3262,9 +3264,9 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         App.Client.DefaultRequestHeaders.Authorization = null;
 
         rsp.StatusCode.ShouldBe(HttpStatusCode.OK);
-        res.Data.Count.ShouldBe(1);
-        res.Data[0].Id.ShouldBe(expenseA.Id);
-        res.Info.Total.ShouldBe(1);
+        res.Items.Count.ShouldBe(1);
+        res.Items[0].Id.ShouldBe(expenseA.Id);
+        res.Page.Total.ShouldBe(1);
         res.Summary.ItemsCount.ShouldBe(1);
         res.Summary.TotalAmount.ShouldBe(5000m);
         res.Summary.FirstItemAtUtc.ShouldBe(expenseA.Date);

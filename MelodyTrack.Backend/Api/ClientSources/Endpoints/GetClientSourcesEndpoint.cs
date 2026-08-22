@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.ClientSources.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,15 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientSources.Endpoints;
 
-public class GetClientSourcesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService)
-    : Ep.NoReq.Res<Results<Ok<GetClientSourcesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/client-sources")]
+public sealed class GetClientSourcesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/client-sources");
-    }
 
-    public override async Task<Results<Ok<GetClientSourcesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<GetClientSourcesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)

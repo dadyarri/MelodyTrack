@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Audit.Requests;
 using MelodyTrack.Backend.Api.Audit.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -12,15 +13,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Audit.Endpoints;
 
-public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetAuditLogsPaginatedRequest>.Res<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/audit-logs")]
+public sealed class GetAuditLogsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/audit-logs");
-    }
 
-    public override async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAuditLogsPaginatedRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetAuditLogsPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var timezone = ResolveTimezoneOrUtc(req.Timezone);
         var user = await currentUserAccessor.GetAsync(ct);
@@ -76,8 +78,8 @@ public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentU
 
         return TypedResults.Ok(new GetAuditLogsResponse
         {
-            Data = logs,
-            Info = PaginatedResponse.Create(logs, totalCount, req).Info
+            Items = logs,
+            Page = PaginatedResponse.Create(logs, totalCount, req).Page
         });
     }
 

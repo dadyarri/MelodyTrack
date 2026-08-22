@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,20 +12,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class CreatePaymentEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IRequestReplayService requestReplayService)
-    : Ep.Req<CreatePaymentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/payments")]
+public sealed class CreatePaymentEndpoint
 {
     private const string ReplayEndpoint = "payments:create";
 
-    public override void Configure()
-    {
-        Post("/payments");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(CreatePaymentRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        CreatePaymentRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        ILogger<CreatePaymentEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -37,7 +40,7 @@ public class CreatePaymentEndpoint(
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -63,8 +66,8 @@ public class CreatePaymentEndpoint(
 
             if (service is null)
             {
-                AddError(r => r.ServiceId, "Сервис не найден");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.ServiceId), "Сервис не найден");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -73,8 +76,8 @@ public class CreatePaymentEndpoint(
 
         if (client is null)
         {
-            AddError(r => r.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.ClientId), "Клиент не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var payment = new Payment
@@ -90,7 +93,7 @@ public class CreatePaymentEndpoint(
         await db.Payments.AddAsync(payment, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
+        logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "payments",

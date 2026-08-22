@@ -1,4 +1,7 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
 using MelodyTrack.Backend.Services;
@@ -6,21 +9,19 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
-public class GetDashboardStatsEndpoint(
-    IPersonalDashboardQueryService dashboardQueryService,
-    ICurrentUserAccessor currentUserAccessor,
-    TimeProvider timeProvider)
-    : Ep.Req<GetDashboardStatsRequest>.Res<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Get, "/dashboard")]
+public sealed class GetDashboardStatsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/dashboard");
-        Options(builder => builder.RequireRateLimiting("expensive-read"));
-    }
 
-    public override async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(
-        GetDashboardStatsRequest req,
-        CancellationToken ct)
+        [EnableRateLimiting("expensive-read")]
+    public static async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetDashboardStatsRequest req,
+        IPersonalDashboardQueryService dashboardQueryService,
+        ICurrentUserAccessor currentUserAccessor,
+        TimeProvider timeProvider,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
 
@@ -36,13 +37,13 @@ public class GetDashboardStatsEndpoint(
         }
         catch (TimeZoneNotFoundException)
         {
-            AddError(r => r.Timezone, "Часовой пояс не найден");
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(nameof(req.Timezone), "Часовой пояс не найден");
+            return new ApiProblemDetails(validationErrors);
         }
         catch (InvalidTimeZoneException)
         {
-            AddError(r => r.Timezone, "Часовой пояс недоступен");
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(nameof(req.Timezone), "Часовой пояс недоступен");
+            return new ApiProblemDetails(validationErrors);
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

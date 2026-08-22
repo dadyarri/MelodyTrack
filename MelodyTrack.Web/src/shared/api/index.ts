@@ -20,7 +20,7 @@ export type {
   CreateEntityResponse,
   PaginatedParams,
   PaginatedResponse,
-  PagedInfo,
+  PageMetadata,
   RecordActivity,
   Ulid,
 } from "./contracts";

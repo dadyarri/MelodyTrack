@@ -1,10 +1,12 @@
-using FastEndpoints;
+
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Services.Requests;
 
 public class UpdateServiceRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
     public required string Name { get; set; }

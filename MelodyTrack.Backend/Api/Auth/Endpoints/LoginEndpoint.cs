@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -13,28 +15,27 @@ using UaDetector;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LoginEndpoint(
-    AppDbContext db,
-    IUaDetector uaDetector,
-    IAuditLogService auditLogService,
-    SessionSecurityMonitor sessionSecurityMonitor,
-    RefreshSessionCookieService refreshCookieService,
-    TimeProvider timeProvider)
-    : Ep.Req<LoginRequest>.Res<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/login")]
+public sealed class LoginEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/login");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Login));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> ExecuteAsync(LoginRequest req,
-        CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.Login)]
+    public static async Task<Results<Ok<LoginResponse>, Accepted<LoginChallengeResponse>, UnauthorizedHttpResult>> HandleAsync(
+        LoginRequest req,
+        AppDbContext db,
+        [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
+        IAuditLogService auditLogService,
+        SessionSecurityMonitor sessionSecurityMonitor,
+        RefreshSessionCookieService refreshCookieService,
+        TimeProvider timeProvider,
+        ILogger<LoginEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var normalizedEmail = UserUtils.NormalizeEmail(req.Email);
-        Logger.LogDebug("Attempting to authenticate user {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+        logger.LogDebug("Attempting to authenticate user {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
 
         var user = await db.Users
             .Include(e => e.Role)
@@ -43,7 +44,7 @@ public class LoginEndpoint(
 
         if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
         {
-            Logger.LogWarning("auth.login.failed {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("auth.login.failed {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -55,7 +56,7 @@ public class LoginEndpoint(
                 .AsNoTracking()
                 .AnyAsync(e => e.User.Id == user.Id && !e.WasUsed, ct);
 
-            Logger.LogInformation("auth.login.challenge_required {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogInformation("auth.login.challenge_required {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Accepted(
                 "/auth/login",
                 new LoginChallengeResponse
@@ -75,7 +76,7 @@ public class LoginEndpoint(
 
                 if (recoveryCode is null)
                 {
-                    Logger.LogWarning("auth.login.failed_recovery_code {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+                    logger.LogWarning("auth.login.failed_recovery_code {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
                     return TypedResults.Unauthorized();
                 }
 
@@ -83,13 +84,13 @@ public class LoginEndpoint(
             }
             else if (!UserUtils.VerifyTotpCode(user.TotpSecret!, req.Otp))
             {
-                Logger.LogWarning("auth.login.failed_otp {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+                logger.LogWarning("auth.login.failed_otp {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
                 return TypedResults.Unauthorized();
             }
         }
 
         var refreshToken = UserUtils.GenerateRandomString(32);
-        var deviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector);
+        var deviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector);
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
         await db.Sessions
@@ -107,10 +108,10 @@ public class LoginEndpoint(
 
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
-        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
+        refreshCookieService.Issue(httpContext.Response, refreshToken, session.ValidUntil);
         await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(user, ct);
 
-        Logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
+        logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

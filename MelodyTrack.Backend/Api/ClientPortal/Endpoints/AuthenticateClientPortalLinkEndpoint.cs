@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,40 +13,40 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
-public class AuthenticateClientPortalLinkEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ClientPortalSessionService sessionService,
-    TimeProvider timeProvider)
-    : Ep.Req<AuthenticateClientPortalLinkRequest>.Res<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/client-portal/auth/link")]
+public sealed class AuthenticateClientPortalLinkEndpoint
 {
-    public override void Configure()
-    {
-        Post("/client-portal/auth/link");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.PortalAuthentication));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>> ExecuteAsync(AuthenticateClientPortalLinkRequest req, CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.PortalAuthentication)]
+    public static async Task<Results<Ok<ClientPortalAuthenticationResponse>, ApiProblemDetails>> HandleAsync(
+        AuthenticateClientPortalLinkRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ClientPortalSessionService sessionService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-        var link = await LoadActiveLinkAsync(req.Token, ct);
+        var link = await LoadActiveLinkAsync(db, req.Token, ct);
         if (link is null)
         {
-            AddError(item => item.Token, "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
+            validationErrors.Add(nameof(req.Token), "Ссылка входа недействительна. Попросите администратора проверить ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
         if (!link.User.Role.RoleName.IsClient() || link.User.ClientId is null)
         {
-            AddError(item => item.Token, "Для этой ссылки не найден клиентский аккаунт.");
+            validationErrors.Add(nameof(req.Token), "Для этой ссылки не найден клиентский аккаунт.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -52,19 +54,19 @@ public class AuthenticateClientPortalLinkEndpoint(
         {
             if (string.IsNullOrWhiteSpace(req.PinConfirmation))
             {
-                AddError(item => item.PinConfirmation, "Подтвердите PIN-код.");
+                validationErrors.Add(nameof(req.PinConfirmation), "Подтвердите PIN-код.");
                 return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                    ValidationFailures,
-                    HttpContext,
+                    validationErrors,
+                    httpContext,
                     StatusCodes.Status400BadRequest);
             }
 
             if (!string.Equals(req.Pin, req.PinConfirmation, StringComparison.Ordinal))
             {
-                AddError(item => item.PinConfirmation, "PIN-коды не совпадают.");
+                validationErrors.Add(nameof(req.PinConfirmation), "PIN-коды не совпадают.");
                 return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                    ValidationFailures,
-                    HttpContext,
+                    validationErrors,
+                    httpContext,
                     StatusCodes.Status400BadRequest);
             }
 
@@ -88,10 +90,10 @@ public class AuthenticateClientPortalLinkEndpoint(
                 ActorDisplayName = $"{link.User.LastName} {link.User.FirstName}".Trim(),
                 Details = $"Неудачных попыток с момента последнего успешного входа: {link.FailedPinAttempts}"
             }, ct);
-            AddError(item => item.Pin, "PIN-код неверный.");
+            validationErrors.Add(nameof(req.Pin), "PIN-код неверный.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status401Unauthorized);
         }
 
@@ -121,7 +123,10 @@ public class AuthenticateClientPortalLinkEndpoint(
         });
     }
 
-    private async Task<Data.Models.ClientPortalLoginLink?> LoadActiveLinkAsync(string token, CancellationToken ct)
+    private static async Task<Data.Models.ClientPortalLoginLink?> LoadActiveLinkAsync(
+        AppDbContext db,
+        string token,
+        CancellationToken ct)
     {
         var tokenHash = UserUtils.HashOpaqueToken(token);
         return await db.ClientPortalLoginLinks

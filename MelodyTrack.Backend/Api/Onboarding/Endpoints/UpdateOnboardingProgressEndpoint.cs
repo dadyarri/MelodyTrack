@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Onboarding.Requests;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
 using MelodyTrack.Backend.Data.Enums;
@@ -7,15 +7,16 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class UpdateOnboardingProgressEndpoint(OnboardingStateService stateService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<UpdateOnboardingProgressRequest>.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Patch, "/onboarding")]
+public sealed class UpdateOnboardingProgressEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/onboarding");
-    }
 
-    public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(UpdateOnboardingProgressRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        UpdateOnboardingProgressRequest req,
+        OnboardingStateService stateService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)

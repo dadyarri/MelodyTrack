@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 using MelodyTrack.Backend.Api.CalendarSubscriptions.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;

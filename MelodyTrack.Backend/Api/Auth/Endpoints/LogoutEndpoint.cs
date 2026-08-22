@@ -1,4 +1,4 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -7,37 +7,37 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LogoutEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/logout")]
+public sealed class LogoutEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/logout");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        RefreshSessionCookieService refreshCookieService,
+        ILogger<LogoutEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Logout attempt without a current user");
+            logger.LogWarning("Logout attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
-        var refreshToken = refreshCookieService.ReadRefreshToken(HttpContext.Request);
+        var refreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);
         if (refreshToken is null)
         {
-            refreshCookieService.Clear(HttpContext.Response);
+            refreshCookieService.Clear(httpContext.Response);
             return TypedResults.Unauthorized();
         }
 
-        if (!refreshCookieService.HasValidCsrfToken(HttpContext.Request, refreshToken))
+        if (!refreshCookieService.HasValidCsrfToken(httpContext.Request, refreshToken))
         {
-            Logger.LogWarning("auth.logout.csrf_rejected {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+            logger.LogWarning("auth.logout.csrf_rejected {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Forbid();
         }
 
@@ -49,14 +49,14 @@ public class LogoutEndpoint(
 
         if (revokedCount == 0)
         {
-            refreshCookieService.Clear(HttpContext.Response);
-            Logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(user.Email));
+            refreshCookieService.Clear(httpContext.Response);
+            logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Unauthorized();
         }
 
-        refreshCookieService.Clear(HttpContext.Response);
+        refreshCookieService.Clear(httpContext.Response);
 
-        Logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

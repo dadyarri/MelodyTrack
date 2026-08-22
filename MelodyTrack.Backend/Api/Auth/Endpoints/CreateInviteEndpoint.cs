@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,28 +11,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class CreateInviteEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IPublicUrlBuilder publicUrlBuilder,
-    TimeProvider timeProvider,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<CreateInviteRequest>.Res<Results<Created<CreateInviteResponse>, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/invites")]
+public sealed class CreateInviteEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/invites");
-    }
 
-    public override async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> ExecuteAsync(
-        CreateInviteRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> HandleAsync(
+        CreateInviteRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IPublicUrlBuilder publicUrlBuilder,
+        TimeProvider timeProvider,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<CreateInviteEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
         var caller = await currentUserAccessor.GetAsync(ct);
 
         if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Invite creation attempt without admin access");
+            logger.LogWarning("Invite creation attempt without admin access");
             return TypedResults.Forbid();
         }
 
@@ -40,13 +39,13 @@ public class CreateInviteEndpoint(
 
         if (role is null)
         {
-            Logger.LogWarning("Attempt to create invite with invalid role ID {RoleId}", req.Role);
+            logger.LogWarning("Attempt to create invite with invalid role ID {RoleId}", req.Role);
             return TypedResults.Forbid();
         }
 
         if (role.RoleName.IsSuperuser() && !caller.Role.RoleName.IsSuperuser())
         {
-            Logger.LogWarning(
+            logger.LogWarning(
                 "Admin {EmailRef} attempted to create superuser invite without sufficient privileges",
                 UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
@@ -54,7 +53,7 @@ public class CreateInviteEndpoint(
 
         if (role.RoleName.IsClient())
         {
-            Logger.LogWarning("Attempt to create client portal user through generic invite flow by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
+            logger.LogWarning("Attempt to create client portal user through generic invite flow by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
         }
 
@@ -79,7 +78,7 @@ public class CreateInviteEndpoint(
         };
         var inviteRef = UserUtils.DescribeInviteCodeForLogs(invite.Code);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "auth.invite_created actor {ActorEmailRef} target {TargetEmailRef} role {Role} invite {InviteRef}",
             UserUtils.DescribeEmailForLogs(caller.Email),
             UserUtils.DescribeEmailForLogs(inviteEmail),

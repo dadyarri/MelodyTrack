@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
@@ -8,31 +9,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Remove2FaEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Delete, "/auth/2fa")]
+public sealed class Remove2FaEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/auth/2fa");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        RefreshSessionCookieService refreshCookieService,
+        ILogger<Remove2FaEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("2FA removal attempt without a current user");
+            logger.LogWarning("2FA removal attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
         if (user.Role.RoleName.IsAnyAdmin())
         {
-            Logger.LogWarning("Attempt to remove 2FA for admin {EmailRef} - operation not allowed", UserUtils.DescribeEmailForLogs(user.Email));
+            logger.LogWarning("Attempt to remove 2FA for admin {EmailRef} - operation not allowed", UserUtils.DescribeEmailForLogs(user.Email));
             return TypedResults.Forbid();
         }
 
@@ -46,9 +46,9 @@ public class Remove2FaEndpoint(
 
         user.TotpSecret = null;
         await db.SaveChangesAsync(ct);
-        refreshCookieService.Clear(HttpContext.Response);
+        refreshCookieService.Clear(httpContext.Response);
 
-        Logger.LogInformation("auth.2fa.removed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("auth.2fa.removed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
             Category = "auth",

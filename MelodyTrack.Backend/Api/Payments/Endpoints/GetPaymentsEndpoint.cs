@@ -1,5 +1,6 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using Facet.Extensions.EFCore;
-using FastEndpoints;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Api.Payments.Responses;
@@ -13,14 +14,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class GetPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService) : Ep.Req<GetPaymentsPaginatedRequest>.Res<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/payments")]
+public sealed class GetPaymentsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/payments");
-    }
 
-    public override async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetPaymentsPaginatedRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetPaymentsPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecordActivityService recordActivityService,
+        ILogger<GetPaymentsEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -33,7 +38,7 @@ public class GetPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug(
+        logger.LogDebug(
             "Fetching paginated list of payments with filters - Page: {Page}, PageSize: {PageSize}, Client's first name: {FirstName}, Client's last name: {LastName}, Search: {Search}",
             req.Page, req.PageSize,
             req.FirstName ?? "not specified", req.LastName ?? "not specified", req.Search ?? "not specified");
@@ -96,11 +101,11 @@ public class GetPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
             }
         }
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Retrieved {Count} payments (Page {Page} of {TotalPages}, Total: {TotalCount})",
             payments.Count,
-            req.Page,
-            (int)Math.Ceiling(totalCount / (double)req.PageSize),
+            req.EffectivePage,
+            (int)Math.Ceiling(totalCount / (double)req.EffectivePageSize),
             totalCount
         );
 
@@ -108,8 +113,8 @@ public class GetPaymentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUs
 
         return TypedResults.Ok(new GetPaymentsResponse
         {
-            Data = response.Data,
-            Info = response.Info,
+            Items = response.Items,
+            Page = response.Page,
             Summary = new MoneyListSummaryDto
             {
                 TotalAmount = totalAmount,

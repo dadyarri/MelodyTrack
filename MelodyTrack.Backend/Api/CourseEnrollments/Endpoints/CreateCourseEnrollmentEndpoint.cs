@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,22 +12,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class CreateCourseEnrollmentEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IRequestReplayService requestReplayService,
-    TimeProvider timeProvider)
-    : Ep.Req<CreateCourseEnrollmentRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/course-enrollments")]
+public sealed class CreateCourseEnrollmentEndpoint
 {
     private const string ReplayEndpoint = "course-enrollments:create";
 
-    public override void Configure()
-    {
-        Post("/course-enrollments");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> ExecuteAsync(
-        CreateCourseEnrollmentRequest req, CancellationToken ct)
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> HandleAsync(
+        CreateCourseEnrollmentRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        TimeProvider timeProvider,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -39,7 +40,7 @@ public class CreateCourseEnrollmentEndpoint(
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -61,8 +62,8 @@ public class CreateCourseEnrollmentEndpoint(
 
         if (client is null)
         {
-            AddError(item => item.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.ClientId), "Клиент не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var course = await db.Courses
@@ -74,8 +75,8 @@ public class CreateCourseEnrollmentEndpoint(
 
         if (course is null)
         {
-            AddError(item => item.CourseId, "Курс не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.CourseId), "Курс не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var existingEnrollment = await db.CourseEnrollments
@@ -84,8 +85,8 @@ public class CreateCourseEnrollmentEndpoint(
 
         if (existingEnrollment is not null)
         {
-            AddError(item => item.CourseId, "Клиент уже записан на этот курс.");
-            return TypedResults.Conflict(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status409Conflict));
+            validationErrors.Add(nameof(req.CourseId), "Клиент уже записан на этот курс.");
+            return TypedResults.Conflict(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict));
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;

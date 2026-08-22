@@ -5,6 +5,9 @@ using System.Text.Json;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Tests.Infrastructure;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.OpenApi;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;
@@ -89,10 +92,7 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     [Fact]
     public async Task OpenApiOperations_HaveUniqueIdsAndProblemDetailsErrors()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
         var operationIds = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
@@ -145,23 +145,21 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task OpenApiPaginationSchemas_UseSharedDataAndInfoShape()
+    public async Task OpenApiPaginationSchemas_UseSharedItemsAndPageShape()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-        response.EnsureSuccessStatusCode();
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
         var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
         var paginatedSchemas = schemas.EnumerateObject()
-            .Where(schema => schema.Value.ToString().Contains(nameof(PagedInfo), StringComparison.Ordinal))
+            .Where(schema => schema.Value.ToString().Contains(nameof(PageMetadata), StringComparison.Ordinal))
             .ToArray();
 
         paginatedSchemas.Length.ShouldBeGreaterThanOrEqualTo(5);
         foreach (var schema in paginatedSchemas)
         {
             var serialized = schema.Value.ToString();
-            serialized.Contains("\"data\"", StringComparison.Ordinal)
-                .ShouldBeTrue($"{schema.Name} must expose the shared data collection");
-            serialized.Contains("\"info\"", StringComparison.Ordinal)
+            serialized.Contains("\"items\"", StringComparison.Ordinal)
+                .ShouldBeTrue($"{schema.Name} must expose the shared items collection");
+            serialized.Contains("\"page\"", StringComparison.Ordinal)
                 .ShouldBeTrue($"{schema.Name} must expose shared page metadata");
         }
     }
@@ -169,9 +167,7 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     [Fact]
     public async Task OpenApiRoutes_FollowResourceConventions()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-        response.EnsureSuccessStatusCode();
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
 
         var forbiddenSegments = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -215,6 +211,16 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     {
         response.TryGetProperty("headers", out var headers).ShouldBeTrue($"{operationId} response {statusCode} must describe headers");
         headers.TryGetProperty(header, out _).ShouldBeTrue($"{operationId} response {statusCode} must describe {header}");
+    }
+
+    private async Task<JsonDocument> GetOpenApiDocumentAsync()
+    {
+        var provider = App.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+        var document = await provider.GetOpenApiDocumentAsync(TestContext.Current.CancellationToken);
+        var json = await document.SerializeAsJsonAsync(
+            OpenApiSpecVersion.OpenApi3_1,
+            TestContext.Current.CancellationToken);
+        return JsonDocument.Parse(json);
     }
 
     private static void AssertProblemResponse(JsonElement response, string operationId, string statusCode)
