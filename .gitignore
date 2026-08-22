@@ -488,3 +488,4 @@ $RECYCLE.BIN/
 
 # Local security analysis
 docs/MelodyTrack-threat-model.md
+.codex/config.toml
