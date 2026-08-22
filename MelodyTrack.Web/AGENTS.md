@@ -37,10 +37,9 @@ Follow `docs/fsd-development-guide.md` for concrete placement/import examples.
 
 TanStack Query remains the server-state manager.
 
-During the API migration:
+The application API boundary uses Kiota's Fetch stack:
 
-- Axios is legacy transport scheduled for replacement; do not create new Axios infrastructure unless needed for a short-lived compatibility step;
-- the target transport is Kiota's standard Fetch stack with centralized auth/session middleware;
+- keep authentication, session refresh, cancellation, credentials, and error normalization in the centralized transport;
 - generated Kiota request/response/entity models become the source of truth for API DTOs;
 - do not maintain handwritten TypeScript mirrors of generated API contracts;
 - handwritten types remain appropriate for frontend-owned form state, UI state, component props, view models, query convenience types, and persistence schemas;

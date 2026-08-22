@@ -9,7 +9,7 @@ represent a completed operation or trigger automatic submission.
 | Data | Location | Policy |
 | --- | --- | --- |
 | Access token | Memory | Recreated through refresh after reload |
-| Refresh token | `localStorage`, `melodytrack.refreshToken` | Transitional until the backend supports a Secure, HttpOnly cookie |
+| Refresh token | Secure, HttpOnly cookie | Rotated by the backend; never exposed to application JavaScript or browser storage |
 | Theme | `localStorage`, `melodytrack.theme` | Non-sensitive device preference |
 | Saved client identities | `localStorage`, `melodytrack.savedClientIdentities` | Versioned, validated display metadata plus an opaque server-issued reference; never the invitation URL, PIN, access token, or refresh token |
 | Durable form drafts | IndexedDB `drafts` | User-partitioned, versioned, runtime-validated, and expired 30 days after the last write |
