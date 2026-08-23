@@ -14,6 +14,7 @@ namespace MelodyTrack.Backend.Api.Services.Endpoints;
 public sealed class LookupServicesEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<LookupServicesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,

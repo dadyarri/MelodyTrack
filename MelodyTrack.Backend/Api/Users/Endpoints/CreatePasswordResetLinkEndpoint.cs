@@ -16,7 +16,7 @@ namespace MelodyTrack.Backend.Api.Users.Endpoints;
 [ApiEndpoint(ApiMethod.Post, "/users/{id}/password-reset-links")]
 public sealed class CreatePasswordResetLinkEndpoint
 {
-
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,
@@ -30,18 +30,8 @@ public sealed class CreatePasswordResetLinkEndpoint
         CancellationToken ct
     )
     {
-        var caller = await currentUserAccessor.GetAsync(ct);
-        if (caller is null)
-        {
-            logger.LogWarning("Password reset link creation attempt without a current user");
-            return TypedResults.Unauthorized();
-        }
-
-        if (!caller.Role.RoleName.IsAnyAdmin())
-        {
-            logger.LogWarning("Password reset link creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
-            return TypedResults.Forbid();
-        }
+        var caller = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var targetUser = await db.Users
             .Include(u => u.Role)

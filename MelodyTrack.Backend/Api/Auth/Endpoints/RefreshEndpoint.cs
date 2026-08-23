@@ -4,11 +4,13 @@ using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,6 +26,8 @@ public sealed class RefreshEndpoint
         IAuditLogService auditLogService,
         SessionSecurityMonitor sessionSecurityMonitor,
         RefreshSessionCookieService refreshCookieService,
+        AuthenticationTokenHasher tokenHasher,
+        JwtTokenService jwtTokenService,
         TimeProvider timeProvider,
         ILogger<RefreshEndpoint> logger,
         HttpContext httpContext,
@@ -43,11 +47,12 @@ public sealed class RefreshEndpoint
             return TypedResults.Forbid();
         }
 
-        var refreshTokenHash = UserUtils.HashOpaqueToken(presentedRefreshToken);
+        var refreshTokenHash = tokenHasher.HashRefreshToken(presentedRefreshToken);
 
         var session = await db.Sessions
             .Where(e => e.RefreshToken == refreshTokenHash)
             .Include(e => e.User)
+                .ThenInclude(e => e.Role)
             .FirstOrDefaultAsync(ct);
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
@@ -95,17 +100,13 @@ public sealed class RefreshEndpoint
         var refreshToken = UserUtils.GenerateRandomString(32);
         var deviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector);
 
-        await db.Sessions
-            .Where(e => e.User.Id == session.User.Id && !e.WasRevoked && e.ValidUntil >= nowUtc && e.DeviceInfo == deviceInfo)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(e => e.WasRevoked, true), ct);
-
         var newSession = new Session
         {
             Id = Ulid.NewUlid(),
             User = session.User,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
+            RefreshToken = tokenHasher.HashRefreshToken(refreshToken),
             DeviceInfo = deviceInfo,
-            ValidUntil = nowUtc.AddDays(7)
+            ValidUntil = nowUtc.AddDays(session.User.Role.RoleName.IsClient() ? 30 : 7)
         };
 
         await db.Sessions.AddAsync(newSession, ct);
@@ -119,7 +120,7 @@ public sealed class RefreshEndpoint
             newSession.DeviceInfo);
         var response = new LoginResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(session.User, newSession.Id, timeProvider),
+            AccessToken = jwtTokenService.CreateAccessToken(session.User, newSession.Id, timeProvider),
             FirstName = session.User.FirstName,
             LastName = session.User.LastName
         };

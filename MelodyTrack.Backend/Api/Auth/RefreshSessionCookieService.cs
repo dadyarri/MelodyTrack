@@ -1,6 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data.Security;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.Extensions.Options;
 
@@ -15,8 +16,9 @@ public sealed class RefreshSessionCookieService(
     public const string CsrfCookieName = "MelodyTrack.Csrf";
     public const string CsrfHeaderName = "X-CSRF-Token";
 
-    private readonly byte[] _csrfSigningKey = Encoding.UTF8.GetBytes(
-        authenticationSecrets.Value.CsrfSigningKey ?? authenticationSecrets.Value.JwtSigningKey);
+    private readonly byte[] _csrfSigningKey = AuthenticationSecretMaterial.DecodeSymmetricKey(
+        authenticationSecrets.Value.CsrfSigningKey,
+        "AuthenticationSecrets:CsrfSigningKey");
 
     public string? ReadRefreshToken(HttpRequest request)
     {

@@ -12,8 +12,6 @@ import { type BaseRequestBuilder, type Parsable, type ParsableFactory, type Requ
 export interface LogoutRequestBuilder extends BaseRequestBuilder<LogoutRequestBuilder> {
     /**
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
-     * @throws {ApiProblemDetails} error when the service returns a 401 status code
-     * @throws {ApiProblemDetails} error when the service returns a 403 status code
      * @throws {ApiProblemDetails} error when the service returns a 405 status code
      * @throws {ApiProblemDetails} error when the service returns a 500 status code
      */
@@ -36,8 +34,6 @@ export const LogoutRequestBuilderRequestsMetadata: RequestsMetadata = {
         uriTemplate: LogoutRequestBuilderUriTemplate,
         responseBodyContentType: "application/problem+json",
         errorMappings: {
-            401: createApiProblemDetailsFromDiscriminatorValue as ParsableFactory<Parsable>,
-            403: createApiProblemDetailsFromDiscriminatorValue as ParsableFactory<Parsable>,
             405: createApiProblemDetailsFromDiscriminatorValue as ParsableFactory<Parsable>,
             500: createApiProblemDetailsFromDiscriminatorValue as ParsableFactory<Parsable>,
         },

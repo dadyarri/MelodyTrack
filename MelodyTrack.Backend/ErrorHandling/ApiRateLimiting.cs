@@ -15,6 +15,7 @@ public static class ApiRateLimitPolicies
     public const string InviteInformation = "auth-invite-information";
     public const string PortalLinkStatus = "portal-link-status";
     public const string PortalAuthentication = "portal-authentication";
+    public const string CalendarSubscription = "calendar-subscription";
     public const string Releases = "public-releases";
     public const string ExpensiveRead = "expensive-read";
 
@@ -55,6 +56,7 @@ public static class ApiRateLimitPolicies
             AddPolicy(options, InviteInformation, 30, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalLinkStatus, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalAuthentication, 20, TimeSpan.FromMinutes(1));
+            AddPolicy(options, CalendarSubscription, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, Releases, 120, TimeSpan.FromMinutes(1));
             options.AddConcurrencyLimiter(ExpensiveRead, limiterOptions =>
             {

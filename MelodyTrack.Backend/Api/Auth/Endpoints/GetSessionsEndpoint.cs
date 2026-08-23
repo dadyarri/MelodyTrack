@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -12,7 +13,7 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Get, "/auth/sessions")]
 public sealed class GetSessionsEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
     public static async Task<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>> HandleAsync(
         AppDbContext db,
         TimeProvider timeProvider,
@@ -46,7 +47,7 @@ public sealed class GetSessionsEndpoint
                 Id = e.Id,
                 DeviceInfo = e.DeviceInfo,
                 IsCurrent = e.Id == currentUserAccessor.SessionId,
-                LastSeenAtUtc = e.Id.Time.UtcDateTime
+                CreatedAtUtc = e.Id.Time.UtcDateTime
             })
             .ToList();
 

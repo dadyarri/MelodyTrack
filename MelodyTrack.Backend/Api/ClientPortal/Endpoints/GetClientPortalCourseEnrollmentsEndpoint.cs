@@ -1,4 +1,6 @@
 using MelodyTrack.Backend.Api;
+using MelodyTrack.Backend.Api.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Api.Courses.Responses;
@@ -14,7 +16,7 @@ namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 [ApiEndpoint(ApiMethod.Get, "/client-portal/course-enrollments")]
 public sealed class GetClientPortalCourseEnrollmentsEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
     public static async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         CourseProgressService courseProgressService,

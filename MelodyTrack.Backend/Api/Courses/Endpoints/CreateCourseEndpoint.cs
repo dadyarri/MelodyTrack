@@ -16,6 +16,7 @@ public sealed class CreateCourseEndpoint
 {
     private const string ReplayEndpoint = "courses:create";
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         CreateCourseRequest req,
         AppDbContext db,

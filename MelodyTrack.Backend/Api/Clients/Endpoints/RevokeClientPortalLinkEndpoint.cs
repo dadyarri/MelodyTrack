@@ -14,7 +14,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 [ApiEndpoint(ApiMethod.Delete, "/clients/{id}/portal-links")]
 public sealed class RevokeClientPortalLinkEndpoint
 {
-
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,
@@ -26,16 +26,8 @@ public sealed class RevokeClientPortalLinkEndpoint
         CancellationToken ct
     )
     {
-        var currentUser = await currentUserAccessor.GetAsync(ct);
-        if (currentUser is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!currentUser.Role.RoleName.IsAnyAdmin())
-        {
-            return TypedResults.Forbid();
-        }
+        var currentUser = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var loginLink = await db.ClientPortalLoginLinks
             .Include(item => item.User)

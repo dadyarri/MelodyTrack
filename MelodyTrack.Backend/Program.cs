@@ -1,6 +1,5 @@
 using System.IO.Compression;
 using System.Reflection;
-using System.Text;
 using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
@@ -53,7 +52,13 @@ if (isOpenApiGeneration)
 {
     builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
     {
-        [$"{AuthenticationSecretsOptions.SectionName}:JwtSigningKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
+        [$"{AuthenticationSecretsOptions.SectionName}:JwtSigningPrivateKey"] = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA",
+        [$"{AuthenticationSecretsOptions.SectionName}:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+        [$"{AuthenticationSecretsOptions.SectionName}:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+        [$"{AuthenticationSecretsOptions.SectionName}:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+        [$"{AuthenticationSecretsOptions.SectionName}:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+        [$"{JwtOptions.SectionName}:Issuer"] = "MelodyTrack",
+        [$"{JwtOptions.SectionName}:Audience"] = "MelodyTrack.Web",
         [$"{PersonalDataOptions.SectionName}:CurrentKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
         [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Host=localhost;Database=openapi;Username=openapi;Password=openapi",
         [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost"
@@ -83,9 +88,16 @@ Log.Information(
 
 try
 {
-    var jwtSigningKey = builder.Configuration[$"{AuthenticationSecretsOptions.SectionName}:JwtSigningKey"] ?? string.Empty;
+    var authenticationSecrets = builder.Configuration
+        .GetRequiredSection(AuthenticationSecretsOptions.SectionName)
+        .Get<AuthenticationSecretsOptions>()
+        ?? throw new InvalidOperationException("Authentication secrets are not configured.");
+    var jwtOptions = builder.Configuration
+        .GetRequiredSection(JwtOptions.SectionName)
+        .Get<JwtOptions>()
+        ?? throw new InvalidOperationException("JWT options are not configured.");
     var personalDataKey = builder.Configuration[$"{PersonalDataOptions.SectionName}:CurrentKey"] ?? string.Empty;
-    UserUtils.ConfigureLegacySecrets(jwtSigningKey, personalDataKey);
+    UserUtils.ConfigureAuthentication(authenticationSecrets, jwtOptions, personalDataKey);
 
     builder.Services
         .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
@@ -94,15 +106,20 @@ try
             options.TokenValidationParameters = new TokenValidationParameters
             {
                 ValidateIssuer = true,
-                ValidIssuer = "MelodyTrack",
-                ValidateAudience = false,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtOptions.Audience,
                 ValidateIssuerSigningKey = true,
-                IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSigningKey)),
-                ValidateLifetime = true
+                IssuerSigningKey = JwtKeyMaterial.CreateValidationKey(authenticationSecrets.JwtSigningPrivateKey),
+                ValidateLifetime = true,
+                RequireExpirationTime = true,
+                RequireSignedTokens = true,
+                ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256],
+                ClockSkew = TimeSpan.FromSeconds(30)
             };
         });
 
-    builder.Services.AddAuthorization();
+    builder.Services.AddDatabaseAuthorization();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApiRateLimiting();
     builder.Services.AddSingleton(releaseChangelog);
@@ -178,6 +195,7 @@ try
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<RefreshSessionCookieService>();
+    builder.Services.AddSingleton<JwtTokenService>();
     builder.Services.AddScoped<SessionSecurityMonitor>();
     builder.Services.AddScoped<AppointmentUpdatePreparationService>();
     builder.Services.AddScoped<CourseProgressService>();
@@ -309,8 +327,7 @@ try
         app.MapScalarApiReference().AllowAnonymous();
     }
     var apiEndpoints = app.MapGroup(httpOptions.PathBase);
-    apiEndpoints.RequireAuthorization();
-    apiEndpoints.AddEndpointFilter<ActiveSessionEndpointFilter>();
+    apiEndpoints.RequireAuthorization(AuthorizationPolicies.ApiAccess);
     apiEndpoints.AddEndpointFilter<NativeValidationEndpointFilter>();
     apiEndpoints.MapGeneratedApiEndpoints();
     app.MapSpaFallback();

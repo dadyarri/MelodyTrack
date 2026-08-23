@@ -113,7 +113,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         storedCredentials.TokenHash.ShouldBe(UserUtils.HashOpaqueToken(token));
         storedCredentials.TokenHash.ShouldNotBe(token);
         storedCredentials.PinHash.ShouldNotBe("1234");
-        UserUtils.IsValidPassword(storedCredentials.PinHash.ShouldNotBeNull(), "1234").ShouldBeTrue();
+        UserUtils.IsValidPortalPin(storedCredentials.PinHash.ShouldNotBeNull(), "1234").ShouldBeTrue();
         db.ClientPortalSavedIdentityReferences.AsNoTracking()
             .Single(item => item.LoginLinkId == storedCredentials.Id)
             .ReferenceHash.ShouldBe(UserUtils.HashOpaqueToken(consumePayload.SavedIdentity.Reference));

@@ -16,6 +16,7 @@ namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 public sealed class GetCourseEnrollmentsEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetCourseEnrollmentsRequest req,
         AppDbContext db,

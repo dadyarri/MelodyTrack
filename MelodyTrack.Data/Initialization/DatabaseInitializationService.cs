@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Core.Configuration;
 using MelodyTrack.Core.Security;
 using MelodyTrack.Data.Configuration;
+using MelodyTrack.Data.Security;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -17,14 +18,14 @@ public sealed class DatabaseInitializationService(
     IPersonalDataBackfillService personalDataBackfill,
     IPersonalDataProtector personalDataProtector,
     IOptions<InitializationOptions> initializationOptions,
-    IOptions<AuthenticationSecretsOptions> authenticationSecrets,
     IOptions<PublicUrlOptions> publicUrlOptions,
+    CredentialHasher credentialHasher,
     DevelopmentDemoDataSeeder developmentDemoDataSeeder,
     DevelopmentFullDemoDataSeeder developmentFullDemoDataSeeder,
     TimeProvider timeProvider,
     ILogger<DatabaseInitializationService> logger)
 {
-    private const int DevelopmentSeedVersion = 6;
+    private const int DevelopmentSeedVersion = 7;
     private const string DevelopmentEmail = "dev.superuser@melodytrack.local";
     private const string DevelopmentPassword = "MelodyTrack-Development-Only!";
     private const string DevelopmentTotpSecret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
@@ -161,6 +162,9 @@ public sealed class DatabaseInitializationService(
                 case 6:
                     await developmentFullDemoDataSeeder.SeedAsync(cancellationToken);
                     break;
+                case 7:
+                    await ApplyDevelopmentSeedVersionSevenAsync(cancellationToken);
+                    break;
                 default:
                     throw new InvalidOperationException($"Development seed upgrade {version} is not implemented.");
             }
@@ -185,7 +189,7 @@ public sealed class DatabaseInitializationService(
                 FirstName = "Development",
                 LastName = "Superuser",
                 Email = DevelopmentEmail,
-                Password = LegacyPasswordHasher.Hash(DevelopmentPassword, authenticationSecrets.Value.JwtSigningKey),
+                Password = credentialHasher.HashPassword(DevelopmentPassword),
                 Role = superuserRole
             };
             await db.Users.AddAsync(provider, cancellationToken);
@@ -309,6 +313,16 @@ public sealed class DatabaseInitializationService(
         logger.LogInformation(
             "Development identity {DevelopmentEmail} already has a configured second factor; preserving it",
             DevelopmentEmail);
+    }
+
+    private async Task ApplyDevelopmentSeedVersionSevenAsync(CancellationToken cancellationToken)
+    {
+        var emailBlindIndex = personalDataProtector.HashEmailBlindIndex(DevelopmentEmail);
+        var provider = await db.Users.SingleAsync(
+            user => user.EmailBlindIndex == emailBlindIndex,
+            cancellationToken);
+        provider.Password = credentialHasher.HashPassword(DevelopmentPassword);
+        logger.LogInformation("Development identity {DevelopmentEmail} password was upgraded to the current credential format", DevelopmentEmail);
     }
 
     private async Task EnsureTestBaselineAsync(CancellationToken cancellationToken)

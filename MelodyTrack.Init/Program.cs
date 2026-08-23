@@ -6,9 +6,9 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
-if (!TryParseMode(args, out var mode))
+if (!TryParseMode(args, out var mode) || !TryParseRecovery(args, out var recoveryEmail, out var showRecoveryUrl))
 {
-    Console.Error.WriteLine("Usage: dotnet MelodyTrack.Init.dll --mode <production|development|test>");
+    Console.Error.WriteLine("Usage: dotnet MelodyTrack.Init.dll --mode <production|development|test> [--recover-superuser <email> --show-recovery-url]");
     return 2;
 }
 
@@ -53,6 +53,13 @@ try
     await using var scope = host.Services.CreateAsyncScope();
     var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
     await initializer.RunAsync(mode, cancellationSource.Token);
+    if (recoveryEmail is not null)
+    {
+        var recovery = scope.ServiceProvider.GetRequiredService<SuperuserRecoveryService>();
+        var result = await recovery.CreateResetUrlAsync(recoveryEmail, cancellationSource.Token);
+        Console.Out.WriteLine($"Reset URL: {result.ResetUrl}");
+        Console.Out.WriteLine($"One-time recovery code: {result.RecoveryCode}");
+    }
     return 0;
 }
 catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
@@ -83,4 +90,23 @@ static bool TryParseMode(string[] arguments, out InitializationMode mode)
     }
 
     return Enum.TryParse(arguments[modeIndex + 1], ignoreCase: true, out mode);
+}
+
+static bool TryParseRecovery(string[] arguments, out string? email, out bool showRecoveryUrl)
+{
+    email = null;
+    showRecoveryUrl = arguments.Contains("--show-recovery-url", StringComparer.OrdinalIgnoreCase);
+    var recoveryIndex = Array.FindIndex(arguments, argument => string.Equals(argument, "--recover-superuser", StringComparison.OrdinalIgnoreCase));
+    if (recoveryIndex < 0)
+    {
+        return !showRecoveryUrl;
+    }
+
+    if (recoveryIndex == arguments.Length - 1 || !showRecoveryUrl)
+    {
+        return false;
+    }
+
+    email = arguments[recoveryIndex + 1];
+    return !string.IsNullOrWhiteSpace(email);
 }

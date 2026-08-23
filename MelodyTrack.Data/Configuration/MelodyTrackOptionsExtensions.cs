@@ -3,6 +3,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Data.Configuration;
 
@@ -30,9 +31,14 @@ public static class MelodyTrackOptionsExtensions
 
     public static IServiceCollection AddAuthenticationSecretsOptions(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions<JwtOptions>()
+            .Bind(configuration.GetRequiredSection(JwtOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
         services.AddOptions<AuthenticationSecretsOptions>()
             .Bind(configuration.GetRequiredSection(AuthenticationSecretsOptions.SectionName))
             .ValidateDataAnnotations()
+            .Validate(ValidateAuthenticationSecrets, "Authentication secrets must use independent high-entropy keys and a P-256 signing key.")
             .ValidateOnStart();
         return services;
     }
@@ -61,6 +67,26 @@ public static class MelodyTrackOptionsExtensions
         var keys = options.BuildKeyRing();
         return IsValidKeyVersion(options.CurrentKeyVersion)
                && keys.All(pair => IsValidKeyVersion(pair.Key) && pair.Value.Length >= 32);
+    }
+
+    private static bool ValidateAuthenticationSecrets(AuthenticationSecretsOptions options)
+    {
+        try
+        {
+            _ = AuthenticationSecretMaterial.DecodeP256PrivateKey(options.JwtSigningPrivateKey);
+            var keys = new[]
+            {
+                AuthenticationSecretMaterial.DecodeSymmetricKey(options.PasswordPepper, "AuthenticationSecrets:PasswordPepper"),
+                AuthenticationSecretMaterial.DecodeSymmetricKey(options.PortalPinPepper, "AuthenticationSecrets:PortalPinPepper"),
+                AuthenticationSecretMaterial.DecodeSymmetricKey(options.RefreshTokenHashKey, "AuthenticationSecrets:RefreshTokenHashKey"),
+                AuthenticationSecretMaterial.DecodeSymmetricKey(options.CsrfSigningKey, "AuthenticationSecrets:CsrfSigningKey")
+            };
+            return keys.Select(Convert.ToHexString).Distinct(StringComparer.Ordinal).Count() == keys.Length;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
     }
 
     private static bool IsValidKeyVersion(string version)

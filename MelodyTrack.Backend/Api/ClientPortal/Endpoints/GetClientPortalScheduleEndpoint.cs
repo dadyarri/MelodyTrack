@@ -1,4 +1,6 @@
 using MelodyTrack.Backend.Api;
+using MelodyTrack.Backend.Api.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
@@ -16,6 +18,7 @@ public sealed class GetClientPortalScheduleEndpoint
 {
     private const int RecurrenceMaterializationHorizonDays = 45;
 
+    [Authorize(Policy = AuthorizationPolicies.ClientPortal)]
     public static async Task<Results<Ok<GetClientPortalScheduleResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetClientPortalScheduleRequest req,
         AppDbContext db,

@@ -12,6 +12,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -25,6 +26,7 @@ public sealed class RegisterEndpoint
         RegisterRequest req,
         AppDbContext db,
         IAuditLogService auditLogService,
+        CredentialHasher credentialHasher,
         TimeProvider timeProvider,
         ILogger<RegisterEndpoint> logger,
         HttpContext httpContext,
@@ -32,11 +34,9 @@ public sealed class RegisterEndpoint
         CancellationToken ct
     )
     {
-        logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
-
         if (!Ulid.TryParse(req.InviteCode, out var code))
         {
-            logger.LogWarning("Invalid invite code {InviteCode}", req.InviteCode);
+            logger.LogWarning("Invalid invite code format");
             validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения недействительна. Используйте новую ссылку от администратора.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 validationErrors,
@@ -52,7 +52,7 @@ public sealed class RegisterEndpoint
 
         if (inviteCode == null)
         {
-            logger.LogWarning("Invalid, used or expired invite code {InviteCode} provided", req.InviteCode);
+            logger.LogWarning("Invalid, used or expired invite code {InviteReference} provided", UserUtils.DescribeInviteCodeForLogs(code));
             validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения уже использована или просрочена. Попросите администратора создать новую.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 validationErrors,
@@ -74,8 +74,6 @@ public sealed class RegisterEndpoint
                 StatusCodes.Status403Forbidden);
         }
 
-        UserUtils.HashPassword(req.Password, out var hash);
-
         var user = new User
         {
             Id = Ulid.NewUlid(),
@@ -83,7 +81,7 @@ public sealed class RegisterEndpoint
             FirstName = req.FirstName,
             LastName = req.LastName,
             Role = inviteCode.Role,
-            Password = hash
+            Password = credentialHasher.HashPassword(req.Password)
         };
 
         inviteCode.WasUsed = true;

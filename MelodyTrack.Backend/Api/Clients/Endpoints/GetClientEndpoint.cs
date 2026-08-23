@@ -16,6 +16,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 public sealed class GetClientEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

@@ -17,6 +17,7 @@ public sealed class CreateExpenseEndpoint
 {
     private const string ReplayEndpoint = "expenses:create";
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         CreateExpenseRequest req,
         AppDbContext db,

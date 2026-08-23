@@ -7,7 +7,6 @@ public static class LegacyConfiguration
         var values = new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
         Map(values, "MELODY_TRACK_DATABASE_URL", $"{DatabaseOptions.SectionName}:ConnectionString");
         Map(values, "MELODY_TRACK_APP_DOMAIN", "PublicUrl:BaseUrl");
-        Map(values, "MELODY_TRACK_JWT_SIGNING_KEY", "AuthenticationSecrets:JwtSigningKey");
         Map(values, "MELODY_TRACK_PII_MASTER_KEY_VERSION", $"{PersonalDataOptions.SectionName}:CurrentKeyVersion");
         Map(values, "MELODY_TRACK_PII_MASTER_KEY", $"{PersonalDataOptions.SectionName}:CurrentKey");
         Map(values, "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS", $"{InitializationOptions.SectionName}:LogBootstrapSecrets");

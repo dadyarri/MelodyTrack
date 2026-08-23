@@ -14,6 +14,7 @@ namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 public sealed class UpdateCourseEnrollmentThemeProgressEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
         UpdateCourseEnrollmentThemeProgressRequest req,
         Ulid id,

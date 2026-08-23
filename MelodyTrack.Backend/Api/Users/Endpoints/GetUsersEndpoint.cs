@@ -13,6 +13,7 @@ namespace MelodyTrack.Backend.Api.Users.Endpoints;
 public sealed class GetUsersEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetUsersResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         IRecordActivityService recordActivityService,

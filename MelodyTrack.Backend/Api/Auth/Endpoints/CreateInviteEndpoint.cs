@@ -14,7 +14,7 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Post, "/auth/invites")]
 public sealed class CreateInviteEndpoint
 {
-
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateInviteResponse>, ForbidHttpResult>> HandleAsync(
         CreateInviteRequest req,
         AppDbContext db,
@@ -27,13 +27,8 @@ public sealed class CreateInviteEndpoint
     )
     {
         var inviteEmail = string.IsNullOrWhiteSpace(req.Email) ? null : UserUtils.NormalizeEmail(req.Email);
-        var caller = await currentUserAccessor.GetAsync(ct);
-
-        if (caller is null || !caller.Role.RoleName.IsAnyAdmin())
-        {
-            logger.LogWarning("Invite creation attempt without admin access");
-            return TypedResults.Forbid();
-        }
+        var caller = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var role = await db.Roles.FirstOrDefaultAsync(e => e.Id == req.Role, ct);
 

@@ -18,6 +18,8 @@ public static class DataServiceCollectionExtensions
         services.AddDatabaseOptions(configuration);
         services.AddPersonalDataOptions(configuration);
         services.AddSingleton<IPersonalDataProtector, PersonalDataProtector>();
+        services.AddSingleton<CredentialHasher>();
+        services.AddSingleton<AuthenticationTokenHasher>();
         services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var database = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
@@ -39,6 +41,7 @@ public static class DataServiceCollectionExtensions
         services.AddScoped<DevelopmentDemoDataSeeder>();
         services.AddScoped<DevelopmentFullDemoDataSeeder>();
         services.AddScoped<DatabaseInitializationService>();
+        services.AddScoped<SuperuserRecoveryService>();
         return services;
     }
 }

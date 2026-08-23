@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -13,7 +14,7 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Delete, "/auth/sessions/{id}")]
 public sealed class RevokeSessionEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
     public static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

@@ -399,7 +399,7 @@ export function ProfilePage() {
                   <Typography.Text>{session.deviceInfo || "Неизвестное устройство"}</Typography.Text>
                   {session.isCurrent ? <Tag color="green">Текущая</Tag> : null}
                 </Space>
-                <Typography.Text type="secondary">Последняя активность: {formatSessionTime(session.lastSeenAtUtc)}</Typography.Text>
+                <Typography.Text type="secondary">Создана: {formatSessionTime(session.createdAtUtc)}</Typography.Text>
               </Space>
             </List.Item>
           )}

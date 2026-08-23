@@ -136,7 +136,7 @@ export interface SessionDto {
   id: string;
   deviceInfo: string;
   isCurrent: boolean;
-  lastSeenAtUtc: string;
+  createdAtUtc: string;
 }
 
 export interface SessionsResponse {

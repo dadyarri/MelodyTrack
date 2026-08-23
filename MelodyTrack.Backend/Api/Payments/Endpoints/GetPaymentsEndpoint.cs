@@ -18,6 +18,7 @@ namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 public sealed class GetPaymentsEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetPaymentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetPaymentsPaginatedRequest req,
         AppDbContext db,

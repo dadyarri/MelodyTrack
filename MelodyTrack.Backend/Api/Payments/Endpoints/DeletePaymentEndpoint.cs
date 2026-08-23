@@ -15,6 +15,7 @@ namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 public sealed class DeletePaymentEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

@@ -14,6 +14,7 @@ namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 public sealed class DeleteCourseEnrollmentEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

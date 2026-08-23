@@ -12,6 +12,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -27,6 +28,9 @@ public sealed class LoginEndpoint
         IAuditLogService auditLogService,
         SessionSecurityMonitor sessionSecurityMonitor,
         RefreshSessionCookieService refreshCookieService,
+        CredentialHasher credentialHasher,
+        AuthenticationTokenHasher tokenHasher,
+        JwtTokenService jwtTokenService,
         TimeProvider timeProvider,
         ILogger<LoginEndpoint> logger,
         HttpContext httpContext,
@@ -41,7 +45,7 @@ public sealed class LoginEndpoint
             .WhereEmailMatches(normalizedEmail)
             .FirstOrDefaultAsync(ct);
 
-        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
+        if (user is null || !credentialHasher.VerifyPassword(user.Password, req.Password))
         {
             logger.LogWarning("auth.login.failed {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
@@ -100,7 +104,7 @@ public sealed class LoginEndpoint
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
+            RefreshToken = tokenHasher.HashRefreshToken(refreshToken),
             DeviceInfo = deviceInfo,
             ValidUntil = nowUtc.AddDays(7)
         };
@@ -124,7 +128,7 @@ public sealed class LoginEndpoint
         }, ct);
         var response = new LoginAttemptResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
+            AccessToken = jwtTokenService.CreateAccessToken(user, session.Id, timeProvider),
             FirstName = user.FirstName,
             LastName = user.LastName
         };

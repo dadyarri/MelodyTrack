@@ -45,7 +45,11 @@ docker run --detach \
     --publish 127.0.0.1::8080 \
     --env ASPNETCORE_URLS=http://+:8080 \
     --env "Database__ConnectionString=Host=$database;Port=5432;Database=melodytrack;Username=melodytrack;Password=image-test-password" \
-    --env AuthenticationSecrets__JwtSigningKey=image-test-jwt-key-1234567890-abcdef \
+    --env AuthenticationSecrets__JwtSigningPrivateKey=base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA \
+    --env AuthenticationSecrets__PasswordPepper=base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA= \
+    --env AuthenticationSecrets__PortalPinPepper=base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw= \
+    --env AuthenticationSecrets__RefreshTokenHashKey=base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4= \
+    --env AuthenticationSecrets__CsrfSigningKey=base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0= \
     --env PersonalData__CurrentKey=image-test-pii-key-1234567890-abcdef \
     --env PersonalData__CurrentKeyVersion=v1 \
     --env PublicUrl__BaseUrl=https://localhost \

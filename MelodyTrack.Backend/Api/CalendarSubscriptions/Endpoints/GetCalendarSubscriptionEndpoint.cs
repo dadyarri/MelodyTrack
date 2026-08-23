@@ -11,6 +11,8 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
+using MelodyTrack.Backend.ErrorHandling;
 using Microsoft.EntityFrameworkCore;
 using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
@@ -23,7 +25,8 @@ public sealed class GetCalendarSubscriptionEndpoint
     // in the feed; only future events are limited to this rolling window.
     private const int SubscriptionWindowDays = 14;
 
-        [AllowAnonymous]
+    [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.CalendarSubscription)]
     public static async Task<Results<FileContentHttpResult, NotFound>> HandleAsync(
         [AsParameters] CalendarSubscriptionRequest req,
         AppDbContext db,

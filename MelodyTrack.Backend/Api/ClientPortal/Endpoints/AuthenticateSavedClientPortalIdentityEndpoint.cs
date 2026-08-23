@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
@@ -24,6 +25,7 @@ public sealed class AuthenticateSavedClientPortalIdentityEndpoint
         AppDbContext db,
         IAuditLogService auditLogService,
         ClientPortalSessionService sessionService,
+        CredentialHasher credentialHasher,
         TimeProvider timeProvider,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
@@ -52,7 +54,18 @@ public sealed class AuthenticateSavedClientPortalIdentityEndpoint
 
         var link = savedIdentity.LoginLink;
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-        if (!UserUtils.IsValidPassword(link.PinHash, req.Pin))
+        var blockedUntilUtc = PortalPinCooldown.GetBlockedUntilUtc(link.FailedPinAttempts, link.LastFailedPinAttemptAtUtc);
+        if (blockedUntilUtc > nowUtc)
+        {
+            httpContext.Response.Headers.RetryAfter = Math.Ceiling((blockedUntilUtc.Value - nowUtc).TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            validationErrors.Add(nameof(req.Pin), "Слишком много неудачных попыток. Повторите позже.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                validationErrors,
+                httpContext,
+                StatusCodes.Status429TooManyRequests);
+        }
+
+        if (!credentialHasher.VerifyPortalPin(link.PinHash, req.Pin))
         {
             link.FailedPinAttempts++;
             link.LastFailedPinAttemptAtUtc = nowUtc;

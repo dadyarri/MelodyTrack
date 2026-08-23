@@ -16,6 +16,7 @@ public sealed class CreateServiceEndpoint
 {
     private const string ReplayEndpoint = "services:create";
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         CreateServiceRequest req,
         AppDbContext db,

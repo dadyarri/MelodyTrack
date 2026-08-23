@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,6 +25,8 @@ public sealed class Recover2FaEndpoint
         AppDbContext db,
         [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
         RefreshSessionCookieService refreshCookieService,
+        AuthenticationTokenHasher tokenHasher,
+        JwtTokenService jwtTokenService,
         TimeProvider timeProvider,
         ILogger<Recover2FaEndpoint> logger,
         HttpContext httpContext,
@@ -65,7 +68,7 @@ public sealed class Recover2FaEndpoint
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
+            RefreshToken = tokenHasher.HashRefreshToken(refreshToken),
             DeviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector),
             ValidUntil = timeProvider.GetUtcNow().UtcDateTime.AddDays(7)
         };
@@ -75,7 +78,7 @@ public sealed class Recover2FaEndpoint
 
         var response = new Recover2FaResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
+            AccessToken = jwtTokenService.CreateAccessToken(user, session.Id, timeProvider),
             Secret = secret,
             OtpUrl = otpUrl,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto

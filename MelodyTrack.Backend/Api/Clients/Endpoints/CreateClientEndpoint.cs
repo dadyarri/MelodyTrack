@@ -17,6 +17,7 @@ public sealed class CreateClientEndpoint
 {
     private const string ReplayEndpoint = "clients:create";
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> HandleAsync(
         CreateClientRequest req,
         AppDbContext db,

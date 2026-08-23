@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
@@ -10,7 +11,7 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Post, "/auth/logout-all")]
 public sealed class LogoutAllEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
     public static async Task<Results<UnauthorizedHttpResult, NoContent>> HandleAsync(
         AppDbContext db,
         IAuditLogService auditLogService,

@@ -15,6 +15,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 public sealed class GetClientsWithNegativeBalanceEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,

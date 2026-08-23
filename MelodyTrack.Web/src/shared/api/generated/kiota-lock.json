@@ -1,6 +1,6 @@
 {
-  "descriptionHash": "54A8E9ED55EE510833F276A148BD406F3DAE21CD4FFCA0460B3EEAB8C947BE88707BC8A4C8F07551BDD4D372CFAB5030A723A336290AB646A41FE6EC25AE7015",
-  "descriptionLocation": "../../../../../MelodyTrack.Backend/obj/Release/net10.0/openapi/MelodyTrack.Backend.json",
+  "descriptionHash": "05F9371FC31BCFD897D12041FE34DFD3C4AA38EAA32AB12233A84FB5797AE283FE44D05579D08117B26EC733D54ADE746B5E1E9B3EE0E2EFB22390FA2DD013F1",
+  "descriptionLocation": "../../../../../MelodyTrack.Backend/obj/frontend-openapi/net10.0/MelodyTrack.Backend.json",
   "lockFileVersion": "1.0.0",
   "kiotaVersion": "1.34.1",
   "clientClassName": "MelodyTrackApiClient",

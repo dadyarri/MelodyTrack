@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,12 +28,11 @@ public sealed class GetInviteCodeInformationEndpoint
         CancellationToken ct
     )
     {
-        logger.LogInformation("Trying to get information about invite {InviteCode}", req.InviteCode);
         var ulidParsed = Ulid.TryParse(req.InviteCode, out var ulid);
 
         if (!ulidParsed)
         {
-            logger.LogWarning("Invite code {InviteCode} could not be parsed", req.InviteCode);
+            logger.LogWarning("Invite code could not be parsed");
             validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения недействительна. Попросите администратора создать новую.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 validationErrors,
@@ -47,7 +47,7 @@ public sealed class GetInviteCodeInformationEndpoint
 
         if (invite is null)
         {
-            logger.LogWarning("Invite code {InviteCode} is invalid", req.InviteCode);
+            logger.LogWarning("Invite {InviteReference} is invalid", UserUtils.DescribeInviteCodeForLogs(ulid));
             validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения недействительна или уже просрочена. Попросите администратора создать новую.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
                 validationErrors,
@@ -55,7 +55,7 @@ public sealed class GetInviteCodeInformationEndpoint
                 StatusCodes.Status403Forbidden);
         }
 
-        logger.LogInformation("Invite code {InviteCode} found", req.InviteCode);
+        logger.LogInformation("Invite {InviteReference} found", UserUtils.DescribeInviteCodeForLogs(ulid));
         return TypedResults.Ok(new GetInviteCodeInformationResponse
         {
             Email = invite.Email

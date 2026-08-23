@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -24,6 +25,7 @@ public sealed class ResetPasswordEndpoint
         AppDbContext db,
         IAuditLogService auditLogService,
         RefreshSessionCookieService refreshCookieService,
+        CredentialHasher credentialHasher,
         TimeProvider timeProvider,
         ILogger<ResetPasswordEndpoint> logger,
         HttpContext httpContext,
@@ -92,8 +94,7 @@ public sealed class ResetPasswordEndpoint
             }
         }
 
-        UserUtils.HashPassword(req.NewPassword, out var hash);
-        user.Password = hash;
+        user.Password = credentialHasher.HashPassword(req.NewPassword);
         restoreCode.WasUsed = true;
         await db.SaveChangesAsync(ct);
 

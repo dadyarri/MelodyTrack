@@ -15,6 +15,7 @@ namespace MelodyTrack.Backend.Api.Services.Endpoints;
 public sealed class UpdateServiceEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         UpdateServiceRequest req,
         Ulid id,

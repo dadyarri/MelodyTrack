@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Endpoints;
 
@@ -24,6 +25,7 @@ public sealed class AuthenticateClientPortalLinkEndpoint
         AppDbContext db,
         IAuditLogService auditLogService,
         ClientPortalSessionService sessionService,
+        CredentialHasher credentialHasher,
         TimeProvider timeProvider,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
@@ -50,6 +52,17 @@ public sealed class AuthenticateClientPortalLinkEndpoint
                 StatusCodes.Status403Forbidden);
         }
 
+        var blockedUntilUtc = PortalPinCooldown.GetBlockedUntilUtc(link.FailedPinAttempts, link.LastFailedPinAttemptAtUtc);
+        if (blockedUntilUtc > nowUtc)
+        {
+            httpContext.Response.Headers.RetryAfter = Math.Ceiling((blockedUntilUtc.Value - nowUtc).TotalSeconds).ToString(System.Globalization.CultureInfo.InvariantCulture);
+            validationErrors.Add(nameof(req.Pin), "Слишком много неудачных попыток. Повторите позже.");
+            return ApiErrorResponseFactory.CreateValidationProblemDetails(
+                validationErrors,
+                httpContext,
+                StatusCodes.Status429TooManyRequests);
+        }
+
         if (string.IsNullOrWhiteSpace(link.PinHash))
         {
             if (string.IsNullOrWhiteSpace(req.PinConfirmation))
@@ -70,11 +83,10 @@ public sealed class AuthenticateClientPortalLinkEndpoint
                     StatusCodes.Status400BadRequest);
             }
 
-            UserUtils.HashPassword(req.Pin, out var pinHash);
-            link.PinHash = pinHash;
+            link.PinHash = credentialHasher.HashPortalPin(req.Pin);
             link.PinSetAtUtc = nowUtc;
         }
-        else if (!UserUtils.IsValidPassword(link.PinHash, req.Pin))
+        else if (!credentialHasher.VerifyPortalPin(link.PinHash, req.Pin))
         {
             link.FailedPinAttempts++;
             link.LastFailedPinAttemptAtUtc = nowUtc;

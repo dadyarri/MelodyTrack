@@ -43,7 +43,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     private static int _emailSequence;
 
-    private static string HashRefreshToken(string token) => UserUtils.HashOpaqueToken(token);
+    private static string HashRefreshToken(string token) => UserUtils.HashRefreshToken(token);
 
     private static string UniqueEmail() => $"auth-{Interlocked.Increment(ref _emailSequence)}@example.test";
 
@@ -1359,7 +1359,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         using var assertionScope = App.Services.CreateScope();
         var assertionDb = assertionScope.ServiceProvider.GetRequiredService<AppDbContext>();
         var newSession = await assertionDb.Sessions
-            .FirstAsync(s => s.RefreshToken == UserUtils.HashOpaqueToken(newRefreshToken), TestContext.Current.CancellationToken);
+            .FirstAsync(s => s.RefreshToken == UserUtils.HashRefreshToken(newRefreshToken), TestContext.Current.CancellationToken);
 
         newSession.DeviceInfo.ShouldBe("Неизвестное устройство");
     }
@@ -1649,48 +1649,38 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task Logout_CannotRevokeAnotherUsersSession()
+    public async Task Logout_ValidRefreshCookieWithoutBearer_RevokesSession()
     {
         var dbContextForSetup = App.Services.GetRequiredService<AppDbContext>();
-        const string rawTargetRefreshToken = "foreign-refresh-token";
+        const string rawRefreshToken = "cookie-refresh-token";
 
         var role = await dbContextForSetup.Roles.FirstAsync(e => e.RoleName == UserRoles.User, TestContext.Current.CancellationToken);
-        var caller = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Caller", LastName = "User", Role = role, Password = "hash" };
-        var target = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Target", LastName = "User", Role = role, Password = "hash" };
+        var user = new User { Id = Ulid.NewUlid(), Email = UniqueEmail().ToLowerInvariant(), FirstName = "Cookie", LastName = "User", Role = role, Password = "hash" };
 
-        var targetSession = new Session
+        var session = new Session
         {
             Id = Ulid.NewUlid(),
-            User = target,
-            RefreshToken = HashRefreshToken(rawTargetRefreshToken),
+            User = user,
+            RefreshToken = HashRefreshToken(rawRefreshToken),
             ValidUntil = DateTime.UtcNow.AddDays(1),
-            DeviceInfo = "foreign-device"
+            DeviceInfo = "cookie-device"
         };
 
-        await dbContextForSetup.Users.AddRangeAsync([caller, target], TestContext.Current.CancellationToken);
-        await dbContextForSetup.Sessions.AddAsync(targetSession, TestContext.Current.CancellationToken);
+        await dbContextForSetup.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await dbContextForSetup.Sessions.AddAsync(session, TestContext.Current.CancellationToken);
         await dbContextForSetup.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(caller));
-
         using var logoutClient = App.CreateClient();
-        logoutClient.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(caller));
-        SetRefreshCookieHeaders(logoutClient, rawTargetRefreshToken);
+        SetRefreshCookieHeaders(logoutClient, rawRefreshToken);
         var rsp = await logoutClient.PostAsync("/auth/logout", null, TestContext.Current.CancellationToken);
-        var res = await rsp.Content.ReadFromJsonAsync<ApiProblemDetails>(TestContext.Current.CancellationToken);
 
-        App.Client.DefaultRequestHeaders.Authorization = null;
-
-        rsp.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        res.ShouldNotBeNull();
-        res.Status.ShouldBe((int)HttpStatusCode.Unauthorized);
-        res.Detail.ShouldBe("Для выполнения этого запроса нужно войти в систему.");
+        rsp.StatusCode.ShouldBe(HttpStatusCode.NoContent);
 
         using var assertionScope = App.Services.CreateScope();
         var dbContextForAssertion = assertionScope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var unchangedSession = await dbContextForAssertion.Sessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == targetSession.Id, TestContext.Current.CancellationToken);
-        unchangedSession.ShouldNotBeNull();
-        unchangedSession.WasRevoked.ShouldBeFalse();
+        var revokedSession = await dbContextForAssertion.Sessions.AsNoTracking().FirstOrDefaultAsync(s => s.Id == session.Id, TestContext.Current.CancellationToken);
+        revokedSession.ShouldNotBeNull();
+        revokedSession.WasRevoked.ShouldBeTrue();
     }
 
     [Fact]
@@ -1720,7 +1710,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         var currentSessionDto = res.Data.Single(d => d.Id == currentSession.Id);
         currentSessionDto.DeviceInfo.ShouldBe(currentSession.DeviceInfo);
         currentSessionDto.IsCurrent.ShouldBeTrue();
-        currentSessionDto.LastSeenAtUtc.ShouldBe(currentSession.Id.Time.UtcDateTime, TimeSpan.FromSeconds(1));
+        currentSessionDto.CreatedAtUtc.ShouldBe(currentSession.Id.Time.UtcDateTime, TimeSpan.FromSeconds(1));
 
         res.Data.ShouldContain(d => d.Id == otherSession.Id);
         var otherSessionDto = res.Data.Single(d => d.Id == otherSession.Id);
@@ -2589,7 +2579,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var session = await db.Sessions.FirstOrDefaultAsync(
-                s => s.RefreshToken == UserUtils.HashOpaqueToken(refreshToken),
+                s => s.RefreshToken == UserUtils.HashRefreshToken(refreshToken),
                 TestContext.Current.CancellationToken);
             session.ShouldNotBeNull();
             session.RefreshToken.ShouldNotBe(refreshToken);
@@ -2667,7 +2657,7 @@ public class AuthTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             using var scope = App.Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
             var revokedSession = await db.Sessions.FirstOrDefaultAsync(
-                s => s.RefreshToken == UserUtils.HashOpaqueToken(login2RefreshToken),
+                s => s.RefreshToken == UserUtils.HashRefreshToken(login2RefreshToken),
                 TestContext.Current.CancellationToken);
             revokedSession.ShouldNotBeNull();
             revokedSession.WasRevoked.ShouldBeTrue();

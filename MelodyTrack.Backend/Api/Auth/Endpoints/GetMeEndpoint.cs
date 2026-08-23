@@ -1,4 +1,5 @@
 using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.Clients;
@@ -14,7 +15,7 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 [ApiEndpoint(ApiMethod.Get, "/auth/me")]
 public sealed class GetMeEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
     public static async Task<Results<Ok<MeResponse>, UnauthorizedHttpResult>> HandleAsync(
         AppDbContext db,
         IRecordActivityService recordActivityService,

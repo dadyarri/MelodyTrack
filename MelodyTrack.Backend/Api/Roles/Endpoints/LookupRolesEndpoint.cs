@@ -14,6 +14,7 @@ namespace MelodyTrack.Backend.Api.Roles.Endpoints;
 public sealed class LookupRolesEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<LookupRolesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,

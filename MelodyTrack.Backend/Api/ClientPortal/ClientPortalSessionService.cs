@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.ClientPortal;
 
@@ -11,6 +12,8 @@ public sealed class ClientPortalSessionService(
     AppDbContext db,
     IUaDetector uaDetector,
     RefreshSessionCookieService refreshCookieService,
+    AuthenticationTokenHasher tokenHasher,
+    JwtTokenService jwtTokenService,
     TimeProvider timeProvider,
     IHttpContextAccessor httpContextAccessor)
 {
@@ -20,22 +23,18 @@ public sealed class ClientPortalSessionService(
             ?? throw new InvalidOperationException("An active HTTP context is required to create a portal session.");
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
 
-        await db.Sessions
-            .Where(item => item.User.Id == user.Id && !item.WasRevoked)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
-
         var refreshToken = UserUtils.GenerateRandomString(32);
         var session = new Session
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
+            RefreshToken = tokenHasher.HashRefreshToken(refreshToken),
             DeviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector),
             ValidUntil = nowUtc.AddDays(30)
         };
 
         await db.Sessions.AddAsync(session, ct);
         refreshCookieService.Issue(httpContext.Response, refreshToken, session.ValidUntil);
-        return UserUtils.CreateAccessToken(user, session.Id, timeProvider);
+        return jwtTokenService.CreateAccessToken(user, session.Id, timeProvider);
     }
 }

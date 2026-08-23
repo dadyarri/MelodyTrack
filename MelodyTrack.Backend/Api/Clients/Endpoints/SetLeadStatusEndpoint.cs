@@ -14,6 +14,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 public sealed class SetLeadStatusEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         SetLeadStatusRequest req,
         Ulid id,

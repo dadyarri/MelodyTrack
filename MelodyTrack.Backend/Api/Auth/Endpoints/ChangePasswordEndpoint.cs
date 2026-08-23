@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -18,6 +19,7 @@ public sealed class ChangePasswordEndpoint
         IAuditLogService auditLogService,
         ICurrentUserAccessor currentUserAccessor,
         RefreshSessionCookieService refreshCookieService,
+        CredentialHasher credentialHasher,
         ILogger<ChangePasswordEndpoint> logger,
         HttpContext httpContext,
         CancellationToken ct
@@ -25,14 +27,13 @@ public sealed class ChangePasswordEndpoint
     {
         var user = await currentUserAccessor.GetAsync(ct);
 
-        if (user is null || !UserUtils.IsValidPassword(user.Password, req.CurrentPassword))
+        if (user is null || !credentialHasher.VerifyPassword(user.Password, req.CurrentPassword))
         {
             logger.LogWarning("Password change failed for current user: invalid current password");
             return TypedResults.Unauthorized();
         }
 
-        UserUtils.HashPassword(req.NewPassword, out var hash);
-        user.Password = hash;
+        user.Password = credentialHasher.HashPassword(req.NewPassword);
         await db.SaveChangesAsync(ct);
 
         await db.Sessions

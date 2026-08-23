@@ -39,7 +39,11 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
 
         var connectionString = _dbContainer.GetConnectionString();
         Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", connectionString);
-        Environment.SetEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY", "super-secret-jwt-key-for-testing-only-1234567890abcdef");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__JwtSigningPrivateKey", TestJwtPrivateKey);
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__PasswordPepper", "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__PortalPinPepper", "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__RefreshTokenHashKey", "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__CsrfSigningKey", "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=");
         Environment.SetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY", "super-secret-pii-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
         await RunInitializationAsync(InitializationMode.Test, projectDir, connectionString, TestContext.Current.CancellationToken);
@@ -196,7 +200,13 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
         builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             [$"{DatabaseOptions.SectionName}:ConnectionString"] = connectionString,
-            ["AuthenticationSecrets:JwtSigningKey"] = "super-secret-jwt-key-for-testing-only-1234567890abcdef",
+            ["AuthenticationSecrets:JwtSigningPrivateKey"] = TestJwtPrivateKey,
+            ["AuthenticationSecrets:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+            ["AuthenticationSecrets:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+            ["AuthenticationSecrets:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+            ["AuthenticationSecrets:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+            ["Jwt:Issuer"] = "MelodyTrack",
+            ["Jwt:Audience"] = "MelodyTrack.Web",
             ["PersonalData:CurrentKeyVersion"] = "v1",
             ["PersonalData:CurrentKey"] = "super-secret-pii-key-for-testing-only-1234567890abcdef",
             ["PublicUrl:BaseUrl"] = "http://localhost:5000",
@@ -213,4 +223,6 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
         var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
         await initializer.RunAsync(mode, cancellationToken);
     }
+
+    private const string TestJwtPrivateKey = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA";
 }

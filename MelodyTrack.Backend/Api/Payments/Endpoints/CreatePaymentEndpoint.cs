@@ -17,6 +17,7 @@ public sealed class CreatePaymentEndpoint
 {
     private const string ReplayEndpoint = "payments:create";
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         CreatePaymentRequest req,
         AppDbContext db,

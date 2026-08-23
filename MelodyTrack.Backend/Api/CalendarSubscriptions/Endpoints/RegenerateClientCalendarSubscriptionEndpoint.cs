@@ -1,5 +1,7 @@
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api;
+using MelodyTrack.Backend.Api.Auth;
+using Microsoft.AspNetCore.Authorization;
 using System.Security.Cryptography;
 using MelodyTrack.Backend.Api.CalendarSubscriptions.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
@@ -17,7 +19,7 @@ namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 [ApiEndpoint(ApiMethod.Post, "/clients/{id}/calendar-subscriptions")]
 public sealed class RegenerateClientCalendarSubscriptionEndpoint
 {
-
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
     public static async Task<Results<Ok<CalendarSubscriptionResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

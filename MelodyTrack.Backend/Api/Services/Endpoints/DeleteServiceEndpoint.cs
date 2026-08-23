@@ -16,6 +16,7 @@ namespace MelodyTrack.Backend.Api.Services.Endpoints;
 public sealed class DeleteServiceEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, ApiProblemDetails, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,

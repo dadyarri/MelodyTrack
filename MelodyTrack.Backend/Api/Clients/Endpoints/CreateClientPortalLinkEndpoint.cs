@@ -10,34 +10,28 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
 [ApiEndpoint(ApiMethod.Post, "/clients/{id}/portal-links")]
 public sealed class CreateClientPortalLinkEndpoint
 {
-
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
         [AsParameters] GetEntityRequest req,
         AppDbContext db,
         IAuditLogService auditLogService,
         IPublicUrlBuilder publicUrlBuilder,
+        CredentialHasher credentialHasher,
         ICurrentUserAccessor currentUserAccessor,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
         CancellationToken ct
     )
     {
-        var currentUser = await currentUserAccessor.GetAsync(ct);
-        if (currentUser is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!currentUser.Role.RoleName.IsAnyAdmin())
-        {
-            return TypedResults.Forbid();
-        }
+        var currentUser = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var client = await db.Clients
             .Include(item => item.Contacts)
@@ -84,15 +78,13 @@ public sealed class CreateClientPortalLinkEndpoint
 
         if (existingUser is null)
         {
-            UserUtils.HashPassword(UserUtils.GenerateRandomString(32), out var passwordHash);
-
             existingUser = new User
             {
                 Id = Ulid.NewUlid(),
                 Email = desiredEmail,
                 FirstName = client.FirstName,
                 LastName = client.LastName,
-                Password = passwordHash,
+                Password = credentialHasher.HashPassword(UserUtils.GenerateRandomString(32)),
                 Role = clientRole,
                 ClientId = client.Id,
                 Phone = client.Contacts.Phone,

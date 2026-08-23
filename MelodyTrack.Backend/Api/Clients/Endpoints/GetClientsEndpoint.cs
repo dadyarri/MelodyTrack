@@ -18,6 +18,7 @@ namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 public sealed class GetClientsEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<PaginatedResponse<ClientWithBalanceDto>>, UnauthorizedHttpResult, ForbidHttpResult>>
         HandleAsync(
         [AsParameters] GetClientsPaginatedRequest req,

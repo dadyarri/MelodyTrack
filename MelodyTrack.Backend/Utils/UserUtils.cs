@@ -1,11 +1,11 @@
 ﻿using System.Security.Claims;
-using System.IdentityModel.Tokens.Jwt;
 using System.Security.Cryptography;
 using System.Text;
-using Isopoh.Cryptography.Argon2;
-using Isopoh.Cryptography.SecureArray;
+using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Data.Models;
-using Microsoft.IdentityModel.Tokens;
+using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data.Security;
+using Microsoft.Extensions.Options;
 using OtpNet;
 using QRCoder;
 
@@ -16,12 +16,20 @@ namespace MelodyTrack.Backend.Utils;
 /// </summary>
 public static class UserUtils
 {
-    private static string? _legacyAuthenticationKey;
+    private static CredentialHasher? _credentialHasher;
+    private static AuthenticationTokenHasher? _tokenHasher;
+    private static JwtTokenService? _jwtTokenService;
     private static string? _personalDataKey;
 
-    public static void ConfigureLegacySecrets(string authenticationKey, string personalDataKey)
+    public static void ConfigureAuthentication(
+        AuthenticationSecretsOptions authenticationSecrets,
+        JwtOptions jwtOptions,
+        string personalDataKey)
     {
-        _legacyAuthenticationKey = authenticationKey;
+        var secretOptions = Options.Create(authenticationSecrets);
+        _credentialHasher = new CredentialHasher(secretOptions);
+        _tokenHasher = new AuthenticationTokenHasher(secretOptions);
+        _jwtTokenService = new JwtTokenService(secretOptions, Options.Create(jwtOptions));
         _personalDataKey = personalDataKey;
     }
 
@@ -32,49 +40,14 @@ public static class UserUtils
     /// <param name="hash">Hashed password</param>
     public static void HashPassword(string password, out string hash)
     {
-        var salt = new byte[16];
-        Random.Shared.NextBytes(salt);
-        var config = new Argon2Config
-        {
-            Type = Argon2Type.DataIndependentAddressing,
-            Version = Argon2Version.Nineteen,
-            TimeCost = 3,
-            MemoryCost = 3000,
-            Password = Encoding.UTF8.GetBytes(password),
-            Salt = salt,
-            Secret = Encoding.UTF8.GetBytes(GetAuthenticationKey())
-        };
-
-        var argon2 = new Argon2(config);
-        using var hashA = argon2.Hash();
-        hash = config.EncodeString(hashA.Buffer);
+        hash = GetCredentialHasher().HashPassword(password);
     }
 
-    public static bool IsValidPassword(string hash, string password)
-    {
-        var config = new Argon2Config
-        {
-            Password = Encoding.UTF8.GetBytes(password),
-            Secret = Encoding.UTF8.GetBytes(GetAuthenticationKey())
-        };
+    public static bool IsValidPassword(string hash, string password) => GetCredentialHasher().VerifyPassword(hash, password);
 
-        SecureArray<byte>? hashA = null;
-        try
-        {
-            if (config.DecodeString(hash, out hashA))
-            {
-                var argon2 = new Argon2(config);
-                using var hashToVerify = argon2.Hash();
-                return Argon2.FixedTimeEquals(hashA, hashToVerify);
-            }
-        }
-        finally
-        {
-            hashA?.Dispose();
-        }
+    public static string HashPortalPin(string pin) => GetCredentialHasher().HashPortalPin(pin);
 
-        return false;
-    }
+    public static bool IsValidPortalPin(string hash, string pin) => GetCredentialHasher().VerifyPortalPin(hash, pin);
 
     public static string GenerateRandomString(int length)
     {
@@ -106,11 +79,10 @@ public static class UserUtils
 
     public static string HashOpaqueToken(string token)
     {
-        var secret = Encoding.UTF8.GetBytes(GetAuthenticationKey());
-        var tokenBytes = Encoding.UTF8.GetBytes(token);
-        var hash = HMACSHA256.HashData(secret, tokenBytes);
-        return Convert.ToHexString(hash);
+        return AuthenticationTokenHasher.HashOpaqueToken(token);
     }
+
+    public static string HashRefreshToken(string token) => GetTokenHasher().HashRefreshToken(token);
 
     public static string NormalizeEmail(string email)
     {
@@ -156,23 +128,7 @@ public static class UserUtils
 
     public static string CreateAccessToken(User user, Ulid? sessionId = null, TimeProvider? timeProvider = null)
     {
-        var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
-        var claims = new List<Claim> { new(ClaimTypes.Name, user.Email) };
-        if (sessionId.HasValue)
-        {
-            claims.Add(new Claim(ClaimTypes.Sid, sessionId.Value.ToString()));
-        }
-
-        var credentials = new SigningCredentials(
-            new SymmetricSecurityKey(Encoding.UTF8.GetBytes(GetAuthenticationKey())),
-            SecurityAlgorithms.HmacSha256);
-        var token = new JwtSecurityToken(
-            issuer: "MelodyTrack",
-            audience: null,
-            claims: claims,
-            expires: expireAt,
-            signingCredentials: credentials);
-        return new JwtSecurityTokenHandler().WriteToken(token);
+        return GetJwtTokenService().CreateAccessToken(user, sessionId, timeProvider);
     }
 
     public static (string Secret, string OtpUrl) GenerateTotp(string email)
@@ -212,12 +168,16 @@ public static class UserUtils
         return sha512Totp.VerifyTotp(otp, out _, window);
     }
 
-    private static string GetAuthenticationKey()
+    private static CredentialHasher GetCredentialHasher()
     {
-        return _legacyAuthenticationKey
-               ?? Environment.GetEnvironmentVariable("AuthenticationSecrets__JwtSigningKey")
-               ?? EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
+        return _credentialHasher ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
     }
+
+    private static AuthenticationTokenHasher GetTokenHasher() =>
+        _tokenHasher ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
+
+    private static JwtTokenService GetJwtTokenService() =>
+        _jwtTokenService ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
 
     private static string GetPersonalDataKey()
     {

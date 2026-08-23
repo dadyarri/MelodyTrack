@@ -17,11 +17,17 @@ Configure at least:
 ```text
 Database__ConnectionString=<shared PostgreSQL connection>
 PublicUrl__BaseUrl=https://melodytrack.example
-AuthenticationSecrets__JwtSigningKey=<secret>
+AuthenticationSecrets__JwtSigningPrivateKey=base64:<P-256-PKCS8-private-key>
+AuthenticationSecrets__PasswordPepper=base64:<32-random-bytes>
+AuthenticationSecrets__PortalPinPepper=base64:<32-independent-random-bytes>
+AuthenticationSecrets__RefreshTokenHashKey=base64:<32-independent-random-bytes>
+AuthenticationSecrets__CsrfSigningKey=base64:<32-independent-random-bytes>
 PersonalData__CurrentKey=<secret>
 PersonalData__CurrentKeyVersion=v1
 ReverseProxy__KnownNetworks__0=<Caddy Docker network in CIDR form>
 ```
+
+The Stage 8 database migration is intentionally breaking. Before applying it, verify the production backup and the server-local recovery command. The migration revokes every existing session, invalidates existing staff passwords and reset requests, and clears legacy portal links, PINs, and saved portal identities. These credentials cannot be restored by rolling the schema back. After Init completes, issue the first superuser reset URL from a controlled server shell as documented in `MelodyTrack.Init/README.md`; administrators can then rotate client portal links and recover other staff accounts through normal workflows.
 
 `Http__PathBase` defaults to `/api`. The frontend is compiled with `VITE_API_BASE_URL=/api`, so browser API traffic stays same-origin. Calendar subscription links are consequently generated under `/api/calendar-subscriptions/...`.
 

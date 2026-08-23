@@ -6,6 +6,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -16,13 +17,14 @@ public sealed class Setup2FaEndpoint
     public static async Task<Results<Ok<Setup2FaResponse>, UnauthorizedHttpResult>> HandleAsync(
         Setup2FaRequest req,
         ICurrentUserAccessor currentUserAccessor,
+        CredentialHasher credentialHasher,
         ILogger<Setup2FaEndpoint> logger,
         CancellationToken ct
     )
     {
         var user = await currentUserAccessor.GetAsync(ct);
 
-        if (user is null || !UserUtils.IsValidPassword(user.Password, req.Password))
+        if (user is null || !credentialHasher.VerifyPassword(user.Password, req.Password))
         {
             logger.LogWarning("2FA setup attempt with invalid current user or password");
             return TypedResults.Unauthorized();

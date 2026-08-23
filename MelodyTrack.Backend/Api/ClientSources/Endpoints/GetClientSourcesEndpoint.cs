@@ -15,6 +15,7 @@ namespace MelodyTrack.Backend.Api.ClientSources.Endpoints;
 public sealed class GetClientSourcesEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetClientSourcesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,

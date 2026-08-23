@@ -7,21 +7,17 @@ public sealed class AuthenticationSecretsOptions
     public const string SectionName = "AuthenticationSecrets";
 
     [Required]
-    [MinLength(32)]
-    public required string JwtSigningKey { get; init; }
+    public required string JwtSigningPrivateKey { get; init; }
 
-    [MinLength(32)]
-    public string? JwtSigningPrivateKey { get; init; }
+    [Required]
+    public required string PasswordPepper { get; init; }
 
-    [MinLength(32)]
-    public string? PasswordPepper { get; init; }
+    [Required]
+    public required string PortalPinPepper { get; init; }
 
-    [MinLength(32)]
-    public string? PortalPinPepper { get; init; }
+    [Required]
+    public required string RefreshTokenHashKey { get; init; }
 
-    [MinLength(32)]
-    public string? RefreshTokenHashKey { get; init; }
-
-    [MinLength(32)]
-    public string? CsrfSigningKey { get; init; }
+    [Required]
+    public required string CsrfSigningKey { get; init; }
 }

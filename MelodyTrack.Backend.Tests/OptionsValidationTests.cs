@@ -25,17 +25,23 @@ public sealed class OptionsValidationTests
     }
 
     [Fact]
-    public void AuthenticationSecrets_ShortJwtKey_FailsClearly()
+    public void AuthenticationSecrets_InvalidPrivateKey_FailsClearly()
     {
         using var host = CreateHost(Environments.Production, new Dictionary<string, string?>
         {
-            ["AuthenticationSecrets:JwtSigningKey"] = "too-short"
+            ["AuthenticationSecrets:JwtSigningPrivateKey"] = "too-short",
+            ["AuthenticationSecrets:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+            ["AuthenticationSecrets:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+            ["AuthenticationSecrets:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+            ["AuthenticationSecrets:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+            ["Jwt:Issuer"] = "MelodyTrack",
+            ["Jwt:Audience"] = "MelodyTrack.Web"
         }, (services, configuration) => services.AddAuthenticationSecretsOptions(configuration));
 
         var exception = Should.Throw<OptionsValidationException>(() =>
             host.Services.GetRequiredService<IOptions<AuthenticationSecretsOptions>>().Value);
 
-        exception.Message.ShouldContain(nameof(AuthenticationSecretsOptions.JwtSigningKey));
+        exception.Message.ShouldContain("Authentication secrets");
     }
 
     [Fact]

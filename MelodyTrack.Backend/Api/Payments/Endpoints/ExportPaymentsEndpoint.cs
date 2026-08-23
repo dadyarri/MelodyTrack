@@ -19,6 +19,7 @@ public sealed class ExportPaymentsEndpoint
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
         [EnableRateLimiting("expensive-read")]
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetPaymentsPaginatedRequest req,
         AppDbContext db,

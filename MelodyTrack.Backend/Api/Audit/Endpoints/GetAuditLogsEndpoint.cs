@@ -16,7 +16,7 @@ namespace MelodyTrack.Backend.Api.Audit.Endpoints;
 [ApiEndpoint(ApiMethod.Get, "/audit-logs")]
 public sealed class GetAuditLogsEndpoint
 {
-
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Superuser)]
     public static async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetAuditLogsPaginatedRequest req,
         AppDbContext db,
@@ -25,18 +25,6 @@ public sealed class GetAuditLogsEndpoint
     )
     {
         var timezone = ResolveTimezoneOrUtc(req.Timezone);
-        var user = await currentUserAccessor.GetAsync(ct);
-
-        if (user is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!user.Role.RoleName.IsSuperuser())
-        {
-            return TypedResults.Forbid();
-        }
-
         var normalizedSearch = req.Search?.Trim().ToLowerInvariant();
 
         var query = db.AuditLogs

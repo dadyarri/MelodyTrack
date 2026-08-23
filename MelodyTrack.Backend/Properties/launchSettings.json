@@ -11,7 +11,11 @@
         "Http__PathBase": "/api",
         "PublicUrl__BaseUrl": "http://localhost:5173",
         "Database__ConnectionString": "Server=127.0.0.1;Port=5432;Database=melodytrack;UserId=postgres;Password=postgres;",
-        "AuthenticationSecrets__JwtSigningKey": "development-only-jwt-key-5L62Vvke1KOZTrwnuhk28",
+        "AuthenticationSecrets__JwtSigningPrivateKey": "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA",
+        "AuthenticationSecrets__PasswordPepper": "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+        "AuthenticationSecrets__PortalPinPepper": "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+        "AuthenticationSecrets__RefreshTokenHashKey": "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+        "AuthenticationSecrets__CsrfSigningKey": "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
         "PersonalData__CurrentKey": "development-only-pii-key-c5qFQ5Vnu-y8MzOokDh0FQ15",
         "PersonalData__CurrentKeyVersion": "v1"
       }

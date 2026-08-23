@@ -6731,10 +6731,10 @@ export function deserializeIntoServiceWithCurrentPriceDto_lastActivityMember1(se
 // @ts-ignore
 export function deserializeIntoSessionDto(sessionDto: Partial<SessionDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "createdAtUtc": n => { sessionDto.createdAtUtc = n.getDateValue(); },
         "deviceInfo": n => { sessionDto.deviceInfo = n.getStringValue(); },
         "id": n => { sessionDto.id = n.getStringValue(); },
         "isCurrent": n => { sessionDto.isCurrent = n.getBooleanValue(); },
-        "lastSeenAtUtc": n => { sessionDto.lastSeenAtUtc = n.getDateValue(); },
     }
 }
 /**
@@ -6971,7 +6971,6 @@ export function deserializeIntoUser(user: Partial<User> | undefined = {}) : Reco
         "firstName": n => { user.firstName = n.getStringValue(); },
         "id": n => { user.id = n.getStringValue(); },
         "lastName": n => { user.lastName = n.getStringValue(); },
-        "lockedUntil": n => { user.lockedUntil = n.getDateValue(); },
         "onboardingState": n => { user.onboardingState = n.getObjectValue<UserOnboardingState>(createUserOnboardingStateFromDiscriminatorValue) ?? n.getObjectValue<User_onboardingStateMember1>(createUser_onboardingStateMember1FromDiscriminatorValue); },
         "password": n => { user.password = n.getStringValue(); },
         "phone": n => { user.phone = n.getStringValue(); },
@@ -11359,10 +11358,10 @@ export function serializeServiceWithCurrentPriceDto_lastActivityMember1(writer: 
 // @ts-ignore
 export function serializeSessionDto(writer: SerializationWriter, sessionDto: Partial<SessionDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!sessionDto || isSerializingDerivedType) { return; }
+    writer.writeDateValue("createdAtUtc", sessionDto.createdAtUtc);
     writer.writeStringValue("deviceInfo", sessionDto.deviceInfo);
     writer.writeStringValue("id", sessionDto.id);
     writer.writeBooleanValue("isCurrent", sessionDto.isCurrent);
-    writer.writeDateValue("lastSeenAtUtc", sessionDto.lastSeenAtUtc);
     writer.writeAdditionalData(sessionDto.additionalData);
 }
 /**
@@ -11615,7 +11614,6 @@ export function serializeUser(writer: SerializationWriter, user: Partial<User> |
     writer.writeStringValue("firstName", user.firstName);
     writer.writeStringValue("id", user.id);
     writer.writeStringValue("lastName", user.lastName);
-    writer.writeDateValue("lockedUntil", user.lockedUntil);
     writer.writeObjectValue<UserOnboardingState | User_onboardingStateMember1>("onboardingState", user.onboardingState, serializeUser_onboardingState);
     writer.writeStringValue("password", user.password);
     writer.writeStringValue("phone", user.phone);
@@ -12016,6 +12014,10 @@ export interface ServiceWithCurrentPriceDto_lastActivityMember1 extends Addition
 }
 export interface SessionDto extends AdditionalDataHolder, Parsable {
     /**
+     * The createdAtUtc property
+     */
+    createdAtUtc?: Date | null;
+    /**
      * The deviceInfo property
      */
     deviceInfo?: string | null;
@@ -12027,10 +12029,6 @@ export interface SessionDto extends AdditionalDataHolder, Parsable {
      * The isCurrent property
      */
     isCurrent?: boolean | null;
-    /**
-     * The lastSeenAtUtc property
-     */
-    lastSeenAtUtc?: Date | null;
 }
 export interface SetLeadStatusRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -12367,10 +12365,6 @@ export interface User extends AdditionalDataHolder, Parsable {
      * The lastName property
      */
     lastName?: string | null;
-    /**
-     * The lockedUntil property
-     */
-    lockedUntil?: Date | null;
     /**
      * The onboardingState property
      */

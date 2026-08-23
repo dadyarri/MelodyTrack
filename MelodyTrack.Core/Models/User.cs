@@ -53,11 +53,6 @@ public class User : BaseModel
     public Ulid? ClientId { get; set; }
     public Client? Client { get; set; }
 
-    /// <summary>
-    ///     Determines, if user failed too much login attempts and is locked out for some time
-    /// </summary>
-    public DateTime? LockedUntil { get; set; }
-
     public UserOnboardingState? OnboardingState { get; set; }
     public List<UserWorkingHoursDay> WorkingHours { get; set; } = [];
     public List<UserVacation> Vacations { get; set; } = [];

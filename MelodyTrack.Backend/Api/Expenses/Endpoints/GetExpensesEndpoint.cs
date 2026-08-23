@@ -17,6 +17,7 @@ namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 public sealed class GetExpensesEndpoint
 {
 
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<Ok<GetExpensesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         [AsParameters] GetExpensesPaginatedRequest req,
         AppDbContext db,
