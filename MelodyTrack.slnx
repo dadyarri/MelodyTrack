@@ -3,6 +3,9 @@
     <Project Path="MelodyTrack.Data/MelodyTrack.Data.csproj" />
     <Project Path="MelodyTrack.Init/MelodyTrack.Init.csproj" />
     <Project Path="MelodyTrack.Backend/MelodyTrack.Backend.csproj" />
+    <Folder Name="/Root/">
+        <File Path=".editorconfig" />
+    </Folder>
     <Project Path="MelodyTrack.Api.Generators.Tests/MelodyTrack.Api.Generators.Tests.csproj" />
     <Project Path="MelodyTrack.Api.Generators/MelodyTrack.Api.Generators.csproj" />
     <Project Path="MelodyTrack.AppHost/MelodyTrack.AppHost.csproj" />
