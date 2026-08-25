@@ -1360,17 +1360,17 @@ The refactor program is complete only when all of the following are true:
 
 All stages below are product work and begin after the refactor exit criteria above.
 
-## Stage 11: Operator Recovery Plane and System Notices
+## Stage 11: God Mode and System Notices
 
 ### Goal
 
-Add an out-of-band operator/recovery plane that remains usable when normal MelodyTrack authentication is unavailable, and add a real application notice system for communicating administrative/security events to users.
+Add an out-of-band god mode that remains usable when normal MelodyTrack authentication is unavailable, and add a real application notice system for communicating administrative/security events to users.
 
 This is a new feature, not part of the refactor.
 
-### Operator trust model
+### God mode trust model
 
-Do not create another permanent MelodyTrack “god-admin” username/password.
+Do not create a permanent god mode username/password.
 
 Use direct server access as the root of trust:
 
@@ -1379,11 +1379,11 @@ SSH / direct server access
         ↓
 server-local command
         ↓
-short-lived one-time operator login token
+short-lived one-time god mode login token
         ↓
-LAN-only HTTPS operator UI
+LAN-only HTTPS god mode
         ↓
-short-lived operator session
+short-lived god mode session
 ```
 
 Recommended properties:
@@ -1392,36 +1392,35 @@ Recommended properties:
 - token valid for only a short window, e.g. ~5 minutes;
 - persist only a hash if persistence is required;
 - consuming it invalidates it;
-- exchange creates a short-lived `HttpOnly`, `Secure` operator session, e.g. ~30 minutes;
-- normal MelodyTrack user/session credentials cannot access the operator plane;
+- exchange creates a short-lived `HttpOnly`, `Secure` god mode session, e.g. ~30 minutes;
+- normal MelodyTrack user/session credentials cannot access god mode;
 - merely being on the LAN is not sufficient authentication;
-- operator auth does not depend on user password/2FA tables being healthy.
+- god mode authentication does not depend on user password/2FA tables being healthy.
 
 ### Network/runtime isolation
 
-- expose operator API/UI through a separate Kestrel listener/port or another clearly isolated endpoint surface;
-- Caddy routes a dedicated operator hostname to that listener;
+- expose the god mode API/UI through a separate Kestrel listener/port or another clearly isolated endpoint surface;
+- Caddy routes a dedicated god mode hostname to that listener;
 - Caddy restricts the hostname to LAN ranges;
-- keep the operator listener off the public application route;
+- keep the god mode listener off the public application route;
 - do not expose it directly from Docker to the Internet;
 - no need for mTLS initially unless the server-token model proves insufficient.
 
 ### Minimal server-local CLI
 
-The CLI is primarily an access bootstrap, not a duplicate admin application.
+The CLI is primarily an access bootstrap, not a duplicate god mode implementation.
 
 Initial commands may include:
 
 ```text
-melodytrack operator-session
-melodytrack operator-session --revoke-all
+melodytrack god-mode
 ```
 
 Exact executable packaging may follow the repository's CLI/tooling conventions.
 
-Add direct recovery CLI commands only when a real emergency workflow cannot reasonably use the web operator UI.
+Add direct recovery CLI commands only when a real emergency workflow cannot reasonably use god mode.
 
-### Operator UI capabilities
+### God mode capabilities
 
 Initial scope:
 
@@ -1492,26 +1491,26 @@ Examples:
 
 ### Audit
 
-Every operator action records an audit event with:
+Every god mode action records an audit event with:
 
-- operator session reference;
+- god mode session reference;
 - action type;
 - target reference;
 - timestamp;
 - result;
 - trace ID.
 
-Never audit/log raw operator tokens, reset tokens, passwords, PINs, refresh tokens, or permanent portal tokens.
+Never audit/log raw god mode tokens, reset tokens, passwords, PINs, refresh tokens, or permanent portal tokens.
 
 ### Done looks like
 
 - a normal MelodyTrack auth outage does not lock the server owner out of essential recovery operations;
-- operator UI cannot be reached from the public Internet;
+- god mode cannot be reached from the public Internet;
 - normal superuser credentials cannot authenticate to it;
-- one-time operator tokens cannot be reused;
+- one-time god mode tokens cannot be reused;
 - credential reset/session revocation actions are enforced server-side;
 - users can receive persistent global or targeted notices;
-- all privileged operator actions are auditable without leaking credentials.
+- all privileged god mode actions are auditable without leaking credentials.
 
 ---
 
@@ -2095,7 +2094,7 @@ Stage 10 Test/release cleanup and refactor exit
 ────────────────────────────────────────────
 POST-REFACTOR PRODUCT WORK
    ↓
-Stage 11 Operator recovery plane + system notices
+Stage 11 God mode + system notices
    ↓
 Stage 12 Notification infrastructure + Web Push
    ↓
@@ -2140,7 +2139,7 @@ Do not add these merely because the architecture is changing:
 - Web Push as a prerequisite for any business operation;
 - client ability to change teacher/provider in rescheduling;
 - recurrence-series changes through client rescheduling;
-- operator impersonation/arbitrary DB editing/SQL shell.
+- god mode user impersonation/arbitrary DB editing/SQL shell.
 
 ---
 
