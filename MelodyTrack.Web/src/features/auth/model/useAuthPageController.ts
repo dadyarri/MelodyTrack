@@ -14,7 +14,7 @@ import {
   type RegisterInput,
 } from "@/entities/session";
 import { authQueryKeys, useAuth } from "@/entities/session";
-import { getApiErrorMessage, getApiErrorMessages } from "@/shared/api";
+import { getApiErrorMessage, getApiErrorMessages, normalizeAppError } from "@/shared/api";
 
 export type AuthMode = "login" | "register" | "recover2fa";
 export type TotpSetup = {
@@ -45,6 +45,7 @@ export function useAuthPageController() {
   const [recover2FaState, setRecover2FaState] = useState<Recover2FaState | null>(null);
   const [loginSecondFactorMode, setLoginSecondFactorMode] = useState<SecondFactorMode>("otp");
   const [loginChallenge, setLoginChallenge] = useState<LoginChallengeState | null>(null);
+  const [passwordResetGuidanceVisible, setPasswordResetGuidanceVisible] = useState(false);
   const [loginForm] = Form.useForm<Pick<LoginInput, "email" | "password">>();
   const [secondFactorForm] = Form.useForm<Pick<LoginInput, "otp" | "recoveryCode">>();
   const [registerForm] = Form.useForm<RegisterInput>();
@@ -89,6 +90,9 @@ export function useAuthPageController() {
 
   const loginMutation = useMutation({
     mutationFn: (input: Pick<LoginInput, "email" | "password">) => authApi.login(input),
+    onMutate: () => {
+      setPasswordResetGuidanceVisible(false);
+    },
     onSuccess: async (result, credentials) => {
       if (result.kind === "challenge") {
         if (!result.canUseOtp && !result.canUseRecoveryCode) {
@@ -110,7 +114,10 @@ export function useAuthPageController() {
 
       await finishLogin(result);
     },
-    onError: showErrors,
+    onError: (error) => {
+      setPasswordResetGuidanceVisible(normalizeAppError(error).status === 401);
+      showErrors(error);
+    },
   });
 
   const loginSecondFactorMutation = useMutation({
@@ -208,6 +215,7 @@ export function useAuthPageController() {
     recover2FaState,
     loginSecondFactorMode,
     loginChallenge,
+    passwordResetGuidanceVisible,
     setLoginSecondFactorMode,
     loginForm,
     secondFactorForm,

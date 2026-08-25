@@ -206,12 +206,20 @@ export function AuthPage() {
                   Продолжить
                 </Button>
               </Form>
-              <div className={authStyles.authSupportNote}>
-                <Typography.Text strong>Нужен сброс пароля?</Typography.Text>
-                <Typography.Paragraph type="secondary" className={authStyles.authSupportNoteText}>
-                  Обратитесь к администратору, чтобы получить ссылку для восстановления пароля.
-                </Typography.Paragraph>
-              </div>
+              {controller.passwordResetGuidanceVisible ? (
+                <StatusBanner
+                  type="warning"
+                  title="Не удается войти после обновления безопасности?"
+                  description="Если пароль не менялся после обновления безопасности, его необходимо сбросить. Обратитесь к администратору за ссылкой восстановления."
+                />
+              ) : (
+                <div className={authStyles.authSupportNote}>
+                  <Typography.Text strong>Нужен сброс пароля?</Typography.Text>
+                  <Typography.Paragraph type="secondary" className={authStyles.authSupportNoteText}>
+                    Обратитесь к администратору, чтобы получить ссылку для восстановления пароля.
+                  </Typography.Paragraph>
+                </div>
+              )}
             </>
           )}
         </Space>

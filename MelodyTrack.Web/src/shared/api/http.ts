@@ -452,7 +452,7 @@ async function refreshAccessTokenUnlocked() {
       if (attempt === 0 && (appError.kind === "network" || (appError.status !== undefined && appError.status >= 500))) {
         continue;
       }
-      if (appError.status === 401) {
+      if (appError.status === 401 || appError.status === 403) {
         return null;
       }
       throw new AppError("Не удалось обновить сессию. Повторите попытку.", {

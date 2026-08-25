@@ -102,6 +102,22 @@ describe("Kiota HTTP session transport", () => {
     window.removeEventListener(authExpiredEventName, onExpired);
   });
 
+  it("publishes terminal expiry when refresh is rejected by stable CSRF state", async () => {
+    const onExpired = vi.fn();
+    window.addEventListener(authExpiredEventName, onExpired);
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
+      const status = getRequestUrl(url).endsWith("/auth/refresh") ? 403 : 401;
+      return Promise.resolve(jsonResponse(createProblem(status), status));
+    });
+
+    await expect(http.get("/clients")).rejects.toMatchObject({ status: 401 });
+
+    expect(clear).toHaveBeenCalledOnce();
+    expect(onExpired).toHaveBeenCalledOnce();
+    expect(fetchMock.mock.calls.filter(([url]) => getRequestUrl(url).endsWith("/auth/refresh"))).toHaveLength(1);
+    window.removeEventListener(authExpiredEventName, onExpired);
+  });
+
   it("keeps the session when refresh fails because the network is unavailable", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation((url) => {
       if (getRequestUrl(url).endsWith("/auth/refresh")) {
