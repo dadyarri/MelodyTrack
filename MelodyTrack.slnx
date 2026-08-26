@@ -1,14 +1,48 @@
 <Solution>
-    <Project Path="MelodyTrack.Core/MelodyTrack.Core.csproj" />
-    <Project Path="MelodyTrack.Data/MelodyTrack.Data.csproj" />
-    <Project Path="MelodyTrack.Init/MelodyTrack.Init.csproj" />
-    <Project Path="MelodyTrack.Backend/MelodyTrack.Backend.csproj" />
+    <Project Path="MelodyTrack.Core/MelodyTrack.Core.csproj"/>
+    <Project Path="MelodyTrack.Data/MelodyTrack.Data.csproj"/>
+    <Project Path="MelodyTrack.Init/MelodyTrack.Init.csproj"/>
+    <Project Path="MelodyTrack.Backend/MelodyTrack.Backend.csproj"/>
     <Folder Name="/Root/">
-        <File Path=".editorconfig" />
+        <File Path=".editorconfig"/>
+        <File Path="AGENTS.md"/>
+        <File Path="codenames.txt"/>
+        <File Path="dotnet-tools.json"/>
+        <File Path="global.json"/>
+        <File Path="roadmap.md"/>
+
     </Folder>
-    <Project Path="MelodyTrack.Api.Generators.Tests/MelodyTrack.Api.Generators.Tests.csproj" />
-    <Project Path="MelodyTrack.Api.Generators/MelodyTrack.Api.Generators.csproj" />
-    <Project Path="MelodyTrack.AppHost/MelodyTrack.AppHost.csproj" />
-    <Project Path="MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj" />
-    <Project Path="MelodyTrack.ServiceDefaults/MelodyTrack.ServiceDefaults.csproj" />
+    <Folder Name="/Root/Changelog/">
+        <File Path="changelog\release.schema.json"/>
+    </Folder>
+    <Folder Name="/Root/Changelog/Releases/">
+        <File Path="changelog\releases\2026.07.1.1.json"/>
+        <File Path="changelog\releases\2026.07.1.2.json"/>
+        <File Path="changelog\releases\2026.07.1.json"/>
+        <File Path="changelog\releases\2026.07.2.json"/>
+        <File Path="changelog\releases\2026.08.1.json"/>
+    </Folder>
+    <Folder Name="/Root/Docs/">
+        <File Path="docs\api-style-guide.md"/>
+        <File Path="docs\calendar-subscriptions.md"/>
+        <File Path="docs\client-portal-sessions.md"/>
+        <File Path="docs\course-progress-map-brief.md"/>
+        <File Path="docs\frontend-verification-inventory.md"/>
+        <File Path="docs\MelodyTrack-threat-model.md"/>
+        <File Path="docs\personal-dashboard.md"/>
+        <File Path="docs\releases.md"/>
+        <File Path="docs\statistics-methodology.md"/>
+        <File Path="docs\unified-runtime-deployment.md"/>
+    </Folder>
+    <Folder Name="/Root/Scripts/">
+        <File Path="scripts\bootstrap-frontend.mjs"/>
+        <File Path="scripts\ReleaseTool.cs"/>
+        <File Path="scripts\run-kiota-generation.mjs"/>
+        <File Path="scripts\verify-unified-image.sh"/>
+    </Folder>
+    <Project Path="MelodyTrack.Api.Generators.Tests/MelodyTrack.Api.Generators.Tests.csproj"/>
+    <Project Path="MelodyTrack.Api.Generators/MelodyTrack.Api.Generators.csproj"/>
+    <Project Path="MelodyTrack.AppHost/MelodyTrack.AppHost.csproj"/>
+    <Project Path="MelodyTrack.Backend.Tests/MelodyTrack.Backend.Tests.csproj"/>
+    <Project Path="MelodyTrack.ServiceDefaults/MelodyTrack.ServiceDefaults.csproj"/>
 </Solution>
