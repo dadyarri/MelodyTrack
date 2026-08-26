@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.Mvc;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -24,7 +23,7 @@ public sealed class GetClientsEndpoint
         [AsParameters] GetClientsPaginatedRequest req,
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
-        ClientToClientWithBalanceDtoMapConfig mapper,
+        ClientWithBalanceDtoMapper mapper,
         IRecordActivityService recordActivityService,
         TimeProvider timeProvider,
         ILogger<GetClientsEndpoint> logger,
@@ -121,7 +120,7 @@ public sealed class GetClientsEndpoint
             .Include(e => e.Vacations)
             .ToListAsync(ct);
 
-        var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
+        var clientsFacets = await mapper.MapAsync(clients, ct);
         var clientActivities = await recordActivityService.GetLatestActivitiesAsync(
             "client",
             clientsFacets.Select(client => client.Id.ToString()).ToList(),

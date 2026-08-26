@@ -4,6 +4,7 @@ using MelodyTrack.Data.Configuration;
 using MelodyTrack.Data.Initialization;
 using MelodyTrack.Data.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -29,6 +30,7 @@ public static class DataServiceCollectionExtensions
                 dataSourceBuilder.Name = "melodytrack";
                 dataSourceBuilder.EnableParameterLogging(database.EnableSensitiveDataLogging && environment.IsDevelopment());
             }));
+            options.AddInterceptors(serviceProvider.GetServices<IInterceptor>());
 
             if (database.EnableSensitiveDataLogging && environment.IsDevelopment())
             {

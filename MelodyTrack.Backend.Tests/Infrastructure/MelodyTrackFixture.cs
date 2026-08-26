@@ -8,6 +8,7 @@ using MelodyTrack.Data.Initialization;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -24,6 +25,7 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
 
     private PostgreSqlContainer? _dbContainer;
     public HttpClient Client { get; private set; } = null!;
+    public DatabaseCommandCounter DatabaseCommands { get; } = new();
 
     public async ValueTask InitializeAsync()
     {
@@ -54,6 +56,7 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
     protected override void ConfigureWebHost(IWebHostBuilder app)
     {
         app.UseEnvironment("Test");
+        app.ConfigureServices(services => services.AddSingleton<IInterceptor>(DatabaseCommands));
         app.ConfigureAppConfiguration((_, configuration) =>
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>

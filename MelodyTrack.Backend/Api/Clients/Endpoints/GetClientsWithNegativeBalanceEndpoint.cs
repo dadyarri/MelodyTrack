@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.Mvc;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -19,7 +18,7 @@ public sealed class GetClientsWithNegativeBalanceEndpoint
     public static async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
-        ClientToClientWithBalanceDtoMapConfig mapper,
+        ClientWithBalanceDtoMapper mapper,
         IRecordActivityService recordActivityService,
         CancellationToken ct
     )
@@ -43,7 +42,7 @@ public sealed class GetClientsWithNegativeBalanceEndpoint
             .Include(e => e.Source)
             .ToListAsync(ct);
 
-        var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
+        var clientsFacets = await mapper.MapAsync(clients, ct);
         var clientActivities = await recordActivityService.GetLatestActivitiesAsync(
             "client",
             clientsFacets.Select(client => client.Id.ToString()).ToList(),

@@ -192,7 +192,7 @@ try
     builder.Services.AddScoped<ActiveSessionValidator>();
     builder.Services.AddScoped<ApiValidationErrorCollection>();
     builder.Services.AddSingleton<ICommonPasswordService, CommonPasswordService>();
-    builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
+    builder.Services.AddScoped<ClientWithBalanceDtoMapper>();
     builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
     builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();

@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.Mvc;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -21,7 +20,7 @@ public sealed class GetClientEndpoint
         [AsParameters] GetEntityRequest req,
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
-        ClientToClientWithBalanceDtoMapConfig mapper,
+        ClientWithBalanceDtoMapper mapper,
         IRecordActivityService recordActivityService,
         ILogger<GetClientEndpoint> logger,
         CancellationToken ct
@@ -52,7 +51,7 @@ public sealed class GetClientEndpoint
             return TypedResults.NotFound();
         }
 
-        var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
+        var clientDto = (await mapper.MapAsync([client], ct)).Single();
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
         logger.LogDebug("Successfully retrieved client {FirstName} {LastName} (ID: {ClientId})",

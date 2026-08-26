@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.Mvc;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -24,7 +23,7 @@ public sealed class GetClientHistoryEndpoint
         [AsParameters] GetClientHistoryRequest req,
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
-        ClientToClientWithBalanceDtoMapConfig mapper,
+        ClientWithBalanceDtoMapper mapper,
         IRecordActivityService recordActivityService,
         TimeProvider timeProvider,
         ILogger<GetClientHistoryEndpoint> logger,
@@ -61,7 +60,7 @@ public sealed class GetClientHistoryEndpoint
                 StatusCodes.Status404NotFound));
         }
 
-        var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
+        var clientDto = (await mapper.MapAsync([client], ct)).Single();
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
         var sourceEventCount = req.EffectivePage * req.EffectivePageSize;
