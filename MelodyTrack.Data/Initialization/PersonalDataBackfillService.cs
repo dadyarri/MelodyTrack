@@ -1,4 +1,5 @@
 using System.Data;
+using System.Diagnostics;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Core.Security;
 using Microsoft.EntityFrameworkCore;
@@ -14,8 +15,12 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
 {
     public async Task BackfillAsync(CancellationToken cancellationToken)
     {
-        await BackfillUsersAsync(cancellationToken);
-        await BackfillClientContactsAsync(cancellationToken);
+        await InitializationTelemetry.RunStepAsync(
+            "personal-data.users.verify-and-reencrypt",
+            () => BackfillUsersAsync(cancellationToken));
+        await InitializationTelemetry.RunStepAsync(
+            "personal-data.client-contacts.verify-and-reencrypt",
+            () => BackfillClientContactsAsync(cancellationToken));
     }
 
     private async Task BackfillUsersAsync(CancellationToken cancellationToken)
@@ -54,9 +59,10 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
 
             await reader.CloseAsync();
 
+            var updatedRows = 0;
             foreach (var row in rows)
             {
-                await UpdateIfNeededAsync(
+                if (await UpdateIfNeededAsync(
                     connection,
                     """
                     UPDATE public."Users"
@@ -73,8 +79,14 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
                     row.Phone,
                     row.Telegram,
                     row.Vk,
-                    cancellationToken);
+                    cancellationToken))
+                {
+                    updatedRows++;
+                }
             }
+
+            Activity.Current?.SetTag("records.scanned", rows.Count);
+            Activity.Current?.SetTag("records.updated", updatedRows);
         }
         finally
         {
@@ -117,9 +129,10 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
 
             await reader.CloseAsync();
 
+            var updatedRows = 0;
             foreach (var row in rows)
             {
-                await UpdateIfNeededAsync(
+                if (await UpdateIfNeededAsync(
                     connection,
                     """
                     UPDATE public."ClientContacts"
@@ -132,8 +145,14 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
                     row.Phone,
                     row.Telegram,
                     row.Vk,
-                    cancellationToken);
+                    cancellationToken))
+                {
+                    updatedRows++;
+                }
             }
+
+            Activity.Current?.SetTag("records.scanned", rows.Count);
+            Activity.Current?.SetTag("records.updated", updatedRows);
         }
         finally
         {
@@ -144,7 +163,7 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
         }
     }
 
-    private async Task UpdateIfNeededAsync(
+    private async Task<bool> UpdateIfNeededAsync(
         System.Data.Common.DbConnection connection,
         string sql,
         byte[] id,
@@ -174,7 +193,7 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
             && nextTelegram == telegram
             && nextVk == vk)
         {
-            return;
+            return false;
         }
 
         await using var update = connection.CreateCommand();
@@ -188,6 +207,7 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
         AddParameter(update, "vk", (object?)nextVk ?? DBNull.Value);
 
         await update.ExecuteNonQueryAsync(cancellationToken);
+        return true;
     }
 
     private string? EncryptIfNeeded(string? value)

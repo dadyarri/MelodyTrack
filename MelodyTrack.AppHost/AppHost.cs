@@ -18,6 +18,7 @@ var initializer = builder.AddProject<Projects.MelodyTrack_Init>("init", launchPr
     .WithEnvironment("Database__ConnectionString", database)
     .WithEnvironment("Database__EnableSensitiveDataLogging", enableSqlParameterLogging.ToString())
     .WithEnvironment("Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command", sqlCommandLogLevel)
+    .WithEnvironment("Logging__LogLevel__Npgsql", sqlCommandLogLevel)
     .WaitFor(database);
 
 var backend = builder.AddProject<Projects.MelodyTrack_Backend>("backend", launchProfileName: "http")
@@ -25,6 +26,8 @@ var backend = builder.AddProject<Projects.MelodyTrack_Backend>("backend", launch
     .WithReference(database)
     .WithEnvironment("Database__ConnectionString", database)
     .WithEnvironment("Database__EnableSensitiveDataLogging", enableSqlParameterLogging.ToString())
+    .WithEnvironment("Logging__LogLevel__Microsoft.EntityFrameworkCore.Database.Command", sqlCommandLogLevel)
+    .WithEnvironment("Logging__LogLevel__Npgsql", sqlCommandLogLevel)
     .WithEnvironment("Http__PathBase", "/api")
     .WithHttpHealthCheck("/health")
     .WaitForCompletion(initializer);

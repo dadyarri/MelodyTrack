@@ -27,7 +27,7 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     EnvironmentName = environmentName
 });
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("melodytrack-init");
 
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);

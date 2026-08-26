@@ -26,6 +26,8 @@ using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Console;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
 using Quartz;
@@ -33,14 +35,14 @@ using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Templates.Themes;
-using SerilogTracing;
-using SerilogTracing.Expressions;
+using Serilog.Extensions.Logging;
+using Serilog.Sinks.SystemConsole.Themes;
 using Scalar.AspNetCore;
 using UaDetector;
 using HttpOptions = MelodyTrack.Backend.Configuration.HttpOptions;
 
 var logLevelSwitch = new LoggingLevelSwitch();
+var loggerProviders = new LoggerProviderCollection();
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
@@ -64,7 +66,9 @@ if (isOpenApiGeneration)
         [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost"
     });
 }
-builder.AddServiceDefaults();
+builder.AddServiceDefaults("melodytrack-backend");
+// Serilog owns console rendering; the remaining Microsoft providers receive structured events for export.
+builder.Services.RemoveAll<ConsoleLoggerProvider>();
 var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
 var environment = builder.Environment.EnvironmentName;
 logLevelSwitch.MinimumLevel = environment == "Development"
@@ -75,12 +79,11 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
     .MinimumLevel.ControlledBy(logLevelSwitch)
-    .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
+    .WriteTo.Providers(loggerProviders)
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {Message:lj}{NewLine}{Exception}",
+        theme: AnsiConsoleTheme.Code)
     .CreateLogger();
-
-using var listener = new ActivityListenerConfiguration()
-    .Instrument.AspNetCoreRequests()
-    .TraceToSharedLogger();
 
 Log.Information(
     "{StartupBanner:l}",
@@ -162,7 +165,7 @@ try
         options.AddOperationTransformer<MelodyTrackOpenApiTransformer>();
         options.AddSchemaTransformer<MelodyTrackOpenApiTransformer>();
     });
-    builder.Services.AddSerilog();
+    builder.Services.AddSerilog(Log.Logger, dispose: false, providers: loggerProviders);
     builder.Services.AddResponseCompression(options =>
     {
         options.EnableForHttps = true;

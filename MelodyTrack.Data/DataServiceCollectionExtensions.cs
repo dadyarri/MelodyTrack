@@ -23,9 +23,13 @@ public static class DataServiceCollectionExtensions
         services.AddDbContext<AppDbContext>((serviceProvider, options) =>
         {
             var database = serviceProvider.GetRequiredService<IOptions<DatabaseOptions>>().Value;
-            options.UseNpgsql(database.ConnectionString);
-
             var environment = serviceProvider.GetRequiredService<IHostEnvironment>();
+            options.UseNpgsql(database.ConnectionString, npgsql => npgsql.ConfigureDataSource(dataSourceBuilder =>
+            {
+                dataSourceBuilder.Name = "melodytrack";
+                dataSourceBuilder.EnableParameterLogging(database.EnableSensitiveDataLogging && environment.IsDevelopment());
+            }));
+
             if (database.EnableSensitiveDataLogging && environment.IsDevelopment())
             {
                 options.EnableSensitiveDataLogging();

@@ -5,8 +5,11 @@ using System.Text.Json;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Tests.Infrastructure;
+using MelodyTrack.Backend.Validation;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.OpenApi;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.OpenApi;
 using Shouldly;
 
@@ -16,9 +19,15 @@ namespace MelodyTrack.Backend.Tests;
 public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task FrameworkErrors_ReturnProblemDetailsWithMatchingTraceHeader()
+    public async Task FrameworkErrors_WithIncomingTraceParent_ReturnProblemDetailsWithMatchingTraceIdentity()
     {
-        var response = await App.Client.GetAsync("/missing-endpoint", TestContext.Current.CancellationToken);
+        const string traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/missing-endpoint");
+        request.Headers.TryAddWithoutValidation(
+            "traceparent",
+            $"00-{traceId}-00f067aa0ba902b7-01");
+
+        var response = await App.Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         response.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
@@ -28,8 +37,8 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         problem.Type.ShouldBe(ApiProblemTypes.NotFound);
         problem.Code.ShouldBe(ApiProblemCodes.NotFound);
         problem.Instance.ShouldBe("/missing-endpoint");
-        problem.TraceId.ShouldNotBeNullOrWhiteSpace();
-        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(problem.TraceId);
+        problem.TraceId.ShouldBe(traceId);
+        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(traceId);
     }
 
     [Fact]
@@ -60,6 +69,43 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         problem.Status.ShouldBe((int)HttpStatusCode.BadRequest);
         problem.Code.ShouldBeOneOf(ApiProblemCodes.MalformedRequest, ApiProblemCodes.Validation);
         problem.TraceId.ShouldNotBeNullOrWhiteSpace();
+    }
+
+    [Fact]
+    public async Task UnhandledFailures_WithIncomingTraceParent_ReturnProblemDetailsWithMatchingTraceIdentity()
+    {
+        const string traceId = "0af7651916cd43dd8448eb211c80319c";
+        using var factory = App.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<ICommonPasswordService>();
+            services.AddSingleton<ICommonPasswordService>(new ThrowingCommonPasswordService());
+        }));
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                inviteCode = Ulid.NewUlid().ToString(),
+                email = "trace@example.com",
+                password = "StrongPassword1!",
+                firstName = "Trace",
+                lastName = "Failure"
+            })
+        };
+        request.Headers.TryAddWithoutValidation(
+            "traceparent",
+            $"00-{traceId}-b7ad6b7169203331-01");
+
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(TestContext.Current.CancellationToken);
+        problem.ShouldNotBeNull();
+        problem.Status.ShouldBe((int)HttpStatusCode.InternalServerError);
+        problem.Code.ShouldBe(ApiProblemCodes.InternalError);
+        problem.TraceId.ShouldBe(traceId);
+        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(traceId);
     }
 
     [Fact]
@@ -277,6 +323,11 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .ShouldBeTrue($"{operationId} response {statusCode} must use {ApiMediaTypes.ProblemJson}");
         mediaType.TryGetProperty("schema", out var schema).ShouldBeTrue($"{operationId} response {statusCode} must describe a schema");
         schema.ToString().ShouldContain(nameof(ApiProblemDetails));
+    }
+
+    private sealed class ThrowingCommonPasswordService : ICommonPasswordService
+    {
+        public bool Contains(string password) => throw new InvalidOperationException("Synthetic validation failure.");
     }
 
 }

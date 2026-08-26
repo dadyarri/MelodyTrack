@@ -1,3 +1,5 @@
+using System.Collections.Concurrent;
+using System.Diagnostics;
 using System.Net;
 using MelodyTrack.Backend.Api.Auth.Endpoints;
 using MelodyTrack.Backend.Api.Auth.Requests;
@@ -19,6 +21,33 @@ public sealed class DatabaseInitializationTests(MelodyTrackFixture app) : Integr
     private const string DevelopmentEmail = "dev.superuser@melodytrack.local";
     private const string DevelopmentPassword = "MelodyTrack-Development-Only!";
     private const string DevelopmentTotpSecret = "JBSWY3DPEHPK3PXPJBSWY3DPEHPK3PXP";
+
+    [Fact]
+    public async Task TestMode_EmitsMeaningfulStepsUnderOneTraceIdentity()
+    {
+        var stoppedActivities = new ConcurrentQueue<Activity>();
+        using var listener = new ActivityListener
+        {
+            ShouldListenTo = source => source.Name == InitializationTelemetry.ActivitySourceName,
+            Sample = (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllDataAndRecorded,
+            ActivityStopped = stoppedActivities.Enqueue
+        };
+        ActivitySource.AddActivityListener(listener);
+
+        await App.RunInitializationAsync(InitializationMode.Test, TestContext.Current.CancellationToken);
+
+        var activities = stoppedActivities.ToArray();
+        activities.Select(activity => activity.OperationName).ShouldContain("initialization.run");
+        activities.Select(activity => activity.OperationName).ShouldContain("database.migrate");
+        activities.Select(activity => activity.OperationName).ShouldContain("personal-data.verify-and-reencrypt");
+        activities.Select(activity => activity.OperationName).ShouldContain("personal-data.users.verify-and-reencrypt");
+        activities.Select(activity => activity.OperationName).ShouldContain("personal-data.client-contacts.verify-and-reencrypt");
+        activities.Select(activity => activity.OperationName).ShouldContain("quartz.initialize");
+        activities.Select(activity => activity.OperationName).ShouldContain("database.invariants.validate");
+        activities.Select(activity => activity.OperationName).ShouldContain("test-baseline.ensure");
+        activities.ShouldAllBe(activity => activity.Status == ActivityStatusCode.Ok);
+        activities.Select(activity => activity.TraceId).Distinct().Count().ShouldBe(1);
+    }
 
     [Fact]
     public async Task DevelopmentMode_IsRepeatableAndCreatesUsableDemoEnvironment()

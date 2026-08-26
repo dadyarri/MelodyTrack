@@ -36,8 +36,6 @@
         <PackageReference Include="Serilog" />
         <PackageReference Include="Serilog.AspNetCore" />
         <PackageReference Include="Serilog.Sinks.Console" />
-        <PackageReference Include="SerilogTracing.Expressions" />
-        <PackageReference Include="SerilogTracing.Instrumentation.AspNetCore" />
         <PackageReference Include="SixLabors.Fonts" />
         <PackageReference Include="SixLabors.ImageSharp" />
         <PackageReference Include="SixLabors.ImageSharp.Drawing" />

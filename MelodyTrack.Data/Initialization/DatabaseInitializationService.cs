@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Security.Cryptography;
 using System.Text;
 using MelodyTrack.Backend.Data;
@@ -32,29 +33,54 @@ public sealed class DatabaseInitializationService(
 
     public async Task RunAsync(InitializationMode mode, CancellationToken cancellationToken)
     {
+        using var activity = InitializationTelemetry.StartActivity("initialization.run");
+        activity?.SetTag("initialization.mode", mode.ToString().ToLowerInvariant());
         logger.LogInformation("Initializing MelodyTrack database in {Mode} mode", mode);
 
-        await db.Database.MigrateAsync(cancellationToken);
-        await personalDataBackfill.BackfillAsync(cancellationToken);
-        await InitializeQuartzAsync(cancellationToken);
-        await DatabaseInvariantValidator.ValidateAsync(db, cancellationToken);
-
-        switch (mode)
+        try
         {
-            case InitializationMode.Production:
-                await EnsureProductionBootstrapInviteAsync(cancellationToken);
-                break;
-            case InitializationMode.Development:
-                await ApplyDevelopmentSeedUpgradesAsync(cancellationToken);
-                break;
-            case InitializationMode.Test:
-                await EnsureTestBaselineAsync(cancellationToken);
-                break;
-            default:
-                throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
-        }
+            await InitializationTelemetry.RunStepAsync(
+                "database.migrate",
+                () => db.Database.MigrateAsync(cancellationToken));
+            await InitializationTelemetry.RunStepAsync(
+                "personal-data.verify-and-reencrypt",
+                () => personalDataBackfill.BackfillAsync(cancellationToken));
+            await InitializationTelemetry.RunStepAsync(
+                "quartz.initialize",
+                () => InitializeQuartzAsync(cancellationToken));
+            await InitializationTelemetry.RunStepAsync(
+                "database.invariants.validate",
+                () => DatabaseInvariantValidator.ValidateAsync(db, cancellationToken));
 
-        logger.LogInformation("MelodyTrack database initialization completed in {Mode} mode", mode);
+            switch (mode)
+            {
+                case InitializationMode.Production:
+                    await InitializationTelemetry.RunStepAsync(
+                        "production-bootstrap.ensure",
+                        () => EnsureProductionBootstrapInviteAsync(cancellationToken));
+                    break;
+                case InitializationMode.Development:
+                    await InitializationTelemetry.RunStepAsync(
+                        "development-seed.upgrades",
+                        () => ApplyDevelopmentSeedUpgradesAsync(cancellationToken));
+                    break;
+                case InitializationMode.Test:
+                    await InitializationTelemetry.RunStepAsync(
+                        "test-baseline.ensure",
+                        () => EnsureTestBaselineAsync(cancellationToken));
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(mode), mode, null);
+            }
+
+            logger.LogInformation("MelodyTrack database initialization completed in {Mode} mode", mode);
+            activity?.SetStatus(ActivityStatusCode.Ok);
+        }
+        catch (Exception exception)
+        {
+            InitializationTelemetry.MarkFailed(activity, exception);
+            throw;
+        }
     }
 
     private async Task InitializeQuartzAsync(CancellationToken cancellationToken)
@@ -81,6 +107,7 @@ public sealed class DatabaseInitializationService(
             .AnyAsync(user => user.Role.RoleName == UserRoles.Superuser, cancellationToken);
         if (hasSuperuser)
         {
+            Activity.Current?.SetTag("bootstrap.state", "superuser-present");
             return;
         }
 
@@ -101,6 +128,11 @@ public sealed class DatabaseInitializationService(
                 ValidUntil = nowUtc.AddDays(2)
             };
             await db.InviteCodes.AddAsync(invite, cancellationToken);
+            Activity.Current?.SetTag("bootstrap.state", "invite-created");
+        }
+        else
+        {
+            Activity.Current?.SetTag("bootstrap.state", "invite-present");
         }
 
         var inviteReference = DescribeSecret("invite", invite.Code.ToString());
@@ -136,41 +168,55 @@ public sealed class DatabaseInitializationService(
     {
         for (var version = 1; version <= DevelopmentSeedVersion; version++)
         {
+            using var activity = InitializationTelemetry.StartActivity("development-seed.upgrade");
+            activity?.SetTag("seed.version", version);
             var action = $"development_seed_v{version}";
             if (await db.AuditLogs.AsNoTracking().AnyAsync(log => log.Action == action, cancellationToken))
             {
+                activity?.SetTag("seed.outcome", "already-applied");
+                activity?.SetStatus(ActivityStatusCode.Ok);
                 continue;
             }
 
-            switch (version)
+            try
             {
-                case 1:
-                    await ApplyDevelopmentSeedVersionOneAsync(cancellationToken);
-                    break;
-                case 2:
-                    await ApplyDevelopmentSeedVersionTwoAsync(cancellationToken);
-                    break;
-                case 3:
-                    await developmentDemoDataSeeder.SeedAsync(cancellationToken);
-                    break;
-                case 4:
-                    await developmentDemoDataSeeder.EnsureProviderAssignmentsAsync(cancellationToken);
-                    break;
-                case 5:
-                    await developmentDemoDataSeeder.SeedUpcomingAppointmentsAsync(cancellationToken);
-                    break;
-                case 6:
-                    await developmentFullDemoDataSeeder.SeedAsync(cancellationToken);
-                    break;
-                case 7:
-                    await ApplyDevelopmentSeedVersionSevenAsync(cancellationToken);
-                    break;
-                default:
-                    throw new InvalidOperationException($"Development seed upgrade {version} is not implemented.");
-            }
+                switch (version)
+                {
+                    case 1:
+                        await ApplyDevelopmentSeedVersionOneAsync(cancellationToken);
+                        break;
+                    case 2:
+                        await ApplyDevelopmentSeedVersionTwoAsync(cancellationToken);
+                        break;
+                    case 3:
+                        await developmentDemoDataSeeder.SeedAsync(cancellationToken);
+                        break;
+                    case 4:
+                        await developmentDemoDataSeeder.EnsureProviderAssignmentsAsync(cancellationToken);
+                        break;
+                    case 5:
+                        await developmentDemoDataSeeder.SeedUpcomingAppointmentsAsync(cancellationToken);
+                        break;
+                    case 6:
+                        await developmentFullDemoDataSeeder.SeedAsync(cancellationToken);
+                        break;
+                    case 7:
+                        await ApplyDevelopmentSeedVersionSevenAsync(cancellationToken);
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Development seed upgrade {version} is not implemented.");
+                }
 
-            await db.AuditLogs.AddAsync(CreateInitializationMarker(action), cancellationToken);
-            await db.SaveChangesAsync(cancellationToken);
+                await db.AuditLogs.AddAsync(CreateInitializationMarker(action), cancellationToken);
+                await db.SaveChangesAsync(cancellationToken);
+                activity?.SetTag("seed.outcome", "applied");
+                activity?.SetStatus(ActivityStatusCode.Ok);
+            }
+            catch (Exception exception)
+            {
+                InitializationTelemetry.MarkFailed(activity, exception);
+                throw;
+            }
         }
     }
 

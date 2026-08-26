@@ -17,7 +17,12 @@ public sealed class SuperuserRecoveryService(
     IOptions<PublicUrlOptions> publicUrlOptions,
     TimeProvider timeProvider)
 {
-    public async Task<SuperuserRecoveryResult> CreateResetUrlAsync(string email, CancellationToken cancellationToken)
+    public Task<SuperuserRecoveryResult> CreateResetUrlAsync(string email, CancellationToken cancellationToken) =>
+        InitializationTelemetry.RunStepAsync(
+            "superuser-recovery.issue",
+            () => CreateResetUrlCoreAsync(email, cancellationToken));
+
+    private async Task<SuperuserRecoveryResult> CreateResetUrlCoreAsync(string email, CancellationToken cancellationToken)
     {
         var normalizedEmail = email.Trim().ToLowerInvariant();
         var emailBlindIndex = personalDataProtector.HashEmailBlindIndex(normalizedEmail);
