@@ -3,6 +3,7 @@ using MelodyTrack.Core.Security;
 using MelodyTrack.Data.Configuration;
 using MelodyTrack.Data.Initialization;
 using MelodyTrack.Data.Security;
+using MelodyTrack.Data.Telemetry;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -29,6 +30,18 @@ public static class DataServiceCollectionExtensions
             {
                 dataSourceBuilder.Name = "melodytrack";
                 dataSourceBuilder.EnableParameterLogging(database.EnableSensitiveDataLogging && environment.IsDevelopment());
+                dataSourceBuilder.ConfigureTracing(tracing => tracing
+                    .ConfigureCommandSpanNameProvider(command =>
+                        PostgreSqlTraceNaming.GetCommandSpanName(command.CommandText))
+                    .ConfigureCommandEnrichmentCallback((activity, command) =>
+                        PostgreSqlTraceNaming.Enrich(activity, command.CommandText))
+                    .ConfigureBatchSpanNameProvider(batch =>
+                        PostgreSqlTraceNaming.GetBatchSpanName(
+                            GetBatchCommandTexts(batch)))
+                    .ConfigureBatchEnrichmentCallback((activity, batch) =>
+                        PostgreSqlTraceNaming.EnrichBatch(
+                            activity,
+                            GetBatchCommandTexts(batch))));
             }));
             options.AddInterceptors(serviceProvider.GetServices<IInterceptor>());
 
@@ -38,6 +51,14 @@ public static class DataServiceCollectionExtensions
             }
         });
         return services;
+    }
+
+    private static IEnumerable<string> GetBatchCommandTexts(Npgsql.NpgsqlBatch batch)
+    {
+        for (var index = 0; index < batch.BatchCommands.Count; index++)
+        {
+            yield return batch.BatchCommands[index].CommandText;
+        }
     }
 
     public static IServiceCollection AddMelodyTrackInitialization(this IServiceCollection services, IConfiguration configuration)
