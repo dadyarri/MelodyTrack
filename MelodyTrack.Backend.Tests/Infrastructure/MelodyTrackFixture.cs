@@ -95,9 +95,7 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
     public async Task RunInitializationAsync(InitializationMode mode, CancellationToken cancellationToken)
     {
         var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
-        await using var scope = Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var connectionString = db.Database.GetConnectionString()
+        var connectionString = _dbContainer?.GetConnectionString()
             ?? throw new InvalidOperationException("The test database connection string is unavailable.");
         await RunInitializationAsync(mode, projectDir, connectionString, cancellationToken);
     }
