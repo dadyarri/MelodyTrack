@@ -1329,6 +1329,14 @@ Remove once replacements are proven:
 - duplicate handwritten TS API DTOs;
 - obsolete nginx-specific security checker.
 
+### Query-efficiency cleanup
+
+- replace the remaining per-service latest-price reads in service list mapping with one batched or projected query;
+- consolidate recurring-task candidate evaluation so rules reuse shared debtor, appointment, and payment datasets instead of rerunning the same query bundles;
+- select the latest audit activity per entity in the database instead of loading the complete matching history and grouping it in memory;
+- batch development demo-data existence and lookup checks that currently issue per-record reads inside seeding loops;
+- add bounded database-command coverage for affected list and batch endpoints, and explicitly document any intentionally row-oriented Init migrations that cannot be safely batched.
+
 ### Refactor exit criteria
 
 The refactor program is complete only when all of the following are true:
@@ -1350,6 +1358,7 @@ The refactor program is complete only when all of the following are true:
 - versioned AES-GCM PII migration path is complete;
 - OpenTelemetry/Aspire Dashboard path is operational;
 - release tooling/CI operates as one application/repository;
+- identified N+1 and repeated-query hotspots are eliminated or explicitly bounded and documented;
 - required integration/browser verification is green;
 - production deployment documentation matches the new runtime;
 - there are no intentionally retained “temporary migration” implementations that should have been removed.
