@@ -77,16 +77,16 @@ During the monorepo/unified-hosting migration:
 - Vite remains the development/build tool;
 - production Node/nginx runtime is removed only after Kestrel reproduces required caching, compression, security headers, and SPA fallback behavior;
 - fingerprinted assets may be immutable/long cached, while `index.html` and service-worker entry files must not be long cached;
-- unknown `/api`, `/otel`, health, or other backend infrastructure routes must never fall through to the SPA;
+- unknown `/api`, health, or other backend infrastructure routes must never fall through to the SPA;
 - the development proxy must preserve the real `/api` prefix once the backend migration reaches that step.
 
 ## Security and Telemetry
 
 - Keep credential material out of browser persistence, console output, analytics, telemetry, and copied diagnostic text.
 - Client portal links are long-lived authentication material; do not persist them after authentication or expose them through diagnostics.
-- Browser telemetry is deliberately minimal and must use the same-origin backend relay; the browser must never receive the Aspire OTLP API key/internal dashboard address.
+- Frontend/browser telemetry and OTLP relay endpoints are out of scope; preserve display and copy support for backend-provided trace IDs without adding a browser telemetry stack.
 - A copied support trace ID is diagnostic metadata, not a URL workflow. Use the dedicated/general text-copy path rather than URL-copy semantics.
-- Do not add source-map publication/symbolication as part of the initial observability refactor.
+- Do not add source-map publication/symbolication without a concrete later requirement.
 
 ## Testing
 

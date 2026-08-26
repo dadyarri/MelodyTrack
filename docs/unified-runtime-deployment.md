@@ -31,6 +31,8 @@ The Stage 8 database migration is intentionally breaking. Before applying it, ve
 
 `Http__PathBase` defaults to `/api`. The frontend is compiled with `VITE_API_BASE_URL=/api`, so browser API traffic stays same-origin. Calendar subscription links are consequently generated under `/api/calendar-subscriptions/...`.
 
-Caddy should route the application host to the single Kestrel container without stripping `/api`. Keep `/health`, `/alive`, and `/otel` private: Compose may use `/health` for readiness, but the public Caddy route must not expose these infrastructure endpoints. Forwarded headers are accepted only from the configured proxy addresses or networks; when no trusted proxy is configured, MelodyTrack safely ignores them and rate limiting uses the direct peer address.
+Caddy should route the application host to the single Kestrel container without stripping `/api`. Keep `/health` and `/alive` private: Compose may use `/health` for readiness, but the public Caddy route must not expose these infrastructure endpoints. Forwarded headers are accepted only from the configured proxy addresses or networks; when no trusted proxy is configured, MelodyTrack safely ignores them and rate limiting uses the direct peer address.
+
+Configure the separately operated Aspire Dashboard and MelodyTrack's OTLP exporter according to [Production telemetry](production-telemetry.md). The production Dashboard container and its Caddy configuration remain owned by the external homelab infrastructure stack.
 
 After deployment, verify the root SPA, a nested browser route, a known and unknown `/api` route, cache headers, compression, security headers, and the internal health check before removing the old service definitions and image references.

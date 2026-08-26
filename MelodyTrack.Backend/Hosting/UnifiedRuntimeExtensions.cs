@@ -13,7 +13,7 @@ public static class UnifiedRuntimeExtensions
         "connect-src 'self' https:; manifest-src 'self'";
     private const string ImmutableCacheControl = "public, max-age=31536000, immutable";
     private const string EntryPointCacheControl = "no-cache";
-    private static readonly PathString[] SpaFallbackExclusions = ["/api", "/otel", "/health", "/alive", "/swagger", "/openapi"];
+    private static readonly PathString[] SpaFallbackExclusions = ["/api", "/health", "/alive", "/swagger", "/openapi"];
 
     public static WebApplication UseUnifiedRuntimeHeaders(this WebApplication app, PathString apiPathBase = default)
     {

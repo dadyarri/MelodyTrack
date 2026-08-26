@@ -49,8 +49,7 @@ The target .NET solution contains these responsibilities:
   - authentication/authorization integration;
   - business services;
   - Quartz scheduler/jobs;
-  - SPA/static hosting;
-  - browser telemetry relay.
+  - SPA/static hosting.
 - `MelodyTrack.Init`
   - thin executable over reusable initialization code;
   - owns all database initialization and environment-specific seed/bootstrap operations;
@@ -180,7 +179,7 @@ Kestrel must preserve the useful semantics of the old nginx frontend deployment:
 - existing security headers/CSP behavior is preserved or improved intentionally;
 - unknown client-side SPA routes fall back to `index.html`;
 - unknown `/api/*` routes never fall back to the SPA;
-- `/otel/*`, `/health`, `/alive`, and other backend infrastructure routes must not be swallowed by SPA fallback;
+- `/health`, `/alive`, and other backend infrastructure routes must not be swallowed by SPA fallback;
 - production CORS becomes unnecessary after same-origin hosting and should be removed once verified;
 - Vite development proxy keeps browser traffic same-origin and must stop stripping the `/api` prefix.
 
@@ -369,10 +368,10 @@ Requirements:
 - change its value from `HttpContext.TraceIdentifier` to the active W3C trace ID, falling back only if no Activity exists;
 - central Problem Details includes the same `traceId`;
 - logs emitted inside the activity correlate naturally through OTel rather than manually duplicating trace IDs everywhere;
-- browser W3C propagation should make frontend request span -> backend request -> DB/outbound spans one searchable trace;
+- incoming W3C propagation should keep API, database, and outbound spans under one searchable trace;
 - integration tests verify the equality of propagated `traceparent`, Problem Details `traceId`, and `X-Trace-Id`.
 
-### 1.18 Browser error/telemetry model
+### 1.18 Frontend error model
 
 Frontend errors normalize into a reusable `AppError` shape carrying appropriate fields such as:
 
@@ -392,38 +391,9 @@ Presentation rules:
 - use a generic text-copy or trace-copy component, not the existing URL-copy modal;
 - frontend-only errors expose a frontend trace ID only if one naturally exists; do not invent a fake one after the fact.
 
-Browser telemetry is intentionally minimal initially:
+Frontend telemetry is intentionally out of scope. Do not add browser OpenTelemetry instrumentation, an OTLP relay, session replay, console forwarding, or source-map publication/symbolication without a concrete later need. The frontend only consumes and presents backend-provided trace IDs for support correlation.
 
-- document load;
-- API requests;
-- useful navigation spans;
-- selected significant workflows;
-- uncaught exceptions;
-- unhandled rejections;
-- React error boundary failures.
-
-Do not add click-everything telemetry, every-render telemetry, console-log forwarding, generic business metrics, Web Vitals, or source-map symbolication without a concrete later need.
-
-### 1.19 Browser OTLP relay
-
-Browser telemetry sends same-origin to Backend relay endpoints such as `/otel/v1/traces` and `/otel/v1/metrics`.
-
-The browser must never receive the Aspire Dashboard OTLP API key or internal dashboard address.
-
-Relay requirements:
-
-- POST-only;
-- fixed configured upstream, never an arbitrary proxy;
-- strict body-size limits;
-- rate limiting;
-- short upstream timeout;
-- preserve expected OTLP content types;
-- do not reflect secrets/upstream credentials;
-- exclude relay traffic from telemetry instrumentation to avoid recursion;
-- relay may be disabled entirely when browser telemetry is disabled;
-- upstream/dashboard outage must not break the application.
-
-### 1.20 Database telemetry
+### 1.19 Database telemetry
 
 Do not collect PostgreSQL server logs as part of this migration.
 
@@ -436,22 +406,11 @@ Use EF Core/Npgsql telemetry instead:
 - do not enable EF sensitive-data logging or Npgsql parameter logging in production;
 - do not deploy an OTel Collector solely to ingest PostgreSQL logs.
 
-### 1.21 Aspire Dashboard in production
+### 1.20 Production telemetry operations
 
-Run a standalone Aspire Dashboard in the existing production Compose stack.
+Production Dashboard deployment, access control, retention, and operator procedures are defined in `docs/production-telemetry.md`; the actual Compose/Caddy deployment remains owned by the external homelab infrastructure stack. This repository only provides standard OTLP exporter configuration for Backend and Init and does not own browser ingestion. Telemetry export failure must never prevent initialization or application startup.
 
-- initial telemetry persistence may remain in-memory/non-durable;
-- do not add Prometheus/Loki/Tempo solely for this migration;
-- Dashboard UI gets a normal domain and HTTPS via Caddy;
-- Dashboard UI is restricted to LAN address ranges by Caddy and is not publicly accessible;
-- Dashboard container/UI port is not directly exposed to the Internet;
-- OTLP ingestion remains on the internal Docker network;
-- OTLP ingestion uses a dedicated high-entropy API key;
-- Backend and Init receive that key as a production secret;
-- browser relay performs server-side authenticated forwarding;
-- do not enable unsecured anonymous Dashboard ingestion in production.
-
-### 1.22 Quartz
+### 1.21 Quartz
 
 Keep Quartz hosted inside `MelodyTrack.Backend`.
 
@@ -800,7 +759,7 @@ Produce one complete application artifact and one production runtime before chan
   - CSP/security headers;
   - correct MIME types/public assets;
   - SPA fallback exclusions.
-- Keep `/api`, `/otel`, `/health`, `/alive` outside SPA fallback.
+- Keep `/api`, `/health`, and `/alive` outside SPA fallback.
 - Preserve `/api/calendar-subscriptions/...` public behavior.
 - Remove production CORS after same-origin verification.
 - Build one multi-stage Docker image whose final stage contains only the published .NET application/runtime.
@@ -1191,11 +1150,11 @@ Because production currently has very few staff users and portal PIN usage is mi
 
 ---
 
-## Stage 9: Observability, Init Telemetry, and Production Dashboard
+## Stage 9: Backend and Init Observability ✅
 
 ### Goal
 
-Make the migrated architecture diagnosable end-to-end without adding a large observability stack.
+Make Backend and Init diagnosable without adding a large observability stack.
 
 ### Backend/Init instrumentation
 
@@ -1228,22 +1187,12 @@ Init trace/log boundaries should cover meaningful steps such as:
 - test incoming `traceparent` propagation;
 - test errors/conflicts/unhandled failures retain one trace identity.
 
-### Frontend/browser telemetry
+### Explicit scope boundaries
 
-- add minimal browser OTel instrumentation/error capture;
-- use W3C propagation on API calls;
-- add same-origin `/otel` relay;
-- deliberately omit source-map symbolication in the initial implementation;
-- do not publish/retain source maps solely for Aspire.
-
-### Production Dashboard
-
-- add standalone Aspire Dashboard Compose fragment;
-- internal OTLP API-key authentication;
-- Caddy domain + HTTPS for UI;
-- Caddy LAN allow-list;
-- no public route;
-- accept in-memory telemetry retention initially.
+- frontend/browser telemetry and OTLP relay endpoints are not part of this refactor;
+- the frontend continues to display and copy trace IDs returned by Backend errors;
+- production Dashboard deployment, security, retention, and operator procedures are documented in `docs/production-telemetry.md`, while the deployment artifacts remain in the external infrastructure stack;
+- the repository owns only Backend/Init instrumentation and standard OTLP exporter configuration.
 
 ### End-to-end support scenario
 
@@ -1252,18 +1201,17 @@ Create a deterministic manual/integration scenario:
 1. trigger a backend error from the UI;
 2. UI shows persistent error + trace ID;
 3. copy trace ID;
-4. search Dashboard;
+4. search the development Aspire Dashboard or an externally managed production telemetry backend;
 5. locate the same trace;
-6. confirm frontend/API/backend/DB correlation where instrumentation applies.
+6. confirm API/backend/DB correlation where instrumentation applies.
 
 ### Acceptance criteria
 
-- Backend and Init telemetry appears in Dashboard;
+- Backend and Init telemetry exports when an OTLP endpoint is configured;
 - trace IDs match response header/ProblemDetails/logs;
-- browser relay cannot be used as an arbitrary proxy;
-- browser never receives OTLP API key;
-- Dashboard outage does not break MelodyTrack;
-- Dashboard UI is reachable only from LAN through HTTPS/Caddy.
+- no browser telemetry or relay is shipped;
+- telemetry exporter outage does not break MelodyTrack;
+- production Dashboard operations follow `docs/production-telemetry.md`, with deployment artifacts kept outside the application repository.
 
 ---
 
@@ -1296,7 +1244,6 @@ At minimum cover:
 - inactivity resume;
 - portal multi-device login + PIN cooldown;
 - canonical trace correlation;
-- `/otel` relay limits/failure behavior;
 - generated API client freshness;
 - PII key-version initialization failure/migration;
 - Quartz initialization/startup boundary.
@@ -1356,7 +1303,7 @@ The refactor program is complete only when all of the following are true:
 - portal session/cooldown corrections are complete;
 - DB-backed authorization policies are complete;
 - versioned AES-GCM PII migration path is complete;
-- OpenTelemetry/Aspire Dashboard path is operational;
+- Backend/Init OpenTelemetry export path is operational;
 - release tooling/CI operates as one application/repository;
 - identified N+1 and repeated-query hotspots are eliminated or explicitly bounded and documented;
 - required integration/browser verification is green;
@@ -2096,7 +2043,7 @@ Stage 7  Kiota transport + reliable refresh + error UX
    ↓
 Stage 8  ES256/auth/portal/security cutover
    ↓
-Stage 9  OTel + browser relay + production Dashboard
+Stage 9  Backend + Init OpenTelemetry
    ↓
 Stage 10 Test/release cleanup and refactor exit
    ↓
@@ -2139,9 +2086,7 @@ Do not add these merely because the architecture is changing:
 - public Aspire Dashboard;
 - Prometheus/Loki/Tempo stack;
 - PostgreSQL server-log ingestion;
-- frontend source-map symbolication;
-- Sentry solely for source maps;
-- full browser click/render analytics;
+- frontend/browser telemetry, OTLP relay endpoints, session replay, and source-map symbolication;
 - parallel staff+portal browser identities;
 - multi-staff-account browser switching before Stage 15;
 - offline mutation support before Stage 16;
@@ -2175,7 +2120,7 @@ Before declaring the refactor finished, verify all items below in a production-l
 - [ ] Init runs before Backend
 - [ ] failed Init prevents Backend startup
 - [ ] Kestrel serves SPA and `/api`
-- [ ] SPA fallback never catches `/api`, `/otel`, `/health`, `/alive`
+- [ ] SPA fallback never catches `/api`, `/health`, `/alive`
 - [ ] asset caching/compression/security headers verified over HTTP
 - [ ] production CORS removed
 - [ ] canonical public base URL used for generated links
@@ -2258,12 +2203,10 @@ Before declaring the refactor finished, verify all items below in a production-l
 - [ ] `X-Trace-Id` equals W3C trace ID
 - [ ] Problem Details `traceId` equals the same ID
 - [ ] incoming `traceparent` propagation tested
-- [ ] browser error -> copied trace ID -> Dashboard search works
-- [ ] browser relay is bounded/fixed/non-recursive
-- [ ] Dashboard outage does not break app
-- [ ] production Dashboard is LAN-only via Caddy HTTPS
-- [ ] internal OTLP ingestion is API-key protected
-- [ ] no source-map symbolication dependency
+- [ ] backend error -> copied trace ID -> configured telemetry backend search works
+- [ ] no frontend telemetry or browser OTLP relay is shipped
+- [ ] telemetry exporter outage does not break app
+- [ ] production Dashboard operations follow `docs/production-telemetry.md`
 
 ## Tests/releases
 
