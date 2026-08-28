@@ -38,12 +38,91 @@ public class ReleaseChangelogTests
         changelog.Current.ParentVersion.ShouldBe("2026.07.1");
     }
 
+    [Fact]
+    public void Load_ValidatesButDoesNotPublishActiveDraft()
+    {
+        var changelog = Load(
+            """
+            {
+              "version": "2026.08.2",
+              "codename": "Dolce",
+              "date": null,
+              "changes": { "new": [], "improved": ["Draft change"], "fixed": [], "security": [] }
+            }
+            """,
+            """
+            {
+              "version": "2026.08.1",
+              "codename": "Cantabile",
+              "date": "2026-08-02",
+              "changes": { "new": ["Released"], "improved": [], "fixed": [], "security": [] }
+            }
+            """);
+
+        changelog.Current.Version.ShouldBe("2026.08.1");
+        changelog.Releases.ShouldHaveSingleItem();
+    }
+
+    [Fact]
+    public void Load_DraftNotNewerThanProduction_Throws()
+    {
+        Should.Throw<InvalidDataException>(() => Load(
+            """
+            {
+              "version": "2026.07.2",
+              "codename": "Old draft",
+              "date": null,
+              "changes": { "new": [], "improved": [], "fixed": [], "security": [] }
+            }
+            """,
+            """
+            {
+              "version": "2026.08.1",
+              "codename": "Cantabile",
+              "date": "2026-08-02",
+              "changes": { "new": ["Released"], "improved": [], "fixed": [], "security": [] }
+            }
+            """));
+    }
+
+    [Fact]
+    public void Load_DraftPatchForNonProductionParent_Throws()
+    {
+        var exception = Should.Throw<InvalidDataException>(() => Load(
+            """
+            {
+              "version": "2026.08.1.1",
+              "date": null,
+              "changes": { "new": [], "improved": [], "fixed": ["Draft fix"], "security": [] }
+            }
+            """,
+            """
+            {
+              "version": "2026.08.1",
+              "codename": "Cantabile",
+              "date": "2026-08-01",
+              "changes": { "new": ["First release"], "improved": [], "fixed": [], "security": [] }
+            }
+            """,
+            """
+            {
+              "version": "2026.08.2",
+              "codename": "Dolce",
+              "date": "2026-08-02",
+              "changes": { "new": ["Current release"], "improved": [], "fixed": [], "security": [] }
+            }
+            """));
+
+        exception.Message.ShouldContain("current production parent");
+    }
+
     [Theory]
     [InlineData("{\"version\":\"2026.07.1\",\"codename\":\"Accordatura\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]},\"schemaVersion\":1}")]
     [InlineData("{}")]
     [InlineData("{\"version\":\"2026.07.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     [InlineData("{\"version\":\"2026.07.1.1\",\"codename\":\"Wrong\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     [InlineData("{\"version\":\"2026.07.1.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
+    [InlineData("{\"version\":\"2026.07.2\",\"codename\":\"Draft\",\"date\":null,\"changes\":{\"new\":[],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     public void Load_RejectsInvalidChangelog(string json)
     {
         Should.Throw<InvalidDataException>(() => Load(json));

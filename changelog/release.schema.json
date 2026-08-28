@@ -10,7 +10,12 @@
       "pattern": "^[0-9]{4}\\.(0[1-9]|1[0-2])\\.[1-9][0-9]*(\\.[1-9][0-9]*)?$"
     },
     "codename": { "type": "string", "minLength": 1 },
-    "date": { "type": "string", "format": "date" },
+    "date": {
+      "oneOf": [
+        { "type": "string", "format": "date" },
+        { "type": "null" }
+      ]
+    },
     "changes": {
       "type": "object",
       "additionalProperties": false,

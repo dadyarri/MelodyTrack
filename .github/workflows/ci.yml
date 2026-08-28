@@ -21,8 +21,12 @@ jobs:
   release-metadata:
     name: release metadata
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
     outputs:
       version: ${{ steps.release.outputs.version }}
+      release_kind: ${{ steps.release-kind.outputs.kind }}
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -34,9 +38,22 @@ jobs:
           dotnet-version: "10.0.x"
       - name: Validate release changelog
         run: dotnet run scripts/ReleaseTool.cs -- validate
+      - name: Test release allocation and merge-back rules
+        run: dotnet run scripts/ReleaseTool.cs -- self-test
       - name: Read release version
         id: release
         run: echo "version=$(dotnet run scripts/ReleaseTool.cs -- current-version)" >> "$GITHUB_OUTPUT"
+      - name: Determine release merge kind
+        id: release-kind
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ "$GITHUB_REF" = "refs/heads/master" ]; then
+            kind=$(dotnet run scripts/ReleaseTool.cs -- release-kind)
+          else
+            kind=none
+          fi
+          echo "kind=$kind" >> "$GITHUB_OUTPUT"
 
   backend-compile:
     name: backend compile
@@ -362,31 +379,31 @@ jobs:
       pull-requests: read
     steps:
       - name: Record pull request package placeholder
-        if: github.ref != 'refs/heads/master'
-        run: echo "Production image publication runs after verification on master."
+        if: github.ref != 'refs/heads/master' || needs.release-metadata.outputs.release_kind == 'none'
+        run: echo "Production image publication runs only for a validated release or hotfix merge to master."
       - name: Checkout code
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
         with:
           persist-credentials: false
           fetch-depth: 0
       - name: Setup .NET
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
         with:
           dotnet-version: "10.0.x"
       - name: Set up Docker Buildx
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
       - name: Login to GitHub Container Registry
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         uses: docker/login-action@abd2ef45e78c5afb21d64d4ca52ee8550d9572c7 # v4
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build and push MelodyTrack image
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6
         with:
           context: .
@@ -402,8 +419,9 @@ jobs:
           tags: |
             ghcr.io/${{ github.repository_owner }}/melody-track:latest
             ghcr.io/${{ github.repository_owner }}/melody-track:${{ needs.release-metadata.outputs.version }}
+            ghcr.io/${{ github.repository_owner }}/melody-track:sha-${{ github.sha }}
       - name: Publish release tag and notes
-        if: github.ref == 'refs/heads/master'
+        if: github.ref == 'refs/heads/master' && needs.release-metadata.outputs.release_kind != 'none'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: dotnet run scripts/ReleaseTool.cs -- publish
