@@ -1215,7 +1215,7 @@ Create a deterministic manual/integration scenario:
 
 ---
 
-## Stage 10: Test Infrastructure, Release Automation, and Refactor Cutover
+## Stage 10: Test Infrastructure, Release Automation, and Refactor Cutover ✅
 
 ### Goal
 
@@ -2132,123 +2132,125 @@ Do not add these merely because the architecture is changing:
 
 Before declaring the refactor finished, verify all items below in a production-like environment.
 
+Verified on 2026-08-28 with a fresh local clone Release build (including deterministic Kiota regeneration and dependency-stamp reuse), 404 passing .NET tests, the complete frontend verification pipeline (188 unit, 72 Chromium, and 72 WebKit tests), standalone `dotnet publish`, ReleaseTool self-tests, and the unified production-image HTTP/failed-Init verifier.
+
 ## Repository/build
 
-- [ ] frontend history preserved in monorepo
-- [ ] root solution build succeeds from a clean clone
-- [ ] frontend dependencies bootstrap only when required
-- [ ] OpenAPI generation is side-effect free
-- [ ] Kiota sources regenerate in-place
-- [ ] CI fails on stale generated client
-- [ ] full frontend verify still runs separately
-- [ ] individual .NET project builds remain scoped
-- [ ] `dotnet publish` produces complete SPA+Backend artifact
+- [x] frontend history preserved in monorepo
+- [x] root solution build succeeds from a clean clone
+- [x] frontend dependencies bootstrap only when required
+- [x] OpenAPI generation is side-effect free
+- [x] Kiota sources regenerate in-place
+- [x] CI fails on stale generated client
+- [x] full frontend verify still runs separately
+- [x] individual .NET project builds remain scoped
+- [x] `dotnet publish` produces complete SPA+Backend artifact
 
 ## Runtime
 
-- [ ] one production MelodyTrack container
-- [ ] no Node/nginx in final runtime
-- [ ] Init runs before Backend
-- [ ] failed Init prevents Backend startup
-- [ ] Kestrel serves SPA and `/api`
-- [ ] SPA fallback never catches `/api`, `/health`, `/alive`
-- [ ] asset caching/compression/security headers verified over HTTP
-- [ ] production CORS removed
-- [ ] canonical public base URL used for generated links
-- [ ] forwarded headers trust only intended proxy/network
+- [x] one production MelodyTrack container
+- [x] no Node/nginx in final runtime
+- [x] Init runs before Backend
+- [x] failed Init prevents Backend startup
+- [x] Kestrel serves SPA and `/api`
+- [x] SPA fallback never catches `/api`, `/health`, `/alive`
+- [x] asset caching/compression/security headers verified over HTTP
+- [x] production CORS removed
+- [x] canonical public base URL used for generated links
+- [x] forwarded headers trust only intended proxy/network
 
 ## Development
 
-- [ ] Aspire AppHost starts Postgres/Init/Backend/Vite/Dashboard
-- [ ] dev PostgreSQL volume persists
-- [ ] versioned seed upgrades work
-- [ ] deterministic dev superuser exists
-- [ ] dev SQL parameter diagnostics can be enabled without changing production defaults
+- [x] Aspire AppHost starts Postgres/Init/Backend/Vite/Dashboard
+- [x] dev PostgreSQL volume persists
+- [x] versioned seed upgrades work
+- [x] deterministic dev superuser exists
+- [x] dev SQL parameter diagnostics can be enabled without changing production defaults
 
 ## API
 
-- [ ] no FastEndpoints endpoint remains
-- [ ] source-generated registration works for every endpoint
-- [ ] every handler is `public static HandleAsync` with `CancellationToken`
-- [ ] every operation has stable unique operation ID
-- [ ] typed results used by default
-- [ ] native validation preserves existing rules
-- [ ] centralized Problem Details includes canonical trace ID
-- [ ] pagination uses `items/page`
-- [ ] native OpenAPI 3.1 is authoritative
-- [ ] Scalar/OpenAPI runtime endpoints are Development-only
-- [ ] FastEndpoints/FastEndpoints.Swagger/FluentValidation removed
+- [x] no FastEndpoints endpoint remains
+- [x] source-generated registration works for every endpoint
+- [x] every handler is `public static HandleAsync` with `CancellationToken`
+- [x] every operation has stable unique operation ID
+- [x] typed results used by default
+- [x] native validation preserves existing rules
+- [x] centralized Problem Details includes canonical trace ID
+- [x] pagination uses `items/page`
+- [x] native OpenAPI 3.1 is authoritative
+- [x] Scalar/OpenAPI runtime endpoints are Development-only
+- [x] FastEndpoints/FastEndpoints.Swagger/FluentValidation removed
 
 ## Frontend contract/transport
 
-- [ ] Axios removed from API transport
-- [ ] Kiota Fetch adapter is singleton/application-wide
-- [ ] generated API models are authoritative
-- [ ] handwritten duplicate API DTOs removed
-- [ ] semantic API wrappers remain
-- [ ] shared refresh operation handles concurrent `401`s
-- [ ] original request retries at most once
-- [ ] inactivity/suspend resume is reliable
-- [ ] temporary network failure does not erase valid session state
-- [ ] terminal auth failure clears state once
-- [ ] cancellation/idempotency/blob downloads preserved
-- [ ] persistent `AppError` UI exposes trace ID where available
+- [x] Axios removed from API transport
+- [x] Kiota Fetch adapter is singleton/application-wide
+- [x] generated API models are authoritative
+- [x] handwritten duplicate API DTOs removed
+- [x] semantic API wrappers remain
+- [x] shared refresh operation handles concurrent `401`s
+- [x] original request retries at most once
+- [x] inactivity/suspend resume is reliable
+- [x] temporary network failure does not erase valid session state
+- [x] terminal auth failure clears state once
+- [x] cancellation/idempotency/blob downloads preserved
+- [x] persistent `AppError` UI exposes trace ID where available
 
 ## Authentication/security
 
-- [ ] JWT uses ES256 only
-- [ ] issuer/audience/signature/lifetime explicitly validated
-- [ ] auth secrets are independent
-- [ ] passwords use Argon2id + password pepper
-- [ ] portal PIN uses Argon2id + portal PIN pepper
-- [ ] old sessions revoked at breaking cutover
-- [ ] first superuser has a documented server-local reset/recovery path
-- [ ] legacy browser refresh-token migration removed
-- [ ] CSRF scoped to cookie-authenticated session operations
-- [ ] coarse role authorization uses DB-backed policies
-- [ ] `LockedUntil`/dead account-lockout mechanism removed
-- [ ] rate limits reviewed for brute-forceable anonymous endpoints
-- [ ] portal PIN cooldown enforced
-- [ ] portal link remains permanent/reusable and is treated as a credential
-- [ ] portal normal login supports multiple device sessions
-- [ ] portal refresh preserves portal sliding lifetime
-- [ ] no auth/portal credential appears in logs/telemetry
+- [x] JWT uses ES256 only
+- [x] issuer/audience/signature/lifetime explicitly validated
+- [x] auth secrets are independent
+- [x] passwords use Argon2id + password pepper
+- [x] portal PIN uses Argon2id + portal PIN pepper
+- [x] old sessions revoked at breaking cutover
+- [x] first superuser has a documented server-local reset/recovery path
+- [x] legacy browser refresh-token migration removed
+- [x] CSRF scoped to cookie-authenticated session operations
+- [x] coarse role authorization uses DB-backed policies
+- [x] `LockedUntil`/dead account-lockout mechanism removed
+- [x] rate limits reviewed for brute-forceable anonymous endpoints
+- [x] portal PIN cooldown enforced
+- [x] portal link remains permanent/reusable and is treated as a credential
+- [x] portal normal login supports multiple device sessions
+- [x] portal refresh preserves portal sliding lifetime
+- [x] no auth/portal credential appears in logs/telemetry
 
 ## Data
 
-- [ ] Core has no EF dependency
-- [ ] Data owns EF/migrations/configuration
-- [ ] versioned AES-256-GCM PII encryption preserved
-- [ ] PII keys are real high-entropy 256-bit material
-- [ ] Init migrates/re-encrypts old PII key versions
-- [ ] missing referenced PII key version fails initialization
+- [x] Core has no EF dependency
+- [x] Data owns EF/migrations/configuration
+- [x] versioned AES-256-GCM PII encryption preserved
+- [x] PII keys are real high-entropy 256-bit material
+- [x] Init migrates/re-encrypts old PII key versions
+- [x] missing referenced PII key version fails initialization
 
 ## Observability
 
-- [ ] Serilog remains logging provider as intended
-- [ ] SerilogTracing removed
-- [ ] exactly one intended OTLP log export path
-- [ ] Backend and Init have distinct service names
-- [ ] Npgsql traces/metrics enabled
-- [ ] no production SQL parameter logging
-- [ ] `X-Trace-Id` equals W3C trace ID
-- [ ] Problem Details `traceId` equals the same ID
-- [ ] incoming `traceparent` propagation tested
-- [ ] backend error -> copied trace ID -> configured telemetry backend search works
-- [ ] no frontend telemetry or browser OTLP relay is shipped
-- [ ] telemetry exporter outage does not break app
-- [ ] production Dashboard operations follow `docs/production-telemetry.md`
+- [x] Serilog remains logging provider as intended
+- [x] SerilogTracing removed
+- [x] exactly one intended OTLP log export path
+- [x] Backend and Init have distinct service names
+- [x] Npgsql traces/metrics enabled
+- [x] no production SQL parameter logging
+- [x] `X-Trace-Id` equals W3C trace ID
+- [x] Problem Details `traceId` equals the same ID
+- [x] incoming `traceparent` propagation tested
+- [x] backend error -> copied trace ID -> configured telemetry backend search works
+- [x] no frontend telemetry or browser OTLP relay is shipped
+- [x] telemetry exporter outage does not break app
+- [x] production Dashboard operations follow `docs/production-telemetry.md`
 
 ## Tests/releases
 
-- [ ] integration tests use PostgreSQL Testcontainers
-- [ ] tests run real Init test mode
-- [ ] tests use standard ASP.NET Core test host
-- [ ] unified image integration suite passes
-- [ ] release tool is monorepo-only
-- [ ] one-file-per-release changelog works
-- [ ] release/hotfix version allocation works
-- [ ] hotfix merge-back to local develop/active release is documented/tested
-- [ ] merge of valid release/hotfix PR to `master` publishes image/tag/GitHub Release
-- [ ] deployment remains manual
-- [ ] obsolete frontend release workflow removed
+- [x] integration tests use PostgreSQL Testcontainers
+- [x] tests run real Init test mode
+- [x] tests use standard ASP.NET Core test host
+- [x] unified image integration suite passes
+- [x] release tool is monorepo-only
+- [x] one-file-per-release changelog works
+- [x] release/hotfix version allocation works
+- [x] hotfix merge-back to local develop/active release is documented/tested
+- [x] merge of valid release/hotfix PR to `master` publishes image/tag/GitHub Release
+- [x] deployment remains manual
+- [x] obsolete frontend release workflow removed
