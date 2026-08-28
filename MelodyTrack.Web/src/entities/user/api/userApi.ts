@@ -1,10 +1,17 @@
-import { http, type Ulid } from "@/shared/api";
+import { http, type RequiredApiContract, type Ulid } from "@/shared/api";
+import type { GetUsersAvailabilityResponse, GetUsersResponse, LookupRolesResponse } from "@/shared/api/generated/models";
 
 import type { CalendarSubscription, Role, User, UserAvailability, UserWorkingHoursDay } from "../model/types";
 
+type UsersResponse = Omit<RequiredApiContract<GetUsersResponse, "users">, "users"> & { users: User[] };
+type UserAvailabilitiesResponse = Omit<RequiredApiContract<GetUsersAvailabilityResponse, "availabilities">, "availabilities"> & {
+  availabilities: UserAvailability[];
+};
+type RolesResponse = Omit<RequiredApiContract<LookupRolesResponse, "roles">, "roles"> & { roles: Role[] };
+
 export const usersApi = {
   list() {
-    return http.get<{ users: User[] }>("/users").then((response) => response.data.users);
+    return http.get<UsersResponse>("/users").then((response) => response.data.users);
   },
   update(
     id: Ulid,
@@ -14,7 +21,7 @@ export const usersApi = {
     return http.patch<unknown>(`/users/${id}`, { ...input, expectedActivityId: options?.expectedActivityId }).then(() => undefined);
   },
   listAvailabilities() {
-    return http.get<{ availabilities: UserAvailability[] }>("/users/availability").then((response) => response.data.availabilities);
+    return http.get<UserAvailabilitiesResponse>("/users/availability").then((response) => response.data.availabilities);
   },
   getAvailability(id: Ulid) {
     return http.get<UserAvailability>(`/users/${id}/availability`).then((response) => response.data);
@@ -32,7 +39,7 @@ export const usersApi = {
 
 export const rolesApi = {
   lookup() {
-    return http.get<{ roles: Role[] }>("/roles/options").then((response) => response.data.roles);
+    return http.get<RolesResponse>("/roles/options").then((response) => response.data.roles);
   },
 };
 

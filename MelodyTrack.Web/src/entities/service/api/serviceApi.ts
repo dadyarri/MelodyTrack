@@ -1,6 +1,16 @@
-import { type CreateEntityResponse, http, type PaginatedParams, type PaginatedResponse, type Ulid } from "@/shared/api";
+import {
+  type CreateEntityResponse,
+  http,
+  type PaginatedParams,
+  type PaginatedResponse,
+  type RequiredApiContract,
+  type Ulid,
+} from "@/shared/api";
+import type { LookupServicesResponse } from "@/shared/api/generated/models";
 
 import type { LookupService, Service, ServiceInput } from "../model/types";
+
+type ServicesLookupResponse = Omit<RequiredApiContract<LookupServicesResponse, "services">, "services"> & { services: LookupService[] };
 
 export const servicesApi = {
   list(params: PaginatedParams & { name?: string }) {
@@ -10,7 +20,7 @@ export const servicesApi = {
     return http.get<Service>(`/services/${id}`).then((response) => response.data);
   },
   lookup() {
-    return http.get<{ services: LookupService[] }>("/services/options").then((response) => response.data.services);
+    return http.get<ServicesLookupResponse>("/services/options").then((response) => response.data.services);
   },
   create(input: ServiceInput & { price: number }, options?: { idempotencyKey?: string }) {
     return http

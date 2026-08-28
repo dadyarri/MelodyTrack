@@ -1,59 +1,75 @@
-import type { Ulid } from "@/shared/api";
+import type { RequiredApiContract, Ulid } from "@/shared/api";
+import type {
+  ClientActivityTrendDto,
+  ClientSourceReportDto,
+  ClientsReportResponse,
+  ClientsReportSummaryDto,
+  ClientValueReportDto,
+  DashboardAppointmentResponse,
+  DashboardClientContactsResponse,
+  DashboardClientResponse,
+  DashboardScheduleDayResponse,
+  DashboardServiceResponse,
+  FinanceDebtorDto,
+  FinanceExpenseCategoryDto,
+  FinanceReportResponse,
+  FinanceReportSummaryDto,
+  FinanceServiceDto,
+  FinanceTrendDto,
+  GetDashboardStatsResponse,
+  OrganizationDashboardResponse,
+  ReportContextDto,
+  ReportProviderDto,
+  WorkHourDto,
+  WorkProviderDto,
+  WorkReportResponse,
+  WorkReportSummaryDto,
+  WorkServiceDto,
+  WorkStatusDto,
+  WorkTrendDto,
+} from "@/shared/api/generated/models";
 
 type AppointmentStatus = "planned" | "completed" | "cancelled" | "burned";
 
-export interface DashboardStats {
-  personalClientsCount: number;
-  monthIncome: number;
+export type OrganizationDashboardStats = RequiredApiContract<
+  OrganizationDashboardResponse,
+  | "totalClients"
+  | "debtorsCount"
+  | "totalDebt"
+  | "totalPositiveBalance"
+  | "appointmentsToday"
+  | "appointmentsTomorrow"
+  | "monthIncome"
+  | "monthExpenses"
+  | "monthNet"
+>;
+export type DashboardAppointmentContacts = RequiredApiContract<DashboardClientContactsResponse, never>;
+export type DashboardAppointmentClient = Omit<RequiredApiContract<DashboardClientResponse, "id" | "firstName" | "lastName">, "contacts"> & {
+  contacts?: DashboardAppointmentContacts | null;
+};
+export type DashboardAppointmentService = RequiredApiContract<DashboardServiceResponse, "id" | "name">;
+export type DashboardAppointment = Omit<
+  RequiredApiContract<DashboardAppointmentResponse, "id" | "client" | "service" | "startDate" | "endDate" | "status">,
+  "client" | "service" | "status"
+> & {
+  client: DashboardAppointmentClient;
+  service: DashboardAppointmentService;
+  status: AppointmentStatus;
+};
+export type DashboardScheduleDay = Omit<
+  RequiredApiContract<DashboardScheduleDayResponse, "date" | "count" | "appointments">,
+  "appointments"
+> & {
+  appointments: DashboardAppointment[];
+};
+export type DashboardStats = Omit<
+  RequiredApiContract<GetDashboardStatsResponse, "personalClientsCount" | "monthIncome" | "today" | "tomorrow">,
+  "today" | "tomorrow" | "organization"
+> & {
   today: DashboardScheduleDay;
   tomorrow: DashboardScheduleDay;
   organization?: OrganizationDashboardStats | null;
-}
-
-export interface OrganizationDashboardStats {
-  totalClients: number;
-  debtorsCount: number;
-  totalDebt: number;
-  totalPositiveBalance: number;
-  appointmentsToday: number;
-  appointmentsTomorrow: number;
-  monthIncome: number;
-  monthExpenses: number;
-  monthNet: number;
-}
-
-export interface DashboardScheduleDay {
-  date: string;
-  count: number;
-  appointments: DashboardAppointment[];
-}
-
-export interface DashboardAppointment {
-  id: Ulid;
-  client: DashboardAppointmentClient;
-  service: DashboardAppointmentService;
-  startDate: string;
-  endDate: string;
-  status: AppointmentStatus;
-}
-
-export interface DashboardAppointmentClient {
-  id: Ulid;
-  firstName: string;
-  lastName: string;
-  contacts?: DashboardAppointmentContacts | null;
-}
-
-export interface DashboardAppointmentContacts {
-  telegram?: string | null;
-  vk?: string | null;
-  phone?: string | null;
-}
-
-export interface DashboardAppointmentService {
-  id: Ulid;
-  name: string;
-}
+};
 
 export type ReportGroupBy = "day" | "week" | "month";
 
@@ -65,117 +81,94 @@ export interface ReportParams {
   groupBy: ReportGroupBy;
 }
 
-export interface ReportContext {
-  startDate: string;
-  endDate: string;
-  timezone: string;
-  providerId?: Ulid | null;
-  scopeLabel: string;
+export type ReportProvider = RequiredApiContract<ReportProviderDto, "id" | "displayName">;
+export type ReportContext = Omit<
+  RequiredApiContract<ReportContextDto, "startDate" | "endDate" | "timezone" | "scopeLabel" | "groupBy" | "providers">,
+  "groupBy" | "providers"
+> & {
   groupBy: ReportGroupBy;
   providers: ReportProvider[];
-}
+};
 
-export interface ReportProvider {
-  id: Ulid;
-  displayName: string;
-}
-
-export interface WorkReport {
+type WorkSummary = RequiredApiContract<
+  WorkReportSummaryDto,
+  "appointments" | "completed" | "burned" | "workingCapacityHours" | "occupiedWorkingHours" | "freeWorkingHours"
+>;
+type WorkStatus = Omit<RequiredApiContract<WorkStatusDto, "status" | "count">, "status"> & { status: AppointmentStatus };
+type WorkTrend = RequiredApiContract<
+  WorkTrendDto,
+  | "startDate"
+  | "endDate"
+  | "appointments"
+  | "completed"
+  | "cancelled"
+  | "burned"
+  | "workingCapacityHours"
+  | "occupiedWorkingHours"
+  | "freeWorkingHours"
+>;
+type WorkProvider = RequiredApiContract<
+  WorkProviderDto,
+  | "providerName"
+  | "appointments"
+  | "completed"
+  | "cancelled"
+  | "burned"
+  | "workingCapacityHours"
+  | "occupiedWorkingHours"
+  | "freeWorkingHours"
+>;
+type WorkService = RequiredApiContract<WorkServiceDto, "serviceId" | "serviceName" | "appointments" | "completed" | "burned" | "revenue">;
+type WorkHour = RequiredApiContract<WorkHourDto, "hour" | "appointments" | "completed" | "cancelled">;
+export type WorkReport = Omit<
+  RequiredApiContract<WorkReportResponse, "context" | "summary" | "statuses" | "trend" | "providers" | "services" | "busyHours">,
+  "context" | "summary" | "statuses" | "trend" | "providers" | "services" | "busyHours"
+> & {
   context: ReportContext;
-  summary: {
-    appointments: number;
-    completed: number;
-    burned: number;
-    workingCapacityHours: number;
-    occupiedWorkingHours: number;
-    freeWorkingHours: number;
-    utilizationPercent?: number | null;
-    cancellationPercent?: number | null;
-  };
-  statuses: Array<{ status: AppointmentStatus; count: number; sharePercent?: number | null }>;
-  trend: Array<{
-    startDate: string;
-    endDate: string;
-    appointments: number;
-    completed: number;
-    cancelled: number;
-    burned: number;
-    workingCapacityHours: number;
-    occupiedWorkingHours: number;
-    freeWorkingHours: number;
-    utilizationPercent?: number | null;
-  }>;
-  providers: Array<{
-    providerId?: Ulid | null;
-    providerName: string;
-    appointments: number;
-    completed: number;
-    cancelled: number;
-    burned: number;
-    workingCapacityHours: number;
-    occupiedWorkingHours: number;
-    freeWorkingHours: number;
-    utilizationPercent?: number | null;
-  }>;
-  services: Array<{
-    serviceId: Ulid;
-    serviceName: string;
-    appointments: number;
-    completed: number;
-    burned: number;
-    revenue: number;
-  }>;
-  busyHours: Array<{ hour: number; appointments: number; completed: number; cancelled: number }>;
-}
+  summary: WorkSummary;
+  statuses: WorkStatus[];
+  trend: WorkTrend[];
+  providers: WorkProvider[];
+  services: WorkService[];
+  busyHours: WorkHour[];
+};
 
-export interface FinanceReport {
+type FinanceSummary = RequiredApiContract<FinanceReportSummaryDto, "revenue" | "revenueAppointments" | "organizationOnlyFiguresAvailable">;
+type FinanceTrend = RequiredApiContract<FinanceTrendDto, "startDate" | "endDate" | "revenue">;
+type FinanceExpenseCategory = RequiredApiContract<FinanceExpenseCategoryDto, "categoryName" | "amount">;
+type FinanceDebtor = RequiredApiContract<FinanceDebtorDto, "clientId" | "clientName" | "revenue" | "payments" | "debt">;
+type FinanceService = RequiredApiContract<FinanceServiceDto, "serviceId" | "serviceName" | "appointments" | "revenue">;
+export type FinanceReport = Omit<
+  RequiredApiContract<FinanceReportResponse, "context" | "summary" | "trend" | "expenseCategories" | "debtors" | "services">,
+  "context" | "summary" | "trend" | "expenseCategories" | "debtors" | "services"
+> & {
   context: ReportContext;
-  summary: {
-    revenue: number;
-    payments?: number | null;
-    expenses?: number | null;
-    netProfit?: number | null;
-    outstandingDebt?: number | null;
-    averageRevenuePerVisit?: number | null;
-    revenueAppointments: number;
-    organizationOnlyFiguresAvailable: boolean;
-  };
-  trend: Array<{
-    startDate: string;
-    endDate: string;
-    revenue: number;
-    payments?: number | null;
-    expenses?: number | null;
-    netProfit?: number | null;
-  }>;
-  expenseCategories: Array<{ categoryName: string; amount: number }>;
-  debtors: Array<{ clientId: Ulid; clientName: string; revenue: number; payments: number; debt: number }>;
-  services: Array<{ serviceId: Ulid; serviceName: string; appointments: number; revenue: number }>;
-}
+  summary: FinanceSummary;
+  trend: FinanceTrend[];
+  expenseCategories: FinanceExpenseCategory[];
+  debtors: FinanceDebtor[];
+  services: FinanceService[];
+};
 
-export interface ClientsReport {
+type ClientsSummary = RequiredApiContract<
+  ClientsReportSummaryDto,
+  "acquiredClients" | "activeClients" | "retainedClients" | "atRiskClients" | "lostClients" | "onVacationClients"
+>;
+type ClientTrend = RequiredApiContract<ClientActivityTrendDto, "startDate" | "endDate" | "acquiredClients" | "activeClients" | "visits">;
+type ClientSource = RequiredApiContract<ClientSourceReportDto, "sourceName" | "acquiredClients" | "activeClients" | "clientValue">;
+type ClientValue = Omit<
+  RequiredApiContract<ClientValueReportDto, "clientId" | "clientName" | "sourceName" | "visits" | "value" | "activityState">,
+  "activityState"
+> & {
+  activityState: "active" | "inactive" | "at-risk" | "lost" | "on-vacation";
+};
+export type ClientsReport = Omit<
+  RequiredApiContract<ClientsReportResponse, "context" | "summary" | "trend" | "sources" | "clients">,
+  "context" | "summary" | "trend" | "sources" | "clients"
+> & {
   context: ReportContext;
-  summary: {
-    acquiredClients: number;
-    activeClients: number;
-    retainedClients: number;
-    retentionPercent?: number | null;
-    atRiskClients: number;
-    lostClients: number;
-    onVacationClients: number;
-    averageVisitFrequency?: number | null;
-    averageClientValue?: number | null;
-  };
-  trend: Array<{ startDate: string; endDate: string; acquiredClients: number; activeClients: number; visits: number }>;
-  sources: Array<{ sourceName: string; acquiredClients: number; activeClients: number; clientValue: number }>;
-  clients: Array<{
-    clientId: Ulid;
-    clientName: string;
-    sourceName: string;
-    visits: number;
-    value: number;
-    averageIntervalDays?: number | null;
-    lastVisitAtUtc?: string | null;
-    activityState: "active" | "inactive" | "at-risk" | "lost" | "on-vacation";
-  }>;
-}
+  summary: ClientsSummary;
+  trend: ClientTrend[];
+  sources: ClientSource[];
+  clients: ClientValue[];
+};

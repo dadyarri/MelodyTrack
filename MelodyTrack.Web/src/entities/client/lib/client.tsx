@@ -1,14 +1,12 @@
 import type { Client, ClientHistory, ClientHistoryAppointmentStatus } from "../model/types";
 import { formatPhone, getPhoneUri, getSocialHandle, getSocialLinkHref } from "./contact";
 
-export type ClientWithOptionalContacts = Client;
-
 export function formatClientName(client: Pick<Client, "firstName" | "lastName" | "patronymic">) {
   return [client.lastName, client.firstName, client.patronymic].filter(Boolean).join(" ");
 }
 
-export function getClientContactValue(client: ClientWithOptionalContacts, key: "telegram" | "vk" | "phone") {
-  return client.contacts?.[key] ?? client[key] ?? undefined;
+export function getClientContactValue(client: Client, key: "telegram" | "vk" | "phone") {
+  return client[key] ?? undefined;
 }
 
 export function renderClientPhoneLink(value?: string | null) {

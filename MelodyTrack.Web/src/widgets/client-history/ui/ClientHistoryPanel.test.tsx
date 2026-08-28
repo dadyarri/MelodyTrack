@@ -51,7 +51,8 @@ function createHistory(contacts: { telegram: string; vk: string }): ClientHistor
       vacations: [],
       balance: 0,
       lifecycleStatus: 1,
-      contacts,
+      telegram: contacts.telegram,
+      vk: contacts.vk,
     },
     summary: {
       totalPayments: 0,

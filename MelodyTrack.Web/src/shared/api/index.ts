@@ -2,7 +2,6 @@ export {
   AppError,
   authExpiredEventName,
   configureHttpSession,
-  discardLegacyHttpCache,
   getApiErrorMessage,
   getApiErrorMessages,
   getApiFieldErrors,
@@ -21,10 +20,12 @@ export {
   type StaleEntityConflict,
 } from "./http";
 export type {
+  ApiJsonContract,
   CreateEntityResponse,
   PaginatedParams,
   PaginatedResponse,
   PageMetadata,
   RecordActivity,
+  RequiredApiContract,
   Ulid,
 } from "./contracts";

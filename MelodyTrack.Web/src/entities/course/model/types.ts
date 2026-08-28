@@ -1,136 +1,79 @@
-import type { Ulid } from "@/shared/api";
+import type { RequiredApiContract } from "@/shared/api";
+import type {
+  CourseBlockDto,
+  CourseBranchDto,
+  CourseDto,
+  CourseEnrollmentDto,
+  CourseEnrollmentLevelDto,
+  CourseEnrollmentThemeAppointmentDto,
+  CourseEnrollmentThemeDto,
+  CourseLevelDto,
+  CourseSummaryDto,
+  CourseThemeDto,
+  CreateCourseRequest,
+} from "@/shared/api/generated/models";
 
 type AppointmentStatus = "planned" | "completed" | "cancelled" | "burned";
 
-export interface CourseSummary {
-  id: Ulid;
-  name: string;
-  description?: string | null;
-  blockCount: number;
-  themeCount: number;
-  updatedAtUtc: string;
-}
+export type CourseSummary = RequiredApiContract<CourseSummaryDto, "id" | "name" | "blockCount" | "themeCount" | "updatedAtUtc">;
 
-export interface CourseTheme {
-  id: Ulid;
-  key: string;
-  title: string;
-  description?: string | null;
-  lessonContent?: string | null;
-  homeworkContent?: string | null;
-  order: number;
-  experiencePointsReward: number;
-  dependencyThemeIds: Ulid[];
-}
+export type CourseTheme = RequiredApiContract<
+  CourseThemeDto,
+  "id" | "key" | "title" | "order" | "experiencePointsReward" | "dependencyThemeIds"
+>;
 
-export interface CourseLevel {
-  id: Ulid;
-  title: string;
-  order: number;
-  requiredExperiencePoints: number;
-}
+export type CourseLevel = RequiredApiContract<CourseLevelDto, "id" | "title" | "order" | "requiredExperiencePoints">;
 
-export interface CourseBranch {
-  id: Ulid;
-  title: string;
-  description?: string | null;
-  order: number;
+export type CourseBranch = Omit<RequiredApiContract<CourseBranchDto, "id" | "title" | "order" | "themes">, "themes"> & {
   themes: CourseTheme[];
-}
+};
 
-export interface CourseBlock {
-  id: Ulid;
-  title: string;
-  description?: string | null;
-  order: number;
+export type CourseBlock = Omit<RequiredApiContract<CourseBlockDto, "id" | "title" | "order" | "branches">, "branches"> & {
   branches: CourseBranch[];
-}
+};
 
-export interface Course {
-  id: Ulid;
-  name: string;
-  description?: string | null;
-  createdAtUtc: string;
-  updatedAtUtc: string;
+export type Course = Omit<
+  RequiredApiContract<CourseDto, "id" | "name" | "createdAtUtc" | "updatedAtUtc" | "levels" | "blocks">,
+  "levels" | "blocks"
+> & {
   levels: CourseLevel[];
   blocks: CourseBlock[];
-}
+};
 
 export type CourseThemeProgressState = 0 | 1 | 2 | 3 | 4 | 5;
 
-export interface CourseEnrollmentThemeAppointment {
-  id: Ulid;
-  startDateUtc: string;
-  providerDisplayName?: string | null;
+export type CourseEnrollmentThemeAppointment = Omit<
+  RequiredApiContract<CourseEnrollmentThemeAppointmentDto, "id" | "startDateUtc" | "status">,
+  "status"
+> & {
   status: AppointmentStatus;
-  lessonNotes?: string | null;
-}
+};
 
-export interface CourseEnrollmentTheme {
-  id: Ulid;
-  courseThemeId: Ulid;
-  themeTitle: string;
-  themeDescription?: string | null;
-  lessonContent?: string | null;
-  homeworkContent?: string | null;
-  experiencePointsReward: number;
+export type CourseEnrollmentTheme = Omit<
+  RequiredApiContract<
+    CourseEnrollmentThemeDto,
+    "id" | "courseThemeId" | "themeTitle" | "experiencePointsReward" | "state" | "earnedExperiencePoints" | "recentAppointments"
+  >,
+  "state" | "recentAppointments"
+> & {
   state: CourseThemeProgressState;
-  unlockedAtUtc?: string | null;
-  startedAtUtc?: string | null;
-  waitingForHomeworkAtUtc?: string | null;
-  completedAtUtc?: string | null;
-  earnedExperiencePoints: number;
   recentAppointments: CourseEnrollmentThemeAppointment[];
-}
+};
 
-export interface CourseEnrollmentLevel {
-  id: Ulid;
-  title: string;
-  order: number;
-  requiredExperiencePoints: number;
-}
+export type CourseEnrollmentLevel = RequiredApiContract<CourseEnrollmentLevelDto, "id" | "title" | "order" | "requiredExperiencePoints">;
 
-export interface CourseEnrollment {
-  id: Ulid;
-  clientId: Ulid;
-  clientDisplayName: string;
-  courseId: Ulid;
-  courseName: string;
-  createdAtUtc: string;
+export type CourseEnrollment = Omit<
+  RequiredApiContract<
+    CourseEnrollmentDto,
+    "id" | "clientId" | "clientDisplayName" | "courseId" | "courseName" | "createdAtUtc" | "course" | "earnedExperiencePoints" | "themes"
+  >,
+  "course" | "currentLevel" | "themes"
+> & {
   course: Course;
   currentLevel?: CourseEnrollmentLevel | null;
-  earnedExperiencePoints: number;
   themes: CourseEnrollmentTheme[];
-}
+};
 
 export type CourseEnrollmentThemeProgressAction = "unlock" | "start" | "send-to-homework" | "pass-homework" | "return-to-progress";
 
-export interface CourseStructureInput {
-  name: string;
-  description?: string;
-  levels: Array<{
-    title: string;
-    order: number;
-    requiredExperiencePoints: number;
-  }>;
-  blocks: Array<{
-    title: string;
-    description?: string;
-    order: number;
-    branches: Array<{
-      title: string;
-      description?: string;
-      order: number;
-      themes: Array<{
-        key: string;
-        title: string;
-        description?: string;
-        lessonContent?: string;
-        homeworkContent?: string;
-        order: number;
-        experiencePointsReward: number;
-        dependencyKeys: string[];
-      }>;
-    }>;
-  }>;
-}
+export type CourseStructureInput = RequiredApiContract<CreateCourseRequest, "name" | "levels" | "blocks">;

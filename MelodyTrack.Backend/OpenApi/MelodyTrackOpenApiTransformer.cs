@@ -12,6 +12,7 @@ public sealed class MelodyTrackOpenApiTransformer(IOptions<PublicUrlOptions> pub
     : IOpenApiDocumentTransformer, IOpenApiOperationTransformer, IOpenApiSchemaTransformer
 {
     private const string BearerScheme = "Bearer";
+    private const string UlidPattern = "^[0-9A-HJKMNP-TV-Z]{26}$";
 
     public Task TransformAsync(
         OpenApiDocument document,
@@ -151,8 +152,17 @@ public sealed class MelodyTrackOpenApiTransformer(IOptions<PublicUrlOptions> pub
             // to the containing property; Kiota otherwise generates Ulid as Parsable.
             schema.Type = JsonSchemaType.String;
             schema.Format = null;
-            schema.Pattern = "^[0-9A-HJKMNP-TV-Z]{26}$";
+            schema.Pattern = UlidPattern;
             schema.Properties?.Clear();
+        }
+        else if (GetCollectionElementType(type) == typeof(Ulid))
+        {
+            schema.Type = JsonSchemaType.Array | nullableFlag;
+            schema.Items = new OpenApiSchema
+            {
+                Type = JsonSchemaType.String,
+                Pattern = UlidPattern
+            };
         }
         else if (type == typeof(byte) || type == typeof(sbyte)
             || type == typeof(short) || type == typeof(ushort)
@@ -175,6 +185,23 @@ public sealed class MelodyTrackOpenApiTransformer(IOptions<PublicUrlOptions> pub
         }
 
         return Task.CompletedTask;
+    }
+
+    private static Type? GetCollectionElementType(Type type)
+    {
+        if (type.IsArray)
+        {
+            return Nullable.GetUnderlyingType(type.GetElementType()!) ?? type.GetElementType();
+        }
+
+        var enumerableType = type
+            .GetInterfaces()
+            .Append(type)
+            .FirstOrDefault(candidate => candidate.IsGenericType
+                && candidate.GetGenericTypeDefinition() == typeof(IEnumerable<>));
+        return enumerableType is null
+            ? null
+            : Nullable.GetUnderlyingType(enumerableType.GetGenericArguments()[0]) ?? enumerableType.GetGenericArguments()[0];
     }
 
     private static async Task<IOpenApiSchema> GetProblemSchemaAsync(

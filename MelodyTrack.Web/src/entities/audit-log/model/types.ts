@@ -1,14 +1,4 @@
-import type { Ulid } from "@/shared/api";
+import type { RequiredApiContract } from "@/shared/api";
+import type { GetAuditLogsDto } from "@/shared/api/generated/models";
 
-export interface AuditLog {
-  id: Ulid;
-  createdAtUtc: string;
-  category: string;
-  action: string;
-  entityType: string;
-  entityId?: string | null;
-  actorEmail?: string | null;
-  actorDisplayName?: string | null;
-  sourceIpAddress?: string | null;
-  details?: string | null;
-}
+export type AuditLog = RequiredApiContract<GetAuditLogsDto, "id" | "createdAtUtc" | "category" | "action" | "entityType">;

@@ -1,14 +1,10 @@
-import { http } from "@/shared/api";
+import { http, type RequiredApiContract } from "@/shared/api";
+import type { OnboardingStateResponse as GeneratedOnboardingStateResponse } from "@/shared/api/generated/models";
 
-export interface OnboardingStateResponse {
-  status: "active" | "completed" | "skipped";
-  currentStep: string;
-  currentPath: string;
-  definitionVersion: number;
-  shouldLaunch: boolean;
-  updatedAtUtc: string;
-  completedAtUtc?: string | null;
-}
+export type OnboardingStateResponse = RequiredApiContract<
+  GeneratedOnboardingStateResponse,
+  "status" | "currentStep" | "currentPath" | "definitionVersion" | "shouldLaunch" | "updatedAtUtc"
+>;
 
 export const onboardingApi = {
   getState() {

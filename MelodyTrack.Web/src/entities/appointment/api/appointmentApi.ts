@@ -1,4 +1,5 @@
-import { type CreateEntityResponse, http, type Ulid } from "@/shared/api";
+import { type CreateEntityResponse, http, type RequiredApiContract, type Ulid } from "@/shared/api";
+import type { GetAppointmentsResponse, LookupRecurrenceTypesResponse } from "@/shared/api/generated/models";
 
 import type {
   Appointment,
@@ -9,14 +10,19 @@ import type {
   UpdateAppointmentInput,
 } from "../model/types";
 
+type AppointmentsResponse = Omit<RequiredApiContract<GetAppointmentsResponse, "appointments">, "appointments"> & {
+  appointments: Appointment[];
+};
+type RecurrenceTypesResponse = Omit<RequiredApiContract<LookupRecurrenceTypesResponse, "recurrenceTypes">, "recurrenceTypes"> & {
+  recurrenceTypes: RecurrenceType[];
+};
+
 export const appointmentsApi = {
   list(params: ListAppointmentsParams) {
-    return http.get<{ appointments: Appointment[] }>("/appointments", { params }).then((response) => response.data.appointments);
+    return http.get<AppointmentsResponse>("/appointments", { params }).then((response) => response.data.appointments);
   },
   recurrenceTypes() {
-    return http
-      .get<{ recurrenceTypes: RecurrenceType[] }>("/appointment-recurrence-types/options")
-      .then((response) => response.data.recurrenceTypes);
+    return http.get<RecurrenceTypesResponse>("/appointment-recurrence-types/options").then((response) => response.data.recurrenceTypes);
   },
   create(input: CreateAppointmentInput, options?: { idempotencyKey?: string; signal?: AbortSignal }) {
     return http.post<CreateEntityResponse>("/appointments", input, buildIdempotencyConfig(options)).then((response) => response.data);

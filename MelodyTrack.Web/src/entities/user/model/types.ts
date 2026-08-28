@@ -1,46 +1,39 @@
-import type { RecordActivity, Ulid } from "@/shared/api";
+import type { RecordActivity, RequiredApiContract } from "@/shared/api";
+import type {
+  CalendarSubscriptionResponse,
+  GetUsersDto,
+  LookupRolesDto,
+  UserAvailabilityResponse,
+  UserVacationDto,
+  UserWorkingHoursDayDto,
+} from "@/shared/api/generated/models";
 
-export interface User {
-  id: Ulid;
-  firstName: string;
-  lastName: string;
-  roleDisplayName: string;
-  telegram?: string | null;
-  vk?: string | null;
-  phone?: string | null;
+export type User = Omit<RequiredApiContract<GetUsersDto, "id" | "firstName" | "lastName" | "roleDisplayName">, "lastActivity"> & {
   lastActivity?: RecordActivity | null;
-}
+};
 
 export type WeekdayKey = "monday" | "tuesday" | "wednesday" | "thursday" | "friday" | "saturday" | "sunday";
 
-export interface UserWorkingHoursDay {
+export type UserWorkingHoursDay = Omit<RequiredApiContract<UserWorkingHoursDayDto, "dayOfWeek" | "isWorkingDay">, "dayOfWeek"> & {
   dayOfWeek: WeekdayKey;
-  isWorkingDay: boolean;
-  startTime?: string | null;
-  endTime?: string | null;
-}
+};
 
-export interface UserVacation {
-  id: Ulid;
-  startDate: string;
-  endDate: string;
-}
+export type UserVacation = RequiredApiContract<UserVacationDto, "id" | "startDate" | "endDate">;
 
-export interface UserAvailability {
-  userId: Ulid;
+export type UserAvailability = Omit<
+  RequiredApiContract<UserAvailabilityResponse, "userId" | "workingHours" | "vacations">,
+  "workingHours" | "vacations" | "lastActivity"
+> & {
   workingHours: UserWorkingHoursDay[];
   vacations: UserVacation[];
   lastActivity?: RecordActivity | null;
-}
+};
 
-export interface Role {
-  id: Ulid;
-  displayName: string;
-}
+export type Role = RequiredApiContract<LookupRolesDto, "id" | "displayName">;
 
-export interface CalendarSubscription {
-  id: Ulid;
-  token: string;
-  url: string;
+export type CalendarSubscription = Omit<
+  RequiredApiContract<CalendarSubscriptionResponse, "id" | "token" | "url" | "feedType">,
+  "feedType"
+> & {
   feedType: "user" | "client";
-}
+};

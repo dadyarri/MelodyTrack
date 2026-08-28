@@ -1,4 +1,9 @@
-import { type CreateEntityResponse, http, type PaginatedResponse, type Ulid } from "@/shared/api";
+import { type CreateEntityResponse, http, type PaginatedResponse, type RequiredApiContract, type Ulid } from "@/shared/api";
+import type {
+  CreateClientPortalLinkResponse,
+  GetClientsWithNegativeBalanceResponse,
+  LookupClientsResponse,
+} from "@/shared/api/generated/models";
 
 import type {
   Client,
@@ -12,6 +17,12 @@ import type {
   UpdateClientInput,
 } from "../model/types";
 
+type LookupResponse = Omit<RequiredApiContract<LookupClientsResponse, "clients">, "clients"> & { clients: LookupClient[] };
+type DebtorsResponse = Omit<RequiredApiContract<GetClientsWithNegativeBalanceResponse, "debtors">, "debtors"> & {
+  debtors: ClientWithBalance[];
+};
+type PortalLinkResponse = RequiredApiContract<CreateClientPortalLinkResponse, "url">;
+
 export const clientsApi = {
   list(params: ListClientsParams) {
     return http.get<PaginatedResponse<Client>>("/clients", { params }).then((response) => response.data);
@@ -24,7 +35,7 @@ export const clientsApi = {
   },
   lookup(search?: string, signal?: AbortSignal) {
     return http
-      .get<{ clients: LookupClient[] }>("/clients/options", {
+      .get<LookupResponse>("/clients/options", {
         params: search ? { search } : undefined,
         signal,
       })
@@ -54,13 +65,13 @@ export const clientsApi = {
     return http.patch<unknown>(`/clients/${id}/lead-status`, { isClosed }).then(() => undefined);
   },
   debtors() {
-    return http.get<{ debtors: ClientWithBalance[] }>("/client-debts").then((response) => response.data.debtors);
+    return http.get<DebtorsResponse>("/client-debts").then((response) => response.data.debtors);
   },
   exportDebtors() {
     return http.get<Blob>("/exports/client-debts", { responseType: "blob" }).then((response) => response.data);
   },
   createPortalLink(id: Ulid) {
-    return http.post<{ url: string }>(`/clients/${id}/portal-links`, {}).then((response) => response.data);
+    return http.post<PortalLinkResponse>(`/clients/${id}/portal-links`, {}).then((response) => response.data);
   },
   revokePortalLink(id: Ulid) {
     return http.delete<unknown>(`/clients/${id}/portal-links`).then(() => undefined);

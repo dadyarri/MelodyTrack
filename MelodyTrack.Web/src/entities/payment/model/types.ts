@@ -1,40 +1,28 @@
-import type { PaginatedResponse, RecordActivity, Ulid } from "@/shared/api";
+import type { PaginatedResponse, RecordActivity, RequiredApiContract } from "@/shared/api";
+import type {
+  CreatePaymentRequest,
+  GetPaymentsClientDto,
+  GetPaymentsDto,
+  GetPaymentsResponse,
+  GetPaymentsServiceDto,
+  MoneyListSummaryDto,
+} from "@/shared/api/generated/models";
 
-export interface PaymentClient {
-  id: Ulid;
-  firstName: string;
-  lastName: string;
-  patronymic?: string | null;
-}
+export type PaymentClient = RequiredApiContract<GetPaymentsClientDto, "id" | "firstName" | "lastName">;
 
-export interface PaymentService {
-  id: Ulid;
-  name: string;
-}
+export type PaymentService = RequiredApiContract<GetPaymentsServiceDto, "id" | "name">;
 
-export interface Payment {
-  id: Ulid;
+export type Payment = Omit<
+  RequiredApiContract<GetPaymentsDto, "id" | "client" | "amount" | "date">,
+  "client" | "service" | "lastActivity"
+> & {
   client: PaymentClient;
   service?: PaymentService | null;
-  amount: number;
-  date: string;
-  description?: string | null;
   lastActivity?: RecordActivity | null;
-}
+};
 
-export interface PaymentInput {
-  clientId: Ulid;
-  serviceId?: Ulid;
-  amount: number;
-  date: string;
-  description?: string;
-}
+export type PaymentInput = RequiredApiContract<CreatePaymentRequest, "clientId" | "amount" | "date">;
 
-export interface PaymentsResponse extends PaginatedResponse<Payment> {
-  summary: {
-    totalAmount: number;
-    itemsCount: number;
-    firstItemAtUtc?: string | null;
-    lastItemAtUtc?: string | null;
-  };
-}
+type PaymentSummary = RequiredApiContract<MoneyListSummaryDto, "totalAmount" | "itemsCount">;
+export type PaymentsResponse = Omit<RequiredApiContract<GetPaymentsResponse, "items" | "page" | "summary">, "items" | "page" | "summary"> &
+  PaginatedResponse<Payment> & { summary: PaymentSummary };

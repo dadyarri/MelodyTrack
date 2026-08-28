@@ -1,27 +1,12 @@
-import type { PaginatedResponse, RecordActivity, Ulid } from "@/shared/api";
+import type { PaginatedResponse, RecordActivity, RequiredApiContract } from "@/shared/api";
+import type { CreateExpenseRequest, ExpenseDto, GetExpensesResponse, MoneyListSummaryDto } from "@/shared/api/generated/models";
 
-export interface Expense {
-  id: Ulid;
-  description: string;
-  amount: number;
-  date: string;
-  categoryId?: Ulid | null;
-  categoryName?: string | null;
+export type Expense = Omit<RequiredApiContract<ExpenseDto, "id" | "description" | "amount" | "date">, "lastActivity"> & {
   lastActivity?: RecordActivity | null;
-}
+};
 
-export interface ExpenseInput {
-  description: string;
-  amount: number;
-  date: string;
-  categoryId?: Ulid;
-}
+export type ExpenseInput = RequiredApiContract<CreateExpenseRequest, "description" | "amount" | "date">;
 
-export interface ExpensesResponse extends PaginatedResponse<Expense> {
-  summary: {
-    totalAmount: number;
-    itemsCount: number;
-    firstItemAtUtc?: string | null;
-    lastItemAtUtc?: string | null;
-  };
-}
+type ExpenseSummary = RequiredApiContract<MoneyListSummaryDto, "totalAmount" | "itemsCount">;
+export type ExpensesResponse = Omit<RequiredApiContract<GetExpensesResponse, "items" | "page" | "summary">, "items" | "page" | "summary"> &
+  PaginatedResponse<Expense> & { summary: ExpenseSummary };

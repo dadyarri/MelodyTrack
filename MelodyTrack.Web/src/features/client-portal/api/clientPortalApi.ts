@@ -1,22 +1,37 @@
 import type { AppointmentStatus } from "@/entities/appointment";
 import type { CourseEnrollment } from "@/entities/course";
-import { http } from "@/shared/api";
+import { type ApiJsonContract, http, type RequiredApiContract } from "@/shared/api";
+import type {
+  ClientPortalAppointmentDto,
+  ClientPortalCourseThemeDto,
+  GetClientPortalScheduleResponse,
+  GetCourseEnrollmentsResponse,
+} from "@/shared/api/generated/models";
 
-export interface ClientPortalAppointment {
-  id: string;
-  startDate: string;
-  endDate: string;
+type ClientPortalCourseTheme = RequiredApiContract<ClientPortalCourseThemeDto, "id" | "title">;
+export type ClientPortalAppointment = Omit<
+  RequiredApiContract<ClientPortalAppointmentDto, "id" | "startDate" | "endDate" | "status">,
+  "status" | "courseTheme"
+> & {
   status: AppointmentStatus;
-  courseTheme?: { id: string; title: string } | null;
-}
+  courseTheme?: ClientPortalCourseTheme | null;
+};
+type ClientPortalScheduleResponse = Omit<ApiJsonContract<GetClientPortalScheduleResponse>, "nextAppointment"> & {
+  nextAppointment?: ClientPortalAppointment | null;
+};
+type ClientPortalCourseEnrollmentsResponse = Omit<RequiredApiContract<GetCourseEnrollmentsResponse, "enrollments">, "enrollments"> & {
+  enrollments: CourseEnrollment[];
+};
 
 export const clientPortalApi = {
   schedule(params: { timezone: string }) {
     return http
-      .get<{ nextAppointment: ClientPortalAppointment | null }>("/client-portal/schedule", { params })
-      .then((response) => response.data.nextAppointment);
+      .get<ClientPortalScheduleResponse>("/client-portal/schedule", { params })
+      .then((response) => response.data.nextAppointment ?? null);
   },
   courseEnrollments() {
-    return http.get<{ enrollments: CourseEnrollment[] }>("/client-portal/course-enrollments").then((response) => response.data.enrollments);
+    return http
+      .get<ClientPortalCourseEnrollmentsResponse>("/client-portal/course-enrollments")
+      .then((response) => response.data.enrollments);
   },
 };

@@ -1,6 +1,10 @@
-import { type CreateEntityResponse, http, type Ulid } from "@/shared/api";
+import { type CreateEntityResponse, http, type RequiredApiContract, type Ulid } from "@/shared/api";
+import type { GetDueRecurringTasksResponse, GetRecurringTaskRulesResponse } from "@/shared/api/generated/models";
 
 import type { CreateCustomTaskInput, RecurringTask, RecurringTaskListStatus, RecurringTaskRule, RecurringTaskType } from "../model/types";
+
+type DueTasksResponse = Omit<RequiredApiContract<GetDueRecurringTasksResponse, "tasks">, "tasks"> & { tasks: RecurringTask[] };
+type RulesResponse = Omit<RequiredApiContract<GetRecurringTaskRulesResponse, "rules">, "rules"> & { rules: RecurringTaskRule[] };
 
 interface TaskIdentity {
   timezone: string;
@@ -15,7 +19,7 @@ interface TaskIdentity {
 export const tasksApi = {
   due(params: { timezone: string; status?: RecurringTaskListStatus; type?: RecurringTaskType | "all" }) {
     return http
-      .get<{ tasks: RecurringTask[] }>("/tasks", {
+      .get<DueTasksResponse>("/tasks", {
         params: { ...params, type: params.type && params.type !== "all" ? params.type : undefined },
       })
       .then((response) => response.data.tasks);
@@ -36,7 +40,7 @@ export const tasksApi = {
     return http.get<Blob>("/exports/teacher-schedule", { params, responseType: "blob" }).then((response) => response.data);
   },
   rules() {
-    return http.get<{ rules: RecurringTaskRule[] }>("/recurring-task-rules").then((response) => response.data.rules);
+    return http.get<RulesResponse>("/recurring-task-rules").then((response) => response.data.rules);
   },
   updateRule(
     id: Ulid,

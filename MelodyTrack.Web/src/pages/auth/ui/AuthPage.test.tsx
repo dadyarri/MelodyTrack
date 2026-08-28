@@ -12,8 +12,10 @@ const { loginMock } = vi.hoisted(() => ({
   loginMock: vi.fn(),
 }));
 
+type SessionModule = { authApi: Record<string, unknown> } & Record<string, unknown>;
+
 vi.mock("@/entities/session", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/entities/session")>();
+  const actual = await importOriginal<SessionModule>();
 
   return {
     ...actual,

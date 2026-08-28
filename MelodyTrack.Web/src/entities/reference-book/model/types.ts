@@ -1,7 +1,6 @@
-import type { RecordActivity, Ulid } from "@/shared/api";
+import type { RecordActivity, RequiredApiContract } from "@/shared/api";
+import type { ReferenceBookItemDto } from "@/shared/api/generated/models";
 
-export interface ReferenceBookItem {
-  id: Ulid;
-  name: string;
+export type ReferenceBookItem = Omit<RequiredApiContract<ReferenceBookItemDto, "id" | "name">, "lastActivity"> & {
   lastActivity?: RecordActivity | null;
-}
+};

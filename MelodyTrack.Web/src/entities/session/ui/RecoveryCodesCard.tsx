@@ -4,10 +4,7 @@ import { copyTextToClipboard } from "@/shared/lib";
 import { authScreenStyles as styles } from "@/shared/ui";
 import { CopyOutlined, DownloadOutlined } from "@/shared/ui/icons";
 
-export interface RecoveryCodeItem {
-  code: string;
-  wasUsed: boolean;
-}
+import type { RecoveryCodeItem } from "../api/sessionApi";
 
 interface RecoveryCodesCardProps {
   items: RecoveryCodeItem[];

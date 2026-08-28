@@ -1,69 +1,41 @@
-import type { RecordActivity, Ulid } from "@/shared/api";
+import type { ApiJsonContract, RecordActivity, RequiredApiContract, Ulid } from "@/shared/api";
+import type {
+  AppointmentClientContactsDto,
+  AppointmentClientDto,
+  AppointmentCourseThemeDto,
+  AppointmentDto,
+  AppointmentProviderDto,
+  AppointmentRecurrenceRuleDto,
+  AppointmentServiceDto,
+  CreateAppointmentRequest,
+  LookupRecurrenceTypeDto,
+  UpdateAppointmentRequest,
+} from "@/shared/api/generated/models";
 
 export type AppointmentStatus = "planned" | "completed" | "cancelled" | "burned";
 export type AppointmentMutationScope = "single" | "this-and-following" | "all" | "weekday-this-and-following" | "weekday-all";
 
-export interface AppointmentClientContacts {
-  id?: Ulid | null;
-  telegram?: string | null;
-  vk?: string | null;
-  phone?: string | null;
-}
-
-export interface AppointmentClient {
-  id: Ulid;
-  firstName: string;
-  lastName: string;
-  patronymic?: string | null;
+export type AppointmentClientContacts = ApiJsonContract<AppointmentClientContactsDto>;
+export type AppointmentClient = Omit<RequiredApiContract<AppointmentClientDto, "id" | "firstName" | "lastName">, "contacts"> & {
   contacts?: AppointmentClientContacts | null;
-}
-
-export interface AppointmentService {
-  id: Ulid;
-  name: string;
-}
-
-export interface AppointmentProvider {
-  id: Ulid;
-  firstName: string;
-  lastName: string;
-  roleDisplayName: string;
-}
-
-export interface AppointmentCourseTheme {
-  id: Ulid;
-  title: string;
-  courseId: Ulid;
-  courseName: string;
-}
-
-export interface AppointmentRecurrenceRule {
-  id: Ulid;
-  startDate: string;
-  endDate?: string | null;
-  key: string;
-  recurrencePattern?: number | null;
-}
-
-export interface Appointment {
-  id: Ulid;
+};
+export type AppointmentService = RequiredApiContract<AppointmentServiceDto, "id" | "name">;
+export type AppointmentProvider = RequiredApiContract<AppointmentProviderDto, "id" | "firstName" | "lastName" | "roleDisplayName">;
+export type AppointmentCourseTheme = RequiredApiContract<AppointmentCourseThemeDto, "id" | "title" | "courseId" | "courseName">;
+export type AppointmentRecurrenceRule = RequiredApiContract<AppointmentRecurrenceRuleDto, "id" | "startDate" | "key">;
+export type Appointment = Omit<
+  RequiredApiContract<AppointmentDto, "id" | "client" | "service" | "startDate" | "endDate" | "status">,
+  "client" | "service" | "provider" | "courseTheme" | "recurringRule" | "lastActivity" | "status"
+> & {
   client: AppointmentClient;
   service: AppointmentService;
   provider?: AppointmentProvider | null;
   courseTheme?: AppointmentCourseTheme | null;
-  lessonNotes?: string | null;
-  startDate: string;
-  endDate: string;
-  status: AppointmentStatus;
   recurringRule?: AppointmentRecurrenceRule | null;
   lastActivity?: RecordActivity | null;
-}
-
-export interface RecurrenceType {
-  id: Ulid;
-  key: string;
-  displayName: string;
-}
+  status: AppointmentStatus;
+};
+export type RecurrenceType = RequiredApiContract<LookupRecurrenceTypeDto, "id" | "key" | "displayName">;
 
 export type ListAppointmentsParams = {
   timezone: string;
@@ -71,35 +43,12 @@ export type ListAppointmentsParams = {
   endDate: string;
 };
 
-export type CreateAppointmentInput = {
-  clientId: Ulid;
-  serviceId: Ulid;
-  providerId?: Ulid | null;
-  courseThemeId?: Ulid | null;
-  recurrenceTypeId?: Ulid | null;
-  lessonNotes?: string | null;
-  startDate: string;
-  timezone: string;
-  patternEndDate?: string | null;
-  recurrencePattern?: number | null;
-};
+export type CreateAppointmentInput = RequiredApiContract<CreateAppointmentRequest, "clientId" | "serviceId" | "startDate" | "timezone">;
 
-export type UpdateAppointmentInput = Partial<{
-  clientId: Ulid | null;
-  serviceId: Ulid | null;
-  providerId: Ulid | null;
-  courseThemeId: Ulid | null;
-  hasCourseThemeSelection: boolean;
-  recurrenceTypeId: Ulid | null;
-  lessonNotes: string | null;
-  hasLessonNotes: boolean;
-  startDate: string | null;
-  timezone: string | null;
-  status: AppointmentStatus | null;
-  scope: AppointmentMutationScope | null;
-  recurrencePattern: number | null;
-  expectedActivityId: Ulid;
-}>;
+export type UpdateAppointmentInput = Omit<ApiJsonContract<UpdateAppointmentRequest>, "status" | "scope"> & {
+  status?: AppointmentStatus | null;
+  scope?: AppointmentMutationScope | null;
+};
 
 export type DeleteAppointmentInput = {
   scope?: AppointmentMutationScope | null;

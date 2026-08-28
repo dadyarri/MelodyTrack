@@ -1,15 +1,20 @@
-import { type CreateEntityResponse, http, type Ulid } from "@/shared/api";
+import { type CreateEntityResponse, http, type RequiredApiContract, type Ulid } from "@/shared/api";
+import type { GetCourseEnrollmentsResponse, GetCourseResponse, GetCoursesResponse } from "@/shared/api/generated/models";
 
 import type { Course, CourseEnrollment, CourseEnrollmentThemeProgressAction, CourseStructureInput, CourseSummary } from "../model/types";
 
+type CoursesResponse = Omit<RequiredApiContract<GetCoursesResponse, "courses">, "courses"> & { courses: CourseSummary[] };
+type CourseResponse = Omit<RequiredApiContract<GetCourseResponse, "course">, "course"> & { course: Course };
+type CourseEnrollmentsResponse = Omit<RequiredApiContract<GetCourseEnrollmentsResponse, "enrollments">, "enrollments"> & {
+  enrollments: CourseEnrollment[];
+};
+
 export const coursesApi = {
   list(search?: string) {
-    return http
-      .get<{ courses: CourseSummary[] }>("/courses", { params: search ? { search } : undefined })
-      .then((response) => response.data.courses);
+    return http.get<CoursesResponse>("/courses", { params: search ? { search } : undefined }).then((response) => response.data.courses);
   },
   get(id: Ulid) {
-    return http.get<{ course: Course }>(`/courses/${id}`).then((response) => response.data.course);
+    return http.get<CourseResponse>(`/courses/${id}`).then((response) => response.data.course);
   },
   create(input: Omit<CourseStructureInput, "levels" | "blocks"> & Partial<Pick<CourseStructureInput, "levels" | "blocks">>) {
     return http.post<CreateEntityResponse>("/courses", input).then((response) => response.data);
@@ -29,7 +34,7 @@ export const coursesApi = {
 export const courseEnrollmentsApi = {
   list(params?: { clientId?: Ulid; courseId?: Ulid }) {
     return http
-      .get<{ enrollments: CourseEnrollment[] }>("/course-enrollments", {
+      .get<CourseEnrollmentsResponse>("/course-enrollments", {
         params: params && (params.clientId || params.courseId) ? params : undefined,
       })
       .then((response) => response.data.enrollments);

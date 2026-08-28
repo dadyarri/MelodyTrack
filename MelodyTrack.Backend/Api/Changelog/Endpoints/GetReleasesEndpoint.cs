@@ -1,27 +1,29 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Releases.Requests;
 using MelodyTrack.Backend.Api.Releases.Responses;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.Api.Releases.Endpoints;
 
 [ApiEndpoint(ApiMethod.Get, "/releases")]
 public sealed class GetReleasesEndpoint
 {
-
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Releases)]
-    public static IResult HandleAsync(
+    [ProducesResponseType<ReleasesResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status304NotModified)]
+    public static Results<Ok<ReleasesResponse>, StatusCodeHttpResult> HandleAsync(
         [AsParameters] GetReleasesRequest req,
         ReleaseChangelog changelog,
         HttpContext httpContext,
-        CancellationToken ct
-    )
+        CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
         if (GetCurrentReleaseEndpoint.ApplyCaching(httpContext, changelog.Etag))
         {
             return TypedResults.StatusCode(StatusCodes.Status304NotModified);

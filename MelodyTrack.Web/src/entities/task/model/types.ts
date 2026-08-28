@@ -1,4 +1,5 @@
-import type { RecordActivity, Ulid } from "@/shared/api";
+import type { RecordActivity, RequiredApiContract } from "@/shared/api";
+import type { CreateCustomTaskRequest, RecurringTaskDto, RecurringTaskRuleDto } from "@/shared/api/generated/models";
 
 export type RecurringTaskType =
   | "appointment-reminder"
@@ -11,43 +12,23 @@ export type RecurringTaskType =
 
 export type RecurringTaskListStatus = "open" | "completed" | "cancelled" | "delayed";
 
-export interface RecurringTask {
-  ruleId: Ulid;
+export type RecurringTask = Omit<
+  RequiredApiContract<
+    RecurringTaskDto,
+    "ruleId" | "type" | "recipientType" | "deduplicationKey" | "title" | "relatedPersonDisplayName" | "businessDate" | "preparedMessage"
+  >,
+  "type" | "recipientType"
+> & {
   type: RecurringTaskType;
   recipientType: "client" | "teacher" | "external";
-  deduplicationKey: string;
-  clientId?: Ulid | null;
-  teacherId?: Ulid | null;
-  appointmentId?: Ulid | null;
-  title: string;
-  relatedPersonDisplayName: string;
-  relevantAtUtc?: string | null;
-  delayedUntilUtc?: string | null;
-  businessDate: string;
-  phone?: string | null;
-  telegram?: string | null;
-  vk?: string | null;
-  preparedMessage: string;
-}
+};
 
-export interface CreateCustomTaskInput {
-  clientId?: Ulid | null;
-  recipientName?: string | null;
-  phone?: string | null;
-  telegram?: string | null;
-  vk?: string | null;
-  title: string;
-  messageText: string;
-  dueAtUtc: string;
-}
+export type CreateCustomTaskInput = RequiredApiContract<CreateCustomTaskRequest, "title" | "messageText" | "dueAtUtc">;
 
-export interface RecurringTaskRule {
-  id: Ulid;
-  name: string;
+export type RecurringTaskRule = Omit<
+  RequiredApiContract<RecurringTaskRuleDto, "id" | "name" | "type" | "isEnabled" | "messageTemplate">,
+  "type" | "lastActivity"
+> & {
   type: RecurringTaskType;
-  isEnabled: boolean;
-  messageTemplate: string;
-  offsetMinutes?: number | null;
-  cooldownDays?: number | null;
   lastActivity?: RecordActivity | null;
-}
+};

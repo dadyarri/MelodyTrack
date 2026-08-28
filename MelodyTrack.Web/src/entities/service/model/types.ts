@@ -1,24 +1,10 @@
-import type { RecordActivity, Ulid } from "@/shared/api";
+import type { RecordActivity, RequiredApiContract } from "@/shared/api";
+import type { CreateServiceRequest, LookupServicesDto, ServiceWithCurrentPriceDto } from "@/shared/api/generated/models";
 
-export interface Service {
-  id: Ulid;
-  name: string;
-  publicName?: string | null;
-  description?: string | null;
-  isConsultation: boolean;
-  price: number;
+export type Service = Omit<RequiredApiContract<ServiceWithCurrentPriceDto, "id" | "name" | "isConsultation" | "price">, "lastActivity"> & {
   lastActivity?: RecordActivity | null;
-}
+};
 
-export interface LookupService {
-  id: Ulid;
-  name: string;
-  price?: number;
-}
+export type LookupService = RequiredApiContract<LookupServicesDto, "id" | "name" | "price">;
 
-export interface ServiceInput {
-  name: string;
-  publicName?: string;
-  description?: string;
-  isConsultation: boolean;
-}
+export type ServiceInput = Omit<RequiredApiContract<CreateServiceRequest, "name" | "isConsultation">, "price">;

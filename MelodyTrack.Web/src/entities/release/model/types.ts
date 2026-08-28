@@ -1,24 +1,29 @@
-export type ReleaseChanges = {
-  new: string[];
-  improved: string[];
-  fixed: string[];
-  security: string[];
+import type { ApiJsonContract, RequiredApiContract } from "@/shared/api";
+import type {
+  ReleaseChanges as GeneratedReleaseChanges,
+  ReleaseResponse as GeneratedReleaseResponse,
+  ReleasesResponse as GeneratedReleasesResponse,
+} from "@/shared/api/generated/models";
+
+type GeneratedChanges = RequiredApiContract<GeneratedReleaseChanges, "newEscaped" | "improved" | "fixed" | "security">;
+
+export type ReleaseChanges = Omit<GeneratedChanges, "newEscaped"> & {
+  new: GeneratedChanges["newEscaped"];
 };
 
-export type ReleaseEntry = {
-  version: string;
-  codename: string;
-  date: string;
+type GeneratedEntry = RequiredApiContract<GeneratedReleaseResponse, "version" | "codename" | "date" | "changes">;
+
+export type ReleaseEntry = Omit<GeneratedEntry, "changes" | "parentVersion"> & {
   changes: ReleaseChanges;
-  parentVersion: string | null;
+  parentVersion: Exclude<ApiJsonContract<GeneratedReleaseResponse>["parentVersion"], undefined>;
 };
 
-export type ReleaseHistory = {
-  currentVersion: string;
+export type ReleaseHistory = Omit<
+  RequiredApiContract<
+    GeneratedReleasesResponse,
+    "currentVersion" | "releases" | "page" | "pageSize" | "totalCount" | "totalPages" | "hasNextPage"
+  >,
+  "releases"
+> & {
   releases: ReleaseEntry[];
-  page: number;
-  pageSize: number;
-  totalCount: number;
-  totalPages: number;
-  hasNextPage: boolean;
 };

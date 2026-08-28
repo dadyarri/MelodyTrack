@@ -231,6 +231,12 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         clientId.GetProperty("type").GetString().ShouldBe("string");
         clientId.TryGetProperty("format", out _).ShouldBeFalse();
 
+        var dependencyThemeIds = schemas.GetProperty("CourseThemeDto")
+            .GetProperty("properties")
+            .GetProperty("dependencyThemeIds");
+        dependencyThemeIds.GetProperty("type").GetString().ShouldBe("array");
+        dependencyThemeIds.GetProperty("items").GetProperty("type").GetString().ShouldBe("string");
+
         var problemStatus = schemas.GetProperty(nameof(ApiProblemDetails)).GetProperty("properties").GetProperty("status");
         problemStatus.GetProperty("type").GetString().ShouldBe("integer");
 

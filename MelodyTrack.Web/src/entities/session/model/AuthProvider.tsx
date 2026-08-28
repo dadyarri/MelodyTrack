@@ -5,7 +5,7 @@ import { authExpiredEventName, configureHttpSession, http, normalizeAppError, re
 import { clearReferenceLabels } from "@/shared/lib";
 
 import { authQueryKeys } from "../api/queryKeys";
-import { authApi, type MeResponse } from "../api/sessionApi";
+import { authApi, type LoginResponse, type MeResponse } from "../api/sessionApi";
 import { AuthContext, type AuthContextValue } from "./AuthContext";
 import { authStore } from "./authStore";
 import { logoutSession } from "./logoutSession";
@@ -112,9 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: hasSession && Boolean(meQuery.data ?? cachedUser),
       user: meQuery.data ?? cachedUser,
       async login(input) {
-        const response = await http.post<{
-          accessToken: string;
-        }>("/auth/login", input);
+        const response = await http.post<LoginResponse>("/auth/login", input);
         return loadMe(response.data.accessToken);
       },
       async establishSession(accessToken) {

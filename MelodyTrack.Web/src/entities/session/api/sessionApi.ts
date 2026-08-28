@@ -1,160 +1,92 @@
-import { http, type RecordActivity } from "@/shared/api";
+import { http, type RecordActivity, type RequiredApiContract } from "@/shared/api";
+import type {
+  AuthenticateClientPortalLinkRequest,
+  AuthenticateSavedClientPortalIdentityRequest,
+  ChangePasswordRequest,
+  ClientPortalAuthenticationResponse as GeneratedClientPortalAuthenticationResponse,
+  CreateInviteRequest,
+  CreateInviteResponse as GeneratedCreateInviteResponse,
+  CreatePasswordResetLinkResponse as GeneratedCreatePasswordResetLinkResponse,
+  GetClientPortalLinkStatusResponse,
+  GetInviteCodeInformationResponse,
+  GetSavedClientPortalIdentityStatusResponse,
+  GetSessionsResponse,
+  LoginAttemptResponse,
+  LoginRequest,
+  LoginResponse as GeneratedLoginResponse,
+  MeResponse as GeneratedMeResponse,
+  Recover2FaRequest,
+  Recover2FaResponse as GeneratedRecover2FaResponse,
+  RecoveryCodeDto,
+  RecoveryCodesResponse as GeneratedRecoveryCodesResponse,
+  RegisterRequest,
+  RegisterResponse as GeneratedRegisterResponse,
+  ResetPasswordRequest,
+  SavedClientPortalIdentityResponse,
+  SessionDto as GeneratedSessionDto,
+  Setup2FaRequest,
+  Setup2FaResponse as GeneratedSetup2FaResponse,
+  Verify2FaRequest,
+} from "@/shared/api/generated/models";
 
-export interface InviteInfo {
-  email?: string | null;
-}
-
-export interface RegisterInput {
-  inviteCode: string;
-  email: string;
-  password: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface RegisterResponse {
-  totpRequired: boolean;
-  secret?: string | null;
-  otpUrl?: string | null;
-}
-
-export interface Verify2FaInput {
-  email: string;
-  otp: string;
-  otpSecret: string;
-}
-
-export interface Recover2FaInput {
-  email: string;
-  recoveryCode: string;
-}
-
-export interface RecoveryCodesResponse {
+export type InviteInfo = RequiredApiContract<GetInviteCodeInformationResponse, never>;
+export type RegisterInput = RequiredApiContract<RegisterRequest, "inviteCode" | "email" | "password" | "firstName" | "lastName">;
+export type RegisterResponse = RequiredApiContract<GeneratedRegisterResponse, "totpRequired">;
+export type Verify2FaInput = RequiredApiContract<Verify2FaRequest, "email" | "otp" | "otpSecret">;
+export type Recover2FaInput = RequiredApiContract<Recover2FaRequest, "email" | "recoveryCode">;
+export type RecoveryCodeItem = RequiredApiContract<RecoveryCodeDto, "code" | "wasUsed">;
+export type RecoveryCodesResponse = Omit<RequiredApiContract<GeneratedRecoveryCodesResponse, "allCodes">, "allCodes"> & {
   allCodes: RecoveryCodeItem[];
-}
-
-export interface RecoveryCodeItem {
-  code: string;
-  wasUsed: boolean;
-}
-
-export interface Recover2FaResponse {
-  accessToken: string;
-  secret: string;
-  otpUrl: string;
-  allCodes: RecoveryCodeItem[];
-}
-
-export interface LoginResponse {
-  accessToken: string;
-  firstName: string;
-  lastName: string;
-}
-
-export interface ClientPortalLinkStatusResponse {
-  firstName: string;
-  hasPin: boolean;
-}
-
-export interface ClientPortalPinAuthInput {
-  token: string;
-  pin: string;
-  pinConfirmation?: string;
-}
-
-export interface SavedClientIdentityDto {
-  identityId: string;
-  reference: string;
-  displayLabel: string;
-  lastUsedAtUtc: string;
-}
-
-export interface ClientPortalAuthenticationResponse extends LoginResponse {
-  savedIdentity: SavedClientIdentityDto;
-}
-
-export interface SavedClientPortalStatusResponse {
-  displayLabel: string;
-}
-
-export interface LoginChallengeResponse {
-  requiresTwoFactor: boolean;
-  canUseOtp: boolean;
-  canUseRecoveryCode: boolean;
-}
+};
+export type Recover2FaResponse = Omit<
+  RequiredApiContract<GeneratedRecover2FaResponse, "accessToken" | "secret" | "otpUrl" | "allCodes">,
+  "allCodes"
+> & { allCodes: RecoveryCodeItem[] };
+export type LoginResponse = RequiredApiContract<GeneratedLoginResponse, "accessToken" | "firstName" | "lastName">;
+export type ClientPortalLinkStatusResponse = RequiredApiContract<GetClientPortalLinkStatusResponse, "firstName" | "hasPin">;
+export type ClientPortalPinAuthInput = RequiredApiContract<AuthenticateClientPortalLinkRequest, "token" | "pin">;
+type SavedClientPortalPinAuthInput = RequiredApiContract<AuthenticateSavedClientPortalIdentityRequest, "reference" | "pin">;
+export type SavedClientIdentityDto = RequiredApiContract<
+  SavedClientPortalIdentityResponse,
+  "identityId" | "reference" | "displayLabel" | "lastUsedAtUtc"
+>;
+export type ClientPortalAuthenticationResponse = Omit<
+  RequiredApiContract<GeneratedClientPortalAuthenticationResponse, "accessToken" | "firstName" | "lastName" | "savedIdentity">,
+  "savedIdentity"
+> & { savedIdentity: SavedClientIdentityDto };
+export type SavedClientPortalStatusResponse = RequiredApiContract<GetSavedClientPortalIdentityStatusResponse, "displayLabel">;
+export type LoginChallengeResponse = RequiredApiContract<LoginAttemptResponse, "requiresTwoFactor" | "canUseOtp" | "canUseRecoveryCode">;
 
 export type LoginAttemptResult = ({ kind: "success" } & LoginResponse) | ({ kind: "challenge" } & LoginChallengeResponse);
 
-export interface LoginInput {
-  email: string;
-  password: string;
-  otp?: string;
-  recoveryCode?: string;
-}
-
-export interface ResetPasswordInput {
-  token: string;
-  newPassword: string;
-  otp?: string;
-  recoveryCode?: string;
-}
-
-export interface Setup2FaInput {
-  password: string;
-}
-
-export interface Setup2FaResponse {
-  secret: string;
-  otpUrl: string;
-}
-
-export interface MeResponse {
-  id: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  roleDisplayName: string;
-  phone?: string | null;
-  telegram?: string | null;
-  vk?: string | null;
+export type LoginInput = RequiredApiContract<LoginRequest, "email" | "password">;
+export type ResetPasswordInput = RequiredApiContract<ResetPasswordRequest, "token" | "newPassword">;
+export type Setup2FaInput = RequiredApiContract<Setup2FaRequest, "password">;
+export type Setup2FaResponse = RequiredApiContract<GeneratedSetup2FaResponse, "secret" | "otpUrl">;
+export type MeResponse = Omit<
+  RequiredApiContract<
+    GeneratedMeResponse,
+    | "id"
+    | "email"
+    | "firstName"
+    | "lastName"
+    | "roleDisplayName"
+    | "isAdmin"
+    | "isSuperuser"
+    | "isClientPortal"
+    | "isTwoFactorEnabled"
+    | "isTwoFactorRequired"
+  >,
+  "lastActivity"
+> & {
   lastActivity?: RecordActivity | null;
-  isAdmin: boolean;
-  isSuperuser: boolean;
-  isClientPortal: boolean;
-  linkedClientId?: string | null;
-  balance?: number | null;
-  isTwoFactorEnabled: boolean;
-  isTwoFactorRequired: boolean;
-}
-
-export interface ChangePasswordInput {
-  currentPassword: string;
-  newPassword: string;
-}
-
-export interface SessionDto {
-  id: string;
-  deviceInfo: string;
-  isCurrent: boolean;
-  createdAtUtc: string;
-}
-
-export interface SessionsResponse {
-  data: SessionDto[];
-}
-
-export interface CreateInviteInput {
-  email?: string;
-  role: string;
-}
-
-export interface CreateInviteResponse {
-  url: string;
-}
-
-export interface CreatePasswordResetLinkResponse {
-  url: string;
-}
+};
+export type ChangePasswordInput = RequiredApiContract<ChangePasswordRequest, "currentPassword" | "newPassword">;
+export type SessionDto = RequiredApiContract<GeneratedSessionDto, "id" | "deviceInfo" | "isCurrent" | "createdAtUtc">;
+export type SessionsResponse = Omit<RequiredApiContract<GetSessionsResponse, "data">, "data"> & { data: SessionDto[] };
+export type CreateInviteInput = RequiredApiContract<CreateInviteRequest, "role">;
+export type CreateInviteResponse = RequiredApiContract<GeneratedCreateInviteResponse, "url">;
+export type CreatePasswordResetLinkResponse = RequiredApiContract<GeneratedCreatePasswordResetLinkResponse, "url">;
 
 export const authApi = {
   getInviteInfo(inviteCode: string) {
@@ -199,7 +131,7 @@ export const authApi = {
       .get<SavedClientPortalStatusResponse>("/client-portal/auth/saved", { params: { reference } })
       .then((response) => response.data);
   },
-  authenticateSavedClientPortalIdentity(input: { reference: string; pin: string }) {
+  authenticateSavedClientPortalIdentity(input: SavedClientPortalPinAuthInput) {
     return http.post<ClientPortalAuthenticationResponse>("/client-portal/auth/saved", input).then((response) => response.data);
   },
   verify2Fa(input: Verify2FaInput) {
