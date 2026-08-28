@@ -26,16 +26,6 @@ describe("authStore", () => {
     expect(authStore.hasSession()).toBe(false);
   });
 
-  it("removes a legacy persisted access token and does not treat it as a session", () => {
-    localStorage.setItem("melodytrack.accessToken", "access");
-    localStorage.setItem("melodytrack.portalClients", JSON.stringify([{ token: "secret" }]));
-
-    expect(authStore.hasSession()).toBe(false);
-    authStore.clear();
-    expect(localStorage.getItem("melodytrack.accessToken")).toBeNull();
-    expect(localStorage.getItem("melodytrack.portalClients")).toBeNull();
-  });
-
   it("retains approved saved-client chooser metadata when the active session is cleared", () => {
     localStorage.setItem("melodytrack.savedClientIdentities", '{"version":1,"identities":[]}');
     authStore.setSession("access");
@@ -45,14 +35,11 @@ describe("authStore", () => {
     expect(localStorage.getItem("melodytrack.savedClientIdentities")).toBe('{"version":1,"identities":[]}');
   });
 
-  it("discards a legacy refresh token and observes logout performed by another tab", () => {
+  it("observes logout performed by another tab", () => {
     const listener = vi.fn();
     const unsubscribe = authStore.subscribe(listener);
-    localStorage.setItem("melodytrack.refreshToken", "legacy-refresh");
-    expect(authStore.hasSession()).toBe(false);
 
     authStore.setSession("access");
-    expect(localStorage.getItem("melodytrack.refreshToken")).toBeNull();
     listener.mockClear();
 
     localStorage.removeItem("melodytrack.hasSession");

@@ -9,6 +9,10 @@ import {
 import { FetchRequestAdapter, HttpClient, type Middleware } from "@microsoft/kiota-http-fetchlibrary";
 
 import { apiBaseUrl } from "../config";
+import type { RequiredApiContract } from "./contracts";
+import type { LoginResponse } from "./generated/models";
+
+type RefreshResponse = RequiredApiContract<LoginResponse, "accessToken">;
 
 export type HttpSession = {
   clear: () => void;
@@ -79,7 +83,6 @@ type HttpResponse<T> = {
 
 export const authExpiredEventName = "melodytrack:auth-expired";
 
-const legacyCacheStorageKeyPrefix = "melodytrack:http-cache:";
 const refreshChannelName = "melodytrack:session-refresh";
 const csrfCookieName = "MelodyTrack.Csrf";
 const csrfHeaderName = "X-CSRF-Token";
@@ -109,10 +112,6 @@ refreshChannel?.addEventListener("message", (event: MessageEvent<unknown>) => {
   httpSession.setAccessToken(event.data.accessToken);
   authExpiryPublished = false;
 });
-
-if (typeof window !== "undefined") {
-  discardLegacyHttpCache(window.localStorage);
-}
 
 class MelodyTrackAuthenticationProvider implements AuthenticationProvider {
   authenticateRequest(request: RequestInformation) {
@@ -205,19 +204,6 @@ export function restoreAccessToken() {
   }
 
   return getSharedRefreshRequest();
-}
-
-export function discardLegacyHttpCache(storage: Storage) {
-  const keysToRemove: string[] = [];
-  for (let index = 0; index < storage.length; index += 1) {
-    const key = storage.key(index);
-    if (key?.startsWith(legacyCacheStorageKeyPrefix)) {
-      keysToRemove.push(key);
-    }
-  }
-  for (const key of keysToRemove) {
-    storage.removeItem(key);
-  }
 }
 
 export async function probeBackendReachable() {
@@ -435,7 +421,7 @@ async function refreshAccessTokenUnlocked() {
 
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
-      const response = await http.post<{ accessToken: string }>("/auth/refresh", undefined, { skipAuthRefresh: true });
+      const response = await http.post<RefreshResponse>("/auth/refresh", undefined, { skipAuthRefresh: true });
       httpSession?.setAccessToken(response.data.accessToken);
       lastSharedAccessToken = { accessToken: response.data.accessToken, receivedAt: Date.now() };
       refreshChannel?.postMessage({ type: "refreshed", accessToken: response.data.accessToken });

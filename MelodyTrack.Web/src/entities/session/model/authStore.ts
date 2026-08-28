@@ -1,7 +1,4 @@
-const legacyRefreshTokenKey = "melodytrack.refreshToken";
 const sessionMarkerKey = "melodytrack.hasSession";
-const legacyAccessTokenKey = "melodytrack.accessToken";
-const legacyPortalClientsKey = "melodytrack.portalClients";
 
 let accessToken: string | null = null;
 let currentUserId: string | null = null;
@@ -12,12 +9,6 @@ type SessionChange = {
 const listeners = new Set<(change: SessionChange) => void>();
 
 if (typeof window !== "undefined") {
-  // Access tokens from older builds must not remain readable by injected scripts.
-  window.localStorage.removeItem(legacyAccessTokenKey);
-  // Refresh credentials are cookie-only; old request-body credentials are discarded.
-  window.localStorage.removeItem(legacyRefreshTokenKey);
-  // Portal-link tokens are login capabilities and must never remain in browser persistence.
-  window.localStorage.removeItem(legacyPortalClientsKey);
   window.addEventListener("storage", (event) => {
     if (event.key === sessionMarkerKey || event.key === null) {
       accessToken = null;
@@ -40,7 +31,6 @@ export const authStore = {
   setSession(accessToken: string) {
     setAccessToken(accessToken);
     localStorage.setItem(sessionMarkerKey, "1");
-    localStorage.removeItem(legacyRefreshTokenKey);
     notifyListeners("local");
   },
   setAccessToken(accessToken: string) {
@@ -54,9 +44,6 @@ export const authStore = {
     accessToken = null;
     currentUserId = null;
     localStorage.removeItem(sessionMarkerKey);
-    localStorage.removeItem(legacyRefreshTokenKey);
-    localStorage.removeItem(legacyAccessTokenKey);
-    localStorage.removeItem(legacyPortalClientsKey);
     notifyListeners("local");
   },
   subscribe(listener: (change: SessionChange) => void) {
