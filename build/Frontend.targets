@@ -18,7 +18,7 @@
   <Target Name="GenerateFrontendApiClient"
           AfterTargets="GenerateOpenApiDocuments"
           DependsOnTargets="BootstrapFrontendDependencies;OpenApiGetDocuments"
-          Condition="'$(MSBuildProjectName)' == 'MelodyTrack.Backend' AND '$(DesignTimeBuild)' != 'true' AND '$(IsCrossTargetingBuild)' != 'true' AND '$(SkipApiContractGeneration)' != 'true'">
+          Condition="'$(MSBuildProjectName)' == 'MelodyTrack.Backend' AND '$(RunFrontendContractBuild)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(IsCrossTargetingBuild)' != 'true' AND '$(SkipApiContractGeneration)' != 'true'">
     <Error Text="Expected exactly one generated OpenAPI document, found @(_OpenApiProjectDocuments->Count())."
            Condition="'@(_OpenApiProjectDocuments->Count())' != '1'" />
     <MakeDir Directories="$(FrontendOpenApiInputRoot)" />
