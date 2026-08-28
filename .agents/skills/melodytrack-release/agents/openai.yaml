@@ -1,0 +1,7 @@
+interface:
+  display_name: "MelodyTrack Release"
+  short_description: "Prepare releases and hotfixes with review gates"
+  default_prompt: "Use $melodytrack-release to prepare the next MelodyTrack release or hotfix."
+
+policy:
+  allow_implicit_invocation: true
