@@ -6,11 +6,13 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Data.Initialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using OtpNet;
+using Quartz;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;
@@ -47,6 +49,27 @@ public sealed class DatabaseInitializationTests(MelodyTrackFixture app) : Integr
         activities.Select(activity => activity.OperationName).ShouldContain("test-baseline.ensure");
         activities.ShouldAllBe(activity => activity.Status == ActivityStatusCode.Ok);
         activities.Select(activity => activity.TraceId).Distinct().Count().ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task TestMode_CompletedInitialization_AllowsPersistentQuartzSchedulerToStart()
+    {
+        await App.RunInitializationAsync(InitializationMode.Test, TestContext.Current.CancellationToken);
+        var schedulerFactory = App.Services.GetRequiredService<ISchedulerFactory>();
+        var scheduler = await schedulerFactory.GetScheduler(TestContext.Current.CancellationToken);
+
+        await scheduler.Start(TestContext.Current.CancellationToken);
+        try
+        {
+            scheduler.IsStarted.ShouldBeTrue();
+            (await scheduler.CheckExists(CreateRecurringAppointments.Key, TestContext.Current.CancellationToken)).ShouldBeTrue();
+        }
+        finally
+        {
+            await scheduler.Shutdown(
+                waitForJobsToComplete: true,
+                cancellationToken: TestContext.Current.CancellationToken);
+        }
     }
 
     [Fact]

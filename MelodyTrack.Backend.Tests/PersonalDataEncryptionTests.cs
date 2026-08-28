@@ -1,6 +1,7 @@
 using System.Data;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Cryptography;
 using MelodyTrack.Backend.Api.Users.Endpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
@@ -44,6 +45,84 @@ public class PersonalDataEncryptionTests(MelodyTrackFixture app) : IntegrationTe
         var currentCiphertext = currentVersionProtector.Encrypt("rotate-me@example.com");
         currentCiphertext.ShouldStartWith("enc:v2:");
         currentVersionProtector.ShouldReencrypt(currentCiphertext).ShouldBeFalse();
+    }
+
+    [Fact]
+    public async Task PersonalDataBackfill_PreviousKeyVersion_ReencryptsWithCurrentVersion()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var previousProtector = new PersonalDataProtector(
+            "v0",
+            new Dictionary<string, string>
+            {
+                ["v0"] = "previous-personal-data-key-for-testing-only"
+            });
+        var currentProtector = new PersonalDataProtector(
+            "v1",
+            new Dictionary<string, string>
+            {
+                ["v0"] = "previous-personal-data-key-for-testing-only",
+                ["v1"] = "current-personal-data-key-for-testing-only"
+            });
+        var contactsId = Ulid.NewUlid();
+        var previousCiphertext = previousProtector.Encrypt("+79990001122");
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO public."ClientContacts" ("Id", "Phone", "Telegram", "Vk")
+            VALUES ({0}, {1}, NULL, NULL)
+            """,
+            contactsId.ToByteArray(),
+            previousCiphertext);
+        var backfill = new PersonalDataBackfillService(db, currentProtector);
+
+        await backfill.BackfillAsync(TestContext.Current.CancellationToken);
+
+        var reencrypted = await ReadScalarAsync(
+            "SELECT \"Phone\" FROM public.\"ClientContacts\" WHERE \"Id\" = @id",
+            contactsId.ToByteArray());
+        reencrypted.ShouldNotBeNull();
+        reencrypted.ShouldStartWith("enc:v1:");
+        currentProtector.Decrypt(reencrypted).ShouldBe("+79990001122");
+    }
+
+    [Fact]
+    public async Task PersonalDataBackfill_UnknownReferencedKeyVersion_FailsBeforeRewritingValue()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var unknownVersionProtector = new PersonalDataProtector(
+            "retired",
+            new Dictionary<string, string>
+            {
+                ["retired"] = "retired-personal-data-key-for-testing-only"
+            });
+        var currentProtector = new PersonalDataProtector(
+            "v1",
+            new Dictionary<string, string>
+            {
+                ["v1"] = "current-personal-data-key-for-testing-only"
+            });
+        var contactsId = Ulid.NewUlid();
+        var unknownCiphertext = unknownVersionProtector.Encrypt("+79990003344");
+
+        await db.Database.ExecuteSqlRawAsync(
+            """
+            INSERT INTO public."ClientContacts" ("Id", "Phone", "Telegram", "Vk")
+            VALUES ({0}, {1}, NULL, NULL)
+            """,
+            contactsId.ToByteArray(),
+            unknownCiphertext);
+        var backfill = new PersonalDataBackfillService(db, currentProtector);
+
+        await Should.ThrowAsync<CryptographicException>(
+            () => backfill.BackfillAsync(TestContext.Current.CancellationToken));
+
+        var storedValue = await ReadScalarAsync(
+            "SELECT \"Phone\" FROM public.\"ClientContacts\" WHERE \"Id\" = @id",
+            contactsId.ToByteArray());
+        storedValue.ShouldBe(unknownCiphertext);
     }
 
     [Fact]

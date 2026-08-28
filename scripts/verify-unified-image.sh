@@ -6,10 +6,11 @@ suffix=${GITHUB_RUN_ID:-local}-$$
 network=melodytrack-image-test-$suffix
 database=melodytrack-image-test-db-$suffix
 application=melodytrack-image-test-app-$suffix
+failed_application=melodytrack-image-test-failed-app-$suffix
 temporary_directory=$(mktemp -d)
 
 cleanup() {
-    docker rm -f "$application" "$database" >/dev/null 2>&1 || true
+    docker rm -f "$application" "$failed_application" "$database" >/dev/null 2>&1 || true
     docker network rm "$network" >/dev/null 2>&1 || true
     rm -rf "$temporary_directory"
 }
@@ -136,6 +137,33 @@ fi
 
 if docker run --rm --entrypoint sh "$image" -c 'command -v node || command -v nginx' >/dev/null 2>&1; then
     echo "The final runtime image contains Node.js or nginx." >&2
+    exit 1
+fi
+
+if docker run \
+    --name "$failed_application" \
+    --network "$network" \
+    --env "Database__ConnectionString=Host=$database;Port=5432;Database=melodytrack;Username=melodytrack;Password=image-test-password" \
+    --env AuthenticationSecrets__JwtSigningPrivateKey=base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA \
+    --env AuthenticationSecrets__PasswordPepper=base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA= \
+    --env AuthenticationSecrets__PortalPinPepper=base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw= \
+    --env AuthenticationSecrets__RefreshTokenHashKey=base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4= \
+    --env AuthenticationSecrets__CsrfSigningKey=base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0= \
+    --env PersonalData__CurrentKey=image-test-pii-key-1234567890-abcdef \
+    --env PersonalData__CurrentKeyVersion=v1 \
+    --env PublicUrl__BaseUrl=https://localhost \
+    --env Initialization__QuartzSqlPath=/missing/quartz.sql \
+    "$image" >"$temporary_directory/failed-init.log" 2>&1; then
+    echo "The unified image started Backend after Init was configured to fail." >&2
+    exit 1
+fi
+if ! grep --quiet 'Quartz database initialization script was not found' "$temporary_directory/failed-init.log"; then
+    cat "$temporary_directory/failed-init.log"
+    echo "The failure-gating check did not reach the intended Init failure." >&2
+    exit 1
+fi
+if grep --quiet 'Now listening on' "$temporary_directory/failed-init.log"; then
+    echo "Backend started despite the failed Init process." >&2
     exit 1
 fi
 

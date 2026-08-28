@@ -41,6 +41,41 @@ describe("browser session refresh and failures", () => {
     expect(Object.values(localStorage)).not.toContain("memory-access-token");
   });
 
+  it("recovers the first protected request after a suspended page resumes", async () => {
+    authStore.setSession("expired-access-token");
+    configureHttpSession(authStore);
+    let protectedCalls = 0;
+    let refreshCalls = 0;
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation((input, init) => {
+      if (getRequestUrl(input).endsWith("/auth/refresh")) {
+        refreshCalls += 1;
+        return Promise.resolve(
+          new Response(JSON.stringify({ accessToken: "resumed-access-token" }), {
+            status: 200,
+            headers: { "Content-Type": "application/json" },
+          }),
+        );
+      }
+
+      protectedCalls += 1;
+      const authorization = new Headers(init?.headers).get("Authorization");
+      return Promise.resolve(
+        new Response(JSON.stringify(authorization === "Bearer resumed-access-token" ? { resumed: true } : authProblem), {
+          status: authorization === "Bearer resumed-access-token" ? 200 : 401,
+          headers: { "Content-Type": "application/json" },
+        }),
+      );
+    });
+
+    window.dispatchEvent(new Event("pageshow"));
+    await expect(http.get<{ resumed: boolean }>("/auth/me")).resolves.toMatchObject({ data: { resumed: true } });
+
+    expect(refreshCalls).toBe(1);
+    expect(protectedCalls).toBe(2);
+    expect(authStore.getAccessToken()).toBe("resumed-access-token");
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+  });
+
   it("reports a fetch failure as a network failure without clearing session state", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new TypeError("Network unavailable"));
 
@@ -50,6 +85,16 @@ describe("browser session refresh and failures", () => {
     expect(getApiErrorMessage(error)).toContain("Не удалось подключиться к серверу");
   });
 });
+
+const authProblem = {
+  type: "urn:melody-track:problem:unauthorized",
+  title: "Unauthorized",
+  status: 401,
+  instance: "/api/auth/me",
+  code: "unauthorized",
+  traceId: "0123456789abcdef0123456789abcdef",
+  errors: [],
+};
 
 function getRequestUrl(input: RequestInfo | URL | undefined) {
   if (typeof input === "string") {
