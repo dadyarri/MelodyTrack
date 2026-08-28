@@ -325,6 +325,70 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
     }
 
     [Fact]
+    public async Task DebtorReminder_ManyClientsAndRules_UsesBoundedDatabaseCommands()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var service = new Service
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Групповое фортепиано"
+        };
+        var priceEffectiveAtUtc = DateTime.UtcNow.AddMonths(-2);
+        var debtStartedAtUtc = DateTime.UtcNow.AddDays(-16);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1_000m,
+            EffectiveDate = priceEffectiveAtUtc
+        }, TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 12; index++)
+        {
+            var client = new Client
+            {
+                Id = Ulid.NewUlid(),
+                FirstName = $"Ученик {index}",
+                LastName = "Должник",
+                CreatedAtUtc = DateTime.UtcNow,
+                Contacts = new ClientContacts
+                {
+                    Id = Ulid.NewUlid(),
+                    Phone = $"+79990000{index:D3}"
+                }
+            };
+
+            await db.Appointments.AddAsync(new Appointment
+            {
+                Id = Ulid.NewUlid(),
+                Client = client,
+                Service = service,
+                StartDate = debtStartedAtUtc.AddMinutes(index),
+                EndDate = debtStartedAtUtc.AddMinutes(index).AddHours(1),
+                Status = AppointmentStatus.Completed,
+                IsDeleted = false
+            }, TestContext.Current.CancellationToken);
+        }
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+        App.DatabaseCommands.Reset();
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.DebtorReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        tasks.Count.ShouldBe(12);
+        App.DatabaseCommands.Count.ShouldBeLessThanOrEqualTo(6);
+    }
+
+    [Fact]
     public async Task CustomTask_ForExistingClient_AppearsInOpenTasks()
     {
         await using var scope = App.Services.CreateAsyncScope();

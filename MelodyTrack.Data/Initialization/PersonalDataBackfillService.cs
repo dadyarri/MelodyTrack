@@ -60,6 +60,8 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
             await reader.CloseAsync();
 
             var updatedRows = 0;
+            // PII is decrypted and authenticated with application-held keys. Keep writes row-oriented so an
+            // unknown/corrupt key version fails on the exact record instead of bypassing the protector in SQL.
             foreach (var row in rows)
             {
                 if (await UpdateIfNeededAsync(
@@ -130,6 +132,7 @@ public sealed class PersonalDataBackfillService(AppDbContext db, IPersonalDataPr
             await reader.CloseAsync();
 
             var updatedRows = 0;
+            // See BackfillUsersAsync: application-side authenticated decryption makes set-based SQL unsafe here.
             foreach (var row in rows)
             {
                 if (await UpdateIfNeededAsync(

@@ -194,7 +194,7 @@ try
     builder.Services.AddSingleton<ICommonPasswordService, CommonPasswordService>();
     builder.Services.AddScoped<ClientWithBalanceDtoMapper>();
     builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
-    builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
+    builder.Services.AddScoped<ServiceWithCurrentPriceDtoMapper>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
     builder.Services.AddScoped<RefreshSessionCookieService>();

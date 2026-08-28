@@ -1,5 +1,4 @@
 using Facet;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
@@ -14,21 +13,39 @@ public partial class ServiceWithCurrentPriceDto
     public RecordActivityDto? LastActivity { get; set; }
 }
 
-public class ServiceToServiceWithCurrentPriceDtoMapConfig(AppDbContext db)
-    : IFacetMapConfigurationAsyncInstance<Service, ServiceWithCurrentPriceDto>
+public sealed class ServiceWithCurrentPriceDtoMapper(AppDbContext db)
 {
-    public async Task MapAsync(Service source, ServiceWithCurrentPriceDto target,
+    public async Task<List<ServiceWithCurrentPriceDto>> MapAsync(
+        IReadOnlyCollection<Service> services,
         CancellationToken cancellationToken = default)
     {
-        var latestPrice = await db.ServicePriceHistory
-            .Where(e => e.Service.Id == source.Id)
-            .OrderByDescending(e => e.EffectiveDate)
-            .Take(1)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        if (latestPrice is not null)
+        if (services.Count == 0)
         {
-            target.Price = latestPrice.Price;
+            return [];
         }
+
+        var serviceIds = services.Select(service => service.Id).ToArray();
+        var currentPrices = await db.Services
+            .AsNoTracking()
+            .Where(service => serviceIds.Contains(service.Id))
+            .Select(service => new ServiceCurrentPrice(
+                service.Id,
+                db.ServicePriceHistory
+                    .Where(price => price.Service.Id == service.Id)
+                    .OrderByDescending(price => price.EffectiveDate)
+                    .Select(price => (decimal?)price.Price)
+                    .FirstOrDefault() ?? 0m))
+            .ToDictionaryAsync(price => price.ServiceId, price => price.Price, cancellationToken);
+
+        return services.Select(service =>
+        {
+            var target = new ServiceWithCurrentPriceDto(service)
+            {
+                Price = currentPrices.GetValueOrDefault(service.Id)
+            };
+            return target;
+        }).ToList();
     }
+
+    private sealed record ServiceCurrentPrice(Ulid ServiceId, decimal Price);
 }

@@ -196,6 +196,18 @@ public sealed class DevelopmentDemoDataSeeder(
         var existing = await db.Services
             .Where(service => names.Contains(service.Name))
             .ToDictionaryAsync(service => service.Name, StringComparer.Ordinal, cancellationToken);
+        var priceIds = definitions
+            .SelectMany((_, index) => new[]
+            {
+                DeterministicId("service-price-initial", index),
+                DeterministicId("service-price-current", index)
+            })
+            .ToArray();
+        var existingPriceIds = (await db.ServicePriceHistory
+                .Where(price => priceIds.Contains(price.Id))
+                .Select(price => price.Id)
+                .ToListAsync(cancellationToken))
+            .ToHashSet();
         var result = new List<DemoService>(definitions.Length);
 
         for (var index = 0; index < definitions.Length; index++)
@@ -215,7 +227,7 @@ public sealed class DevelopmentDemoDataSeeder(
             }
 
             var initialPriceId = DeterministicId("service-price-initial", index);
-            if (!await db.ServicePriceHistory.AnyAsync(price => price.Id == initialPriceId, cancellationToken))
+            if (existingPriceIds.Add(initialPriceId))
             {
                 await db.ServicePriceHistory.AddAsync(new ServicePrice
                 {
@@ -228,7 +240,7 @@ public sealed class DevelopmentDemoDataSeeder(
 
             var currentPrice = definition.Price + 200m;
             var currentPriceId = DeterministicId("service-price-current", index);
-            if (!await db.ServicePriceHistory.AnyAsync(price => price.Id == currentPriceId, cancellationToken))
+            if (existingPriceIds.Add(currentPriceId))
             {
                 await db.ServicePriceHistory.AddAsync(new ServicePrice
                 {
@@ -277,13 +289,18 @@ public sealed class DevelopmentDemoDataSeeder(
         DateOnly firstDate,
         CancellationToken cancellationToken)
     {
+        var clientIds = Enumerable.Range(0, ClientFirstNames.Length)
+            .Select(index => DeterministicId("client", index))
+            .ToArray();
+        var existing = await db.Clients
+            .Where(client => clientIds.Contains(client.Id))
+            .ToDictionaryAsync(client => client.Id, cancellationToken);
         var result = new List<Client>(ClientFirstNames.Length);
 
         for (var index = 0; index < ClientFirstNames.Length; index++)
         {
             var clientId = DeterministicId("client", index);
-            var client = await db.Clients.SingleOrDefaultAsync(item => item.Id == clientId, cancellationToken);
-            if (client is null)
+            if (!existing.TryGetValue(clientId, out var client))
             {
                 client = new Client
                 {

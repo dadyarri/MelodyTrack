@@ -58,7 +58,7 @@ internal sealed class RecurringTaskCandidateService(
             candidates.AddRange(await BuildCustomTaskCandidatesAsync(timezone, ct));
         }
 
-        foreach (var rule in rules)
+        foreach (var rule in rules.Where(rule => rule.Type != RecurringTaskType.DebtorReminder))
         {
             var ruleCandidates = rule.Type switch
             {
@@ -67,11 +67,22 @@ internal sealed class RecurringTaskCandidateService(
                 RecurringTaskType.TrialFollowUp => await BuildTrialFollowUpCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.InactiveClientReminder => await BuildInactiveClientCandidatesAsync(rule, timezone, ct),
                 RecurringTaskType.TeacherDailySchedule => await BuildTeacherDailyScheduleCandidatesAsync(rule, timezone, ct),
-                RecurringTaskType.DebtorReminder => await BuildDebtorReminderCandidatesAsync(rule, timezone, ct),
                 _ => []
             };
 
             candidates.AddRange(ruleCandidates);
+        }
+
+        var debtorRules = rules
+            .Where(rule => rule.Type == RecurringTaskType.DebtorReminder)
+            .ToList();
+        if (debtorRules.Count > 0)
+        {
+            var debtorData = await LoadDebtorReminderDataAsync(debtorRules, timezone, ct);
+            foreach (var rule in debtorRules)
+            {
+                candidates.AddRange(BuildDebtorReminderCandidates(rule, timezone, debtorData));
+            }
         }
 
         if (candidates.Count == 0)
@@ -167,6 +178,7 @@ internal sealed class RecurringTaskCandidateService(
             .AsNoTracking()
             .Include(appointment => appointment.Client)
             .ThenInclude(client => client.Contacts)
+            .Include(appointment => appointment.Service)
             .Where(appointment =>
                 !appointment.IsDeleted
                 && appointment.Status == AppointmentStatus.Planned
@@ -609,51 +621,38 @@ internal sealed class RecurringTaskCandidateService(
             .ToList();
     }
 
-    private async Task<List<RecurringTaskCandidate>> BuildDebtorReminderCandidatesAsync(RecurringTaskRule rule, string timezone, CancellationToken ct)
+    private async Task<DebtorReminderData> LoadDebtorReminderDataAsync(
+        IReadOnlyCollection<RecurringTaskRule> rules,
+        string timezone,
+        CancellationToken ct)
     {
-        var nowUtc = UtcNow;
-        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(nowUtc, timezone));
-        var initialDelayDays = Math.Max(1, (rule.OffsetMinutes ?? 24 * 60) / (24 * 60));
-        var repeatEveryDays = rule.CooldownDays;
-        var currentStageStartDays = GetDebtorReminderStageStartDays(initialDelayDays, repeatEveryDays);
-
-        var debtorRuleStageStartDays = await db.RecurringTaskRules
-            .AsNoTracking()
-            .Where(item => item.IsEnabled && item.Type == RecurringTaskType.DebtorReminder)
-            .Select(item => new
-            {
-                OffsetMinutes = item.OffsetMinutes,
-                CooldownDays = item.CooldownDays
-            })
-            .ToListAsync(ct);
-
-        var nextStageStartDays = debtorRuleStageStartDays
-            .Select(item => GetDebtorReminderStageStartDays(
-                Math.Max(1, (item.OffsetMinutes ?? 24 * 60) / (24 * 60)),
-                item.CooldownDays))
-            .Where(stageStartDays => stageStartDays > currentStageStartDays)
-            .DefaultIfEmpty(int.MaxValue)
-            .Min();
-
-        var appointments = await db.Appointments
+        var todayLocal = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(UtcNow, timezone));
+        var appointmentEntities = await db.Appointments
             .AsNoTracking()
             .Include(appointment => appointment.Client)
             .ThenInclude(client => client.Contacts)
+            .Include(appointment => appointment.Service)
             .Where(appointment =>
                 !appointment.IsDeleted
                 && (appointment.Status == AppointmentStatus.Completed || appointment.Status == AppointmentStatus.Burned))
-            .Select(appointment => new
-            {
-                appointment.Id,
-                Client = appointment.Client,
-                ServiceId = appointment.Service.Id,
-                appointment.StartDate
-            })
             .ToListAsync(ct);
+
+        var appointments = appointmentEntities
+            .Select(appointment => new DebtorAppointment(
+                appointment.Id,
+                appointment.Client,
+                appointment.Service.Id,
+                appointment.StartDate))
+            .ToList();
 
         if (appointments.Count == 0)
         {
-            return [];
+            return new DebtorReminderData(
+                todayLocal,
+                [],
+                new Dictionary<Ulid, List<DebtorPayment>>(),
+                new Dictionary<Ulid, List<DebtorServicePrice>>(),
+                GetDebtorReminderStageStartDays(rules));
         }
 
         var clientIds = appointments
@@ -669,12 +668,7 @@ internal sealed class RecurringTaskCandidateService(
         var payments = await db.Payments
             .AsNoTracking()
             .Where(payment => clientIds.Contains(payment.Client.Id))
-            .Select(payment => new
-            {
-                ClientId = payment.Client.Id,
-                payment.Amount,
-                payment.Date
-            })
+            .Select(payment => new DebtorPayment(payment.Client.Id, payment.Amount, payment.Date))
             .ToListAsync(ct);
 
         var priceHistory = await db.ServicePriceHistory
@@ -697,9 +691,32 @@ internal sealed class RecurringTaskCandidateService(
                     .Select(entry => new DebtorServicePrice(entry.EffectiveDate, entry.Price))
                     .ToList());
 
+        return new DebtorReminderData(
+            todayLocal,
+            appointments,
+            payments
+                .GroupBy(payment => payment.ClientId)
+                .ToDictionary(group => group.Key, group => group.OrderBy(payment => payment.Date).ToList()),
+            priceLookup,
+            GetDebtorReminderStageStartDays(rules));
+    }
+
+    private List<RecurringTaskCandidate> BuildDebtorReminderCandidates(
+        RecurringTaskRule rule,
+        string timezone,
+        DebtorReminderData data)
+    {
+        var initialDelayDays = Math.Max(1, (rule.OffsetMinutes ?? 24 * 60) / (24 * 60));
+        var repeatEveryDays = rule.CooldownDays;
+        var currentStageStartDays = GetDebtorReminderStageStartDays(initialDelayDays, repeatEveryDays);
+        var nextStageStartDays = data.StageStartDays
+            .Where(stageStartDays => stageStartDays > currentStageStartDays)
+            .DefaultIfEmpty(int.MaxValue)
+            .Min();
+
         var candidates = new List<RecurringTaskCandidate>();
 
-        foreach (var clientAppointments in appointments.GroupBy(appointment => appointment.Client.Id))
+        foreach (var clientAppointments in data.Appointments.GroupBy(appointment => appointment.Client.Id))
         {
             var client = clientAppointments.First().Client;
             if (!HasAnyClientContact(client))
@@ -713,8 +730,8 @@ internal sealed class RecurringTaskCandidateService(
                 {
                     AppointmentId = appointment.Id,
                     StartDate = appointment.StartDate,
-                    Price = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, priceLookup),
-                    RemainingAmount = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, priceLookup)
+                    Price = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, data.PriceLookup),
+                    RemainingAmount = ResolveDebtorAppointmentPrice(appointment.ServiceId, appointment.StartDate, data.PriceLookup)
                 })
                 .Where(ledger => ledger.Price > 0)
                 .ToList();
@@ -724,9 +741,8 @@ internal sealed class RecurringTaskCandidateService(
                 continue;
             }
 
-            var remainingPayments = payments
-                .Where(payment => payment.ClientId == clientAppointments.Key)
-                .OrderBy(payment => payment.Date)
+            var remainingPayments = data.PaymentsByClient
+                .GetValueOrDefault(clientAppointments.Key, [])
                 .Select(payment => payment.Amount)
                 .ToList();
 
@@ -757,7 +773,7 @@ internal sealed class RecurringTaskCandidateService(
             }
 
             var debtAppearedDate = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(firstOutstandingLedger.StartDate, timezone));
-            var debtAgeDays = todayLocal.DayNumber - debtAppearedDate.DayNumber;
+            var debtAgeDays = data.TodayLocal.DayNumber - debtAppearedDate.DayNumber;
 
             DateOnly businessDate;
             if (repeatEveryDays is > 0)
@@ -885,6 +901,21 @@ internal sealed class RecurringTaskCandidateService(
 
     private sealed record DebtorServicePrice(DateTime EffectiveDateUtc, decimal Price);
 
+    private sealed record DebtorAppointment(
+        Ulid Id,
+        Client Client,
+        Ulid ServiceId,
+        DateTime StartDate);
+
+    private sealed record DebtorPayment(Ulid ClientId, decimal Amount, DateTime Date);
+
+    private sealed record DebtorReminderData(
+        DateOnly TodayLocal,
+        List<DebtorAppointment> Appointments,
+        IReadOnlyDictionary<Ulid, List<DebtorPayment>> PaymentsByClient,
+        IReadOnlyDictionary<Ulid, List<DebtorServicePrice>> PriceLookup,
+        IReadOnlyCollection<int> StageStartDays);
+
     private static decimal ResolveDebtorAppointmentPrice(
         Ulid serviceId,
         DateTime appointmentStartUtc,
@@ -905,6 +936,15 @@ internal sealed class RecurringTaskCandidateService(
     private static int GetDebtorReminderStageStartDays(int initialDelayDays, int? repeatEveryDays)
     {
         return initialDelayDays + (repeatEveryDays is > 0 ? repeatEveryDays.Value : 0);
+    }
+
+    private static int[] GetDebtorReminderStageStartDays(IEnumerable<RecurringTaskRule> rules)
+    {
+        return rules
+            .Select(rule => GetDebtorReminderStageStartDays(
+                Math.Max(1, (rule.OffsetMinutes ?? 24 * 60) / (24 * 60)),
+                rule.CooldownDays))
+            .ToArray();
     }
 
 }

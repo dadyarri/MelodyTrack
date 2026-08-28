@@ -35,4 +35,8 @@ Caddy should route the application host to the single Kestrel container without 
 
 Configure the separately operated Aspire Dashboard and MelodyTrack's OTLP exporter according to [Production telemetry](production-telemetry.md). The production Dashboard container and its Caddy configuration remain owned by the external homelab infrastructure stack.
 
+## Initialization query behavior
+
+Ordinary production and development initialization uses batched existence and lookup queries. The personal-data backfill is the deliberate exception: it reads each PII table once, decrypts and authenticates values with the application-held key ring, and updates only rows that require encryption or key-version rotation. Those updates remain one command per changed row because set-based SQL cannot safely perform authenticated decryption, detect unknown key versions, or preserve the fail-fast behavior. Init traces report the scanned and updated record counts; plan additional deployment time when rotating a large dataset.
+
 After deployment, verify the root SPA, a nested browser route, a known and unknown `/api` route, cache headers, compression, security headers, and the internal health check before removing the old service definitions and image references.

@@ -1,6 +1,5 @@
 using MelodyTrack.Backend.Api;
 using Microsoft.AspNetCore.Mvc;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Services.Requests;
 using MelodyTrack.Backend.Api.Services.Responses;
@@ -24,7 +23,7 @@ public sealed class GetServicesEndpoint
         [AsParameters] GetServicesPaginatedRequest req,
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
-        ServiceToServiceWithCurrentPriceDtoMapConfig mapper,
+        ServiceWithCurrentPriceDtoMapper mapper,
         IRecordActivityService recordActivityService,
         ILogger<GetServicesEndpoint> logger,
         CancellationToken ct
@@ -52,7 +51,7 @@ public sealed class GetServicesEndpoint
             .ApplyPagination(req)
             .ToListAsync(ct);
 
-        var servicesFacets = await services.ToFacetsAsync(mapper, ct);
+        var servicesFacets = await mapper.MapAsync(services, ct);
         var latestActivities = await recordActivityService.GetLatestActivitiesAsync(
             "service",
             services.Select(service => service.Id.ToString()).ToArray(),
