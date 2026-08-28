@@ -2022,6 +2022,35 @@ This is an accounting-domain discovery/architecture stage. Validate the model wi
 
 ---
 
+## Stage 18: Calendar Workflow and Income Forecast Improvements
+
+### Goal
+
+Address the latest customer feedback around trial lessons, calendar workflow, schedule visibility, and forward-looking income.
+
+### Scope
+
+- render trial lessons on the calendar with a distinct color that is not reused by ordinary appointment states;
+- add the missing recurring-task reminder for trial lessons;
+- allow vacations to include a start and end time instead of being date-only;
+- add a calendar shortcut for creating a vacation by dragging time slots, with an interaction that does not conflict with drag-to-create appointments;
+- when a superuser opens the calendar, select that user's calendar automatically while continuing to allow selection of other users;
+- show administrators the full schedule;
+- continue showing teachers only their own schedule, without a control or API path for switching to another user's calendar;
+- add forecast income for the selected date/time range to the income statistics page, calculated from planned appointments in that range.
+
+### Done looks like
+
+- trial lessons are immediately distinguishable from ordinary appointments in every supported calendar layout;
+- trial-lesson reminders are generated once at the intended time and follow the existing recurring-task deduplication, cancellation, and delay rules;
+- timed vacations persist, render, and enforce availability using their actual time range, while existing date-only vacation data has an explicit migration/default interpretation;
+- users can deliberately choose between creating an appointment and creating a vacation from calendar time slots without accidental cross-triggering on desktop or mobile;
+- calendar defaults and user-selection controls match the superuser, administrator, and teacher rules above, with authorization enforced server-side;
+- income statistics clearly separate forecast income from realized income and calculate the forecast only from planned appointments inside the selected range;
+- integration and browser tests cover role visibility, calendar gestures, trial-lesson presentation/reminders, timed-vacation boundaries, and forecast calculations.
+
+---
+
 # Dependency summary
 
 Implement in this order unless a concrete blocker requires a documented deviation:
@@ -2063,9 +2092,11 @@ Stage 15 Multiple staff accounts in one browser
 Stage 16 Offline-first architecture
    ↓
 Stage 17 Accounting/staff compensation architecture
+   ↓
+Stage 18 Calendar workflow + income forecast improvements
 ```
 
-The ordering among Stages 14-17 may later be changed for product priority, but they remain **after the refactor**. Stage 13 depends on Stage 12. Stage 15 should precede broad offline account-scoped persistence because offline storage must understand final account identity boundaries.
+The ordering among Stages 14-18 may later be changed for product priority, but they remain **after the refactor**. Stage 13 depends on Stage 12. Stage 15 should precede broad offline account-scoped persistence because offline storage must understand final account identity boundaries.
 
 ---
 
