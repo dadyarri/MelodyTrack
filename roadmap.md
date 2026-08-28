@@ -993,7 +993,7 @@ Responsibilities:
 
 ### Inactivity and resume behavior
 
-Preserve/implement the useful scope from the old Stage 18:
+Preserve/implement the useful scope from the previously planned session-resume stage:
 
 - a suspended/backgrounded tab with an expired access token but valid refresh session resumes transparently;
 - refresh occurs on the first protected request when needed;
@@ -1447,6 +1447,17 @@ Examples:
 
 ### Audit
 
+Before adding god mode events, centralize the complete audit vocabulary in a backend-owned catalog shared by Backend and Data/Init:
+
+- define every category and event once as a typed definition with stable category/action codes and Russian display labels;
+- keep Russian as the only supported UI language and do not introduce culture negotiation, resource files, or other unused localization infrastructure;
+- replace free-form category/action strings at audit write sites with catalog definitions, including initialization, security, portal, recurring-task, and other conditionally selected events;
+- continue persisting stable codes rather than translated labels so historical records, filtering, exports, and integrations remain durable;
+- return both the stable codes and backend-resolved Russian labels from the audit API, with the raw code as a safe fallback for unknown historical records;
+- make Russian label searches resolve to the corresponding category/action codes before applying the database query;
+- remove the duplicated frontend category/action dictionaries once the generated API contract exposes the labels;
+- test catalog uniqueness and label completeness so a new audit event cannot be added without a Russian display label.
+
 Every god mode action records an audit event with:
 
 - god mode session reference;
@@ -1466,6 +1477,7 @@ Never audit/log raw god mode tokens, reset tokens, passwords, PINs, refresh toke
 - one-time god mode tokens cannot be reused;
 - credential reset/session revocation actions are enforced server-side;
 - users can receive persistent global or targeted notices;
+- all current and newly introduced audit categories/events display backend-owned Russian labels, while retaining their stable stored codes;
 - all privileged god mode actions are auditable without leaking credentials.
 
 ---
@@ -1476,7 +1488,7 @@ Never audit/log raw god mode tokens, reset tokens, passwords, PINs, refresh toke
 
 Create a reusable notification subsystem for workflow events. In-app notification state is authoritative; Web Push is an optional best-effort delivery channel.
 
-This stage exists primarily to support appointment-rescheduling requests but should remain general enough for later application workflows.
+This stage exists primarily to support vacation-approval and appointment-rescheduling requests but should remain general enough for later application workflows.
 
 ### In-app notification model
 
@@ -1553,7 +1565,7 @@ Do not emit payload PII into metrics/logs.
 
 ### Done looks like
 
-- admins and clients have durable in-app notifications;
+- staff (including superusers) and clients have durable in-app notifications;
 - unread/read state works across reloads;
 - supported browsers can opt into Web Push;
 - unsupported/denied push does not degrade core workflow visibility;
@@ -1562,7 +1574,140 @@ Do not emit payload PII into metrics/logs.
 
 ---
 
-## Stage 13: Client Appointment Rescheduling Requests
+## Stage 13: Vacation Requests and Superuser Approval
+
+### Goal
+
+After the notification infrastructure is operational, add one auditable approval workflow for vacations requested by teachers, administrators, and clients. Superusers are the only role allowed to approve or decline these requests.
+
+An approved request creates the authoritative vacation record. A pending request must not change calendar availability or be presented as an accepted vacation.
+
+### Request sources and authority
+
+- teachers can request vacation only for themselves through the staff application;
+- administrators can request vacation only for themselves through the staff application;
+- clients can request their own vacation through the client portal;
+- superusers can review all teacher, administrator, and client vacation requests;
+- administrators cannot approve vacation requests, including requests from teachers or clients;
+- requesters cannot approve their own request or use another subject identifier;
+- any retained superuser direct-vacation management is a separate, explicitly audited operation and must not create an approval bypass for other roles.
+
+### Request model and states
+
+Use a first-class vacation request rather than a notification payload. It should record at least:
+
+```text
+VacationRequest
+- Id
+- RequesterPrincipalType/Id
+- SubjectType: Staff | Client
+- SubjectId
+- RequestedStart/End
+- Status: Pending | Approved | Declined | Cancelled
+- RequestMessage?
+- CreatedAtUtc
+- ProcessedAtUtc?
+- ProcessedBySuperuserId?
+- DecisionMessage?
+- resulting VacationId?
+- concurrency/version field
+```
+
+Use the current authoritative vacation range granularity initially. The model and API must have an explicit migration path to the time-aware vacation ranges introduced by the later calendar-workflow stage; once timed vacations exist, requests and approved vacations must use the same timezone/range semantics.
+
+Permit at most one equivalent or overlapping pending request for the same subject where duplicate requests would be ambiguous. Define cancellation rules for a requester withdrawing a still-pending request; processed requests remain immutable history.
+
+### Requester workflows
+
+Staff application:
+
+1. A teacher or administrator selects a vacation range and may add a short message.
+2. Backend validates ownership and basic range rules, then creates a `Pending` request.
+3. The requester sees the pending request and its later decision in the staff application.
+
+Client portal:
+
+1. An authenticated client selects their own vacation range and may add a short message.
+2. Backend derives the client identity from the portal session rather than trusting a submitted client ID.
+3. The portal shows pending and processed request status even when Web Push is unavailable.
+
+For both sources, submission creates a durable notification for superusers and optional privacy-minimized Web Push. Submission must clearly state that the vacation is awaiting approval.
+
+### Superuser review
+
+Provide a superuser-only review queue with filters for pending/history and enough context to decide safely:
+
+- requester and vacation subject;
+- teacher/administrator/client classification;
+- requested range and message;
+- existing vacations and relevant schedule conflicts;
+- request age/status;
+- Approve and Decline actions;
+- optional short decision message.
+
+Do not expose one client's request or status to another client. Staff requesters can see only their own requests unless separately authorized as a superuser.
+
+### Approval transaction
+
+Approval must be atomic and revalidate current state:
+
+1. caller is still an authorized superuser;
+2. request exists and is still `Pending`;
+3. subject and requester relationships remain valid;
+4. requested range still satisfies vacation, timezone, overlap, and business rules;
+5. existing appointments or other conflicts follow an explicit product rule and are never silently deleted, cancelled, or moved;
+6. create the authoritative staff/client vacation record;
+7. mark the request `Approved`, link the created vacation, and record processor/time;
+8. write an audit event and requester notification transactionally or through the established reliable notification boundary.
+
+Concurrent approval/decline attempts must produce one final decision and never create duplicate vacations.
+
+### Decline and cancellation
+
+- only a superuser can decline a pending request;
+- decline records the processor, time, and optional message without creating a vacation;
+- a requester may cancel only their own pending request;
+- approval, decline, and cancellation create durable status history and the appropriate requester notification;
+- notification or push-delivery failure must not roll back the decision.
+
+### Authorization and abuse controls
+
+- enforce the role/ownership matrix server-side, not only by hiding controls;
+- client-portal requests use the portal's client identity and cannot target staff or another client;
+- teachers/administrators cannot submit on behalf of another user;
+- all decisions and direct superuser vacation changes are audited without logging private messages or unnecessary PII;
+- apply idempotency/concurrency protection and bounded request-rate controls;
+- reject malformed, inverted, empty, or otherwise invalid ranges consistently through Problem Details.
+
+### Testing
+
+Cover at least:
+
+- teacher and administrator self-request happy paths;
+- client-portal self-request and cross-client denial;
+- superuser-only queue, approval, and decline;
+- administrator/teacher/requester approval denial;
+- pending request cancellation;
+- duplicate and overlapping pending requests;
+- range, timezone, existing-vacation, and appointment-conflict validation;
+- concurrent approve/decline and retry behavior;
+- approved vacation creation exactly once;
+- notifications for superusers and requesters, including push failure;
+- audit events and privacy-safe API/browser behavior;
+- later migration to timed vacation ranges.
+
+### Done looks like
+
+- teachers and administrators can request their own vacations but cannot activate them without superuser approval;
+- clients can submit and track their own vacation requests through the client portal;
+- superusers have one clear queue for staff and client vacation decisions;
+- approval creates exactly one authoritative vacation after revalidation;
+- pending/declined/cancelled requests never affect availability;
+- every transition is authorized, auditable, concurrency-safe, and durably communicated through the notification system.
+
+---
+
+## Stage 14: Client Appointment Rescheduling Requests
 
 ### Goal
 
@@ -1754,7 +1899,7 @@ Frontend/browser tests:
 
 ---
 
-## Stage 14: Services Progress
+## Stage 15: Services Progress
 
 MelodyTrack should track structured learning progress alongside scheduling. Services remain appointment and billing concepts; courses represent a client's long-term learning path.
 
@@ -1789,7 +1934,7 @@ MelodyTrack should track structured learning progress alongside scheduling. Serv
 
 ---
 
-## Stage 15: Multiple Staff Accounts in One Browser
+## Stage 16: Multiple Staff Accounts in One Browser
 
 Allow the main staff portal to remember several staff user accounts in one browser and switch between them without repeatedly entering full credentials. This stage intentionally changes the refactor-era “one renewable identity per browser profile” limitation for **staff accounts only**.
 
@@ -1840,7 +1985,7 @@ Every refresh response/cross-tab event must be scoped to the intended account co
 
 ---
 
-## Stage 16: Offline-First Operations Architecture
+## Stage 17: Offline-First Operations Architecture
 
 Design how MelodyTrack can keep the most common daily staff work available during internet outages and infrastructure shutdowns. The target is more than cached read-only pages: authorized staff should be able to create, edit, and delete supported records locally, close the browser if necessary, and synchronize safely when Backend returns.
 
@@ -1885,7 +2030,7 @@ This is an architecture/product-discovery stage. It must produce a validated des
   - whether provisional until sync;
   - duplicate receipt prevention;
   - corrections requiring online/elevated action.
-- Design sync coordinator around login, Stage 15 account switching, connectivity changes, app startup, browser background limitations, and manual retry.
+- Design sync coordinator around login, Stage 16 account switching, connectivity changes, app startup, browser background limitations, and manual retry.
 - UI must show queue status, unsynchronized changes, conflicts, blocked dependencies, and last successful sync.
 - Do not treat `navigator.onLine` as proof Backend is reachable.
 - Define offline application shell/asset strategy and service-worker/PWA requirements.
@@ -1927,7 +2072,7 @@ If a minimal service worker already exists for Web Push, treat it as infrastruct
 
 ---
 
-## Stage 17: Accounting and Staff Compensation Architecture
+## Stage 18: Accounting and Staff Compensation Architecture
 
 Define how accounting should integrate with MelodyTrack's existing services, appointments, payments, expenses, users, and statistics. The design must cover staff salary calculation/payment while keeping scheduling, cash movement, earned revenue, expenses, payroll liabilities, and actual payouts as distinct concepts.
 
@@ -2022,7 +2167,7 @@ This is an accounting-domain discovery/architecture stage. Validate the model wi
 
 ---
 
-## Stage 18: Calendar Workflow and Income Forecast Improvements
+## Stage 19: Calendar Workflow and Income Forecast Improvements
 
 ### Goal
 
@@ -2033,6 +2178,7 @@ Address the latest customer feedback around trial lessons, calendar workflow, sc
 - render trial lessons on the calendar with a distinct color that is not reused by ordinary appointment states;
 - add the missing recurring-task reminder for trial lessons;
 - allow vacations to include a start and end time instead of being date-only;
+- upgrade the Stage 13 vacation-request forms, validation, superuser review, and approved-vacation creation to use the same time-aware range;
 - add a calendar shortcut for creating a vacation by dragging time slots, with an interaction that does not conflict with drag-to-create appointments;
 - when a superuser opens the calendar, select that user's calendar automatically while continuing to allow selection of other users;
 - show administrators the full schedule;
@@ -2047,7 +2193,7 @@ Address the latest customer feedback around trial lessons, calendar workflow, sc
 - users can deliberately choose between creating an appointment and creating a vacation from calendar time slots without accidental cross-triggering on desktop or mobile;
 - calendar defaults and user-selection controls match the superuser, administrator, and teacher rules above, with authorization enforced server-side;
 - income statistics clearly separate forecast income from realized income and calculate the forecast only from planned appointments inside the selected range;
-- integration and browser tests cover role visibility, calendar gestures, trial-lesson presentation/reminders, timed-vacation boundaries, and forecast calculations.
+- integration and browser tests cover role visibility, calendar gestures, trial-lesson presentation/reminders, timed vacation requests/approvals and boundaries, and forecast calculations.
 
 ---
 
@@ -2083,20 +2229,22 @@ Stage 11 God mode + system notices
    ↓
 Stage 12 Notification infrastructure + Web Push
    ↓
-Stage 13 Client appointment rescheduling requests
+Stage 13 Vacation requests + superuser approval
    ↓
-Stage 14 Services progress
+Stage 14 Client appointment rescheduling requests
    ↓
-Stage 15 Multiple staff accounts in one browser
+Stage 15 Services progress
    ↓
-Stage 16 Offline-first architecture
+Stage 16 Multiple staff accounts in one browser
    ↓
-Stage 17 Accounting/staff compensation architecture
+Stage 17 Offline-first architecture
    ↓
-Stage 18 Calendar workflow + income forecast improvements
+Stage 18 Accounting/staff compensation architecture
+   ↓
+Stage 19 Calendar workflow + income forecast improvements
 ```
 
-The ordering among Stages 14-18 may later be changed for product priority, but they remain **after the refactor**. Stage 13 depends on Stage 12. Stage 15 should precede broad offline account-scoped persistence because offline storage must understand final account identity boundaries.
+The ordering among Stages 15-19 may later be changed for product priority, but they remain **after the refactor**. Stages 13 and 14 depend on Stage 12. Stage 16 should precede broad offline account-scoped persistence because offline storage must understand final account identity boundaries.
 
 ---
 
@@ -2119,8 +2267,8 @@ Do not add these merely because the architecture is changing:
 - PostgreSQL server-log ingestion;
 - frontend/browser telemetry, OTLP relay endpoints, session replay, and source-map symbolication;
 - parallel staff+portal browser identities;
-- multi-staff-account browser switching before Stage 15;
-- offline mutation support before Stage 16;
+- multi-staff-account browser switching before Stage 16;
+- offline mutation support before Stage 17;
 - Web Push as a prerequisite for any business operation;
 - client ability to change teacher/provider in rescheduling;
 - recurrence-series changes through client rescheduling;
