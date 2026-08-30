@@ -2886,6 +2886,15 @@ export function createGetInviteCodeInformationResponseFromDiscriminatorValue(par
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetNotificationsResponse}
+ */
+// @ts-ignore
+export function createGetNotificationsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetNotificationsResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GetPaymentsClientDto}
  */
 // @ts-ignore
@@ -3208,6 +3217,15 @@ export function createMoneyListSummaryDtoFromDiscriminatorValue(parseNode: Parse
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {NotificationResponse}
+ */
+// @ts-ignore
+export function createNotificationResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoNotificationResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {OnboardingStateResponse}
  */
 // @ts-ignore
@@ -3286,6 +3304,15 @@ export interface CreatePaymentRequest extends AdditionalDataHolder, Parsable {
      * The serviceId property
      */
     serviceId?: string | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PushSubscriptionRequest}
+ */
+// @ts-ignore
+export function createPushSubscriptionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoPushSubscriptionRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3484,6 +3511,15 @@ export function createReportProviderDtoFromDiscriminatorValue(parseNode: ParseNo
 // @ts-ignore
 export function createResetPasswordRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoResetPasswordRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RevokePushSubscriptionRequest}
+ */
+// @ts-ignore
+export function createRevokePushSubscriptionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRevokePushSubscriptionRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3857,6 +3893,15 @@ export function createUserWorkingHoursDayItemFromDiscriminatorValue(parseNode: P
 // @ts-ignore
 export function createVerify2FaRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoVerify2FaRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WebPushConfigurationResponse}
+ */
+// @ts-ignore
+export function createWebPushConfigurationResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoWebPushConfigurationResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -5920,6 +5965,18 @@ export function deserializeIntoGetInviteCodeInformationResponse(getInviteCodeInf
 }
 /**
  * The deserialization information for the current model
+ * @param GetNotificationsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetNotificationsResponse(getNotificationsResponse: Partial<GetNotificationsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getNotificationsResponse.items = n.getCollectionOfObjectValues<NotificationResponse>(createNotificationResponseFromDiscriminatorValue); },
+        "unreadCount": n => { getNotificationsResponse.unreadCount = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param GetPaymentsClientDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6352,6 +6409,26 @@ export function deserializeIntoMoneyListSummaryDto(moneyListSummaryDto: Partial<
 }
 /**
  * The deserialization information for the current model
+ * @param NotificationResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoNotificationResponse(notificationResponse: Partial<NotificationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "createdAtUtc": n => { notificationResponse.createdAtUtc = n.getDateValue(); },
+        "deepLink": n => { notificationResponse.deepLink = n.getStringValue(); },
+        "expiresAtUtc": n => { notificationResponse.expiresAtUtc = n.getDateValue(); },
+        "id": n => { notificationResponse.id = n.getStringValue(); },
+        "readAtUtc": n => { notificationResponse.readAtUtc = n.getDateValue(); },
+        "referenceId": n => { notificationResponse.referenceId = n.getStringValue(); },
+        "referenceType": n => { notificationResponse.referenceType = n.getStringValue(); },
+        "summary": n => { notificationResponse.summary = n.getStringValue(); },
+        "title": n => { notificationResponse.title = n.getStringValue(); },
+        "type": n => { notificationResponse.type = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param OnboardingStateResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6435,6 +6512,20 @@ export function deserializeIntoPaginatedResponseOfServiceWithCurrentPriceDto(pag
     return {
         "items": n => { paginatedResponseOfServiceWithCurrentPriceDto.items = n.getCollectionOfObjectValues<ServiceWithCurrentPriceDto>(createServiceWithCurrentPriceDtoFromDiscriminatorValue); },
         "page": n => { paginatedResponseOfServiceWithCurrentPriceDto.page = n.getObjectValue<PageMetadata>(createPageMetadataFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param PushSubscriptionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPushSubscriptionRequest(pushSubscriptionRequest: Partial<PushSubscriptionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "auth": n => { pushSubscriptionRequest.auth = n.getStringValue(); },
+        "endpoint": n => { pushSubscriptionRequest.endpoint = n.getStringValue(); },
+        "expiresAtUtc": n => { pushSubscriptionRequest.expiresAtUtc = n.getDateValue(); },
+        "p256Dh": n => { pushSubscriptionRequest.p256Dh = n.getStringValue(); },
     }
 }
 /**
@@ -6744,6 +6835,17 @@ export function deserializeIntoResetPasswordRequest(resetPasswordRequest: Partia
         "otp": n => { resetPasswordRequest.otp = n.getStringValue(); },
         "recoveryCode": n => { resetPasswordRequest.recoveryCode = n.getStringValue(); },
         "token": n => { resetPasswordRequest.token = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param RevokePushSubscriptionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRevokePushSubscriptionRequest(revokePushSubscriptionRequest: Partial<RevokePushSubscriptionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "endpoint": n => { revokePushSubscriptionRequest.endpoint = n.getStringValue(); },
     }
 }
 /**
@@ -7306,6 +7408,18 @@ export function deserializeIntoVerify2FaRequest(verify2FaRequest: Partial<Verify
 }
 /**
  * The deserialization information for the current model
+ * @param WebPushConfigurationResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWebPushConfigurationResponse(webPushConfigurationResponse: Partial<WebPushConfigurationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "enabled": n => { webPushConfigurationResponse.enabled = n.getBooleanValue(); },
+        "publicKey": n => { webPushConfigurationResponse.publicKey = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param WorkHourDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7763,6 +7877,16 @@ export interface GetInviteCodeInformationResponse extends AdditionalDataHolder, 
      */
     email?: string | null;
 }
+export interface GetNotificationsResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: NotificationResponse[] | null;
+    /**
+     * The unreadCount property
+     */
+    unreadCount?: number | null;
+}
 export interface GetPaymentsClientDto extends AdditionalDataHolder, Parsable {
     /**
      * The firstName property
@@ -8154,6 +8278,48 @@ export interface MoneyListSummaryDto extends AdditionalDataHolder, Parsable {
      */
     totalAmount?: number | null;
 }
+export interface NotificationResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The createdAtUtc property
+     */
+    createdAtUtc?: Date | null;
+    /**
+     * The deepLink property
+     */
+    deepLink?: string | null;
+    /**
+     * The expiresAtUtc property
+     */
+    expiresAtUtc?: Date | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The readAtUtc property
+     */
+    readAtUtc?: Date | null;
+    /**
+     * The referenceId property
+     */
+    referenceId?: string | null;
+    /**
+     * The referenceType property
+     */
+    referenceType?: string | null;
+    /**
+     * The summary property
+     */
+    summary?: string | null;
+    /**
+     * The title property
+     */
+    title?: string | null;
+    /**
+     * The type property
+     */
+    type?: string | null;
+}
 export interface OnboardingStateResponse extends AdditionalDataHolder, Parsable {
     /**
      * The completedAtUtc property
@@ -8273,6 +8439,24 @@ export interface PaginatedResponseOfServiceWithCurrentPriceDto extends Additiona
      * The page property
      */
     page?: PageMetadata | null;
+}
+export interface PushSubscriptionRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The auth property
+     */
+    auth?: string | null;
+    /**
+     * The endpoint property
+     */
+    endpoint?: string | null;
+    /**
+     * The expiresAtUtc property
+     */
+    expiresAtUtc?: Date | null;
+    /**
+     * The p256Dh property
+     */
+    p256Dh?: string | null;
 }
 export interface RecordActivityDto extends AdditionalDataHolder, Parsable {
     /**
@@ -8655,6 +8839,12 @@ export interface ResetPasswordRequest extends AdditionalDataHolder, Parsable {
      * The token property
      */
     token?: string | null;
+}
+export interface RevokePushSubscriptionRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The endpoint property
+     */
+    endpoint?: string | null;
 }
 export interface Role extends AdditionalDataHolder, Parsable {
     /**
@@ -10661,6 +10851,19 @@ export function serializeGetInviteCodeInformationResponse(writer: SerializationW
 }
 /**
  * Serializes information the current object
+ * @param GetNotificationsResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetNotificationsResponse(writer: SerializationWriter, getNotificationsResponse: Partial<GetNotificationsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getNotificationsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<NotificationResponse>("items", getNotificationsResponse.items, serializeNotificationResponse);
+    writer.writeNumberValue("unreadCount", getNotificationsResponse.unreadCount);
+    writer.writeAdditionalData(getNotificationsResponse.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param GetPaymentsClientDto The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11118,6 +11321,27 @@ export function serializeMoneyListSummaryDto(writer: SerializationWriter, moneyL
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param NotificationResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeNotificationResponse(writer: SerializationWriter, notificationResponse: Partial<NotificationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!notificationResponse || isSerializingDerivedType) { return; }
+    writer.writeDateValue("createdAtUtc", notificationResponse.createdAtUtc);
+    writer.writeStringValue("deepLink", notificationResponse.deepLink);
+    writer.writeDateValue("expiresAtUtc", notificationResponse.expiresAtUtc);
+    writer.writeStringValue("id", notificationResponse.id);
+    writer.writeDateValue("readAtUtc", notificationResponse.readAtUtc);
+    writer.writeStringValue("referenceId", notificationResponse.referenceId);
+    writer.writeStringValue("referenceType", notificationResponse.referenceType);
+    writer.writeStringValue("summary", notificationResponse.summary);
+    writer.writeStringValue("title", notificationResponse.title);
+    writer.writeStringValue("type", notificationResponse.type);
+    writer.writeAdditionalData(notificationResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param OnboardingStateResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11207,6 +11431,21 @@ export function serializePaginatedResponseOfServiceWithCurrentPriceDto(writer: S
     writer.writeCollectionOfObjectValues<ServiceWithCurrentPriceDto>("items", paginatedResponseOfServiceWithCurrentPriceDto.items, serializeServiceWithCurrentPriceDto);
     writer.writeObjectValue<PageMetadata>("page", paginatedResponseOfServiceWithCurrentPriceDto.page, serializePageMetadata);
     writer.writeAdditionalData(paginatedResponseOfServiceWithCurrentPriceDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PushSubscriptionRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePushSubscriptionRequest(writer: SerializationWriter, pushSubscriptionRequest: Partial<PushSubscriptionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!pushSubscriptionRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("auth", pushSubscriptionRequest.auth);
+    writer.writeStringValue("endpoint", pushSubscriptionRequest.endpoint);
+    writer.writeDateValue("expiresAtUtc", pushSubscriptionRequest.expiresAtUtc);
+    writer.writeStringValue("p256Dh", pushSubscriptionRequest.p256Dh);
+    writer.writeAdditionalData(pushSubscriptionRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11534,6 +11773,18 @@ export function serializeResetPasswordRequest(writer: SerializationWriter, reset
     writer.writeStringValue("recoveryCode", resetPasswordRequest.recoveryCode);
     writer.writeStringValue("token", resetPasswordRequest.token);
     writer.writeAdditionalData(resetPasswordRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RevokePushSubscriptionRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRevokePushSubscriptionRequest(writer: SerializationWriter, revokePushSubscriptionRequest: Partial<RevokePushSubscriptionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!revokePushSubscriptionRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("endpoint", revokePushSubscriptionRequest.endpoint);
+    writer.writeAdditionalData(revokePushSubscriptionRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12123,6 +12374,19 @@ export function serializeVerify2FaRequest(writer: SerializationWriter, verify2Fa
     writer.writeStringValue("otp", verify2FaRequest.otp);
     writer.writeStringValue("otpSecret", verify2FaRequest.otpSecret);
     writer.writeAdditionalData(verify2FaRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WebPushConfigurationResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWebPushConfigurationResponse(writer: SerializationWriter, webPushConfigurationResponse: Partial<WebPushConfigurationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!webPushConfigurationResponse || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("enabled", webPushConfigurationResponse.enabled);
+    writer.writeStringValue("publicKey", webPushConfigurationResponse.publicKey);
+    writer.writeAdditionalData(webPushConfigurationResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12930,6 +13194,16 @@ export interface Verify2FaRequest extends AdditionalDataHolder, Parsable {
      * The otpSecret property
      */
     otpSecret?: string | null;
+}
+export interface WebPushConfigurationResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The enabled property
+     */
+    enabled?: boolean | null;
+    /**
+     * The publicKey property
+     */
+    publicKey?: string | null;
 }
 export interface WorkHourDto extends AdditionalDataHolder, Parsable {
     /**

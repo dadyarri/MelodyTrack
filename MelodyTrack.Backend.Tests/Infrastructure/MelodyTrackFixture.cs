@@ -64,7 +64,11 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
                 ["Http:PathBase"] = string.Empty,
                 ["GodMode:StateDirectory"] = Path.Combine(Path.GetTempPath(), "melodytrack-god-mode-tests"),
                 ["GodMode:PublicBaseUrl"] = "https://god-mode.test",
-                ["GodMode:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ="
+                ["GodMode:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ=",
+                ["WebPush:Enabled"] = "true",
+                ["WebPush:Subject"] = "mailto:tests@melodytrack.invalid",
+                ["WebPush:PublicKey"] = "test-public-vapid-key",
+                ["WebPush:PrivateKey"] = "test-private-vapid-key"
             });
         });
     }

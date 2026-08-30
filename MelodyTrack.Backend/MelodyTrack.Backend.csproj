@@ -41,6 +41,7 @@
         <PackageReference Include="SixLabors.ImageSharp.Drawing" />
         <PackageReference Include="UaDetector" />
         <PackageReference Include="Ulid" />
+        <PackageReference Include="WebPush" />
     </ItemGroup>
 
     <ItemGroup>

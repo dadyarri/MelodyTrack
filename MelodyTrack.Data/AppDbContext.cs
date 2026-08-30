@@ -53,6 +53,9 @@ public class AppDbContext : DbContext
     public DbSet<CalendarSubscription> CalendarSubscriptions { get; set; }
     public DbSet<SystemNotice> SystemNotices { get; set; }
     public DbSet<SystemNoticeRecipient> SystemNoticeRecipients { get; set; }
+    public DbSet<Notification> Notifications { get; set; }
+    public DbSet<PushSubscription> PushSubscriptions { get; set; }
+    public DbSet<NotificationPushDelivery> NotificationPushDeliveries { get; set; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -126,6 +129,66 @@ public class AppDbContext : DbContext
             .ToTable(table => table.HasCheckConstraint(
                 "CK_SystemNoticeRecipients_ExactlyOneRecipient",
                 "(\"UserId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"UserId\" IS NULL AND \"ClientId\" IS NOT NULL)"));
+
+        modelBuilder.Entity<Notification>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Notification>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<Notification>()
+            .HasIndex(e => new { e.UserId, e.CreatedAtUtc });
+        modelBuilder.Entity<Notification>()
+            .HasIndex(e => new { e.ClientId, e.CreatedAtUtc });
+        modelBuilder.Entity<Notification>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_Notifications_ExactlyOneRecipient",
+                "(\"UserId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"UserId\" IS NULL AND \"ClientId\" IS NOT NULL)"));
+
+        modelBuilder.Entity<PushSubscription>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PushSubscription>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PushSubscription>()
+            .HasOne(e => e.Session)
+            .WithMany()
+            .HasForeignKey(e => e.SessionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<PushSubscription>()
+            .HasIndex(e => e.Endpoint)
+            .IsUnique();
+        modelBuilder.Entity<PushSubscription>()
+            .HasIndex(e => e.SessionId);
+        modelBuilder.Entity<PushSubscription>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_PushSubscriptions_ExactlyOnePrincipal",
+                "(\"UserId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"UserId\" IS NULL AND \"ClientId\" IS NOT NULL)"));
+
+        modelBuilder.Entity<NotificationPushDelivery>()
+            .HasOne(e => e.Notification)
+            .WithMany(e => e.PushDeliveries)
+            .HasForeignKey(e => e.NotificationId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NotificationPushDelivery>()
+            .HasOne(e => e.PushSubscription)
+            .WithMany(e => e.Deliveries)
+            .HasForeignKey(e => e.PushSubscriptionId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<NotificationPushDelivery>()
+            .HasIndex(e => new { e.Status, e.NextAttemptAtUtc });
+        modelBuilder.Entity<NotificationPushDelivery>()
+            .HasIndex(e => new { e.NotificationId, e.PushSubscriptionId })
+            .IsUnique();
 
         modelBuilder.HasPostgresExtension("fuzzystrmatch");
 

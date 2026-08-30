@@ -3,6 +3,7 @@ import "./icons.css";
 import type { LucideIcon, LucideProps } from "lucide-react";
 import BadgeInfo from "lucide-react/dist/esm/icons/badge-info";
 import BadgeRussianRuble from "lucide-react/dist/esm/icons/badge-russian-ruble";
+import Bell from "lucide-react/dist/esm/icons/bell";
 import Blocks from "lucide-react/dist/esm/icons/blocks";
 import BookOpenText from "lucide-react/dist/esm/icons/book-open-text";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
@@ -81,6 +82,7 @@ function createIcon(Component: LucideIcon) {
 }
 
 export const CalendarOutlined = createIcon(Calendar);
+export const BellOutlined = createIcon(Bell);
 export const CalendarCheckOutlined = createIcon(CalendarCheck2);
 export const CheckCircleOutlined = createIcon(CircleCheck);
 export const CheckOutlined = createIcon(Check);

@@ -74,7 +74,8 @@ public static class Extensions
                 metrics.AddAspNetCoreInstrumentation()
                     .AddHttpClientInstrumentation()
                     .AddNpgsqlInstrumentation(_ => { })
-                    .AddRuntimeInstrumentation();
+                    .AddRuntimeInstrumentation()
+                    .AddMeter("MelodyTrack.Notifications");
             })
             .WithTracing(tracing =>
             {

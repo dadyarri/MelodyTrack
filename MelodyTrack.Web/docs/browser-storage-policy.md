@@ -15,7 +15,7 @@ represent a completed operation or trigger automatic submission.
 | Durable form drafts | IndexedDB `drafts` | User-partitioned, versioned, runtime-validated, and expired 30 days after the last write |
 | React Query data and reference labels | Memory | Server data is never presented as an offline working set |
 | Chunk retry/navigation intent | `sessionStorage` | Small, non-sensitive, one-tab recovery markers |
-| Static assets | Browser HTTP cache | No application service worker or explicit application-shell cache |
+| Static assets | Browser HTTP cache | The minimal Web Push service worker does not intercept fetches or maintain an application-shell cache |
 
 IndexedDB version 2 deletes the former `offlineCommands` and
 `offlineIdMappings` stores. Existing commands and mappings are deliberately
@@ -45,6 +45,9 @@ queue data is not migrated.
 9. Account switching cannot expose one user's drafts to another user.
 10. Web Storage and IndexedDB are not security boundaries; do not store
     credentials or secret-bearing URLs in them.
+11. The Web Push service worker handles only push display and notification
+    navigation. Offline caching, background business writes, and fabricated
+    offline state remain out of scope.
 
 ## Draft record
 

@@ -34,6 +34,8 @@ import { ExpensesRequestBuilderNavigationMetadata, ExpensesRequestBuilderRequest
 // @ts-ignore
 import { ExportsRequestBuilderNavigationMetadata, type ExportsRequestBuilder } from './exports/index.js';
 // @ts-ignore
+import { NotificationsRequestBuilderNavigationMetadata, NotificationsRequestBuilderRequestsMetadata, type NotificationsRequestBuilder } from './notifications/index.js';
+// @ts-ignore
 import { OnboardingRequestBuilderNavigationMetadata, OnboardingRequestBuilderRequestsMetadata, type OnboardingRequestBuilder } from './onboarding/index.js';
 // @ts-ignore
 import { PaymentsRequestBuilderNavigationMetadata, PaymentsRequestBuilderRequestsMetadata, type PaymentsRequestBuilder } from './payments/index.js';
@@ -124,6 +126,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
      * The exports property
      */
     get exports(): ExportsRequestBuilder;
+    /**
+     * The notifications property
+     */
+    get notifications(): NotificationsRequestBuilder;
     /**
      * The onboarding property
      */
@@ -227,6 +233,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<Exclude<keyof ApiReques
     },
     exports: {
         navigationMetadata: ExportsRequestBuilderNavigationMetadata,
+    },
+    notifications: {
+        requestsMetadata: NotificationsRequestBuilderRequestsMetadata,
+        navigationMetadata: NotificationsRequestBuilderNavigationMetadata,
     },
     onboarding: {
         requestsMetadata: OnboardingRequestBuilderRequestsMetadata,

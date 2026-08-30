@@ -1,8 +1,10 @@
 import { Button, Space, Typography } from "antd";
 import { NavLink, Outlet } from "react-router";
 
+import { NotificationBell } from "@/entities/notification";
 import { useAuth } from "@/entities/session";
 import { SystemNoticeCenter } from "@/entities/system-notice";
+import { PushNotificationControl } from "@/features/manage-push-notifications";
 import { CalendarOutlined, LogoutOutlined } from "@/shared/ui/icons";
 
 import styles from "./ClientPortalShell.module.css";
@@ -21,6 +23,7 @@ export function ClientPortalShell() {
             </Typography.Title>
           </div>
           <Space className={styles.actions}>
+            <NotificationBell footer={<PushNotificationControl />} />
             <Typography.Text type="secondary">
               {auth.user?.firstName} {auth.user?.lastName}
             </Typography.Text>

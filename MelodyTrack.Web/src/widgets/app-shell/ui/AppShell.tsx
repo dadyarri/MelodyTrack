@@ -3,8 +3,10 @@ import { Button, Divider, Drawer, Layout, Menu, Popover, Space, Typography } fro
 import { lazy, type ReactNode, Suspense, type SyntheticEvent, useCallback, useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router";
 
+import { NotificationBell } from "@/entities/notification";
 import { hasSuperuserAccess, useAuth } from "@/entities/session";
 import { SystemNoticeCenter } from "@/entities/system-notice";
+import { PushNotificationControl } from "@/features/manage-push-notifications";
 import type { OnboardingDisplayStatus } from "@/features/onboarding";
 import {
   canViewReleaseNotes,
@@ -243,6 +245,7 @@ export function AppShell({
             }}
           />
           <div className={styles.headerSpacer} />
+          <NotificationBell footer={<PushNotificationControl />} />
           <Popover
             trigger={["hover", "click"]}
             placement="bottomRight"

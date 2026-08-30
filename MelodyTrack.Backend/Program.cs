@@ -15,6 +15,7 @@ using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Hosting;
 using MelodyTrack.Backend.GodMode;
 using MelodyTrack.Backend.Jobs;
+using MelodyTrack.Backend.Notifications;
 using MelodyTrack.Backend.OpenApi;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
@@ -147,6 +148,15 @@ try
             options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
             "GodMode:PublicBaseUrl must be an absolute HTTPS URL.")
         .ValidateOnStart();
+    builder.Services.AddOptions<WebPushOptions>()
+        .Bind(builder.Configuration.GetSection(WebPushOptions.SectionName))
+        .Validate(options =>
+                !options.Enabled ||
+                Uri.TryCreate(options.Subject, UriKind.Absolute, out _) &&
+                !string.IsNullOrWhiteSpace(options.PublicKey) &&
+                !string.IsNullOrWhiteSpace(options.PrivateKey),
+            "WebPush requires an absolute subject and a separate VAPID public/private key pair when enabled.")
+        .ValidateOnStart();
     builder.Services.AddMelodyTrackData(builder.Configuration);
     builder.Services.AddValidation();
     builder.Services.AddProblemDetails(options =>
@@ -235,6 +245,13 @@ try
     builder.Services.AddSingleton<IRecurringTaskTemplateRenderer, RecurringTaskTemplateRenderer>();
     builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddSingleton<NotificationTelemetry>();
+    builder.Services.AddSingleton<WebPush.WebPushClient>();
+    if (environment != "Test" && !isOpenApiGeneration)
+    {
+        builder.Services.AddHostedService<PushDeliveryWorker>();
+    }
 
     builder.Services.Configure<QuartzOptions>(opts =>
     {

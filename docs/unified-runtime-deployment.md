@@ -25,7 +25,13 @@ AuthenticationSecrets__CsrfSigningKey=base64:<32-independent-random-bytes>
 PersonalData__CurrentKey=<secret>
 PersonalData__CurrentKeyVersion=v1
 ReverseProxy__KnownNetworks__0=<Caddy Docker network in CIDR form>
+WebPush__Enabled=true
+WebPush__Subject=mailto:<operational-contact@example.com>
+WebPush__PublicKey=<VAPID-public-key>
+WebPush__PrivateKey=<VAPID-private-key-secret>
 ```
+
+Generate the VAPID key pair separately from every authentication and personal-data key. The public key is intentionally returned to authenticated browsers; the private key is a production secret and must stay in the deployment secret store. If Web Push is not configured, leave `WebPush__Enabled=false`; in-app notifications continue to work normally.
 
 ## Out-of-band emergency access
 
