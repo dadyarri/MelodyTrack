@@ -72,8 +72,7 @@ public sealed class RefreshEndpoint
                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
-                Category = "security",
-                Action = "refresh_replay_detected",
+                Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RefreshReplayDetected,
                 EntityType = "session",
                 EntityId = session.Id.ToString(),
                 ActorUserId = session.User.Id,

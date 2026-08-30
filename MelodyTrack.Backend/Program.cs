@@ -13,6 +13,7 @@ using MelodyTrack.Backend.Api.Services.Responses;
 using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Hosting;
+using MelodyTrack.Backend.GodMode;
 using MelodyTrack.Backend.Jobs;
 using MelodyTrack.Backend.OpenApi;
 using MelodyTrack.Backend.Services;
@@ -63,7 +64,9 @@ if (isOpenApiGeneration)
         [$"{JwtOptions.SectionName}:Audience"] = "MelodyTrack.Web",
         [$"{PersonalDataOptions.SectionName}:CurrentKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
         [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Host=localhost;Database=openapi;Username=openapi;Password=openapi",
-        [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost"
+        [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost",
+        [$"{GodModeOptions.SectionName}:PublicBaseUrl"] = "https://localhost:8081",
+        [$"{GodModeOptions.SectionName}:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ="
     });
 }
 builder.AddServiceDefaults("melodytrack-backend");
@@ -137,6 +140,13 @@ try
                        || options.PathBase.StartsWith('/') && !options.PathBase.EndsWith('/'),
             "Http:PathBase must be empty or start with '/' and must not end with '/'.")
         .ValidateOnStart();
+    builder.Services.AddOptions<GodModeOptions>()
+        .Bind(builder.Configuration.GetSection(GodModeOptions.SectionName))
+        .ValidateDataAnnotations()
+        .Validate(
+            options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
+            "GodMode:PublicBaseUrl must be an absolute HTTPS URL.")
+        .ValidateOnStart();
     builder.Services.AddMelodyTrackData(builder.Configuration);
     builder.Services.AddValidation();
     builder.Services.AddProblemDetails(options =>
@@ -197,6 +207,7 @@ try
     builder.Services.AddScoped<ServiceWithCurrentPriceDtoMapper>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+    builder.Services.AddSingleton<GodModeAccessService>();
     builder.Services.AddScoped<RefreshSessionCookieService>();
     builder.Services.AddSingleton<JwtTokenService>();
     builder.Services.AddScoped<SessionSecurityMonitor>();
@@ -260,8 +271,13 @@ try
 
     var app = builder.Build();
     var httpOptions = app.Services.GetRequiredService<IOptions<HttpOptions>>().Value;
+    var godModeOptions = app.Services.GetRequiredService<IOptions<GodModeOptions>>().Value;
+    _ = MelodyTrack.Data.Security.AuthenticationSecretMaterial.DecodeSymmetricKey(
+        godModeOptions.SessionSigningKey,
+        "GodMode:SessionSigningKey");
 
     app.UseTrustedReverseProxy();
+    app.UseGodModeListenerIsolation(godModeOptions);
 
     app.UseSerilogRequestLogging();
     app.UseResponseCompression();
@@ -333,6 +349,7 @@ try
     apiEndpoints.RequireAuthorization(AuthorizationPolicies.ApiAccess);
     apiEndpoints.AddEndpointFilter<NativeValidationEndpointFilter>();
     apiEndpoints.MapGeneratedApiEndpoints();
+    app.MapGodModeEndpoints();
     app.MapSpaFallback();
 
     app.Run();

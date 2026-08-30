@@ -93,8 +93,9 @@ public sealed class AuthenticateClientPortalLinkEndpoint
             await db.SaveChangesAsync(ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
-                Category = "security",
-                Action = link.FailedPinAttempts >= 3 ? "portal_pin_repeated_failures" : "portal_pin_failed",
+                Event = link.FailedPinAttempts >= 3
+                    ? MelodyTrack.Core.Auditing.AuditCatalog.Events.PortalPinRepeatedFailures
+                    : MelodyTrack.Core.Auditing.AuditCatalog.Events.PortalPinFailed,
                 EntityType = "client_portal_link",
                 EntityId = link.Id.ToString(),
                 ActorUserId = link.User.Id,

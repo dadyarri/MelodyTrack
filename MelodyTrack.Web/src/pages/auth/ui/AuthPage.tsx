@@ -3,6 +3,7 @@ import { Navigate } from "react-router";
 
 import type { LoginInput, RecoveryCodeItem } from "@/entities/session";
 import { RecoveryCodesCard, TotpSecretPanel } from "@/entities/session";
+import { SystemNoticeCenter } from "@/entities/system-notice";
 import { type AuthMode, type SecondFactorMode, useAuthPageController } from "@/features/auth";
 import { AuthScreenLayout, authScreenStyles as authStyles, StatusBanner } from "@/shared/ui";
 import { KeyOutlined, LockOutlined, MailOutlined, UserOutlined } from "@/shared/ui/icons";
@@ -20,6 +21,7 @@ export function AuthPage() {
 
   return (
     <AuthScreenLayout title="MelodyTrack">
+      <SystemNoticeCenter preAuth />
       {controller.totpSetup ||
       controller.recoveryCodes ||
       controller.recover2FaState ||

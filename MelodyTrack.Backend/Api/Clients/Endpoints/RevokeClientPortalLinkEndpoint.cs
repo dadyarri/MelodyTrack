@@ -57,8 +57,7 @@ public sealed class RevokeClientPortalLinkEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_portal_link_revoked",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalLinkRevoked,
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,

@@ -95,6 +95,7 @@ public sealed class ResetPasswordEndpoint
         }
 
         user.Password = credentialHasher.HashPassword(req.NewPassword);
+        user.PasswordResetRequired = false;
         restoreCode.WasUsed = true;
         await db.SaveChangesAsync(ct);
 
@@ -105,8 +106,7 @@ public sealed class ResetPasswordEndpoint
         logger.LogInformation("auth.password_reset.completed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "password_reset_completed",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PasswordResetCompleted,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

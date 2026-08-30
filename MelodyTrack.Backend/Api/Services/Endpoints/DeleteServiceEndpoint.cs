@@ -74,8 +74,7 @@ public sealed class DeleteServiceEndpoint
         await db.Services.Where(item => item.Id == req.Id).ExecuteDeleteAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "services",
-            Action = "service_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ServiceDeleted,
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

@@ -78,8 +78,7 @@ public sealed class UpdateServicePriceEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "services",
-            Action = "service_price_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ServicePriceUpdated,
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

@@ -10,6 +10,7 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Api.Audit.Endpoints;
 
@@ -35,9 +36,13 @@ public sealed class GetAuditLogsEndpoint
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
             var pattern = $"%{normalizedSearch}%";
+            var categoryCodes = AuditCatalog.FindCategoryCodes(normalizedSearch);
+            var actionCodes = AuditCatalog.FindActionCodes(normalizedSearch);
             query = query.Where(item =>
                 EF.Functions.ILike(item.Category, pattern) ||
                 EF.Functions.ILike(item.Action, pattern) ||
+                categoryCodes.Contains(item.Category) ||
+                actionCodes.Contains(item.Action) ||
                 EF.Functions.ILike(item.EntityType, pattern) ||
                 (item.EntityId != null && EF.Functions.ILike(item.EntityId, pattern)) ||
                 (item.ActorEmail != null && EF.Functions.ILike(item.ActorEmail, pattern)) ||
@@ -54,7 +59,9 @@ public sealed class GetAuditLogsEndpoint
                 Id = item.Id,
                 CreatedAtUtc = item.CreatedAtUtc,
                 Category = item.Category,
+                CategoryLabel = item.Category,
                 Action = item.Action,
+                ActionLabel = item.Action,
                 EntityType = item.EntityType,
                 EntityId = item.EntityId,
                 ActorEmail = item.ActorEmail,
@@ -63,6 +70,12 @@ public sealed class GetAuditLogsEndpoint
                 Details = AuditDetailsFormatter.FormatForDisplay(item.Details, timezone)
             })
             .ToListAsync(ct);
+
+        foreach (var log in logs)
+        {
+            log.CategoryLabel = AuditCatalog.GetCategoryLabel(log.Category);
+            log.ActionLabel = AuditCatalog.GetActionLabel(log.Action);
+        }
 
         return TypedResults.Ok(new GetAuditLogsResponse
         {

@@ -67,8 +67,7 @@ public sealed class DeleteExpenseCategoryEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expenses",
-            Action = "expense_category_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseCategoryDeleted,
             EntityType = "expense_category",
             EntityId = category.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Категория расхода", category.Name)

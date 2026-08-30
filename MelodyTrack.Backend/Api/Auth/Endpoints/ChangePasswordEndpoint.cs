@@ -44,8 +44,7 @@ public sealed class ChangePasswordEndpoint
         logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "password_changed",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PasswordChanged,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

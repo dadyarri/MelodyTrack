@@ -54,8 +54,7 @@ public sealed class LogoutEndpoint
         logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(session.User.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "logout_succeeded",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.LogoutSucceeded,
             EntityType = "session",
             ActorUserId = session.User.Id,
             ActorEmail = session.User.Email,

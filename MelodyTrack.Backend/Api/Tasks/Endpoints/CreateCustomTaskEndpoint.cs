@@ -82,8 +82,7 @@ public sealed class CreateCustomTaskEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "recurring_tasks",
-            Action = "custom_task_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.CustomTaskCreated,
             EntityType = "custom_task",
             EntityId = task.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

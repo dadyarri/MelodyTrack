@@ -51,6 +51,12 @@ public sealed class LoginEndpoint
             return TypedResults.Unauthorized();
         }
 
+        if (user.PasswordResetRequired)
+        {
+            logger.LogWarning("auth.login.password_reset_required {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            return TypedResults.Unauthorized();
+        }
+
         var requiresSecondFactor = user.Role.RoleName.IsAnyAdmin() || user.TotpSecret is not null;
 
         if (requiresSecondFactor && req.Otp is null && string.IsNullOrWhiteSpace(req.RecoveryCode))
@@ -117,8 +123,7 @@ public sealed class LoginEndpoint
         logger.LogInformation("auth.login.succeeded {EmailRef} device {DeviceInfo}", UserUtils.DescribeEmailForLogs(user.Email), session.DeviceInfo);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "login_succeeded",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.LoginSucceeded,
             EntityType = "session",
             EntityId = session.Id.ToString(),
             ActorUserId = user.Id,

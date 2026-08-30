@@ -75,14 +75,13 @@ public sealed class DeleteAppointmentEndpoint
         logger.LogInformation("Successfully deleted appointment with ID: {AppointmentId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "schedule",
-            Action = scope switch
+            Event = scope switch
             {
-                AppointmentDeleteScope.WeekdayThisAndFollowing => "appointments_deleted_selected_weekday_this_and_following",
-                AppointmentDeleteScope.WeekdayAll => "appointments_deleted_selected_weekday_all",
-                AppointmentDeleteScope.ThisAndFollowing => "appointments_deleted_this_and_following",
-                AppointmentDeleteScope.All => "appointments_deleted_all",
-                _ => "appointment_deleted"
+                AppointmentDeleteScope.WeekdayThisAndFollowing => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedSelectedWeekdayThisAndFollowing,
+                AppointmentDeleteScope.WeekdayAll => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedSelectedWeekdayAll,
+                AppointmentDeleteScope.ThisAndFollowing => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedThisAndFollowing,
+                AppointmentDeleteScope.All => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedAll,
+                _ => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentDeleted
             },
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),

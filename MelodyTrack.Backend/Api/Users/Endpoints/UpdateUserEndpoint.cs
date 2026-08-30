@@ -81,8 +81,7 @@ public sealed class UpdateUserEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "users",
-            Action = "user_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.UserUpdated,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

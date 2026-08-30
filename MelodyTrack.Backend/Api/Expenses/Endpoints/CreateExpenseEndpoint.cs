@@ -88,8 +88,7 @@ public sealed class CreateExpenseEndpoint
         logger.LogInformation("Created new expense: {Description} with amount {Amount}", expense.Description, expense.Amount);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expenses",
-            Action = "expense_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseCreated,
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

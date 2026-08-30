@@ -140,8 +140,8 @@ public sealed class DatabaseInitializationService(
         {
             Id = Ulid.NewUlid(),
             CreatedAtUtc = nowUtc,
-            Category = "security",
-            Action = "superuser_bootstrap_invite_available",
+            Category = MelodyTrack.Core.Auditing.AuditCatalog.Events.SuperuserBootstrapInviteAvailable.Category.Code,
+            Action = MelodyTrack.Core.Auditing.AuditCatalog.Events.SuperuserBootstrapInviteAvailable.Code,
             EntityType = "invite",
             EntityId = invite.Id.ToString(),
             Details = $"Приглашение: {inviteReference}; действует до: {invite.ValidUntil:O}"
@@ -170,8 +170,8 @@ public sealed class DatabaseInitializationService(
         {
             using var activity = InitializationTelemetry.StartActivity("development-seed.upgrade");
             activity?.SetTag("seed.version", version);
-            var action = $"development_seed_v{version}";
-            if (await db.AuditLogs.AsNoTracking().AnyAsync(log => log.Action == action, cancellationToken))
+            var auditEvent = MelodyTrack.Core.Auditing.AuditCatalog.GetEvent($"development_seed_v{version}");
+            if (await db.AuditLogs.AsNoTracking().AnyAsync(log => log.Action == auditEvent.Code, cancellationToken))
             {
                 activity?.SetTag("seed.outcome", "already-applied");
                 activity?.SetStatus(ActivityStatusCode.Ok);
@@ -207,7 +207,7 @@ public sealed class DatabaseInitializationService(
                         throw new InvalidOperationException($"Development seed upgrade {version} is not implemented.");
                 }
 
-                await db.AuditLogs.AddAsync(CreateInitializationMarker(action), cancellationToken);
+                await db.AuditLogs.AddAsync(CreateInitializationMarker(auditEvent), cancellationToken);
                 await db.SaveChangesAsync(cancellationToken);
                 activity?.SetTag("seed.outcome", "applied");
                 activity?.SetStatus(ActivityStatusCode.Ok);
@@ -373,8 +373,8 @@ public sealed class DatabaseInitializationService(
 
     private async Task EnsureTestBaselineAsync(CancellationToken cancellationToken)
     {
-        const string action = "test_seed_v1";
-        if (await db.AuditLogs.AsNoTracking().AnyAsync(log => log.Action == action, cancellationToken))
+        var auditEvent = MelodyTrack.Core.Auditing.AuditCatalog.Events.TestSeedV1;
+        if (await db.AuditLogs.AsNoTracking().AnyAsync(log => log.Action == auditEvent.Code, cancellationToken))
         {
             return;
         }
@@ -392,15 +392,15 @@ public sealed class DatabaseInitializationService(
             }, cancellationToken);
         }
 
-        await db.AuditLogs.AddAsync(CreateInitializationMarker(action), cancellationToken);
+        await db.AuditLogs.AddAsync(CreateInitializationMarker(auditEvent), cancellationToken);
         await db.SaveChangesAsync(cancellationToken);
     }
 
-    private AuditLog CreateInitializationMarker(string action)
+    private AuditLog CreateInitializationMarker(MelodyTrack.Core.Auditing.AuditEventDefinition auditEvent)
     {
         return new AuditLog
         {
-            Id = action switch
+            Id = auditEvent.Code switch
             {
                 "development_seed_v1" => Ulid.Parse("01K0000000000000000000000D"),
                 "development_seed_v2" => Ulid.Parse("01K0000000000000000000000F"),
@@ -412,8 +412,8 @@ public sealed class DatabaseInitializationService(
                 _ => Ulid.NewUlid()
             },
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            Category = "initialization",
-            Action = action,
+            Category = auditEvent.Category.Code,
+            Action = auditEvent.Code,
             EntityType = "database",
             Details = "Applied by MelodyTrack.Init"
         };

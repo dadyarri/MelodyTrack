@@ -44,8 +44,9 @@ public sealed class SetLeadStatusEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = req.IsClosed ? "lead_closed" : "lead_reopened",
+            Event = req.IsClosed
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.LeadClosed
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.LeadReopened,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

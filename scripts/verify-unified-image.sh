@@ -44,7 +44,7 @@ docker run --detach \
     --name "$application" \
     --network "$network" \
     --publish 127.0.0.1::8080 \
-    --env ASPNETCORE_URLS=http://+:8080 \
+    --publish 127.0.0.1::8081 \
     --env "Database__ConnectionString=Host=$database;Port=5432;Database=melodytrack;Username=melodytrack;Password=image-test-password" \
     --env AuthenticationSecrets__JwtSigningPrivateKey=base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA \
     --env AuthenticationSecrets__PasswordPepper=base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA= \
@@ -54,10 +54,15 @@ docker run --detach \
     --env PersonalData__CurrentKey=image-test-pii-key-1234567890-abcdef \
     --env PersonalData__CurrentKeyVersion=v1 \
     --env PublicUrl__BaseUrl=https://localhost \
+    --env GodMode__StateDirectory=/tmp/melodytrack-god-mode \
+    --env GodMode__PublicBaseUrl=https://god-mode.localhost \
+    --env GodMode__SessionSigningKey=base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ= \
     "$image" >/dev/null
 
 published_address=$(docker port "$application" 8080/tcp)
 base_url=http://$published_address
+god_mode_address=$(docker port "$application" 8081/tcp)
+god_mode_base_url=http://$god_mode_address
 application_ready=false
 for _ in $(seq 1 120); do
     if curl --fail --silent --show-error "$base_url/health" >/dev/null 2>&1; then
@@ -127,6 +132,25 @@ grep --ignore-case --quiet '^content-encoding: gzip' "$temporary_directory/compr
 
 curl --fail --silent --show-error --output /dev/null "$base_url/health"
 curl --fail --silent --show-error --output /dev/null "$base_url/alive"
+
+god_mode_on_main_status=$(curl --silent --show-error --output /dev/null \
+    --write-out '%{http_code}' "$base_url/god-mode/")
+if [ "$god_mode_on_main_status" != 404 ]; then
+    echo "Expected the god-mode path on the main listener to return 404, received $god_mode_on_main_status." >&2
+    exit 1
+fi
+
+curl --fail --silent --show-error --output "$temporary_directory/god-mode.html" "$god_mode_base_url/god-mode/"
+grep --quiet '<section id="login"' "$temporary_directory/god-mode.html"
+normal_on_god_mode_status=$(curl --silent --show-error --output /dev/null \
+    --write-out '%{http_code}' "$god_mode_base_url/api/releases/current")
+if [ "$normal_on_god_mode_status" != 404 ]; then
+    echo "Expected the normal API on the god-mode listener to return 404, received $normal_on_god_mode_status." >&2
+    exit 1
+fi
+
+docker exec "$application" melodytrack god-mode >"$temporary_directory/god-mode-link.txt"
+grep --quiet '^https://god-mode.localhost/god-mode/#token=' "$temporary_directory/god-mode-link.txt"
 
 otel_status=$(curl --silent --show-error --output "$temporary_directory/otel.json" \
     --write-out '%{http_code}' "$base_url/otel")

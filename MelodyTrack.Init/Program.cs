@@ -1,14 +1,40 @@
 using MelodyTrack.Data;
 using MelodyTrack.Data.Configuration;
 using MelodyTrack.Data.Initialization;
+using MelodyTrack.Init;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
+using var cancellationSource = new CancellationTokenSource();
+Console.CancelKeyPress += (_, eventArgs) =>
+{
+    eventArgs.Cancel = true;
+    cancellationSource.Cancel();
+};
+
+if (GodModeCommand.IsRequested(args))
+{
+    try
+    {
+        return await GodModeCommand.RunAsync(cancellationSource.Token);
+    }
+    catch (OperationCanceledException) when (cancellationSource.IsCancellationRequested)
+    {
+        Console.Error.WriteLine("God mode link generation was cancelled.");
+        return 130;
+    }
+    catch (Exception exception)
+    {
+        Console.Error.WriteLine($"God mode link generation failed: {exception.Message}");
+        return 1;
+    }
+}
+
 if (!TryParseMode(args, out var mode) || !TryParseRecovery(args, out var recoveryEmail, out var showRecoveryUrl))
 {
-    Console.Error.WriteLine("Usage: dotnet MelodyTrack.Init.dll --mode <production|development|test> [--recover-superuser <email> --show-recovery-url]");
+    Console.Error.WriteLine("Usage: dotnet MelodyTrack.Init.dll --mode <production|development|test> [--recover-superuser <email> --show-recovery-url] | god-mode");
     return 2;
 }
 
@@ -37,13 +63,7 @@ builder.Services.AddMelodyTrackInitialization(builder.Configuration);
 
 using var host = builder.Build();
 var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("MelodyTrack.Init");
-using var cancellationSource = new CancellationTokenSource();
 var hostStarted = false;
-Console.CancelKeyPress += (_, eventArgs) =>
-{
-    eventArgs.Cancel = true;
-    cancellationSource.Cancel();
-};
 
 try
 {

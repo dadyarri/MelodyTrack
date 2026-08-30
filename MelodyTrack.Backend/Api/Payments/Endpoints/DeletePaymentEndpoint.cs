@@ -67,8 +67,7 @@ public sealed class DeletePaymentEndpoint
         logger.LogInformation("Successfully deleted payment with ID: {PaymentId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "payments",
-            Action = "payment_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PaymentDeleted,
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

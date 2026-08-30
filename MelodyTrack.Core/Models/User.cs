@@ -40,6 +40,8 @@ public class User : BaseModel
     /// </summary>
     public required string Password { get; set; }
 
+    public bool PasswordResetRequired { get; set; }
+
     /// <summary>
     ///     Secret for TOTP of the user
     /// </summary>

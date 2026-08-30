@@ -78,8 +78,7 @@ public sealed class CreateServiceEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "services",
-            Action = "service_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ServiceCreated,
             EntityType = "service",
             EntityId = service.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

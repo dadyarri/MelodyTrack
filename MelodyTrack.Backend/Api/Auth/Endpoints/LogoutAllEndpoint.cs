@@ -37,8 +37,7 @@ public sealed class LogoutAllEndpoint
         logger.LogInformation("auth.logout_all.succeeded {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "logout_all_succeeded",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.LogoutAllSucceeded,
             EntityType = "session",
             ActorUserId = user.Id,
             ActorEmail = user.Email,

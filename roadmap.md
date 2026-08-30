@@ -1337,7 +1337,7 @@ server-local command
         ↓
 short-lived one-time god mode login token
         ↓
-LAN-only HTTPS god mode
+dedicated HTTPS god mode endpoint
         ↓
 short-lived god mode session
 ```
@@ -1357,9 +1357,9 @@ Recommended properties:
 
 - expose the god mode API/UI through a separate Kestrel listener/port or another clearly isolated endpoint surface;
 - Caddy routes a dedicated god mode hostname to that listener;
-- Caddy restricts the hostname to LAN ranges;
 - keep the god mode listener off the public application route;
 - do not expose it directly from Docker to the Internet;
+- direct server access remains the only way to issue a god mode token; network-level restrictions on the dedicated hostname are optional defense-in-depth rather than part of MelodyTrack authentication;
 - no need for mTLS initially unless the server-token model proves insufficient.
 
 ### Minimal server-local CLI
@@ -1472,7 +1472,7 @@ Never audit/log raw god mode tokens, reset tokens, passwords, PINs, refresh toke
 ### Done looks like
 
 - a normal MelodyTrack auth outage does not lock the server owner out of essential recovery operations;
-- god mode cannot be reached from the public Internet;
+- god mode is isolated from the public application route and cannot be used without a server-issued one-time token;
 - normal superuser credentials cannot authenticate to it;
 - one-time god mode tokens cannot be reused;
 - credential reset/session revocation actions are enforced server-side;

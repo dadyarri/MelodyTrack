@@ -97,8 +97,7 @@ public sealed class CreatePaymentEndpoint
         logger.LogInformation("Created new payment: {Description} with amount {Amount}", payment.Description, payment.Amount);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "payments",
-            Action = "payment_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PaymentCreated,
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

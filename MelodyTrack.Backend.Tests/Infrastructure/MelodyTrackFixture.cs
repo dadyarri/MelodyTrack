@@ -61,7 +61,10 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
         {
             configuration.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["Http:PathBase"] = string.Empty
+                ["Http:PathBase"] = string.Empty,
+                ["GodMode:StateDirectory"] = Path.Combine(Path.GetTempPath(), "melodytrack-god-mode-tests"),
+                ["GodMode:PublicBaseUrl"] = "https://god-mode.test",
+                ["GodMode:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ="
             });
         });
     }

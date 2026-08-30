@@ -165,8 +165,7 @@ public sealed class UpdateCourseEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "courses",
-            Action = "course_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.CourseUpdated,
             EntityType = "course",
             EntityId = course.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

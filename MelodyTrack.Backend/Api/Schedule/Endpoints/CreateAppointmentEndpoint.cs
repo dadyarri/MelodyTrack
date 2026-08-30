@@ -144,8 +144,9 @@ public sealed class CreateAppointmentEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "schedule",
-            Action = recurrenceRule is null ? "appointment_created" : "recurring_appointment_created",
+            Event = recurrenceRule is null
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentCreated
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.RecurringAppointmentCreated,
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

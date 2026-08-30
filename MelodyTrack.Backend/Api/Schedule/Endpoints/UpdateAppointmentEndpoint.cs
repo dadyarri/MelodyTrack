@@ -92,8 +92,9 @@ public sealed class UpdateAppointmentEndpoint
             await RescheduleRecurringSeriesAsync(db, appointment, req.StartDate!.Value, preparation.Scope, ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
-                Category = "schedule",
-                Action = preparation.Scope == AppointmentUpdateScope.All ? "recurring_appointments_rescheduled" : "recurring_appointments_split_and_rescheduled",
+                Event = preparation.Scope == AppointmentUpdateScope.All
+                    ? MelodyTrack.Core.Auditing.AuditCatalog.Events.RecurringAppointmentsRescheduled
+                    : MelodyTrack.Core.Auditing.AuditCatalog.Events.RecurringAppointmentsSplitAndRescheduled,
                 EntityType = "appointment",
                 EntityId = appointment.Id.ToString(),
                 Details = AuditDetailsFormatter.JoinChanges(
@@ -131,8 +132,7 @@ public sealed class UpdateAppointmentEndpoint
             await db.SaveChangesAsync(ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
-                Category = "schedule",
-                Action = "recurring_appointment_detached_and_updated",
+                Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RecurringAppointmentDetachedAndUpdated,
                 EntityType = "appointment",
                 EntityId = updatedAppointment.Id.ToString(),
                 Details = AuditDetailsFormatter.JoinChanges(
@@ -171,8 +171,7 @@ public sealed class UpdateAppointmentEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "schedule",
-            Action = "appointment_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentUpdated,
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

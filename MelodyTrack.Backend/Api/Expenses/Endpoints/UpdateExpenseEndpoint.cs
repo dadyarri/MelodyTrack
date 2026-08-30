@@ -90,8 +90,7 @@ public sealed class UpdateExpenseEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expenses",
-            Action = "expense_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseUpdated,
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

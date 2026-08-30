@@ -86,8 +86,7 @@ public sealed class CreateCourseEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "courses",
-            Action = "course_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.CourseCreated,
             EntityType = "course",
             EntityId = course.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

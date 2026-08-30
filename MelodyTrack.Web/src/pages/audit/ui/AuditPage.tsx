@@ -6,7 +6,6 @@ import { formatDateTime } from "@/shared/lib";
 import { AccessDeniedNotice, ActionableEmptyState, ListFilters, ListTable, PageLayout } from "@/shared/ui";
 import { filterFieldWideClassName } from "@/shared/ui/filterFieldStyles";
 
-import { auditActionLabels, auditCategoryLabels, formatAuditLabel } from "../lib/auditLabels";
 import { useAuditPageController } from "../model/useAuditPageController";
 import styles from "./AuditPage.module.css";
 
@@ -143,11 +142,10 @@ export function AuditPage() {
             },
             {
               title: "Категория",
-              dataIndex: "category",
+              dataIndex: "categoryLabel",
               width: 160,
-              render: (value: string) => formatAuditLabel(value, auditCategoryLabels),
             },
-            { title: "Действие", dataIndex: "action", width: 160, render: (value: string) => formatAuditLabel(value, auditActionLabels) },
+            { title: "Действие", dataIndex: "actionLabel", width: 160 },
             {
               title: "Детали",
               dataIndex: "details",

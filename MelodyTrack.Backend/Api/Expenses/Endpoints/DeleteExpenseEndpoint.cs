@@ -67,8 +67,7 @@ public sealed class DeleteExpenseEndpoint
         logger.LogInformation("Successfully deleted expense with ID: {ExpenseId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expenses",
-            Action = "expense_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseDeleted,
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

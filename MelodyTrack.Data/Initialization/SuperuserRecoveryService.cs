@@ -58,8 +58,8 @@ public sealed class SuperuserRecoveryService(
         {
             Id = Ulid.NewUlid(),
             CreatedAtUtc = nowUtc,
-            Category = "security",
-            Action = "superuser_recovery_issued",
+            Category = MelodyTrack.Core.Auditing.AuditCatalog.Events.SuperuserRecoveryIssued.Category.Code,
+            Action = MelodyTrack.Core.Auditing.AuditCatalog.Events.SuperuserRecoveryIssued.Code,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             Details = "Серверный оператор выпустил одноразовую ссылку восстановления первого суперпользователя"

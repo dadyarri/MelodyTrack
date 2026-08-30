@@ -53,8 +53,7 @@ public sealed class RecoveryCodesEndpoint
         logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "recovery_codes_regenerated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RecoveryCodesRegenerated,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

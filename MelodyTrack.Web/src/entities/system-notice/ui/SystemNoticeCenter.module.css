@@ -1,0 +1,11 @@
+.stack {
+  width: 100%;
+}
+
+.notice :global(.ant-alert-description) {
+  white-space: pre-wrap;
+}
+
+.critical {
+  border-width: 2px;
+}

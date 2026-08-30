@@ -1,6 +1,7 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Validation;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 
@@ -48,15 +49,15 @@ public static class CourseEnrollmentThemeProgressActionExtensions
         }
     }
 
-    public static string ToAuditAction(this CourseEnrollmentThemeProgressAction action)
+    public static AuditEventDefinition ToAuditEvent(this CourseEnrollmentThemeProgressAction action)
     {
         return action switch
         {
-            CourseEnrollmentThemeProgressAction.Unlock => "course_theme_unlocked",
-            CourseEnrollmentThemeProgressAction.Start => "course_theme_started",
-            CourseEnrollmentThemeProgressAction.SendToHomework => "course_theme_sent_to_homework",
-            CourseEnrollmentThemeProgressAction.PassHomework => "course_theme_homework_passed",
-            CourseEnrollmentThemeProgressAction.ReturnToProgress => "course_theme_returned_to_progress",
+            CourseEnrollmentThemeProgressAction.Unlock => AuditCatalog.Events.CourseThemeUnlocked,
+            CourseEnrollmentThemeProgressAction.Start => AuditCatalog.Events.CourseThemeStarted,
+            CourseEnrollmentThemeProgressAction.SendToHomework => AuditCatalog.Events.CourseThemeSentToHomework,
+            CourseEnrollmentThemeProgressAction.PassHomework => AuditCatalog.Events.CourseThemeHomeworkPassed,
+            CourseEnrollmentThemeProgressAction.ReturnToProgress => AuditCatalog.Events.CourseThemeReturnedToProgress,
             _ => throw new ArgumentOutOfRangeException(nameof(action), action, null)
         };
     }

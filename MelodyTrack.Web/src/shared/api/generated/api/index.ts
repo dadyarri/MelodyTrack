@@ -48,6 +48,8 @@ import { RolesRequestBuilderNavigationMetadata, type RolesRequestBuilder } from 
 // @ts-ignore
 import { ServicesRequestBuilderNavigationMetadata, ServicesRequestBuilderRequestsMetadata, type ServicesRequestBuilder } from './services/index.js';
 // @ts-ignore
+import { SystemNoticesRequestBuilderNavigationMetadata, SystemNoticesRequestBuilderRequestsMetadata, type SystemNoticesRequestBuilder } from './systemNotices/index.js';
+// @ts-ignore
 import { TasksRequestBuilderNavigationMetadata, TasksRequestBuilderRequestsMetadata, type TasksRequestBuilder } from './tasks/index.js';
 // @ts-ignore
 import { type UsersRequestBuilder, UsersRequestBuilderNavigationMetadata, UsersRequestBuilderRequestsMetadata } from './users/index.js';
@@ -151,6 +153,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
      */
     get services(): ServicesRequestBuilder;
     /**
+     * The systemNotices property
+     */
+    get systemNotices(): SystemNoticesRequestBuilder;
+    /**
      * The tasks property
      */
     get tasks(): TasksRequestBuilder;
@@ -247,6 +253,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<Exclude<keyof ApiReques
     services: {
         requestsMetadata: ServicesRequestBuilderRequestsMetadata,
         navigationMetadata: ServicesRequestBuilderNavigationMetadata,
+    },
+    systemNotices: {
+        requestsMetadata: SystemNoticesRequestBuilderRequestsMetadata,
+        navigationMetadata: SystemNoticesRequestBuilderNavigationMetadata,
     },
     tasks: {
         requestsMetadata: TasksRequestBuilderRequestsMetadata,

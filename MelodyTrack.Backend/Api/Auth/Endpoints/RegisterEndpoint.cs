@@ -119,8 +119,7 @@ public sealed class RegisterEndpoint
             isTotpRequired);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "user_registered",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.UserRegistered,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

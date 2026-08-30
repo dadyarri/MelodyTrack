@@ -68,8 +68,7 @@ public sealed class CreateExpenseCategoryEndpoint
         logger.LogInformation("Created new expense category: {Name}", expenseCategory.Name);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expense_category",
-            Action = "expense_category_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseCategoryCreated,
             EntityType = "expense_category",
             EntityId = expenseCategory.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Категория расхода", expenseCategory.Name)

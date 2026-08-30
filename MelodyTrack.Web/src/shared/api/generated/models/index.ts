@@ -2985,6 +2985,15 @@ export function createGetSessionsResponseFromDiscriminatorValue(parseNode: Parse
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetSystemNoticesResponse}
+ */
+// @ts-ignore
+export function createGetSystemNoticesResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetSystemNoticesResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GetUsersAvailabilityResponse}
  */
 // @ts-ignore
@@ -3587,6 +3596,15 @@ export function createSetup2FaRequestFromDiscriminatorValue(parseNode: ParseNode
 // @ts-ignore
 export function createSetup2FaResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoSetup2FaResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {SystemNoticeResponse}
+ */
+// @ts-ignore
+export function createSystemNoticeResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoSystemNoticeResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -5692,9 +5710,11 @@ export function deserializeIntoGetAppointmentsResponse(getAppointmentsResponse: 
 export function deserializeIntoGetAuditLogsDto(getAuditLogsDto: Partial<GetAuditLogsDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "action": n => { getAuditLogsDto.action = n.getStringValue(); },
+        "actionLabel": n => { getAuditLogsDto.actionLabel = n.getStringValue(); },
         "actorDisplayName": n => { getAuditLogsDto.actorDisplayName = n.getStringValue(); },
         "actorEmail": n => { getAuditLogsDto.actorEmail = n.getStringValue(); },
         "category": n => { getAuditLogsDto.category = n.getStringValue(); },
+        "categoryLabel": n => { getAuditLogsDto.categoryLabel = n.getStringValue(); },
         "createdAtUtc": n => { getAuditLogsDto.createdAtUtc = n.getDateValue(); },
         "details": n => { getAuditLogsDto.details = n.getStringValue(); },
         "entityId": n => { getAuditLogsDto.entityId = n.getStringValue(); },
@@ -6029,6 +6049,17 @@ export function deserializeIntoGetSavedClientPortalIdentityStatusResponse(getSav
 export function deserializeIntoGetSessionsResponse(getSessionsResponse: Partial<GetSessionsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "data": n => { getSessionsResponse.data = n.getCollectionOfObjectValues<SessionDto>(createSessionDtoFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param GetSystemNoticesResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetSystemNoticesResponse(getSystemNoticesResponse: Partial<GetSystemNoticesResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getSystemNoticesResponse.items = n.getCollectionOfObjectValues<SystemNoticeResponse>(createSystemNoticeResponseFromDiscriminatorValue); },
     }
 }
 /**
@@ -6846,6 +6877,25 @@ export function deserializeIntoSetup2FaResponse(setup2FaResponse: Partial<Setup2
 }
 /**
  * The deserialization information for the current model
+ * @param SystemNoticeResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoSystemNoticeResponse(systemNoticeResponse: Partial<SystemNoticeResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "audienceType": n => { systemNoticeResponse.audienceType = n.getStringValue(); },
+        "body": n => { systemNoticeResponse.body = n.getStringValue(); },
+        "createdAtUtc": n => { systemNoticeResponse.createdAtUtc = n.getDateValue(); },
+        "dismissible": n => { systemNoticeResponse.dismissible = n.getBooleanValue(); },
+        "expiresAtUtc": n => { systemNoticeResponse.expiresAtUtc = n.getDateValue(); },
+        "id": n => { systemNoticeResponse.id = n.getStringValue(); },
+        "severity": n => { systemNoticeResponse.severity = n.getStringValue(); },
+        "showBeforeAuthentication": n => { systemNoticeResponse.showBeforeAuthentication = n.getBooleanValue(); },
+        "title": n => { systemNoticeResponse.title = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateAppointmentRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7046,6 +7096,7 @@ export function deserializeIntoUser(user: Partial<User> | undefined = {}) : Reco
         "lastName": n => { user.lastName = n.getStringValue(); },
         "onboardingState": n => { user.onboardingState = n.getObjectValue<UserOnboardingState>(createUserOnboardingStateFromDiscriminatorValue) ?? n.getObjectValue<User_onboardingStateMember1>(createUser_onboardingStateMember1FromDiscriminatorValue); },
         "password": n => { user.password = n.getStringValue(); },
+        "passwordResetRequired": n => { user.passwordResetRequired = n.getBooleanValue(); },
         "phone": n => { user.phone = n.getStringValue(); },
         "role": n => { user.role = n.getObjectValue<Role>(createRoleFromDiscriminatorValue); },
         "telegram": n => { user.telegram = n.getStringValue(); },
@@ -7552,6 +7603,10 @@ export interface GetAuditLogsDto extends AdditionalDataHolder, Parsable {
      */
     action?: string | null;
     /**
+     * The actionLabel property
+     */
+    actionLabel?: string | null;
+    /**
      * The actorDisplayName property
      */
     actorDisplayName?: string | null;
@@ -7563,6 +7618,10 @@ export interface GetAuditLogsDto extends AdditionalDataHolder, Parsable {
      * The category property
      */
     category?: string | null;
+    /**
+     * The categoryLabel property
+     */
+    categoryLabel?: string | null;
     /**
      * The createdAtUtc property
      */
@@ -7799,6 +7858,12 @@ export interface GetSessionsResponse extends AdditionalDataHolder, Parsable {
      * The data property
      */
     data?: SessionDto[] | null;
+}
+export interface GetSystemNoticesResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: SystemNoticeResponse[] | null;
 }
 export interface GetUsersAvailabilityResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -10373,9 +10438,11 @@ export function serializeGetAppointmentsResponse(writer: SerializationWriter, ge
 export function serializeGetAuditLogsDto(writer: SerializationWriter, getAuditLogsDto: Partial<GetAuditLogsDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!getAuditLogsDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("action", getAuditLogsDto.action);
+    writer.writeStringValue("actionLabel", getAuditLogsDto.actionLabel);
     writer.writeStringValue("actorDisplayName", getAuditLogsDto.actorDisplayName);
     writer.writeStringValue("actorEmail", getAuditLogsDto.actorEmail);
     writer.writeStringValue("category", getAuditLogsDto.category);
+    writer.writeStringValue("categoryLabel", getAuditLogsDto.categoryLabel);
     writer.writeDateValue("createdAtUtc", getAuditLogsDto.createdAtUtc);
     writer.writeStringValue("details", getAuditLogsDto.details);
     writer.writeStringValue("entityId", getAuditLogsDto.entityId);
@@ -10731,6 +10798,18 @@ export function serializeGetSessionsResponse(writer: SerializationWriter, getSes
     if (!getSessionsResponse || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<SessionDto>("data", getSessionsResponse.data, serializeSessionDto);
     writer.writeAdditionalData(getSessionsResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GetSystemNoticesResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetSystemNoticesResponse(writer: SerializationWriter, getSystemNoticesResponse: Partial<GetSystemNoticesResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getSystemNoticesResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<SystemNoticeResponse>("items", getSystemNoticesResponse.items, serializeSystemNoticeResponse);
+    writer.writeAdditionalData(getSystemNoticesResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11596,6 +11675,26 @@ export function serializeSetup2FaResponse(writer: SerializationWriter, setup2FaR
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param SystemNoticeResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeSystemNoticeResponse(writer: SerializationWriter, systemNoticeResponse: Partial<SystemNoticeResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!systemNoticeResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("audienceType", systemNoticeResponse.audienceType);
+    writer.writeStringValue("body", systemNoticeResponse.body);
+    writer.writeDateValue("createdAtUtc", systemNoticeResponse.createdAtUtc);
+    writer.writeBooleanValue("dismissible", systemNoticeResponse.dismissible);
+    writer.writeDateValue("expiresAtUtc", systemNoticeResponse.expiresAtUtc);
+    writer.writeStringValue("id", systemNoticeResponse.id);
+    writer.writeStringValue("severity", systemNoticeResponse.severity);
+    writer.writeBooleanValue("showBeforeAuthentication", systemNoticeResponse.showBeforeAuthentication);
+    writer.writeStringValue("title", systemNoticeResponse.title);
+    writer.writeAdditionalData(systemNoticeResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateAppointmentRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -11808,6 +11907,7 @@ export function serializeUser(writer: SerializationWriter, user: Partial<User> |
     writer.writeStringValue("lastName", user.lastName);
     writer.writeObjectValue<UserOnboardingState | User_onboardingStateMember1>("onboardingState", user.onboardingState, serializeUser_onboardingState);
     writer.writeStringValue("password", user.password);
+    writer.writeBooleanValue("passwordResetRequired", user.passwordResetRequired);
     writer.writeStringValue("phone", user.phone);
     writer.writeObjectValue<Role>("role", user.role, serializeRole);
     writer.writeStringValue("telegram", user.telegram);
@@ -12244,6 +12344,44 @@ export interface Setup2FaResponse extends AdditionalDataHolder, Parsable {
      */
     secret?: string | null;
 }
+export interface SystemNoticeResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The audienceType property
+     */
+    audienceType?: string | null;
+    /**
+     * The body property
+     */
+    body?: string | null;
+    /**
+     * The createdAtUtc property
+     */
+    createdAtUtc?: Date | null;
+    /**
+     * The dismissible property
+     */
+    dismissible?: boolean | null;
+    /**
+     * The expiresAtUtc property
+     */
+    expiresAtUtc?: Date | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The severity property
+     */
+    severity?: string | null;
+    /**
+     * The showBeforeAuthentication property
+     */
+    showBeforeAuthentication?: boolean | null;
+    /**
+     * The title property
+     */
+    title?: string | null;
+}
 export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
@@ -12565,6 +12703,10 @@ export interface User extends AdditionalDataHolder, Parsable {
      * The password property
      */
     password?: string | null;
+    /**
+     * The passwordResetRequired property
+     */
+    passwordResetRequired?: boolean | null;
     /**
      * The phone property
      */

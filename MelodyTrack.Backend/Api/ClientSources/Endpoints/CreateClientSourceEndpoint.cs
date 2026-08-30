@@ -66,8 +66,7 @@ public sealed class CreateClientSourceEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_source_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientSourceCreated,
             EntityType = "client_source",
             EntityId = source.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)

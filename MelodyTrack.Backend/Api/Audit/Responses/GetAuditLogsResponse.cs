@@ -11,7 +11,9 @@ public class GetAuditLogsDto
     public required Ulid Id { get; set; }
     public required DateTime CreatedAtUtc { get; set; }
     public required string Category { get; set; }
+    public required string CategoryLabel { get; set; }
     public required string Action { get; set; }
+    public required string ActionLabel { get; set; }
     public required string EntityType { get; set; }
     public string? EntityId { get; set; }
     public string? ActorEmail { get; set; }

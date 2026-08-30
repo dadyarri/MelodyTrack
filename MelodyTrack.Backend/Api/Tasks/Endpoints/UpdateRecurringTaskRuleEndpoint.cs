@@ -79,8 +79,7 @@ public sealed class UpdateRecurringTaskRuleEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "recurring_tasks",
-            Action = "recurring_task_rule_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RecurringTaskRuleUpdated,
             EntityType = "recurring_task_rule",
             EntityId = rule.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

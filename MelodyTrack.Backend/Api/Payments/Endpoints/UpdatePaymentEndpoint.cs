@@ -97,8 +97,7 @@ public sealed class UpdatePaymentEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "payments",
-            Action = "payment_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PaymentUpdated,
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

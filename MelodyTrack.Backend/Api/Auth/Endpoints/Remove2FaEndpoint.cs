@@ -51,8 +51,7 @@ public sealed class Remove2FaEndpoint
         logger.LogInformation("auth.2fa.removed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "two_factor_removed",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.TwoFactorRemoved,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

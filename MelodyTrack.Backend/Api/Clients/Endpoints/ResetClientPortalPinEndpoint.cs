@@ -58,8 +58,7 @@ public sealed class ResetClientPortalPinEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_portal_pin_reset",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalPinReset,
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,

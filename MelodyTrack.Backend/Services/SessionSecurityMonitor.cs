@@ -22,8 +22,7 @@ public sealed class SessionSecurityMonitor(AppDbContext db, IAuditLogService aud
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "security",
-            Action = "unusual_session_fanout",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.UnusualSessionFanout,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

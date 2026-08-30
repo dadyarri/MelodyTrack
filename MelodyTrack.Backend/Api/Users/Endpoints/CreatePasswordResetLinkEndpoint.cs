@@ -76,8 +76,7 @@ public sealed class CreatePasswordResetLinkEndpoint
             UserUtils.DescribeEmailForLogs(targetUser.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "password_reset_link_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PasswordResetLinkCreated,
             EntityType = "password_reset",
             EntityId = restorationRequest.Id.ToString(),
             ActorUserId = caller.Id,

@@ -51,6 +51,8 @@ public class AppDbContext : DbContext
     public DbSet<CourseEnrollment> CourseEnrollments { get; set; }
     public DbSet<CourseEnrollmentTheme> CourseEnrollmentThemes { get; set; }
     public DbSet<CalendarSubscription> CalendarSubscriptions { get; set; }
+    public DbSet<SystemNotice> SystemNotices { get; set; }
+    public DbSet<SystemNoticeRecipient> SystemNoticeRecipients { get; set; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -96,6 +98,34 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<CalendarSubscription>().HasIndex(e => e.Token).IsUnique();
         modelBuilder.Entity<CalendarSubscription>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         modelBuilder.Entity<CalendarSubscription>().HasOne(e => e.Client).WithMany().HasForeignKey(e => e.ClientId).OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .HasOne(e => e.Notice)
+            .WithMany(e => e.Recipients)
+            .HasForeignKey(e => e.NoticeId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .HasOne(e => e.User)
+            .WithMany()
+            .HasForeignKey(e => e.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .HasOne(e => e.Client)
+            .WithMany()
+            .HasForeignKey(e => e.ClientId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .HasIndex(e => new { e.NoticeId, e.UserId })
+            .IsUnique()
+            .HasFilter("\"UserId\" IS NOT NULL");
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .HasIndex(e => new { e.NoticeId, e.ClientId })
+            .IsUnique()
+            .HasFilter("\"ClientId\" IS NOT NULL");
+        modelBuilder.Entity<SystemNoticeRecipient>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_SystemNoticeRecipients_ExactlyOneRecipient",
+                "(\"UserId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"UserId\" IS NULL AND \"ClientId\" IS NOT NULL)"));
 
         modelBuilder.HasPostgresExtension("fuzzystrmatch");
 

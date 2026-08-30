@@ -140,8 +140,9 @@ public sealed class CreateClientPortalLinkEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = isRotation ? "client_portal_link_rotated" : "client_portal_link_created",
+            Event = isRotation
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalLinkRotated
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalLinkCreated,
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,

@@ -81,8 +81,7 @@ public sealed class CreateInviteEndpoint
             inviteRef);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "invite_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.InviteCreated,
             EntityType = "invite",
             EntityId = invite.Id.ToString(),
             Details = inviteEmail is null

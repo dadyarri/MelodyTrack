@@ -1267,6 +1267,88 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("Sessions");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SystemNotice", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("AudienceType")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("Dismissible")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Severity")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("ShowBeforeAuthentication")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime?>("UpdatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("SystemNotices");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SystemNoticeRecipient", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ClientId")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("DismissedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("NoticeId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("ReadAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("UserId")
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("NoticeId", "ClientId")
+                        .IsUnique()
+                        .HasFilter("\"ClientId\" IS NOT NULL");
+
+                    b.HasIndex("NoticeId", "UserId")
+                        .IsUnique()
+                        .HasFilter("\"UserId\" IS NOT NULL");
+
+                    b.ToTable("SystemNoticeRecipients", t =>
+                        {
+                            t.HasCheckConstraint("CK_SystemNoticeRecipients_ExactlyOneRecipient", "(\"UserId\" IS NOT NULL AND \"ClientId\" IS NULL) OR (\"UserId\" IS NULL AND \"ClientId\" IS NOT NULL)");
+                        });
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.User", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -1294,6 +1376,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<string>("Password")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<bool>("PasswordResetRequired")
+                        .HasColumnType("boolean");
 
                     b.Property<string>("Phone")
                         .HasColumnType("text");
@@ -1820,6 +1905,31 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SystemNoticeRecipient", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany()
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.SystemNotice", "Notice")
+                        .WithMany("Recipients")
+                        .HasForeignKey("NoticeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Client");
+
+                    b.Navigation("Notice");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.User", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
@@ -1910,6 +2020,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Dependencies");
 
                     b.Navigation("RequiredForThemes");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SystemNotice", b =>
+                {
+                    b.Navigation("Recipients");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.User", b =>

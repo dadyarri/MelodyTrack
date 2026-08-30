@@ -2,6 +2,7 @@ import { Button, Space, Typography } from "antd";
 import { NavLink, Outlet } from "react-router";
 
 import { useAuth } from "@/entities/session";
+import { SystemNoticeCenter } from "@/entities/system-notice";
 import { CalendarOutlined, LogoutOutlined } from "@/shared/ui/icons";
 
 import styles from "./ClientPortalShell.module.css";
@@ -33,6 +34,7 @@ export function ClientPortalShell() {
           <NavItem to="/portal/schedule" icon={<CalendarOutlined />} label="Расписание" />
         </nav>
 
+        <SystemNoticeCenter />
         <main className={styles.content}>
           <Outlet />
         </main>

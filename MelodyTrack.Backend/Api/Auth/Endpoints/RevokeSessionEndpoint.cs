@@ -55,8 +55,7 @@ public sealed class RevokeSessionEndpoint
         logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(user.Email), req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "session_revoked",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.SessionRevoked,
             EntityType = "session",
             EntityId = req.Id.ToString(),
             ActorUserId = user.Id,

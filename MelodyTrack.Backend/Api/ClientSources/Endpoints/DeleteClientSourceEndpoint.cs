@@ -67,8 +67,7 @@ public sealed class DeleteClientSourceEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_source_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientSourceDeleted,
             EntityType = "client_source",
             EntityId = source.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)

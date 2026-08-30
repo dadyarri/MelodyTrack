@@ -4,6 +4,7 @@ import { lazy, type ReactNode, Suspense, type SyntheticEvent, useCallback, useEf
 import { useLocation, useNavigate } from "react-router";
 
 import { hasSuperuserAccess, useAuth } from "@/entities/session";
+import { SystemNoticeCenter } from "@/entities/system-notice";
 import type { OnboardingDisplayStatus } from "@/features/onboarding";
 import {
   canViewReleaseNotes,
@@ -280,6 +281,7 @@ export function AppShell({
         </Layout.Header>
         <Layout.Content className={styles.content}>
           <Space orientation="vertical" className={styles.contentStack}>
+            <SystemNoticeCenter />
             {children}
           </Space>
         </Layout.Content>

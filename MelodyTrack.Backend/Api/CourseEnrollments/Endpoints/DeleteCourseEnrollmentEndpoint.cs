@@ -58,8 +58,7 @@ public sealed class DeleteCourseEnrollmentEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "course_enrollments",
-            Action = "course_enrollment_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.CourseEnrollmentDeleted,
             EntityType = "course_enrollment",
             EntityId = enrollment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

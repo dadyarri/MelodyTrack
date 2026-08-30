@@ -8,6 +8,14 @@ dotnet MelodyTrack.Init.dll --mode development
 dotnet MelodyTrack.Init.dll --mode test
 ```
 
+Generate a short-lived, one-time God Mode link without running database initialization:
+
+```text
+dotnet MelodyTrack.Init.dll god-mode
+```
+
+The command uses `GodMode__StateDirectory`, `GodMode__PublicBaseUrl`, and `GodMode__SessionSigningKey`. It stores only a SHA-256 token hash and writes the raw link only to standard output.
+
 Configuration uses standard .NET keys, including `Database__ConnectionString`, `PublicUrl__BaseUrl`, the five purpose-separated `AuthenticationSecrets__*` keys, `PersonalData__CurrentKeyVersion`, and `PersonalData__CurrentKey`. Symmetric authentication keys use `base64:` followed by at least 32 random bytes. The JWT private key uses `base64:` followed by a P-256 PKCS#8 private key.
 
 Password and portal PIN hashes use the versioned `mt-argon2id-v1` format: Argon2id v1.3, 64 MiB memory, three iterations, four lanes/threads, and a random 16-byte salt. Password and portal PIN verification use different peppers.

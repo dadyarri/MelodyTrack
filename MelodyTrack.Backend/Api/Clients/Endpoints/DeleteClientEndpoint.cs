@@ -67,8 +67,7 @@ public sealed class DeleteClientEndpoint
         logger.LogInformation("Successfully deleted client with ID: {ClientId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientDeleted,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

@@ -10,6 +10,7 @@ RUN npm run build
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS base
 USER $APP_UID
 WORKDIR /app
+ENV ASPNETCORE_URLS="http://+:8080;http://+:8081"
 EXPOSE 8080
 EXPOSE 8081
 
@@ -32,5 +33,6 @@ LABEL org.opencontainers.image.version=$RELEASE_VERSION
 WORKDIR /app
 COPY --from=publish /app/publish/ ./
 COPY --from=publish /src/MelodyTrack.Backend/docker-entrypoint.sh ./docker-entrypoint.sh
+COPY --chmod=755 --from=publish /src/MelodyTrack.Backend/melodytrack /usr/local/bin/melodytrack
 WORKDIR /app/backend
 ENTRYPOINT ["sh", "/app/docker-entrypoint.sh"]

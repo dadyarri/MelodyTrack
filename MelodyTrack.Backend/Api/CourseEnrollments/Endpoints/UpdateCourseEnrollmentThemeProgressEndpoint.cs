@@ -152,8 +152,7 @@ public sealed class UpdateCourseEnrollmentThemeProgressEndpoint
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "course_progress",
-            Action = action.ToAuditAction(),
+            Event = action.ToAuditEvent(),
             EntityType = "course_enrollment_theme",
             EntityId = theme.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

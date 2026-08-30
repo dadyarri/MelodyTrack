@@ -134,8 +134,9 @@ public sealed class UpdateClientEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = req.Vacations is null ? "client_updated" : "client_vacations_updated",
+            Event = req.Vacations is null
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientUpdated
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientVacationsUpdated,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
