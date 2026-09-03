@@ -52,7 +52,7 @@ export interface NotificationsRequestBuilderGetQueryParameters {
 /**
  * Uri template for the request builder.
  */
-export const NotificationsRequestBuilderUriTemplate = "{+baseurl}/api/notifications?unreadOnly={unreadOnly}{&limit*}";
+export const NotificationsRequestBuilderUriTemplate = "{+baseurl}/api/notifications{?limit*,unreadOnly*}";
 /**
  * Metadata for all the navigation properties in the request builder.
  */

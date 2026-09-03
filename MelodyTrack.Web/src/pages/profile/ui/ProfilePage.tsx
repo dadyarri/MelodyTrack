@@ -1,4 +1,4 @@
-import { Alert, Button, Card, DatePicker, Divider, Form, Input, List, Space, Switch, Tag, TimePicker, Typography } from "antd";
+import { Alert, Button, Card, Divider, Form, Input, List, Space, Switch, Tag, TimePicker, Typography } from "antd";
 
 import { formatPhoneInput, isValidPhone, normalizeSocialLink } from "@/entities/client";
 import type { MeResponse } from "@/entities/session";
@@ -168,7 +168,11 @@ export function ProfilePage() {
           <Space orientation="vertical" size={18} className="wide">
             <div>
               <Typography.Title level={5}>Рабочие часы</Typography.Title>
-              <Typography.Text type="secondary">Выходные и нерабочие дни выключаются переключателем.</Typography.Text>
+              <Typography.Text type="secondary">
+                {controller.requiresScheduleApproval
+                  ? "Выходные и нерабочие дни выключаются переключателем. После отправки текущий график продолжит действовать до решения суперпользователя."
+                  : "Выходные и нерабочие дни выключаются переключателем. Изменения суперпользователя применяются сразу и фиксируются в аудите."}
+              </Typography.Text>
             </div>
             <Form.List name="workingHours">
               {(fields) => (
@@ -221,45 +225,27 @@ export function ProfilePage() {
             <div className={styles.vacationsHeader}>
               <div>
                 <Typography.Title level={5}>Отпуска</Typography.Title>
-                <Typography.Text type="secondary">Периоды отпуска блокируют создание и перенос записей.</Typography.Text>
+                <Typography.Text type="secondary">
+                  Одобренные периоды блокируют создание и перенос записей. Изменения проходят через заявку.
+                </Typography.Text>
               </div>
-              <Button onClick={controller.addVacationDraft}>Добавить отпуск</Button>
+              <Button href="/vacation-requests">Открыть заявки</Button>
             </div>
-            <Form.List name="vacations">
-              {(fields, { remove }) => (
-                <Space orientation="vertical" size={12} className="wide">
-                  {fields.length === 0 ? <Typography.Text type="secondary">Отпуска пока не добавлены.</Typography.Text> : null}
-                  {fields.map((field) => (
-                    <div className={styles.vacationRow} key={field.key}>
-                      <Form.Item
-                        name={[field.name, "period"]}
-                        className={styles.vacationRange}
-                        rules={[
-                          {
-                            required: true,
-                            message: "Укажите период отпуска.",
-                          },
-                        ]}
-                      >
-                        <DatePicker.RangePicker className="wide" format="DD.MM.YYYY" />
-                      </Form.Item>
-                      <Button
-                        danger
-                        onClick={() => {
-                          remove(field.name);
-                        }}
-                      >
-                        Удалить
-                      </Button>
-                    </div>
-                  ))}
-                </Space>
+            <List
+              size="small"
+              dataSource={controller.availabilityQuery.data?.vacations ?? []}
+              locale={{ emptyText: "Одобренных отпусков пока нет" }}
+              renderItem={(vacation) => (
+                <List.Item>
+                  {new Intl.DateTimeFormat("ru-RU").format(new Date(`${vacation.startDate}T00:00:00`))} —{" "}
+                  {new Intl.DateTimeFormat("ru-RU").format(new Date(`${vacation.endDate}T00:00:00`))}
+                </List.Item>
               )}
-            </Form.List>
+            />
 
             <div>
               <Button type="primary" htmlType="submit" loading={controller.saveAvailabilityMutation.isPending}>
-                Сохранить график
+                {controller.requiresScheduleApproval ? "Отправить график на согласование" : "Сохранить график"}
               </Button>
             </div>
           </Space>

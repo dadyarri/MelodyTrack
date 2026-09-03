@@ -56,6 +56,9 @@ public class AppDbContext : DbContext
     public DbSet<Notification> Notifications { get; set; }
     public DbSet<PushSubscription> PushSubscriptions { get; set; }
     public DbSet<NotificationPushDelivery> NotificationPushDeliveries { get; set; }
+    public DbSet<VacationRequest> VacationRequests { get; set; }
+    public DbSet<WorkingHoursRequest> WorkingHoursRequests { get; set; }
+    public DbSet<WorkingHoursRequestDay> WorkingHoursRequestDays { get; set; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -602,6 +605,52 @@ public class AppDbContext : DbContext
             .WithMany(e => e.Vacations)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<VacationRequest>()
+            .Property(e => e.RequesterPrincipalType)
+            .HasConversion<string>();
+        modelBuilder.Entity<VacationRequest>()
+            .Property(e => e.SubjectType)
+            .HasConversion<string>();
+        modelBuilder.Entity<VacationRequest>()
+            .Property(e => e.Status)
+            .HasConversion<string>();
+        modelBuilder.Entity<VacationRequest>()
+            .HasIndex(e => new { e.SubjectType, e.SubjectId, e.Status });
+        modelBuilder.Entity<VacationRequest>()
+            .HasIndex(e => new { e.RequesterPrincipalType, e.RequesterId, e.CreatedAtUtc });
+        modelBuilder.Entity<VacationRequest>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_VacationRequests_Range",
+                "\"RequestedStart\" <= \"RequestedEnd\""));
+        modelBuilder.Entity<VacationRequest>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_VacationRequests_Version",
+                "\"Version\" > 0"));
+
+        modelBuilder.Entity<WorkingHoursRequest>()
+            .Property(e => e.Status)
+            .HasConversion<string>();
+        modelBuilder.Entity<WorkingHoursRequest>()
+            .HasIndex(e => new { e.SubjectUserId, e.Status });
+        modelBuilder.Entity<WorkingHoursRequest>()
+            .HasIndex(e => new { e.RequesterUserId, e.CreatedAtUtc });
+        modelBuilder.Entity<WorkingHoursRequest>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_WorkingHoursRequests_Version",
+                "\"Version\" > 0"));
+        modelBuilder.Entity<WorkingHoursRequestDay>()
+            .HasOne(e => e.WorkingHoursRequest)
+            .WithMany(e => e.RequestedWorkingHours)
+            .HasForeignKey(e => e.WorkingHoursRequestId)
+            .OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<WorkingHoursRequestDay>()
+            .HasIndex(e => new { e.WorkingHoursRequestId, e.DayOfWeek })
+            .IsUnique();
+        modelBuilder.Entity<WorkingHoursRequestDay>()
+            .ToTable(table => table.HasCheckConstraint(
+                "CK_WorkingHoursRequestDays_Minutes",
+                "\"StartMinuteOfDay\" >= 0 AND \"StartMinuteOfDay\" < 1440 AND \"EndMinuteOfDay\" > 0 AND \"EndMinuteOfDay\" <= 1440 AND \"StartMinuteOfDay\" < \"EndMinuteOfDay\""));
 
         modelBuilder.Entity<UserOnboardingState>()
             .HasOne(e => e.User)

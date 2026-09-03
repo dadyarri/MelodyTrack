@@ -19,12 +19,13 @@ namespace MelodyTrack.Backend.Tests;
 public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task UpdateUserAvailability_PersistsCompleteWeekVacationAndAudit()
+    public async Task UpdateUserAvailability_SuperuserDirectManagement_PersistsCompleteWeekVacationAndAudit()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
 
         using var response = await App.Client.PutAsJsonAsync(
             $"/users/{user.Id}/availability",
@@ -47,8 +48,52 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         monday.EndMinuteOfDay.ShouldBe(17 * 60 + 15);
         stored.Vacations.ShouldHaveSingleItem().StartDate.ShouldBe(new DateOnly(2026, 8, 10));
         (await db.AuditLogs.AnyAsync(
-            item => item.Action == "user_availability_updated" && item.EntityId == user.Id.ToString(),
+            item => item.Action == "user_vacations_updated_directly" && item.EntityId == user.Id.ToString(),
             TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_TeacherAddsOwnVacation_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                workingHours = WeekSchedule(),
+                vacations = new[] { new { startDate = "2026-08-10", endDate = "2026-08-16" } },
+                expectedActivityId = (Ulid?)null
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_TeacherChangesOwnWorkingDays_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                workingHours = WeekSchedule(),
+                vacations = Array.Empty<object>(),
+                expectedActivityId = (Ulid?)null
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.UserWorkingHoursDays.CountAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     [Fact]
@@ -207,6 +252,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         var activityId = Ulid.NewUlid();
 
         await db.AuditLogs.AddAsync(
@@ -223,7 +269,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
             TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
 
         var response = await App.Client.PutAsJsonAsync(
             $"/users/{user.Id}/availability",

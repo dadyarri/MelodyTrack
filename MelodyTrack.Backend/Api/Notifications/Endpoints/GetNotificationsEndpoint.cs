@@ -46,7 +46,7 @@ public sealed class GetNotificationsEndpoint
                 (notification.ExpiresAtUtc == null || notification.ExpiresAtUtc > nowUtc));
 
         var unreadCount = await query.CountAsync(notification => notification.ReadAtUtc == null, ct);
-        if (request.UnreadOnly)
+        if (request.UnreadOnly is true)
         {
             query = query.Where(notification => notification.ReadAtUtc == null);
         }

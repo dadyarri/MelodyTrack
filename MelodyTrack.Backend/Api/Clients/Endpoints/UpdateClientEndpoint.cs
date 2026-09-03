@@ -23,6 +23,7 @@ public sealed class UpdateClientEndpoint
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
         IAuditLogService auditLogService,
+        IVacationRequestSubjectLock vacationRequestSubjectLock,
         IEntityFreshnessService entityFreshnessService,
         ILogger<UpdateClientEndpoint> logger,
         ApiValidationErrorCollection validationErrors,
@@ -39,6 +40,12 @@ public sealed class UpdateClientEndpoint
         if (!currentUserRole.Value.IsAnyAdmin())
         {
             return TypedResults.Forbid();
+        }
+
+        await using var transaction = req.Vacations is null ? null : await db.Database.BeginTransactionAsync(ct);
+        if (transaction is not null)
+        {
+            await vacationRequestSubjectLock.AcquireAsync(VacationRequestSubjectType.Client, req.Id, ct);
         }
 
         logger.LogInformation(
@@ -64,6 +71,12 @@ public sealed class UpdateClientEndpoint
         if (client is null)
         {
             return TypedResults.NotFound();
+        }
+
+        var vacationsChanged = ClientUpdateComparer.AreVacationsChanged(client, req);
+        if (vacationsChanged && !currentUserRole.Value.IsSuperuser())
+        {
+            return TypedResults.Forbid();
         }
 
         if (req.SourceId is not null)
@@ -116,10 +129,10 @@ public sealed class UpdateClientEndpoint
         client.Contacts.Vk = req.Vk;
         client.SourceId = req.SourceId;
 
-        if (req.Vacations is not null)
+        if (vacationsChanged)
         {
             db.ClientVacations.RemoveRange(client.Vacations);
-            client.Vacations = req.Vacations
+            client.Vacations = req.Vacations!
                 .Select(item => new Data.Models.ClientVacation
                 {
                     Id = Ulid.NewUlid(),
@@ -134,9 +147,9 @@ public sealed class UpdateClientEndpoint
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Event = req.Vacations is null
+            Event = !vacationsChanged
                 ? MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientUpdated
-                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientVacationsUpdated,
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientVacationsUpdatedDirectly,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
@@ -150,7 +163,7 @@ public sealed class UpdateClientEndpoint
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
                 AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name),
-                req.Vacations is null
+                !vacationsChanged
                     ? null
                     : AuditDetailsFormatter.DescribeChange(
                         "Периоды отсутствия",
@@ -158,6 +171,11 @@ public sealed class UpdateClientEndpoint
                         FormatVacationPeriods(client.Vacations.Select(item => (item.StartDate, item.EndDate))))
             )
         }, ct);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
 
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
     }

@@ -181,11 +181,11 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
     }
 
     [Fact]
-    public async Task UpdateClientVacations_WritesNamedBeforeAndAfterAuditContext()
+    public async Task UpdateClientVacations_SuperuserDirectManagement_WritesNamedBeforeAndAfterAuditContext()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
         await db.ClientVacations.AddAsync(
             new ClientVacation
@@ -219,9 +219,32 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.EntityId == client.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Action.ShouldBe("client_vacations_updated");
+        auditLog.Action.ShouldBe("client_vacations_updated_directly");
         auditLog.Details.ShouldBe(
             "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01–2026-08-10 → 2026-09-02–2026-09-12");
+    }
+
+    [Fact]
+    public async Task UpdateClientVacations_Administrator_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var administrator = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(administrator));
+
+        var response = await App.Client.PatchAsJsonAsync(
+            $"/clients/{client.Id}",
+            new
+            {
+                firstName = client.FirstName,
+                lastName = client.LastName,
+                vacations = new[] { new { startDate = "2026-09-02", endDate = "2026-09-12" } }
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.ClientVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     private static void SetContact(ClientContacts contacts, string field, string value)

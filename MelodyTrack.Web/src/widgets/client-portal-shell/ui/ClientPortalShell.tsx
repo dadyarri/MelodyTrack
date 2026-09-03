@@ -5,7 +5,7 @@ import { NotificationBell } from "@/entities/notification";
 import { useAuth } from "@/entities/session";
 import { SystemNoticeCenter } from "@/entities/system-notice";
 import { PushNotificationControl } from "@/features/manage-push-notifications";
-import { CalendarOutlined, LogoutOutlined } from "@/shared/ui/icons";
+import { CalendarOutlined, CalendarRangeOutlined, LogoutOutlined } from "@/shared/ui/icons";
 
 import styles from "./ClientPortalShell.module.css";
 
@@ -35,6 +35,7 @@ export function ClientPortalShell() {
 
         <nav className={styles.nav}>
           <NavItem to="/portal/schedule" icon={<CalendarOutlined />} label="Расписание" />
+          <NavItem to="/portal/vacations" icon={<CalendarRangeOutlined />} label="Отпуска" />
         </nav>
 
         <SystemNoticeCenter />

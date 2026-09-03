@@ -18,6 +18,7 @@ public static class ApiRateLimitPolicies
     public const string CalendarSubscription = "calendar-subscription";
     public const string Releases = "public-releases";
     public const string ExpensiveRead = "expensive-read";
+    public const string VacationRequests = "vacation-requests";
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
     {
@@ -58,6 +59,7 @@ public static class ApiRateLimitPolicies
             AddPolicy(options, PortalAuthentication, 20, TimeSpan.FromMinutes(1));
             AddPolicy(options, CalendarSubscription, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, Releases, 120, TimeSpan.FromMinutes(1));
+            AddPolicy(options, VacationRequests, 20, TimeSpan.FromMinutes(5));
             options.AddConcurrencyLimiter(ExpensiveRead, limiterOptions =>
             {
                 limiterOptions.PermitLimit = 8;

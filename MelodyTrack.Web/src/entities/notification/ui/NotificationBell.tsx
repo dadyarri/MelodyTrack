@@ -54,7 +54,7 @@ export function NotificationBell({ footer }: { footer?: ReactNode }) {
             {loading ? (
               <Spin size="small" />
             ) : items.length === 0 ? (
-              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Уведомлений пока нет" />
+              <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="Новых уведомлений нет" />
             ) : (
               items.map((notification) => (
                 <button

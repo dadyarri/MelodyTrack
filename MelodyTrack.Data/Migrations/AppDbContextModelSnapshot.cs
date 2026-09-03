@@ -1669,6 +1669,155 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("UserWorkingHoursDays");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.VacationRequest", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("ProcessedBySuperuserId")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("RequestMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateOnly>("RequestedEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("RequestedStart")
+                        .HasColumnType("date");
+
+                    b.Property<byte[]>("RequesterId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("RequesterPrincipalType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("ResultingVacationId")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("SubjectId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequesterPrincipalType", "RequesterId", "CreatedAtUtc");
+
+                    b.HasIndex("SubjectType", "SubjectId", "Status");
+
+                    b.ToTable("VacationRequests", t =>
+                        {
+                            t.HasCheckConstraint("CK_VacationRequests_Range", "\"RequestedStart\" <= \"RequestedEnd\"");
+
+                            t.HasCheckConstraint("CK_VacationRequests_Version", "\"Version\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.WorkingHoursRequest", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("CreatedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<DateTime?>("ProcessedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("ProcessedBySuperuserId")
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("RequestMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<byte[]>("RequesterUserId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<byte[]>("SubjectUserId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RequesterUserId", "CreatedAtUtc");
+
+                    b.HasIndex("SubjectUserId", "Status");
+
+                    b.ToTable("WorkingHoursRequests", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkingHoursRequests_Version", "\"Version\" > 0");
+                        });
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.WorkingHoursRequestDay", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("DayOfWeek")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("EndMinuteOfDay")
+                        .HasColumnType("integer");
+
+                    b.Property<bool>("IsWorkingDay")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("StartMinuteOfDay")
+                        .HasColumnType("integer");
+
+                    b.Property<byte[]>("WorkingHoursRequestId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("WorkingHoursRequestId", "DayOfWeek")
+                        .IsUnique();
+
+                    b.ToTable("WorkingHoursRequestDays", t =>
+                        {
+                            t.HasCheckConstraint("CK_WorkingHoursRequestDays_Minutes", "\"StartMinuteOfDay\" >= 0 AND \"StartMinuteOfDay\" < 1440 AND \"EndMinuteOfDay\" > 0 AND \"EndMinuteOfDay\" <= 1440 AND \"StartMinuteOfDay\" < \"EndMinuteOfDay\"");
+                        });
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Appointment", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
@@ -2208,6 +2357,17 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("User");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.WorkingHoursRequestDay", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.WorkingHoursRequest", "WorkingHoursRequest")
+                        .WithMany("RequestedWorkingHours")
+                        .HasForeignKey("WorkingHoursRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("WorkingHoursRequest");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Client", b =>
                 {
                     b.Navigation("Appointments");
@@ -2271,6 +2431,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Vacations");
 
                     b.Navigation("WorkingHours");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.WorkingHoursRequest", b =>
+                {
+                    b.Navigation("RequestedWorkingHours");
                 });
 #pragma warning restore 612, 618
         }

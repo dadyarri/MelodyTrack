@@ -16,14 +16,17 @@ describe("notificationApi", () => {
     vi.clearAllMocks();
   });
 
-  it("loads notification history with request cancellation", async () => {
+  it("loads only unread notifications with request cancellation", async () => {
     const controller = new AbortController();
     const payload = { items: [], unreadCount: 0 };
     httpMock.get.mockResolvedValue({ data: payload });
 
-    await expect(notificationApi.list(controller.signal)).resolves.toEqual(payload);
+    await expect(notificationApi.listUnread(controller.signal)).resolves.toEqual(payload);
 
-    expect(httpMock.get).toHaveBeenCalledWith("/notifications", { signal: controller.signal });
+    expect(httpMock.get).toHaveBeenCalledWith("/notifications", {
+      params: { unreadOnly: true },
+      signal: controller.signal,
+    });
   });
 
   it("registers a browser subscription through the account-scoped endpoint", async () => {

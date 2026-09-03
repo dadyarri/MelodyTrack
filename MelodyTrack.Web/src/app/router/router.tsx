@@ -30,6 +30,7 @@ const prefetchStaffRoute = createRoutePrefetcher<QueryClient>(
     "/services": () => import("@/pages/services"),
     "/tasks": () => import("@/pages/tasks"),
     "/users": () => import("@/pages/users"),
+    "/vacation-requests": () => import("@/pages/vacation-requests"),
   },
   async (module, queryClient) => {
     if (isPrefetchableRouteModule(module)) {
@@ -134,6 +135,16 @@ export const router = createBrowserRouter([
 
           return {
             Component: ClientPortalSchedulePage,
+          };
+        },
+      },
+      {
+        path: "vacations",
+        lazy: async () => {
+          const { ClientPortalVacationsPage } = await recoverableImport(() => import("@/pages/client-portal-vacations"));
+
+          return {
+            Component: ClientPortalVacationsPage,
           };
         },
       },
@@ -359,6 +370,16 @@ export const router = createBrowserRouter([
                 <UsersPage />
               </AdminRoute>
             ),
+          };
+        },
+      },
+      {
+        path: "vacation-requests",
+        lazy: async () => {
+          const { VacationRequestsPage } = await recoverableImport(() => import("@/pages/vacation-requests"));
+
+          return {
+            Component: VacationRequestsPage,
           };
         },
       },

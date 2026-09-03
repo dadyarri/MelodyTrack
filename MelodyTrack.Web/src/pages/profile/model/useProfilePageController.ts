@@ -9,13 +9,22 @@ import {
   authApi,
   authQueryKeys,
   type ChangePasswordInput,
+  hasSuperuserAccess,
   type RecoveryCodeItem,
   type SessionDto,
   type Setup2FaInput,
   type Setup2FaResponse,
   useAuth,
 } from "@/entities/session";
-import { calendarSubscriptionsApi, type UserAvailability, userQueryKeys, usersApi, type WeekdayKey } from "@/entities/user";
+import {
+  calendarSubscriptionsApi,
+  type UserAvailability,
+  userQueryKeys,
+  usersApi,
+  type WeekdayKey,
+  workingHoursRequestQueryKeys,
+  workingHoursRequestsApi,
+} from "@/entities/user";
 import { weekdayOrder } from "@/entities/user";
 import { onboardingApi, onboardingQueryKeys } from "@/features/onboarding";
 import type { Ulid } from "@/shared/api";
@@ -128,6 +137,7 @@ function timeToDayjs(value: string) {
 
 export function useProfilePageController() {
   const auth = useAuth();
+  const requiresScheduleApproval = !hasSuperuserAccess(auth.user);
   const urlModal = useUrlCopyModal(auth.user?.id);
   const { message, modal } = AntdApp.useApp();
   const queryClient = useQueryClient();
@@ -338,38 +348,44 @@ export function useProfilePageController() {
 
   const saveAvailabilityMutation = useMutation({
     mutationFn: ({ values, expectedActivityId }: SaveAvailabilityInput) => {
+      const workingHours = values.workingHours.map((item) => ({
+        dayOfWeek: item.dayOfWeek,
+        isWorkingDay: item.isWorkingDay,
+        startTime: item.isWorkingDay && item.timeRange?.[0] ? item.timeRange[0].format("HH:mm") : null,
+        endTime: item.isWorkingDay && item.timeRange?.[1] ? item.timeRange[1].format("HH:mm") : null,
+      }));
+      if (requiresScheduleApproval) {
+        return workingHoursRequestsApi.create({ workingHours });
+      }
+
       const userId = meQuery.data?.id;
       if (!userId) {
         throw new Error("User id is missing.");
       }
-
       return usersApi.updateAvailability(
         userId,
         {
-          workingHours: values.workingHours.map((item) => ({
-            dayOfWeek: item.dayOfWeek,
-            isWorkingDay: item.isWorkingDay,
-            startTime: item.isWorkingDay && item.timeRange?.[0] ? item.timeRange[0].format("HH:mm") : null,
-            endTime: item.isWorkingDay && item.timeRange?.[1] ? item.timeRange[1].format("HH:mm") : null,
+          workingHours,
+          vacations: (availabilityQuery.data?.vacations ?? []).map((item) => ({
+            startDate: item.startDate,
+            endDate: item.endDate,
           })),
-          vacations: values.vacations
-            .filter((item) => hasVacationPeriod(item.period))
-            .map((item) => ({
-              startDate: item.period[0].format("YYYY-MM-DD"),
-              endDate: item.period[1].format("YYYY-MM-DD"),
-            })),
         },
         { expectedActivityId },
       );
     },
     onSuccess: async () => {
-      message.success("График работы сохранен");
+      message.success(requiresScheduleApproval ? "Заявка на изменение рабочих дней отправлена" : "График работы сохранен");
       await availabilityDraft.clearAfterSuccess();
       await queryClient.invalidateQueries({
-        queryKey: userQueryKeys.availability(meQuery.data?.id),
+        queryKey: requiresScheduleApproval ? workingHoursRequestQueryKeys.all : userQueryKeys.availability(meQuery.data?.id),
       });
     },
     onError: async (error, variables) => {
+      if (requiresScheduleApproval) {
+        showErrors(error);
+        return;
+      }
       await handleStaleEntityConflict({
         error,
         modal,
@@ -386,9 +402,7 @@ export function useProfilePageController() {
           });
         },
         onReload: () => {
-          void queryClient.invalidateQueries({
-            queryKey: userQueryKeys.availability(meQuery.data?.id),
-          });
+          void queryClient.invalidateQueries({ queryKey: userQueryKeys.availability(meQuery.data?.id) });
         },
       });
     },
@@ -525,15 +539,12 @@ export function useProfilePageController() {
     urlModalProps: urlModal.urlModalProps,
     isTwoFactorEnabled,
     isTwoFactorRequired,
+    requiresScheduleApproval,
     onPersonalInfoSubmit: (values: PersonalInfoFormValues) => {
       savePersonalInfoMutation.mutate({
         values,
         expectedActivityId: meQuery.data?.lastActivity?.id,
       });
-    },
-    addVacationDraft: () => {
-      const vacations = (availabilityForm.getFieldValue("vacations") as AvailabilityFormValues["vacations"] | undefined) ?? [];
-      availabilityForm.setFieldValue("vacations", [...vacations, { period: undefined }]);
     },
     onAvailabilitySubmit: (values: AvailabilityFormValues) => {
       saveAvailabilityMutation.mutate({

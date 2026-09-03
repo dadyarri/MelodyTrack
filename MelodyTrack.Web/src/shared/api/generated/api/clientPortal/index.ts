@@ -8,6 +8,8 @@ import { CourseEnrollmentsRequestBuilderRequestsMetadata, type CourseEnrollments
 // @ts-ignore
 import { ScheduleRequestBuilderRequestsMetadata, type ScheduleRequestBuilder } from './schedule/index.js';
 // @ts-ignore
+import { type VacationRequestsRequestBuilder, VacationRequestsRequestBuilderRequestsMetadata } from './vacationRequests/index.js';
+// @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
 
 /**
@@ -26,6 +28,10 @@ export interface ClientPortalRequestBuilder extends BaseRequestBuilder<ClientPor
      * The schedule property
      */
     get schedule(): ScheduleRequestBuilder;
+    /**
+     * The vacationRequests property
+     */
+    get vacationRequests(): VacationRequestsRequestBuilder;
 }
 /**
  * Uri template for the request builder.
@@ -43,6 +49,9 @@ export const ClientPortalRequestBuilderNavigationMetadata: Record<Exclude<keyof 
     },
     schedule: {
         requestsMetadata: ScheduleRequestBuilderRequestsMetadata,
+    },
+    vacationRequests: {
+        requestsMetadata: VacationRequestsRequestBuilderRequestsMetadata,
     },
 };
 /* tslint:enable */

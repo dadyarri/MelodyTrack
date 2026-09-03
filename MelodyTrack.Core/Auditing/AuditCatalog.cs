@@ -46,6 +46,8 @@ public static class AuditCatalog
         public static readonly AuditCategoryDefinition Initialization = new("initialization", "Инициализация");
         public static readonly AuditCategoryDefinition GodMode = new("god_mode", "Аварийный доступ");
         public static readonly AuditCategoryDefinition SystemNotices = new("system_notices", "Системные уведомления");
+        public static readonly AuditCategoryDefinition VacationRequests = new("vacation_requests", "Заявки на отпуск");
+        public static readonly AuditCategoryDefinition WorkingHoursRequests = new("working_hours_requests", "Заявки на изменение рабочих дней");
     }
 
     public static class Events
@@ -72,6 +74,7 @@ public static class AuditCatalog
         public static readonly AuditEventDefinition ClientCreated = Define(Categories.Clients, "client_created", "Клиент создан");
         public static readonly AuditEventDefinition ClientUpdated = Define(Categories.Clients, "client_updated", "Клиент обновлён");
         public static readonly AuditEventDefinition ClientVacationsUpdated = Define(Categories.Clients, "client_vacations_updated", "Периоды отсутствия клиента обновлены");
+        public static readonly AuditEventDefinition ClientVacationsUpdatedDirectly = Define(Categories.Clients, "client_vacations_updated_directly", "Суперпользователь напрямую обновил периоды отсутствия клиента");
         public static readonly AuditEventDefinition ClientDeleted = Define(Categories.Clients, "client_deleted", "Клиент удалён");
         public static readonly AuditEventDefinition ClientPortalLinkCreated = Define(Categories.Clients, "client_portal_link_created", "Создана ссылка на кабинет клиента");
         public static readonly AuditEventDefinition ClientPortalLinkRotated = Define(Categories.Clients, "client_portal_link_rotated", "Ссылка на кабинет клиента обновлена");
@@ -109,6 +112,8 @@ public static class AuditCatalog
 
         public static readonly AuditEventDefinition UserUpdated = Define(Categories.Users, "user_updated", "Пользователь обновлён");
         public static readonly AuditEventDefinition UserAvailabilityUpdated = Define(Categories.Users, "user_availability_updated", "Доступность пользователя обновлена");
+        public static readonly AuditEventDefinition UserWorkingHoursUpdatedDirectly = Define(Categories.Users, "user_working_hours_updated_directly", "Суперпользователь напрямую обновил рабочие дни пользователя");
+        public static readonly AuditEventDefinition UserVacationsUpdatedDirectly = Define(Categories.Users, "user_vacations_updated_directly", "Суперпользователь напрямую обновил отпуска пользователя");
         public static readonly AuditEventDefinition RecurringTaskRuleUpdated = Define(Categories.RecurringTasks, "recurring_task_rule_updated", "Правило регулярной задачи обновлено");
         public static readonly AuditEventDefinition CustomTaskCreated = Define(Categories.RecurringTasks, "custom_task_created", "Пользовательская задача создана");
         public static readonly AuditEventDefinition TaskCompleted = Define(Categories.RecurringTasks, "task_completed", "Регулярная задача завершена");
@@ -150,6 +155,15 @@ public static class AuditCatalog
         public static readonly AuditEventDefinition SystemNoticeUpdated = Define(Categories.SystemNotices, "system_notice_updated", "Системное уведомление обновлено");
         public static readonly AuditEventDefinition SystemNoticeExpired = Define(Categories.SystemNotices, "system_notice_expired", "Системное уведомление завершено");
         public static readonly AuditEventDefinition SystemNoticeDeleted = Define(Categories.SystemNotices, "system_notice_deleted", "Системное уведомление удалено");
+
+        public static readonly AuditEventDefinition VacationRequestCreated = Define(Categories.VacationRequests, "vacation_request_created", "Заявка на отпуск создана");
+        public static readonly AuditEventDefinition VacationRequestApproved = Define(Categories.VacationRequests, "vacation_request_approved", "Заявка на отпуск одобрена");
+        public static readonly AuditEventDefinition VacationRequestDeclined = Define(Categories.VacationRequests, "vacation_request_declined", "Заявка на отпуск отклонена");
+        public static readonly AuditEventDefinition VacationRequestCancelled = Define(Categories.VacationRequests, "vacation_request_cancelled", "Заявка на отпуск отменена");
+        public static readonly AuditEventDefinition WorkingHoursRequestCreated = Define(Categories.WorkingHoursRequests, "working_hours_request_created", "Заявка на изменение рабочих дней создана");
+        public static readonly AuditEventDefinition WorkingHoursRequestApproved = Define(Categories.WorkingHoursRequests, "working_hours_request_approved", "Изменение рабочих дней одобрено");
+        public static readonly AuditEventDefinition WorkingHoursRequestDeclined = Define(Categories.WorkingHoursRequests, "working_hours_request_declined", "Заявка на изменение рабочих дней отклонена");
+        public static readonly AuditEventDefinition WorkingHoursRequestCancelled = Define(Categories.WorkingHoursRequests, "working_hours_request_cancelled", "Заявка на изменение рабочих дней отменена");
     }
 
     public static IReadOnlyList<AuditCategoryDefinition> AllCategories { get; } = typeof(Categories)

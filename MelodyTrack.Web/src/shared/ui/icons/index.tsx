@@ -8,6 +8,7 @@ import Blocks from "lucide-react/dist/esm/icons/blocks";
 import BookOpenText from "lucide-react/dist/esm/icons/book-open-text";
 import Calendar from "lucide-react/dist/esm/icons/calendar";
 import CalendarCheck2 from "lucide-react/dist/esm/icons/calendar-check-2";
+import CalendarRange from "lucide-react/dist/esm/icons/calendar-range";
 import ChartLine from "lucide-react/dist/esm/icons/chart-line";
 import ChartPie from "lucide-react/dist/esm/icons/chart-pie";
 import Check from "lucide-react/dist/esm/icons/check";
@@ -84,6 +85,7 @@ function createIcon(Component: LucideIcon) {
 export const CalendarOutlined = createIcon(Calendar);
 export const BellOutlined = createIcon(Bell);
 export const CalendarCheckOutlined = createIcon(CalendarCheck2);
+export const CalendarRangeOutlined = createIcon(CalendarRange);
 export const CheckCircleOutlined = createIcon(CircleCheck);
 export const CheckOutlined = createIcon(Check);
 export const BookOutlined = createIcon(BookOpenText);

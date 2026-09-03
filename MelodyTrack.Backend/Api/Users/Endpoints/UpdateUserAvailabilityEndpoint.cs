@@ -22,6 +22,7 @@ public sealed class UpdateUserAvailabilityEndpoint
         AppDbContext db,
         IEntityFreshnessService entityFreshnessService,
         IAuditLogService auditLogService,
+        IVacationRequestSubjectLock vacationRequestSubjectLock,
         ICurrentUserAccessor currentUserAccessor,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
@@ -40,6 +41,10 @@ public sealed class UpdateUserAvailabilityEndpoint
             return TypedResults.Forbid();
         }
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await vacationRequestSubjectLock.AcquireAsync(VacationRequestSubjectType.Staff, req.Id, ct);
+        await vacationRequestSubjectLock.AcquireWorkingHoursAsync(req.Id, ct);
+
         var user = await db.Users
             .Include(e => e.Role)
             .Include(e => e.WorkingHours)
@@ -57,6 +62,13 @@ public sealed class UpdateUserAvailabilityEndpoint
             return TypedResults.Forbid();
         }
 
+        var vacationsChanged = AreVacationsChanged(user, req);
+        var workingHoursChanged = AreWorkingHoursChanged(user, req);
+        if ((vacationsChanged || workingHoursChanged) && !currentUser.Role.RoleName.IsSuperuser())
+        {
+            return TypedResults.Forbid();
+        }
+
         var conflict = await entityFreshnessService.GetConflictIfStaleAsync(
             "user_availability",
             user.Id,
@@ -69,8 +81,13 @@ public sealed class UpdateUserAvailabilityEndpoint
             return TypedResults.Conflict(conflict);
         }
 
+        if (!vacationsChanged && !workingHoursChanged)
+        {
+            await transaction.CommitAsync(ct);
+            return TypedResults.NoContent();
+        }
+
         db.UserWorkingHoursDays.RemoveRange(user.WorkingHours);
-        db.UserVacations.RemoveRange(user.Vacations);
 
         user.WorkingHours = req.WorkingHours
             .Select(item => new UserWorkingHoursDay
@@ -89,29 +106,39 @@ public sealed class UpdateUserAvailabilityEndpoint
             })
             .ToList();
 
-        user.Vacations = req.Vacations
-            .Select(item => new UserVacation
-            {
-                Id = Ulid.NewUlid(),
-                UserId = user.Id,
-                User = user,
-                StartDate = item.StartDate,
-                EndDate = item.EndDate
-            })
-            .ToList();
+        if (vacationsChanged)
+        {
+            db.UserVacations.RemoveRange(user.Vacations);
+            user.Vacations = req.Vacations
+                .Select(item => new UserVacation
+                {
+                    Id = Ulid.NewUlid(),
+                    UserId = user.Id,
+                    User = user,
+                    StartDate = item.StartDate,
+                    EndDate = item.EndDate
+                })
+                .ToList();
+        }
 
         await db.SaveChangesAsync(ct);
-        await auditLogService.WriteAsync(new AuditLogWriteRequest
+        if (workingHoursChanged)
         {
-            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.UserAvailabilityUpdated,
-            EntityType = "user_availability",
-            EntityId = user.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
-                AuditDetailsFormatter.DescribeContext("Пользователь", $"{user.LastName} {user.FirstName}".Trim()),
-                AuditDetailsFormatter.DescribeContext("Рабочих дней", user.WorkingHours.Count(item => item.IsWorkingDay).ToString()),
-                AuditDetailsFormatter.DescribeContext("Отпусков", user.Vacations.Count.ToString())
-            )
-        }, ct);
+            await WriteDirectAuditAsync(
+                auditLogService,
+                user,
+                MelodyTrack.Core.Auditing.AuditCatalog.Events.UserWorkingHoursUpdatedDirectly,
+                ct);
+        }
+        if (vacationsChanged)
+        {
+            await WriteDirectAuditAsync(
+                auditLogService,
+                user,
+                MelodyTrack.Core.Auditing.AuditCatalog.Events.UserVacationsUpdatedDirectly,
+                ct);
+        }
+        await transaction.CommitAsync(ct);
         return TypedResults.NoContent();
     }
 
@@ -152,6 +179,54 @@ public sealed class UpdateUserAvailabilityEndpoint
             .ToList();
 
         return currentWorkingHours.SequenceEqual(requestedWorkingHours) && currentVacations.SequenceEqual(requestedVacations);
+    }
+
+    private static bool AreVacationsChanged(User user, UpdateUserAvailabilityRequest req)
+    {
+        var current = user.Vacations
+            .OrderBy(item => item.StartDate)
+            .ThenBy(item => item.EndDate)
+            .Select(item => (item.StartDate, item.EndDate));
+        var requested = req.Vacations
+            .OrderBy(item => item.StartDate)
+            .ThenBy(item => item.EndDate)
+            .Select(item => (item.StartDate, item.EndDate));
+
+        return !current.SequenceEqual(requested);
+    }
+
+    private static bool AreWorkingHoursChanged(User user, UpdateUserAvailabilityRequest req)
+    {
+        var current = user.WorkingHours
+            .OrderBy(item => item.DayOfWeek)
+            .Select(item => (MapDayOfWeek(item.DayOfWeek), item.IsWorkingDay,
+                item.IsWorkingDay ? FormatTime(item.StartMinuteOfDay) : null,
+                item.IsWorkingDay ? FormatTime(item.EndMinuteOfDay) : null));
+        var requested = req.WorkingHours
+            .OrderBy(item => item.DayOfWeek)
+            .Select(item => (item.DayOfWeek.Trim().ToLowerInvariant(), item.IsWorkingDay,
+                item.IsWorkingDay ? item.StartTime : null,
+                item.IsWorkingDay ? item.EndTime : null));
+
+        return !current.SequenceEqual(requested);
+    }
+
+    private static Task WriteDirectAuditAsync(
+        IAuditLogService auditLogService,
+        User user,
+        MelodyTrack.Core.Auditing.AuditEventDefinition auditEvent,
+        CancellationToken ct)
+    {
+        return auditLogService.WriteAsync(new AuditLogWriteRequest
+        {
+            Event = auditEvent,
+            EntityType = "user_availability",
+            EntityId = user.Id.ToString(),
+            Details = AuditDetailsFormatter.JoinChanges(
+                AuditDetailsFormatter.DescribeContext("Пользователь", $"{user.LastName} {user.FirstName}".Trim()),
+                AuditDetailsFormatter.DescribeContext("Рабочих дней", user.WorkingHours.Count(item => item.IsWorkingDay).ToString()),
+                AuditDetailsFormatter.DescribeContext("Отпусков", user.Vacations.Count.ToString()))
+        }, ct);
     }
 
     private static DayOfWeek ParseDayOfWeek(string value)

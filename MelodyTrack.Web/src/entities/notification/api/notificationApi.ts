@@ -16,8 +16,8 @@ type SubscribeRequest = RequiredApiContract<PushSubscriptionRequest, "endpoint" 
 type RevokeRequest = RequiredApiContract<RevokePushSubscriptionRequest, "endpoint">;
 
 export const notificationApi = {
-  list(signal?: AbortSignal) {
-    return http.get<NotificationListResponse>("/notifications", { signal }).then((response) => response.data);
+  listUnread(signal?: AbortSignal) {
+    return http.get<NotificationListResponse>("/notifications", { params: { unreadOnly: true }, signal }).then((response) => response.data);
   },
   markRead(id: Ulid) {
     return http.post<unknown>(`/notifications/${id}/read`, {}).then(() => undefined);

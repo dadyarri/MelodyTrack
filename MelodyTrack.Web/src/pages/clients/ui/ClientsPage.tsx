@@ -249,7 +249,7 @@ export function ClientsPage() {
         onOpenCourseProgress={controller.openCourseProgress}
         onUpdateThemeProgress={controller.canCreateClients ? controller.onUpdateThemeProgress : undefined}
         onEventsPageChange={controller.setHistoryEventsPage}
-        onEditVacations={controller.canCreateClients ? controller.openVacationsEditor : undefined}
+        onEditVacations={controller.canManageClientVacations ? controller.openVacationsEditor : undefined}
       />
       <CourseEnrollmentCreateModal
         open={controller.isEnrollmentCreateOpen}

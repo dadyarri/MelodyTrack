@@ -10,7 +10,7 @@ public sealed class GetNotificationsRequest
     public int? Limit { get; set; }
 
     [FromQuery(Name = "unreadOnly")]
-    public bool UnreadOnly { get; set; }
+    public bool? UnreadOnly { get; set; }
 
     internal int EffectiveLimit => Limit ?? 30;
 }

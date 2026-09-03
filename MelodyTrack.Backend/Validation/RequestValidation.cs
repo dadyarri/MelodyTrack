@@ -12,6 +12,8 @@ using MelodyTrack.Backend.Api.Releases.Requests;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Users.Requests;
+using MelodyTrack.Backend.Api.VacationRequests.Requests;
+using MelodyTrack.Backend.Api.WorkingHoursRequests.Requests;
 
 namespace MelodyTrack.Backend.Validation;
 
@@ -173,6 +175,27 @@ internal static partial class RequestValidation
                 Max(errors, value.Phone, 32, nameof(value.Phone), "Телефон указан некорректно.");
                 Max(errors, value.Telegram, 256, nameof(value.Telegram), "Telegram указан некорректно.");
                 Max(errors, value.Vk, 256, nameof(value.Vk), "VK указан некорректно.");
+                break;
+            case CreateVacationRequest value:
+                VacationRange(errors, value.StartDate, value.EndDate);
+                Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                break;
+            case CreateWorkingHoursRequest value:
+                WorkingHours(errors, value.WorkingHours);
+                Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                break;
+            case VacationRequestDecisionRequest value:
+                if (value.ExpectedVersion <= 0)
+                {
+                    Add(errors, nameof(value.ExpectedVersion), "Версия заявки указана некорректно.");
+                }
+                Max(errors, value.Message, 500, nameof(value.Message), "Комментарий должен быть не длиннее 500 символов.");
+                break;
+            case CancelVacationRequest value:
+                if (value.ExpectedVersion <= 0)
+                {
+                    Add(errors, nameof(value.ExpectedVersion), "Версия заявки указана некорректно.");
+                }
                 break;
             case GetReleasesRequest value:
                 if (value.Page is <= 0) Add(errors, nameof(value.Page), "Page должен быть больше нуля.");
@@ -385,6 +408,48 @@ internal static partial class RequestValidation
         {
             if (vacation.EndDate < vacation.StartDate)
                 Add(errors, nameof(value.Vacations), "Дата окончания отпуска не может быть раньше даты начала.");
+        }
+    }
+
+    private static void WorkingHours(List<ValidationResult> errors, IReadOnlyCollection<WorkingHoursRequestDayInput>? workingHours)
+    {
+        if (workingHours is null || workingHours.Count != 7)
+        {
+            Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Нужно указать рабочие часы для всех дней недели.");
+        }
+        foreach (var day in workingHours ?? [])
+        {
+            if (string.IsNullOrWhiteSpace(day.DayOfWeek) || !AllowedDays.Contains(day.DayOfWeek.Trim().ToLowerInvariant()))
+                Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Укажите корректный день недели.");
+            if (day.IsWorkingDay && string.IsNullOrWhiteSpace(day.StartTime))
+                Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Укажите время начала рабочего дня.");
+            if (day.IsWorkingDay && string.IsNullOrWhiteSpace(day.EndTime))
+                Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Укажите время окончания рабочего дня.");
+            if (day.IsWorkingDay && (!TimeOnly.TryParse(day.StartTime, out var start) || !TimeOnly.TryParse(day.EndTime, out var end) || start >= end))
+                Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Время работы указано некорректно.");
+        }
+        if (workingHours is not null
+            && workingHours.Select(day => day.DayOfWeek?.Trim().ToLowerInvariant() ?? string.Empty).Distinct(StringComparer.Ordinal).Count() != 7)
+            Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Каждый день недели должен быть указан ровно один раз.");
+    }
+
+    private static void VacationRange(List<ValidationResult> errors, DateOnly startDate, DateOnly endDate)
+    {
+        if (startDate == default)
+        {
+            Add(errors, nameof(CreateVacationRequest.StartDate), "Укажите дату начала отпуска.");
+        }
+        if (endDate == default)
+        {
+            Add(errors, nameof(CreateVacationRequest.EndDate), "Укажите дату окончания отпуска.");
+        }
+        if (startDate != default && endDate != default && endDate < startDate)
+        {
+            Add(errors, nameof(CreateVacationRequest.EndDate), "Дата окончания отпуска не может быть раньше даты начала.");
+        }
+        if (endDate == DateOnly.MaxValue)
+        {
+            Add(errors, nameof(CreateVacationRequest.EndDate), "Дата окончания отпуска находится вне поддерживаемого диапазона.");
         }
     }
 

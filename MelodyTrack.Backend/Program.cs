@@ -245,6 +245,11 @@ try
     builder.Services.AddSingleton<IRecurringTaskTemplateRenderer, RecurringTaskTemplateRenderer>();
     builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
+    builder.Services.AddScoped<IVacationRequestWorkflowService, VacationRequestWorkflowService>();
+    builder.Services.AddScoped<IVacationRequestQueryService, VacationRequestQueryService>();
+    builder.Services.AddScoped<IVacationRequestSubjectLock, VacationRequestSubjectLock>();
+    builder.Services.AddScoped<IWorkingHoursRequestWorkflowService, WorkingHoursRequestWorkflowService>();
+    builder.Services.AddScoped<IWorkingHoursRequestQueryService, WorkingHoursRequestQueryService>();
     builder.Services.AddScoped<INotificationService, NotificationService>();
     builder.Services.AddSingleton<NotificationTelemetry>();
     builder.Services.AddSingleton<WebPush.WebPushClient>();

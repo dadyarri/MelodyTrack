@@ -7,21 +7,33 @@ import { notificationQueryKeys } from "../api/queryKeys";
 
 export function useNotifications() {
   const queryClient = useQueryClient();
+  const listQueryKey = notificationQueryKeys.list();
   const query = useQuery({
-    queryKey: notificationQueryKeys.list(),
-    queryFn: ({ signal }) => notificationApi.list(signal),
+    queryKey: listQueryKey,
+    queryFn: ({ signal }) => notificationApi.listUnread(signal),
     refetchInterval: 30_000,
   });
   const markReadMutation = useMutation({
     mutationFn: (id: Ulid) => notificationApi.markRead(id),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: notificationQueryKeys.list() });
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<Awaited<ReturnType<typeof notificationApi.listUnread>>>(listQueryKey, (current) => {
+        if (!current) {
+          return current;
+        }
+
+        const items = current.items.filter((item) => item.id !== id);
+        return items.length === current.items.length ? current : { ...current, items, unreadCount: Math.max(0, current.unreadCount - 1) };
+      });
+      void queryClient.invalidateQueries({ queryKey: listQueryKey });
     },
   });
   const markAllReadMutation = useMutation({
     mutationFn: () => notificationApi.markAllRead(),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: notificationQueryKeys.list() });
+    onSuccess: () => {
+      queryClient.setQueryData<Awaited<ReturnType<typeof notificationApi.listUnread>>>(listQueryKey, (current) =>
+        current ? { ...current, items: [], unreadCount: 0 } : current,
+      );
+      void queryClient.invalidateQueries({ queryKey: listQueryKey });
     },
   });
 

@@ -5,6 +5,7 @@ import {
   BookOutlined,
   CalendarCheckOutlined,
   CalendarOutlined,
+  CalendarRangeOutlined,
   CreditCardOutlined,
   DashboardOutlined,
   FolderOpenOutlined,
@@ -83,6 +84,13 @@ export const appNavItems: AppNavItem[] = [
     icon: <CalendarOutlined />,
     label: "Расписание",
     shortcut: "3",
+    visibility: "all",
+  },
+  {
+    key: "/vacation-requests",
+    icon: <CalendarRangeOutlined />,
+    label: "Заявки",
+    shortcut: "V",
     visibility: "all",
   },
   {

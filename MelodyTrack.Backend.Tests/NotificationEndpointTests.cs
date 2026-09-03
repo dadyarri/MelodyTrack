@@ -19,6 +19,19 @@ namespace MelodyTrack.Backend.Tests;
 public sealed class NotificationEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
+    public async Task List_WithoutOptionalQueryParameters_ReturnsOk()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var currentUser = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(currentUser));
+
+        using var response = await App.Client.GetAsync("/notifications", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
     public async Task ListAndRead_AuthenticatedStaff_ReturnsOnlyOwnedNotificationsAndPersistsReadState()
     {
         await using var scope = App.Services.CreateAsyncScope();

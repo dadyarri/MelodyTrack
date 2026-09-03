@@ -1,0 +1,60 @@
+.notice {
+  margin-bottom: 16px;
+}
+
+.requestItem.requestItem {
+  align-items: stretch;
+}
+
+.requestBody {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.requestHeading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.requestTitle.requestTitle {
+  margin: 0;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.scheduleComparison {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 12px;
+}
+
+.scheduleCard {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+}
+
+.scheduleRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .requestHeading {
+    flex-direction: column;
+  }
+
+  .actions :global(.ant-btn) {
+    flex: 1 1 140px;
+  }
+}

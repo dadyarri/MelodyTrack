@@ -9,7 +9,7 @@ import { type Client, clientQueryKeys, clientsApi, getClientContactValue, normal
 import type { CourseEnrollment, CourseEnrollmentThemeProgressAction } from "@/entities/course";
 import { courseEnrollmentsApi, courseQueryKeys, coursesApi } from "@/entities/course";
 import { clientSourcesApi } from "@/entities/reference-book";
-import { hasAdminAccess, useAuth } from "@/entities/session";
+import { hasAdminAccess, hasSuperuserAccess, useAuth } from "@/entities/session";
 import type { ClientFormValues, ClientVacationsFormValues } from "@/features/manage-client";
 import { useUpdateCourseProgress } from "@/features/update-course-progress";
 import { getApiErrorMessages, type Ulid } from "@/shared/api";
@@ -144,6 +144,7 @@ export function useClientsPageController() {
   };
 
   const canCreateClients = hasAdminAccess(auth.user);
+  const canManageClientVacations = hasSuperuserAccess(auth.user);
   const historyClientId = historyClient?.id;
 
   const query = useQuery({
@@ -497,6 +498,7 @@ export function useClientsPageController() {
 
   return {
     canCreateClients,
+    canManageClientVacations,
     page,
     setPage,
     search,

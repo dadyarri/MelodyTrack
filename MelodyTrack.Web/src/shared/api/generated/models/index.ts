@@ -385,6 +385,12 @@ export interface CancelRecurringTaskRequest extends AdditionalDataHolder, Parsab
      */
     type?: string | null;
 }
+export interface CancelVacationRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+}
 export interface ChangePasswordRequest extends AdditionalDataHolder, Parsable {
     /**
      * The currentPassword property
@@ -1742,6 +1748,15 @@ export function createCancelRecurringTaskRequestFromDiscriminatorValue(parseNode
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CancelVacationRequest}
+ */
+// @ts-ignore
+export function createCancelVacationRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCancelVacationRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ChangePasswordRequest}
  */
 // @ts-ignore
@@ -2489,6 +2504,24 @@ export function createCreateServiceRequestFromDiscriminatorValue(parseNode: Pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateVacationRequest}
+ */
+// @ts-ignore
+export function createCreateVacationRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateVacationRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateWorkingHoursRequest}
+ */
+// @ts-ignore
+export function createCreateWorkingHoursRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateWorkingHoursRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CurrentReleaseResponse}
  */
 // @ts-ignore
@@ -3044,6 +3077,24 @@ export function createGetUsersDtoFromDiscriminatorValue(parseNode: ParseNode | u
 // @ts-ignore
 export function createGetUsersResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoGetUsersResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetVacationRequestsResponse}
+ */
+// @ts-ignore
+export function createGetVacationRequestsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetVacationRequestsResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetWorkingHoursRequestsResponse}
+ */
+// @ts-ignore
+export function createGetWorkingHoursRequestsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetWorkingHoursRequestsResponse;
 }
 export interface CreateInviteRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -3888,6 +3939,47 @@ export function createUserWorkingHoursDayItemFromDiscriminatorValue(parseNode: P
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationPeriodResponse}
+ */
+// @ts-ignore
+export function createVacationPeriodResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationPeriodResponse;
+}
+export interface CreateVacationRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The endDate property
+     */
+    endDate?: DateOnly | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
+    /**
+     * The startDate property
+     */
+    startDate?: DateOnly | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationRequestDecisionRequest}
+ */
+// @ts-ignore
+export function createVacationRequestDecisionRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationRequestDecisionRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationRequestResponse}
+ */
+// @ts-ignore
+export function createVacationRequestResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationRequestResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {Verify2FaRequest}
  */
 // @ts-ignore
@@ -3911,6 +4003,43 @@ export function createWebPushConfigurationResponseFromDiscriminatorValue(parseNo
 // @ts-ignore
 export function createWorkHourDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoWorkHourDto;
+}
+export interface CreateWorkingHoursRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The message property
+     */
+    message?: string | null;
+    /**
+     * The workingHours property
+     */
+    workingHours?: WorkingHoursRequestDayInput[] | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WorkingHoursRequestDayInput}
+ */
+// @ts-ignore
+export function createWorkingHoursRequestDayInputFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoWorkingHoursRequestDayInput;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WorkingHoursRequestDayResponse}
+ */
+// @ts-ignore
+export function createWorkingHoursRequestDayResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoWorkingHoursRequestDayResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {WorkingHoursRequestResponse}
+ */
+// @ts-ignore
+export function createWorkingHoursRequestResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoWorkingHoursRequestResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4518,6 +4647,17 @@ export function deserializeIntoCancelRecurringTaskRequest(cancelRecurringTaskReq
         "teacherId": n => { cancelRecurringTaskRequest.teacherId = n.getStringValue(); },
         "timezone": n => { cancelRecurringTaskRequest.timezone = n.getStringValue(); },
         "type": n => { cancelRecurringTaskRequest.type = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CancelVacationRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCancelVacationRequest(cancelVacationRequest: Partial<CancelVacationRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { cancelVacationRequest.expectedVersion = n.getNumberValue(); },
     }
 }
 /**
@@ -5488,6 +5628,31 @@ export function deserializeIntoCreateServiceRequest(createServiceRequest: Partia
 }
 /**
  * The deserialization information for the current model
+ * @param CreateVacationRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateVacationRequest(createVacationRequest: Partial<CreateVacationRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "endDate": n => { createVacationRequest.endDate = n.getDateOnlyValue(); },
+        "message": n => { createVacationRequest.message = n.getStringValue(); },
+        "startDate": n => { createVacationRequest.startDate = n.getDateOnlyValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CreateWorkingHoursRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateWorkingHoursRequest(createWorkingHoursRequest: Partial<CreateWorkingHoursRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "message": n => { createWorkingHoursRequest.message = n.getStringValue(); },
+        "workingHours": n => { createWorkingHoursRequest.workingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayInput>(createWorkingHoursRequestDayInputFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CurrentReleaseResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6179,6 +6344,28 @@ export function deserializeIntoGetUsersDto_lastActivityMember1(getUsersDto_lastA
 export function deserializeIntoGetUsersResponse(getUsersResponse: Partial<GetUsersResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "users": n => { getUsersResponse.users = n.getCollectionOfObjectValues<GetUsersDto>(createGetUsersDtoFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param GetVacationRequestsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetVacationRequestsResponse(getVacationRequestsResponse: Partial<GetVacationRequestsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getVacationRequestsResponse.items = n.getCollectionOfObjectValues<VacationRequestResponse>(createVacationRequestResponseFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param GetWorkingHoursRequestsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetWorkingHoursRequestsResponse(getWorkingHoursRequestsResponse: Partial<GetWorkingHoursRequestsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getWorkingHoursRequestsResponse.items = n.getCollectionOfObjectValues<WorkingHoursRequestResponse>(createWorkingHoursRequestResponseFromDiscriminatorValue); },
     }
 }
 /**
@@ -7395,6 +7582,60 @@ export function deserializeIntoUserWorkingHoursDayItem(userWorkingHoursDayItem: 
 }
 /**
  * The deserialization information for the current model
+ * @param VacationPeriodResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationPeriodResponse(vacationPeriodResponse: Partial<VacationPeriodResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "endDate": n => { vacationPeriodResponse.endDate = n.getDateOnlyValue(); },
+        "startDate": n => { vacationPeriodResponse.startDate = n.getDateOnlyValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationRequestDecisionRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationRequestDecisionRequest(vacationRequestDecisionRequest: Partial<VacationRequestDecisionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { vacationRequestDecisionRequest.expectedVersion = n.getNumberValue(); },
+        "message": n => { vacationRequestDecisionRequest.message = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationRequestResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationRequestResponse(vacationRequestResponse: Partial<VacationRequestResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "conflictingAppointmentCount": n => { vacationRequestResponse.conflictingAppointmentCount = n.getNumberValue(); },
+        "createdAtUtc": n => { vacationRequestResponse.createdAtUtc = n.getDateValue(); },
+        "decisionMessage": n => { vacationRequestResponse.decisionMessage = n.getStringValue(); },
+        "endDate": n => { vacationRequestResponse.endDate = n.getDateOnlyValue(); },
+        "existingVacations": n => { vacationRequestResponse.existingVacations = n.getCollectionOfObjectValues<VacationPeriodResponse>(createVacationPeriodResponseFromDiscriminatorValue); },
+        "id": n => { vacationRequestResponse.id = n.getStringValue(); },
+        "processedAtUtc": n => { vacationRequestResponse.processedAtUtc = n.getDateValue(); },
+        "processedBySuperuserId": n => { vacationRequestResponse.processedBySuperuserId = n.getStringValue(); },
+        "requesterId": n => { vacationRequestResponse.requesterId = n.getStringValue(); },
+        "requesterName": n => { vacationRequestResponse.requesterName = n.getStringValue(); },
+        "requesterType": n => { vacationRequestResponse.requesterType = n.getStringValue(); },
+        "requestMessage": n => { vacationRequestResponse.requestMessage = n.getStringValue(); },
+        "resultingVacationId": n => { vacationRequestResponse.resultingVacationId = n.getStringValue(); },
+        "startDate": n => { vacationRequestResponse.startDate = n.getDateOnlyValue(); },
+        "status": n => { vacationRequestResponse.status = n.getStringValue(); },
+        "subjectClassification": n => { vacationRequestResponse.subjectClassification = n.getStringValue(); },
+        "subjectId": n => { vacationRequestResponse.subjectId = n.getStringValue(); },
+        "subjectName": n => { vacationRequestResponse.subjectName = n.getStringValue(); },
+        "subjectType": n => { vacationRequestResponse.subjectType = n.getStringValue(); },
+        "version": n => { vacationRequestResponse.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param Verify2FaRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7430,6 +7671,59 @@ export function deserializeIntoWorkHourDto(workHourDto: Partial<WorkHourDto> | u
         "cancelled": n => { workHourDto.cancelled = n.getNumberValue(); },
         "completed": n => { workHourDto.completed = n.getNumberValue(); },
         "hour": n => { workHourDto.hour = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param WorkingHoursRequestDayInput The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWorkingHoursRequestDayInput(workingHoursRequestDayInput: Partial<WorkingHoursRequestDayInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "dayOfWeek": n => { workingHoursRequestDayInput.dayOfWeek = n.getStringValue(); },
+        "endTime": n => { workingHoursRequestDayInput.endTime = n.getStringValue(); },
+        "isWorkingDay": n => { workingHoursRequestDayInput.isWorkingDay = n.getBooleanValue(); },
+        "startTime": n => { workingHoursRequestDayInput.startTime = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param WorkingHoursRequestDayResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWorkingHoursRequestDayResponse(workingHoursRequestDayResponse: Partial<WorkingHoursRequestDayResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "dayOfWeek": n => { workingHoursRequestDayResponse.dayOfWeek = n.getStringValue(); },
+        "endTime": n => { workingHoursRequestDayResponse.endTime = n.getStringValue(); },
+        "isWorkingDay": n => { workingHoursRequestDayResponse.isWorkingDay = n.getBooleanValue(); },
+        "startTime": n => { workingHoursRequestDayResponse.startTime = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param WorkingHoursRequestResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoWorkingHoursRequestResponse(workingHoursRequestResponse: Partial<WorkingHoursRequestResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "createdAtUtc": n => { workingHoursRequestResponse.createdAtUtc = n.getDateValue(); },
+        "currentWorkingHours": n => { workingHoursRequestResponse.currentWorkingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayResponse>(createWorkingHoursRequestDayResponseFromDiscriminatorValue); },
+        "decisionMessage": n => { workingHoursRequestResponse.decisionMessage = n.getStringValue(); },
+        "id": n => { workingHoursRequestResponse.id = n.getStringValue(); },
+        "processedAtUtc": n => { workingHoursRequestResponse.processedAtUtc = n.getDateValue(); },
+        "processedBySuperuserId": n => { workingHoursRequestResponse.processedBySuperuserId = n.getStringValue(); },
+        "requestedWorkingHours": n => { workingHoursRequestResponse.requestedWorkingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayResponse>(createWorkingHoursRequestDayResponseFromDiscriminatorValue); },
+        "requesterName": n => { workingHoursRequestResponse.requesterName = n.getStringValue(); },
+        "requesterUserId": n => { workingHoursRequestResponse.requesterUserId = n.getStringValue(); },
+        "requestMessage": n => { workingHoursRequestResponse.requestMessage = n.getStringValue(); },
+        "status": n => { workingHoursRequestResponse.status = n.getStringValue(); },
+        "subjectClassification": n => { workingHoursRequestResponse.subjectClassification = n.getStringValue(); },
+        "subjectName": n => { workingHoursRequestResponse.subjectName = n.getStringValue(); },
+        "subjectUserId": n => { workingHoursRequestResponse.subjectUserId = n.getStringValue(); },
+        "version": n => { workingHoursRequestResponse.version = n.getNumberValue(); },
     }
 }
 /**
@@ -8037,6 +8331,18 @@ export interface GetUsersResponse extends AdditionalDataHolder, Parsable {
      * The users property
      */
     users?: GetUsersDto[] | null;
+}
+export interface GetVacationRequestsResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: VacationRequestResponse[] | null;
+}
+export interface GetWorkingHoursRequestsResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: WorkingHoursRequestResponse[] | null;
 }
 export interface LoginAttemptResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9324,6 +9630,18 @@ export function serializeCancelRecurringTaskRequest(writer: SerializationWriter,
 }
 /**
  * Serializes information the current object
+ * @param CancelVacationRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCancelVacationRequest(writer: SerializationWriter, cancelVacationRequest: Partial<CancelVacationRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!cancelVacationRequest || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", cancelVacationRequest.expectedVersion);
+    writer.writeAdditionalData(cancelVacationRequest.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param ChangePasswordRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10345,6 +10663,33 @@ export function serializeCreateServiceRequest(writer: SerializationWriter, creat
 }
 /**
  * Serializes information the current object
+ * @param CreateVacationRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateVacationRequest(writer: SerializationWriter, createVacationRequest: Partial<CreateVacationRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createVacationRequest || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("endDate", createVacationRequest.endDate);
+    writer.writeStringValue("message", createVacationRequest.message);
+    writer.writeDateOnlyValue("startDate", createVacationRequest.startDate);
+    writer.writeAdditionalData(createVacationRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CreateWorkingHoursRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateWorkingHoursRequest(writer: SerializationWriter, createWorkingHoursRequest: Partial<CreateWorkingHoursRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createWorkingHoursRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("message", createWorkingHoursRequest.message);
+    writer.writeCollectionOfObjectValues<WorkingHoursRequestDayInput>("workingHours", createWorkingHoursRequest.workingHours, serializeWorkingHoursRequestDayInput);
+    writer.writeAdditionalData(createWorkingHoursRequest.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CurrentReleaseResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11078,6 +11423,30 @@ export function serializeGetUsersResponse(writer: SerializationWriter, getUsersR
     if (!getUsersResponse || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<GetUsersDto>("users", getUsersResponse.users, serializeGetUsersDto);
     writer.writeAdditionalData(getUsersResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GetVacationRequestsResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetVacationRequestsResponse(writer: SerializationWriter, getVacationRequestsResponse: Partial<GetVacationRequestsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getVacationRequestsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<VacationRequestResponse>("items", getVacationRequestsResponse.items, serializeVacationRequestResponse);
+    writer.writeAdditionalData(getVacationRequestsResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GetWorkingHoursRequestsResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetWorkingHoursRequestsResponse(writer: SerializationWriter, getWorkingHoursRequestsResponse: Partial<GetWorkingHoursRequestsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getWorkingHoursRequestsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<WorkingHoursRequestResponse>("items", getWorkingHoursRequestsResponse.items, serializeWorkingHoursRequestResponse);
+    writer.writeAdditionalData(getWorkingHoursRequestsResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12364,6 +12733,63 @@ export function serializeUserWorkingHoursDayItem(writer: SerializationWriter, us
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationPeriodResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationPeriodResponse(writer: SerializationWriter, vacationPeriodResponse: Partial<VacationPeriodResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationPeriodResponse || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("endDate", vacationPeriodResponse.endDate);
+    writer.writeDateOnlyValue("startDate", vacationPeriodResponse.startDate);
+    writer.writeAdditionalData(vacationPeriodResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationRequestDecisionRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationRequestDecisionRequest(writer: SerializationWriter, vacationRequestDecisionRequest: Partial<VacationRequestDecisionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationRequestDecisionRequest || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", vacationRequestDecisionRequest.expectedVersion);
+    writer.writeStringValue("message", vacationRequestDecisionRequest.message);
+    writer.writeAdditionalData(vacationRequestDecisionRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationRequestResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationRequestResponse(writer: SerializationWriter, vacationRequestResponse: Partial<VacationRequestResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationRequestResponse || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("conflictingAppointmentCount", vacationRequestResponse.conflictingAppointmentCount);
+    writer.writeDateValue("createdAtUtc", vacationRequestResponse.createdAtUtc);
+    writer.writeStringValue("decisionMessage", vacationRequestResponse.decisionMessage);
+    writer.writeDateOnlyValue("endDate", vacationRequestResponse.endDate);
+    writer.writeCollectionOfObjectValues<VacationPeriodResponse>("existingVacations", vacationRequestResponse.existingVacations, serializeVacationPeriodResponse);
+    writer.writeStringValue("id", vacationRequestResponse.id);
+    writer.writeDateValue("processedAtUtc", vacationRequestResponse.processedAtUtc);
+    writer.writeStringValue("processedBySuperuserId", vacationRequestResponse.processedBySuperuserId);
+    writer.writeStringValue("requesterId", vacationRequestResponse.requesterId);
+    writer.writeStringValue("requesterName", vacationRequestResponse.requesterName);
+    writer.writeStringValue("requesterType", vacationRequestResponse.requesterType);
+    writer.writeStringValue("requestMessage", vacationRequestResponse.requestMessage);
+    writer.writeStringValue("resultingVacationId", vacationRequestResponse.resultingVacationId);
+    writer.writeDateOnlyValue("startDate", vacationRequestResponse.startDate);
+    writer.writeStringValue("status", vacationRequestResponse.status);
+    writer.writeStringValue("subjectClassification", vacationRequestResponse.subjectClassification);
+    writer.writeStringValue("subjectId", vacationRequestResponse.subjectId);
+    writer.writeStringValue("subjectName", vacationRequestResponse.subjectName);
+    writer.writeStringValue("subjectType", vacationRequestResponse.subjectType);
+    writer.writeNumberValue("version", vacationRequestResponse.version);
+    writer.writeAdditionalData(vacationRequestResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param Verify2FaRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12402,6 +12828,62 @@ export function serializeWorkHourDto(writer: SerializationWriter, workHourDto: P
     writer.writeNumberValue("completed", workHourDto.completed);
     writer.writeNumberValue("hour", workHourDto.hour);
     writer.writeAdditionalData(workHourDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WorkingHoursRequestDayInput The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWorkingHoursRequestDayInput(writer: SerializationWriter, workingHoursRequestDayInput: Partial<WorkingHoursRequestDayInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!workingHoursRequestDayInput || isSerializingDerivedType) { return; }
+    writer.writeStringValue("dayOfWeek", workingHoursRequestDayInput.dayOfWeek);
+    writer.writeStringValue("endTime", workingHoursRequestDayInput.endTime);
+    writer.writeBooleanValue("isWorkingDay", workingHoursRequestDayInput.isWorkingDay);
+    writer.writeStringValue("startTime", workingHoursRequestDayInput.startTime);
+    writer.writeAdditionalData(workingHoursRequestDayInput.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WorkingHoursRequestDayResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWorkingHoursRequestDayResponse(writer: SerializationWriter, workingHoursRequestDayResponse: Partial<WorkingHoursRequestDayResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!workingHoursRequestDayResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("dayOfWeek", workingHoursRequestDayResponse.dayOfWeek);
+    writer.writeStringValue("endTime", workingHoursRequestDayResponse.endTime);
+    writer.writeBooleanValue("isWorkingDay", workingHoursRequestDayResponse.isWorkingDay);
+    writer.writeStringValue("startTime", workingHoursRequestDayResponse.startTime);
+    writer.writeAdditionalData(workingHoursRequestDayResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param WorkingHoursRequestResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeWorkingHoursRequestResponse(writer: SerializationWriter, workingHoursRequestResponse: Partial<WorkingHoursRequestResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!workingHoursRequestResponse || isSerializingDerivedType) { return; }
+    writer.writeDateValue("createdAtUtc", workingHoursRequestResponse.createdAtUtc);
+    writer.writeCollectionOfObjectValues<WorkingHoursRequestDayResponse>("currentWorkingHours", workingHoursRequestResponse.currentWorkingHours, serializeWorkingHoursRequestDayResponse);
+    writer.writeStringValue("decisionMessage", workingHoursRequestResponse.decisionMessage);
+    writer.writeStringValue("id", workingHoursRequestResponse.id);
+    writer.writeDateValue("processedAtUtc", workingHoursRequestResponse.processedAtUtc);
+    writer.writeStringValue("processedBySuperuserId", workingHoursRequestResponse.processedBySuperuserId);
+    writer.writeCollectionOfObjectValues<WorkingHoursRequestDayResponse>("requestedWorkingHours", workingHoursRequestResponse.requestedWorkingHours, serializeWorkingHoursRequestDayResponse);
+    writer.writeStringValue("requesterName", workingHoursRequestResponse.requesterName);
+    writer.writeStringValue("requesterUserId", workingHoursRequestResponse.requesterUserId);
+    writer.writeStringValue("requestMessage", workingHoursRequestResponse.requestMessage);
+    writer.writeStringValue("status", workingHoursRequestResponse.status);
+    writer.writeStringValue("subjectClassification", workingHoursRequestResponse.subjectClassification);
+    writer.writeStringValue("subjectName", workingHoursRequestResponse.subjectName);
+    writer.writeStringValue("subjectUserId", workingHoursRequestResponse.subjectUserId);
+    writer.writeNumberValue("version", workingHoursRequestResponse.version);
+    writer.writeAdditionalData(workingHoursRequestResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -13181,6 +13663,108 @@ export interface UserWorkingHoursDayItem extends AdditionalDataHolder, Parsable 
      */
     startTime?: string | null;
 }
+export interface VacationPeriodResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The endDate property
+     */
+    endDate?: DateOnly | null;
+    /**
+     * The startDate property
+     */
+    startDate?: DateOnly | null;
+}
+export interface VacationRequestDecisionRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
+}
+export interface VacationRequestResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The conflictingAppointmentCount property
+     */
+    conflictingAppointmentCount?: number | null;
+    /**
+     * The createdAtUtc property
+     */
+    createdAtUtc?: Date | null;
+    /**
+     * The decisionMessage property
+     */
+    decisionMessage?: string | null;
+    /**
+     * The endDate property
+     */
+    endDate?: DateOnly | null;
+    /**
+     * The existingVacations property
+     */
+    existingVacations?: VacationPeriodResponse[] | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The processedAtUtc property
+     */
+    processedAtUtc?: Date | null;
+    /**
+     * The processedBySuperuserId property
+     */
+    processedBySuperuserId?: string | null;
+    /**
+     * The requesterId property
+     */
+    requesterId?: string | null;
+    /**
+     * The requesterName property
+     */
+    requesterName?: string | null;
+    /**
+     * The requesterType property
+     */
+    requesterType?: string | null;
+    /**
+     * The requestMessage property
+     */
+    requestMessage?: string | null;
+    /**
+     * The resultingVacationId property
+     */
+    resultingVacationId?: string | null;
+    /**
+     * The startDate property
+     */
+    startDate?: DateOnly | null;
+    /**
+     * The status property
+     */
+    status?: string | null;
+    /**
+     * The subjectClassification property
+     */
+    subjectClassification?: string | null;
+    /**
+     * The subjectId property
+     */
+    subjectId?: string | null;
+    /**
+     * The subjectName property
+     */
+    subjectName?: string | null;
+    /**
+     * The subjectType property
+     */
+    subjectType?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
+}
 export interface Verify2FaRequest extends AdditionalDataHolder, Parsable {
     /**
      * The email property
@@ -13222,6 +13806,104 @@ export interface WorkHourDto extends AdditionalDataHolder, Parsable {
      * The hour property
      */
     hour?: number | null;
+}
+export interface WorkingHoursRequestDayInput extends AdditionalDataHolder, Parsable {
+    /**
+     * The dayOfWeek property
+     */
+    dayOfWeek?: string | null;
+    /**
+     * The endTime property
+     */
+    endTime?: string | null;
+    /**
+     * The isWorkingDay property
+     */
+    isWorkingDay?: boolean | null;
+    /**
+     * The startTime property
+     */
+    startTime?: string | null;
+}
+export interface WorkingHoursRequestDayResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The dayOfWeek property
+     */
+    dayOfWeek?: string | null;
+    /**
+     * The endTime property
+     */
+    endTime?: string | null;
+    /**
+     * The isWorkingDay property
+     */
+    isWorkingDay?: boolean | null;
+    /**
+     * The startTime property
+     */
+    startTime?: string | null;
+}
+export interface WorkingHoursRequestResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The createdAtUtc property
+     */
+    createdAtUtc?: Date | null;
+    /**
+     * The currentWorkingHours property
+     */
+    currentWorkingHours?: WorkingHoursRequestDayResponse[] | null;
+    /**
+     * The decisionMessage property
+     */
+    decisionMessage?: string | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The processedAtUtc property
+     */
+    processedAtUtc?: Date | null;
+    /**
+     * The processedBySuperuserId property
+     */
+    processedBySuperuserId?: string | null;
+    /**
+     * The requestedWorkingHours property
+     */
+    requestedWorkingHours?: WorkingHoursRequestDayResponse[] | null;
+    /**
+     * The requesterName property
+     */
+    requesterName?: string | null;
+    /**
+     * The requesterUserId property
+     */
+    requesterUserId?: string | null;
+    /**
+     * The requestMessage property
+     */
+    requestMessage?: string | null;
+    /**
+     * The status property
+     */
+    status?: string | null;
+    /**
+     * The subjectClassification property
+     */
+    subjectClassification?: string | null;
+    /**
+     * The subjectName property
+     */
+    subjectName?: string | null;
+    /**
+     * The subjectUserId property
+     */
+    subjectUserId?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
 }
 export interface WorkProviderDto extends AdditionalDataHolder, Parsable {
     /**
