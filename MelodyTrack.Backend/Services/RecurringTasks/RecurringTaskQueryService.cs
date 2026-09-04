@@ -43,7 +43,7 @@ internal sealed class RecurringTaskQueryService(AppDbContext db, TimeProvider ti
                 execution.DelayedUntilUtc != null
                 && execution.DelayedUntilUtc > nowUtc
                 && (execution.ClientId == null || !execution.Client!.Vacations.Any(vacation =>
-                    vacation.StartDate <= execution.BusinessDate && vacation.EndDate >= execution.BusinessDate)));
+                    vacation.StartDate <= execution.DelayedUntilUtc && vacation.EndDate > execution.DelayedUntilUtc)));
         }
 
         var executions = status == RecurringTaskStatus.Delayed

@@ -5,6 +5,12 @@ using System.Text.Json;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Tests.Infrastructure;
+using MelodyTrack.Backend.Validation;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.OpenApi;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.OpenApi;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;
@@ -13,9 +19,15 @@ namespace MelodyTrack.Backend.Tests;
 public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task FrameworkErrors_ReturnProblemDetailsWithMatchingTraceHeader()
+    public async Task FrameworkErrors_WithIncomingTraceParent_ReturnProblemDetailsWithMatchingTraceIdentity()
     {
-        var response = await App.Client.GetAsync("/missing-endpoint", TestContext.Current.CancellationToken);
+        const string traceId = "4bf92f3577b34da6a3ce929d0e0e4736";
+        using var request = new HttpRequestMessage(HttpMethod.Get, "/missing-endpoint");
+        request.Headers.TryAddWithoutValidation(
+            "traceparent",
+            $"00-{traceId}-00f067aa0ba902b7-01");
+
+        var response = await App.Client.SendAsync(request, TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.NotFound);
         response.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
@@ -25,8 +37,8 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         problem.Type.ShouldBe(ApiProblemTypes.NotFound);
         problem.Code.ShouldBe(ApiProblemCodes.NotFound);
         problem.Instance.ShouldBe("/missing-endpoint");
-        problem.TraceId.ShouldNotBeNullOrWhiteSpace();
-        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(problem.TraceId);
+        problem.TraceId.ShouldBe(traceId);
+        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(traceId);
     }
 
     [Fact]
@@ -60,6 +72,43 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
+    public async Task UnhandledFailures_WithIncomingTraceParent_ReturnProblemDetailsWithMatchingTraceIdentity()
+    {
+        const string traceId = "0af7651916cd43dd8448eb211c80319c";
+        using var factory = App.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<ICommonPasswordService>();
+            services.AddSingleton<ICommonPasswordService>(new ThrowingCommonPasswordService());
+        }));
+        using var client = factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/register")
+        {
+            Content = JsonContent.Create(new
+            {
+                inviteCode = Ulid.NewUlid().ToString(),
+                email = "trace@example.com",
+                password = "StrongPassword1!",
+                firstName = "Trace",
+                lastName = "Failure"
+            })
+        };
+        request.Headers.TryAddWithoutValidation(
+            "traceparent",
+            $"00-{traceId}-b7ad6b7169203331-01");
+
+        var response = await client.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.InternalServerError);
+        response.Content.Headers.ContentType?.MediaType.ShouldBe(ApiMediaTypes.ProblemJson);
+        var problem = await response.Content.ReadFromJsonAsync<ApiProblemDetails>(TestContext.Current.CancellationToken);
+        problem.ShouldNotBeNull();
+        problem.Status.ShouldBe((int)HttpStatusCode.InternalServerError);
+        problem.Code.ShouldBe(ApiProblemCodes.InternalError);
+        problem.TraceId.ShouldBe(traceId);
+        response.Headers.GetValues("X-Trace-Id").Single().ShouldBe(traceId);
+    }
+
+    [Fact]
     public async Task RateLimitErrors_ReturnProblemDetailsAndRetryTiming()
     {
         var throttleIdentity = $"contract-{Ulid.NewUlid()}";
@@ -89,10 +138,7 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     [Fact]
     public async Task OpenApiOperations_HaveUniqueIdsAndProblemDetailsErrors()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-
-        response.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
         var operationIds = new HashSet<string>(StringComparer.Ordinal);
 
         foreach (var path in document.RootElement.GetProperty("paths").EnumerateObject())
@@ -145,33 +191,77 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
     }
 
     [Fact]
-    public async Task OpenApiPaginationSchemas_UseSharedDataAndInfoShape()
+    public async Task OpenApiPaginationSchemas_UseSharedItemsAndPageShape()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-        response.EnsureSuccessStatusCode();
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
         var schemas = document.RootElement.GetProperty("components").GetProperty("schemas");
         var paginatedSchemas = schemas.EnumerateObject()
-            .Where(schema => schema.Value.ToString().Contains(nameof(PagedInfo), StringComparison.Ordinal))
+            .Where(schema => schema.Value.ToString().Contains(nameof(PageMetadata), StringComparison.Ordinal))
             .ToArray();
 
         paginatedSchemas.Length.ShouldBeGreaterThanOrEqualTo(5);
         foreach (var schema in paginatedSchemas)
         {
             var serialized = schema.Value.ToString();
-            serialized.Contains("\"data\"", StringComparison.Ordinal)
-                .ShouldBeTrue($"{schema.Name} must expose the shared data collection");
-            serialized.Contains("\"info\"", StringComparison.Ordinal)
+            serialized.Contains("\"items\"", StringComparison.Ordinal)
+                .ShouldBeTrue($"{schema.Name} must expose the shared items collection");
+            serialized.Contains("\"page\"", StringComparison.Ordinal)
                 .ShouldBeTrue($"{schema.Name} must expose shared page metadata");
         }
     }
 
     [Fact]
+    public async Task OpenApiDocument_IsKiotaCompatible()
+    {
+        using var document = await GetOpenApiDocumentAsync();
+        var root = document.RootElement;
+        var servers = root.GetProperty("servers");
+        servers.GetArrayLength().ShouldBe(1);
+        servers[0].GetProperty("url").GetString().ShouldBe("http://localhost:5000");
+
+        var schemas = root.GetProperty("components").GetProperty("schemas");
+
+        if (schemas.TryGetProperty(nameof(Ulid), out var ulid))
+        {
+            ulid.GetProperty("type").GetString().ShouldBe("string");
+            ulid.TryGetProperty("format", out _).ShouldBeFalse();
+        }
+
+        var clientId = schemas.GetProperty("ClientWithBalanceDto").GetProperty("properties").GetProperty("id");
+        clientId.GetProperty("type").GetString().ShouldBe("string");
+        clientId.TryGetProperty("format", out _).ShouldBeFalse();
+
+        var dependencyThemeIds = schemas.GetProperty("CourseThemeDto")
+            .GetProperty("properties")
+            .GetProperty("dependencyThemeIds");
+        dependencyThemeIds.GetProperty("type").GetString().ShouldBe("array");
+        dependencyThemeIds.GetProperty("items").GetProperty("type").GetString().ShouldBe("string");
+
+        var problemStatus = schemas.GetProperty(nameof(ApiProblemDetails)).GetProperty("properties").GetProperty("status");
+        problemStatus.GetProperty("type").GetString().ShouldBe("integer");
+
+        var clientBalance = schemas.GetProperty("ClientWithBalanceDto").GetProperty("properties").GetProperty("balance");
+        clientBalance.GetProperty("type").GetString().ShouldBe("number");
+
+        var clientContacts = schemas.GetProperty("ClientContacts").GetProperty("properties");
+        clientContacts.GetProperty("telegram").TryGetProperty("format", out _).ShouldBeFalse();
+        clientContacts.GetProperty("vk").TryGetProperty("format", out _).ShouldBeFalse();
+
+        var loginResponses = root.GetProperty("paths")
+            .EnumerateObject()
+            .Single(path => path.Name.EndsWith("/auth/login", StringComparison.Ordinal))
+            .Value
+            .GetProperty("post")
+            .GetProperty("responses");
+        var okSchema = GetJsonResponseSchema(loginResponses.GetProperty("200"));
+        var acceptedSchema = GetJsonResponseSchema(loginResponses.GetProperty("202"));
+        acceptedSchema.ToString().ShouldBe(okSchema.ToString());
+    }
+
+    [Fact]
     public async Task OpenApiRoutes_FollowResourceConventions()
     {
-        var response = await App.Client.GetAsync("/swagger/v2/swagger.json", TestContext.Current.CancellationToken);
-        response.EnsureSuccessStatusCode();
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStreamAsync(TestContext.Current.CancellationToken));
+        using var document = await GetOpenApiDocumentAsync();
 
         var forbiddenSegments = new HashSet<string>(StringComparer.Ordinal)
         {
@@ -217,6 +307,21 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
         headers.TryGetProperty(header, out _).ShouldBeTrue($"{operationId} response {statusCode} must describe {header}");
     }
 
+    private static JsonElement GetJsonResponseSchema(JsonElement response) => response
+        .GetProperty("content")
+        .GetProperty("application/json")
+        .GetProperty("schema");
+
+    private async Task<JsonDocument> GetOpenApiDocumentAsync()
+    {
+        var provider = App.Services.GetRequiredKeyedService<IOpenApiDocumentProvider>("v1");
+        var document = await provider.GetOpenApiDocumentAsync(TestContext.Current.CancellationToken);
+        var json = await document.SerializeAsJsonAsync(
+            OpenApiSpecVersion.OpenApi3_1,
+            TestContext.Current.CancellationToken);
+        return JsonDocument.Parse(json);
+    }
+
     private static void AssertProblemResponse(JsonElement response, string operationId, string statusCode)
     {
         response.TryGetProperty("content", out var content).ShouldBeTrue($"{operationId} response {statusCode} must describe content");
@@ -224,6 +329,11 @@ public class ApiContractTests(MelodyTrackFixture app) : IntegrationTestBase(app)
             .ShouldBeTrue($"{operationId} response {statusCode} must use {ApiMediaTypes.ProblemJson}");
         mediaType.TryGetProperty("schema", out var schema).ShouldBeTrue($"{operationId} response {statusCode} must describe a schema");
         schema.ToString().ShouldContain(nameof(ApiProblemDetails));
+    }
+
+    private sealed class ThrowingCommonPasswordService : ICommonPasswordService
+    {
+        public bool Contains(string password) => throw new InvalidOperationException("Synthetic validation failure.");
     }
 
 }

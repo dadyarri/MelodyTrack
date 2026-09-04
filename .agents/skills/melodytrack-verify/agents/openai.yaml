@@ -1,0 +1,7 @@
+interface:
+  display_name: "MelodyTrack Verify"
+  short_description: "Run change-scoped project verification gates"
+  default_prompt: "Use $melodytrack-verify to verify the completed MelodyTrack change batch."
+
+policy:
+  allow_implicit_invocation: false

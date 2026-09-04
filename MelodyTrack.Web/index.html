@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <link rel="icon" type="image/png" href="/favicon-96x96.png?v=20260725-1" sizes="96x96" />
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg?v=20260725-1" />
+  <link rel="shortcut icon" href="/favicon.ico?v=20260725-1" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=20260725-1" />
+  <meta name="apple-mobile-web-app-title" content="MelodyTrack" />
+  <link rel="manifest" href="/site.webmanifest?v=20260725-1" />
+  <title>MelodyTrack CRM</title>
+  <script src="/boot-theme.js"></script>
+  <link rel="stylesheet" href="/boot.css" />
+</head>
+
+<body>
+  <div id="root">
+    <div class="app-loading-screen" role="status" aria-live="polite">
+      <div class="app-loading-card">
+        <div class="app-loading-mark" aria-hidden="true">
+          <img src="/favicon.svg?v=20260725-1" alt="" width="52" height="52" />
+        </div>
+        <p class="app-loading-title">MelodyTrack</p>
+        <p class="app-loading-message">Загружаем приложение…</p>
+        <div class="app-loading-spinner" aria-hidden="true"></div>
+      </div>
+    </div>
+  </div>
+  <script type="module">
+    const legacyServiceWorkerCleanupKey = "melodytrack.legacy-service-worker-cleaned";
+    const startApplication = () => import("/src/main.tsx");
+
+    async function removeLegacyServiceWorker() {
+      if (!("serviceWorker" in navigator)) {
+        await startApplication();
+        return;
+      }
+
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        const legacyRegistrations = registrations.filter((registration) =>
+          [registration.installing, registration.waiting, registration.active].some((worker) =>
+            worker?.scriptURL.endsWith("/offline-sw.js"),
+          ),
+        );
+        const isControlledByLegacyWorker = navigator.serviceWorker.controller?.scriptURL.endsWith("/offline-sw.js") ?? false;
+        await Promise.all(legacyRegistrations.map((registration) => registration.unregister()));
+
+        if ("caches" in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.filter((name) => name.startsWith("melodytrack-shell-")).map((name) => caches.delete(name)));
+        }
+
+        if (isControlledByLegacyWorker && sessionStorage.getItem(legacyServiceWorkerCleanupKey) !== "1") {
+          sessionStorage.setItem(legacyServiceWorkerCleanupKey, "1");
+          location.reload();
+          return;
+        }
+
+        sessionStorage.removeItem(legacyServiceWorkerCleanupKey);
+      } catch {
+        // A restricted browser may deny service-worker or cache access; normal startup must still continue.
+      }
+
+      await startApplication();
+    }
+
+    void removeLegacyServiceWorker();
+  </script>
+</body>
+
+</html>

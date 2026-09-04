@@ -1,21 +1,18 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class LookupRecurrenceTypesEndpoint(AppDbContext db)
-    : Ep.NoReq.Res<Results<Ok<LookupRecurrenceTypesResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/appointment-recurrence-types/options")]
+public sealed class LookupRecurrenceTypesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/appointment-recurrence-types/options");
-    }
-
-    public override async Task<Results<Ok<LookupRecurrenceTypesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    [Authorize]
+    public static async Task<Ok<LookupRecurrenceTypesResponse>> HandleAsync(AppDbContext db, CancellationToken cancellationToken)
     {
         var recurrenceTypes = await db.RecurrenceTypes
             .AsNoTracking()
@@ -30,7 +27,7 @@ public class LookupRecurrenceTypesEndpoint(AppDbContext db)
                         ? "weekly"
                         : "monthly"
             })
-            .ToListAsync(ct);
+            .ToListAsync(cancellationToken);
 
         return TypedResults.Ok(new LookupRecurrenceTypesResponse
         {

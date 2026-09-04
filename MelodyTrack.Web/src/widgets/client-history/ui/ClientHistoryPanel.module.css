@@ -1,0 +1,137 @@
+.actionToolbar {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(260px, 0.95fr);
+  gap: 12px;
+}
+
+.actionGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border-main);
+  border-radius: 12px;
+  background: var(--bg-card);
+}
+
+.actionGroupLabel {
+  font-size: 12px;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.portalActionGroup {
+  background: linear-gradient(180deg, rgba(214, 180, 126, 0.12), rgba(214, 180, 126, 0.04)), var(--bg-card);
+}
+
+.listJustify {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.detailGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.enrollmentCard {
+  border-style: dashed;
+}
+
+.enrollmentHeader {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.enrollmentProgress {
+  min-width: 220px;
+  flex: 1;
+}
+
+.enrollmentXpSummary {
+  margin-top: 8px;
+}
+
+.enrollmentXpLine {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.actionSummary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-main);
+  border-radius: 8px;
+  background: var(--bg-card);
+}
+
+.actionThemeList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.actionThemeRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.actionThemeInfo {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.themeItem {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.themeHistory {
+  margin-top: 4px;
+}
+
+.themeMeta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.themeContent {
+  margin-bottom: 0;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 720px) {
+  .actionToolbar,
+  .detailGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .enrollmentHeader {
+    flex-direction: column;
+  }
+
+  .enrollmentProgress {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .actionThemeRow,
+  .enrollmentXpLine {
+    flex-direction: column;
+  }
+}

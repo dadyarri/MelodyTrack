@@ -1,0 +1,17 @@
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr));
+  gap: 16px;
+}
+
+.value {
+  margin-top: 8px;
+  font-size: 24px;
+  font-weight: 700;
+}
+
+.caption {
+  margin-top: 8px;
+  color: var(--text-main);
+  font-weight: 650;
+}

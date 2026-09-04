@@ -1,49 +1,50 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class ChangePasswordEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.Req<ChangePasswordRequest>.Res<Results<NoContent, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/password-change")]
+public sealed class ChangePasswordEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/password-change");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult>> ExecuteAsync(ChangePasswordRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, UnauthorizedHttpResult>> HandleAsync(
+        ChangePasswordRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        RefreshSessionCookieService refreshCookieService,
+        CredentialHasher credentialHasher,
+        ILogger<ChangePasswordEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
 
-        if (user is null || !UserUtils.IsValidPassword(user.Password, req.CurrentPassword))
+        if (user is null || !credentialHasher.VerifyPassword(user.Password, req.CurrentPassword))
         {
-            Logger.LogWarning("Password change failed for current user: invalid current password");
+            logger.LogWarning("Password change failed for current user: invalid current password");
             return TypedResults.Unauthorized();
         }
 
-        UserUtils.HashPassword(req.NewPassword, out var hash);
-        user.Password = hash;
+        user.Password = credentialHasher.HashPassword(req.NewPassword);
         await db.SaveChangesAsync(ct);
 
         await db.Sessions
             .Where(e => e.User.Id == user.Id)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
-        refreshCookieService.Clear(HttpContext.Response);
+        refreshCookieService.Clear(httpContext.Response);
 
-        Logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("auth.password_changed {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "password_changed",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PasswordChanged,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

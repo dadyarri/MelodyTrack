@@ -1,12 +1,12 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Services;
 
 public sealed class AuditLogWriteRequest
 {
-    public required string Category { get; init; }
-    public required string Action { get; init; }
+    public required AuditEventDefinition Event { get; init; }
     public required string EntityType { get; init; }
     public string? EntityId { get; init; }
     public string? Details { get; init; }
@@ -58,8 +58,8 @@ public class AuditLogService(
         {
             Id = Ulid.NewUlid(),
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
-            Category = request.Category,
-            Action = request.Action,
+            Category = request.Event.Category.Code,
+            Action = request.Event.Code,
             EntityType = request.EntityType,
             EntityId = request.EntityId,
             ActorUserId = actorUserId,

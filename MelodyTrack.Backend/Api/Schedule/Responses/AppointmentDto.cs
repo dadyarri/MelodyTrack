@@ -47,7 +47,8 @@ public partial class AppointmentDto
             Service = new AppointmentServiceDto
             {
                 Id = appointment.Service.Id,
-                Name = appointment.Service.Name
+                Name = appointment.Service.Name,
+                IsTrial = appointment.Service.IsConsultation
             },
             Provider = provider is null
                 ? null
@@ -112,6 +113,7 @@ public class AppointmentServiceDto
 {
     public required Ulid Id { get; set; }
     public required string Name { get; set; }
+    public required bool IsTrial { get; set; }
 }
 
 public class AppointmentProviderDto

@@ -1,24 +1,31 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class ResetOnboardingEndpoint(OnboardingStateService stateService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Delete, "/onboarding")]
+public sealed class ResetOnboardingEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/onboarding");
-    }
 
-    public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        OnboardingStateService stateService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
             return TypedResults.Unauthorized();
+        }
+
+        if (user.Role.RoleName.IsClient())
+        {
+            return TypedResults.Forbid();
         }
 
         var state = await stateService.ResetAsync(user, ct);

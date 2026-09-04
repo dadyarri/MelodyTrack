@@ -1,11 +1,13 @@
+using Microsoft.AspNetCore.Mvc;
+
 namespace MelodyTrack.Backend.Api.Common.Requests;
 
-using FastEndpoints;
 
 public class GetEntityRequest
 {
+        [FromRoute]
     public Ulid Id { get; set; }
 
-    [BindFrom("expectedActivityId")]
+    [FromQuery(Name = "expectedActivityId")]
     public Ulid? ExpectedActivityId { get; set; }
 }

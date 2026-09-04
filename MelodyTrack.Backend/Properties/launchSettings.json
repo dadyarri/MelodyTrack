@@ -8,12 +8,24 @@
       "applicationUrl": "http://localhost:5000",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "MELODY_TRACK_APP_DOMAIN": "http://localhost:5173",
-        "MELODY_TRACK_PUBLIC_API_BASE_URL": "http://localhost:5000",
-        "MELODY_TRACK_DATABASE_URL": "Server=127.0.0.1;Port=5432;Database=melodytrack;UserId=postgres;Password=postgres;",
-        "MELODY_TRACK_JWT_SIGNING_KEY": "5L62Vvke1KOZTrwnuhk28/pw9iYffga/oVBYDFimqw0VigSGpP6VRROrEE2tw+p4 i+44Pj1Y9dMO3BdvRbaSRQ==",
-        "MELODY_TRACK_PII_MASTER_KEY": "c5qFQ5Vnu/y8MzOokDh0FQ15fkUQdA48C3RykBABtIvUHeDOnHZCAsMX3xqvWew8hPmcW0mVbQLPw3oJIqANYZU0yZB6OeL2+KA44HfdSglpBMM6/TngpPler15nyesBmgApF0ZdCcubN3V9tRI+QosLJB/JdARlocWOs/AgVAw=",
-        "MELODY_TRACK_PII_MASTER_KEY_VERSION": "v1"
+        "Http__PathBase": "/api",
+        "PublicUrl__BaseUrl": "http://localhost:5173",
+        "Database__ConnectionString": "Server=127.0.0.1;Port=5432;Database=melodytrack;UserId=postgres;Password=postgres;",
+        "AuthenticationSecrets__JwtSigningPrivateKey": "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA",
+        "AuthenticationSecrets__PasswordPepper": "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+        "AuthenticationSecrets__PortalPinPepper": "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+        "AuthenticationSecrets__RefreshTokenHashKey": "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+        "AuthenticationSecrets__CsrfSigningKey": "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+        "PersonalData__CurrentKey": "development-only-pii-key-c5qFQ5Vnu-y8MzOokDh0FQ15",
+        "PersonalData__CurrentKeyVersion": "v1",
+        "WebPush__Enabled": "true",
+        "WebPush__Subject": "mailto:development@melodytrack.invalid",
+        "WebPush__PublicKey": "BCtMxf7t-PqdrQFnfBDj5CunFDgaRaC0JA1eqYWuu8DRUq88Ep5btT2ngbUgrQmSPOggAX5RnbTkKJucmDeXlV4",
+        "WebPush__PrivateKey": "mSaYgMYEIQaKKGpSiGa3n9UHeeEecFB4AVvwtDnfl5w",
+        "GodMode__Port": "5001",
+        "GodMode__StateDirectory": "/tmp/melodytrack-god-mode",
+        "GodMode__PublicBaseUrl": "https://localhost:5001",
+        "GodMode__SessionSigningKey": "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ="
       }
     }
   }

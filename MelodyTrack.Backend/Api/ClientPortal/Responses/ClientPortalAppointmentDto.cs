@@ -9,6 +9,7 @@ public class ClientPortalAppointmentDto
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
     public required string Status { get; set; }
+    public required bool IsTrial { get; set; }
     public ClientPortalCourseThemeDto? CourseTheme { get; set; }
 
     public static ClientPortalAppointmentDto FromModel(Appointment appointment)
@@ -19,6 +20,7 @@ public class ClientPortalAppointmentDto
             StartDate = appointment.StartDate,
             EndDate = appointment.EndDate,
             Status = appointment.Status.ToApiKey(),
+            IsTrial = appointment.Service.IsConsultation,
             CourseTheme = appointment.CourseTheme is null
                 ? null
                 : new ClientPortalCourseThemeDto

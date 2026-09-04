@@ -108,13 +108,13 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         secondPageResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         firstPage.ShouldNotBeNull();
         secondPage.ShouldNotBeNull();
-        firstPage.Info.Total.ShouldBe(2);
-        firstPage.Info.HasNextPage.ShouldBeTrue();
-        firstPage.Info.HasPrevPage.ShouldBeFalse();
-        secondPage.Info.HasNextPage.ShouldBeFalse();
-        secondPage.Info.HasPrevPage.ShouldBeTrue();
-        firstPage.Data.ShouldHaveSingleItem().FirstName.ShouldBe("Alex");
-        secondPage.Data.ShouldHaveSingleItem().FirstName.ShouldBe("Alice");
+        firstPage.Page.Total.ShouldBe(2);
+        firstPage.Page.HasNextPage.ShouldBeTrue();
+        firstPage.Page.HasPrevPage.ShouldBeFalse();
+        secondPage.Page.HasNextPage.ShouldBeFalse();
+        secondPage.Page.HasPrevPage.ShouldBeTrue();
+        firstPage.Items.ShouldHaveSingleItem().FirstName.ShouldBe("Alex");
+        secondPage.Items.ShouldHaveSingleItem().FirstName.ShouldBe("Alice");
     }
 
     [Fact]
@@ -126,6 +126,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         var activeClient = await TestDataFactory.CreateClientAsync(db, "Active", "Client", TestContext.Current.CancellationToken);
         var lead = await TestDataFactory.CreateClientAsync(db, "Open", "Lead", TestContext.Current.CancellationToken);
         var thinking = await TestDataFactory.CreateClientAsync(db, "Thinking", "Lead", TestContext.Current.CancellationToken);
+        var converted = await TestDataFactory.CreateClientAsync(db, "Converted", "Lead", TestContext.Current.CancellationToken);
         var closed = await TestDataFactory.CreateClientAsync(db, "Closed", "Lead", TestContext.Current.CancellationToken);
         closed.IsLeadClosed = true;
         var lesson = await TestDataFactory.CreateServiceAsync(db, "Lesson", TestContext.Current.CancellationToken);
@@ -137,19 +138,21 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         [
             CreateAppointment(activeClient, lesson, admin, future, AppointmentStatus.Planned),
             CreateAppointment(lead, consultation, admin, future, AppointmentStatus.Planned),
-            CreateAppointment(thinking, consultation, admin, past, AppointmentStatus.Completed)
+            CreateAppointment(thinking, consultation, admin, past, AppointmentStatus.Completed),
+            CreateAppointment(converted, consultation, admin, past, AppointmentStatus.Completed),
+            CreateAppointment(converted, lesson, admin, past.AddDays(1), AppointmentStatus.Completed)
         ], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-        var expected = new Dictionary<ClientLifecycleStatus, Ulid>
+        var expected = new Dictionary<ClientLifecycleStatus, IReadOnlyCollection<Ulid>>
         {
-            [ClientLifecycleStatus.Client] = activeClient.Id,
-            [ClientLifecycleStatus.Lead] = lead.Id,
-            [ClientLifecycleStatus.ThinkingLead] = thinking.Id,
-            [ClientLifecycleStatus.ClosedLead] = closed.Id
+            [ClientLifecycleStatus.Client] = [activeClient.Id, converted.Id],
+            [ClientLifecycleStatus.Lead] = [lead.Id],
+            [ClientLifecycleStatus.ThinkingLead] = [thinking.Id],
+            [ClientLifecycleStatus.ClosedLead] = [closed.Id]
         };
 
-        foreach (var (status, clientId) in expected)
+        foreach (var (status, clientIds) in expected)
         {
             using var response = await App.Client.GetAsync(
                 $"/clients?lifecycleStatus={(int)status}&page=1&page_size=20",
@@ -157,8 +160,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             var page = await response.Content.ReadFromJsonAsync<PaginatedResponse<ClientWithBalanceDto>>(TestContext.Current.CancellationToken);
             response.StatusCode.ShouldBe(HttpStatusCode.OK);
             page.ShouldNotBeNull();
-            page.Data.Count.ShouldBe(1, $"Lifecycle filter {status} should return exactly one client.");
-            page.Data[0].Id.ShouldBe(clientId);
+            page.Items.Select(client => client.Id).ShouldBe(clientIds, ignoreOrder: true);
         }
     }
 
@@ -179,11 +181,11 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
     }
 
     [Fact]
-    public async Task UpdateClientVacations_WritesNamedBeforeAndAfterAuditContext()
+    public async Task UpdateClientVacations_SuperuserDirectManagement_WritesNamedBeforeAndAfterAuditContext()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
         await db.ClientVacations.AddAsync(
             new ClientVacation
@@ -191,8 +193,8 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
                 Id = Ulid.NewUlid(),
                 ClientId = client.Id,
                 Client = client,
-                StartDate = new DateOnly(2026, 8, 1),
-                EndDate = new DateOnly(2026, 8, 10)
+                StartDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 8, 11, 0, 0, 0, DateTimeKind.Utc)
             },
             TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -206,7 +208,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
                 lastName = client.LastName,
                 vacations = new[]
                 {
-                    new { startDate = "2026-09-02", endDate = "2026-09-12" }
+                    new { startDate = "2026-09-02T09:00:00Z", endDate = "2026-09-12T18:00:00Z" }
                 }
             },
             TestContext.Current.CancellationToken);
@@ -217,9 +219,32 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             .AsNoTracking()
             .OrderByDescending(item => item.CreatedAtUtc)
             .FirstAsync(item => item.EntityId == client.Id.ToString(), TestContext.Current.CancellationToken);
-        auditLog.Action.ShouldBe("client_vacations_updated");
+        auditLog.Action.ShouldBe("client_vacations_updated_directly");
         auditLog.Details.ShouldBe(
-            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01–2026-08-10 → 2026-09-02–2026-09-12");
+            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01 00:00–2026-08-11 00:00 UTC → 2026-09-02 09:00–2026-09-12 18:00 UTC");
+    }
+
+    [Fact]
+    public async Task UpdateClientVacations_Administrator_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var administrator = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(administrator));
+
+        var response = await App.Client.PatchAsJsonAsync(
+            $"/clients/{client.Id}",
+            new
+            {
+                firstName = client.FirstName,
+                lastName = client.LastName,
+                vacations = new[] { new { startDate = "2026-09-02T09:00:00Z", endDate = "2026-09-12T18:00:00Z" } }
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.ClientVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     private static void SetContact(ClientContacts contacts, string field, string value)

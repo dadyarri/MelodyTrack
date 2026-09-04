@@ -1,0 +1,68 @@
+.popover :global(.ant-popover-inner) {
+  padding: 0;
+}
+
+.panel {
+  width: min(380px, calc(100vw - 24px - var(--safe-area-left) - var(--safe-area-right)));
+}
+
+.panelHeader,
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 16px;
+}
+
+.panelHeader {
+  border-bottom: 1px solid var(--border-main);
+}
+
+.footer {
+  border-top: 1px solid var(--border-main);
+}
+
+.list {
+  display: flex;
+  min-height: 96px;
+  max-height: min(480px, calc(var(--visual-viewport-height) - 160px));
+  flex-direction: column;
+  justify-content: center;
+  overflow-y: auto;
+}
+
+.item {
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-bottom: 1px solid var(--border-main);
+  background: transparent;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+.item:hover,
+.item:focus-visible {
+  background: var(--bg-hover);
+  outline: none;
+}
+
+.unread {
+  box-shadow: inset 3px 0 var(--accent);
+}
+
+.summary {
+  white-space: normal;
+}
+
+.timestamp {
+  font-size: 12px;
+}
+
+.trigger:global(.ant-btn) {
+  width: 40px;
+  height: 40px;
+  color: var(--text-main);
+}

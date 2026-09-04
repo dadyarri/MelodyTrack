@@ -1,7 +1,9 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Api.Schedule.Responses;
 using MelodyTrack.Backend.Data;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -9,20 +11,30 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMaterializer recurringAppointmentMaterializer, IRecordActivityService recordActivityService) : Ep.Req<GetAppointmentsRequest>.Res<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Get, "/appointments")]
+public sealed class GetAppointmentsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/appointments");
-    }
 
-    public override async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> ExecuteAsync(GetAppointmentsRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<GetAppointmentsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetAppointmentsRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
+        var currentUser = await currentUserAccessor.GetAsync(ct);
+        if (currentUser is null)
+        {
+            return TypedResults.Unauthorized();
+        }
+
         var startUtc = DateTime.SpecifyKind(req.StartDate, DateTimeKind.Utc);
         var endUtc = DateTime.SpecifyKind(req.EndDate, DateTimeKind.Utc);
         await recurringAppointmentMaterializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, ct);
 
-        var appointments = await db.Appointments
+        var appointmentsQuery = db.Appointments
             .AsNoTracking()
             .Include(e => e.Service)
             .Include(e => e.Client)
@@ -36,7 +48,15 @@ public class GetAppointmentsEndpoint(AppDbContext db, IRecurringAppointmentMater
             .Include(e => e.RecurringRule)
             .ThenInclude(e => e!.RecurrenceType)
             .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc
-                && !e.Client.Vacations.Any(vacation => vacation.StartDate <= DateOnly.FromDateTime(e.StartDate) && vacation.EndDate >= DateOnly.FromDateTime(e.StartDate)))
+                && !e.Client.Vacations.Any(vacation => e.StartDate < vacation.EndDate && e.EndDate > vacation.StartDate));
+
+        if (!currentUser.Role.RoleName.IsAnyAdmin())
+        {
+            appointmentsQuery = appointmentsQuery.Where(appointment =>
+                appointment.Provider != null && appointment.Provider.Id == currentUser.Id);
+        }
+
+        var appointments = await appointmentsQuery
             .OrderBy(e => e.StartDate)
             .ToListAsync(ct);
 

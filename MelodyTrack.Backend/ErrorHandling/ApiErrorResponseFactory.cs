@@ -1,5 +1,3 @@
-using FastEndpoints;
-using FluentValidation.Results;
 using MelodyTrack.Backend.Api.Common.Responses;
 
 namespace MelodyTrack.Backend.ErrorHandling;
@@ -7,7 +5,7 @@ namespace MelodyTrack.Backend.ErrorHandling;
 public static class ApiErrorResponseFactory
 {
     public static ApiProblemDetails CreateValidationProblemDetails(
-        List<ValidationFailure> failures,
+        IReadOnlyList<ApiValidationError> failures,
         HttpContext httpContext,
         int statusCode)
     {
@@ -64,19 +62,8 @@ public static class ApiErrorResponseFactory
     public static void ApplyRequestContext(ApiProblemDetails problemDetails, HttpContext httpContext)
     {
         problemDetails.Instance = httpContext.Request.Path;
-        problemDetails.TraceId = httpContext.TraceIdentifier;
+        problemDetails.TraceId = ApiTraceContext.GetTraceId(httpContext);
     }
-
-    public static IReadOnlyList<ApiValidationError> CreateValidationErrors(IReadOnlyList<ValidationFailure> failures) =>
-        failures
-            .Select(failure => new ApiValidationError
-            {
-                Path = System.Text.Json.JsonNamingPolicy.CamelCase.ConvertName(failure.PropertyName),
-                Code = string.IsNullOrWhiteSpace(failure.ErrorCode) ? "validation_error" : failure.ErrorCode,
-                Message = failure.ErrorMessage
-            })
-            .DistinctBy(error => new { error.Path, error.Code, error.Message })
-            .ToArray();
 
     public static string GetTitle(int statusCode) =>
         statusCode switch
@@ -112,10 +99,10 @@ public static class ApiErrorResponseFactory
             _ => "Не удалось обработать запрос."
         };
 
-    internal static string BuildValidationDetail(IReadOnlyCollection<ValidationFailure> failures, int statusCode)
+    internal static string BuildValidationDetail(IReadOnlyCollection<ApiValidationError> failures, int statusCode)
     {
         var messages = failures
-            .Select(f => f.ErrorMessage)
+            .Select(f => f.Message)
             .Where(message => !string.IsNullOrWhiteSpace(message))
             .Distinct()
             .ToArray();

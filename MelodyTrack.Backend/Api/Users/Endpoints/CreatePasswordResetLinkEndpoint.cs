@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
@@ -12,35 +13,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class CreatePasswordResetLinkEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IPublicUrlBuilder publicUrlBuilder,
-    TimeProvider timeProvider,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/users/{id}/password-reset-links")]
+public sealed class CreatePasswordResetLinkEndpoint
 {
-    public override void Configure()
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IPublicUrlBuilder publicUrlBuilder,
+        TimeProvider timeProvider,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<CreatePasswordResetLinkEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Post("/users/{id}/password-reset-links");
-    }
-
-    public override async Task<Results<Created<CreatePasswordResetLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
-    {
-        var caller = await currentUserAccessor.GetAsync(ct);
-        if (caller is null)
-        {
-            Logger.LogWarning("Password reset link creation attempt without a current user");
-            return TypedResults.Unauthorized();
-        }
-
-        if (!caller.Role.RoleName.IsAnyAdmin())
-        {
-            Logger.LogWarning("Password reset link creation attempt without admin access by {EmailRef}", UserUtils.DescribeEmailForLogs(caller.Email));
-            return TypedResults.Forbid();
-        }
+        var caller = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var targetUser = await db.Users
             .Include(u => u.Role)
@@ -48,16 +39,16 @@ public class CreatePasswordResetLinkEndpoint(
 
         if (targetUser is null)
         {
-            AddError(r => r.Id, "Пользователь не найден");
+            validationErrors.Add(nameof(req.Id), "Пользователь не найден");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
         if (targetUser.Role.RoleName.IsSuperuser() && !caller.Role.RoleName.IsSuperuser())
         {
-            Logger.LogWarning(
+            logger.LogWarning(
                 "Admin {EmailRef} attempted to create a superuser password reset link without sufficient privileges",
                 UserUtils.DescribeEmailForLogs(caller.Email));
             return TypedResults.Forbid();
@@ -79,14 +70,13 @@ public class CreatePasswordResetLinkEndpoint(
         await db.PasswordRestorationRequests.AddAsync(restorationRequest, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "auth.password_reset_link.created actor {ActorEmailRef} target {TargetEmailRef}",
             UserUtils.DescribeEmailForLogs(caller.Email),
             UserUtils.DescribeEmailForLogs(targetUser.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "password_reset_link_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PasswordResetLinkCreated,
             EntityType = "password_reset",
             EntityId = restorationRequest.Id.ToString(),
             ActorUserId = caller.Id,

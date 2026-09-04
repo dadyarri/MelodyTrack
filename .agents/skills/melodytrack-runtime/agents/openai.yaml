@@ -1,0 +1,4 @@
+interface:
+  display_name: "MelodyTrack Runtime"
+  short_description: "Develop and diagnose the unified runtime"
+  default_prompt: "Use $melodytrack-runtime to run or diagnose the MelodyTrack Aspire and unified hosting topology."

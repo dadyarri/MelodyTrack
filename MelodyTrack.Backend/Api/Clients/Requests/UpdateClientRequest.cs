@@ -1,10 +1,12 @@
-using FastEndpoints;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Validation;
 
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 
-public class UpdateClientRequest
+public class UpdateClientRequest : IValidatableRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public string? FirstName { get; set; }
     public string? LastName { get; set; }
@@ -21,6 +23,6 @@ public class UpdateClientRequest
 
 public class ClientVacationRequest
 {
-    public required DateOnly StartDate { get; set; }
-    public required DateOnly EndDate { get; set; }
+    public required DateTime StartDate { get; set; }
+    public required DateTime EndDate { get; set; }
 }

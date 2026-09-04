@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,17 +11,19 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientSources.Endpoints;
 
-public class DeleteClientSourceEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Delete, "/client-sources/{id}")]
+public sealed class DeleteClientSourceEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/client-sources/{id}");
-    }
 
-    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ForbidHttpResult, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -64,8 +67,7 @@ public class DeleteClientSourceEndpoint(AppDbContext db, ICurrentUserAccessor cu
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_source_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientSourceDeleted,
             EntityType = "client_source",
             EntityId = source.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)

@@ -22,14 +22,14 @@ public class RecordActivityService(AppDbContext db) : IRecordActivityService
         var logs = await db.AuditLogs
             .AsNoTracking()
             .Where(item => item.EntityType == entityType && item.EntityId != null && entityIds.Contains(item.EntityId))
-            .OrderByDescending(item => item.CreatedAtUtc)
+            .GroupBy(item => item.EntityId)
+            .Select(group => group
+                .OrderByDescending(item => item.CreatedAtUtc)
+                .ThenByDescending(item => item.Id)
+                .First())
             .ToListAsync(ct);
 
-        return logs
-            .GroupBy(item => item.EntityId!)
-            .ToDictionary(
-                group => group.Key,
-                group => ToDto(group.First()));
+        return logs.ToDictionary(item => item.EntityId!, ToDto);
     }
 
     public async Task<RecordActivityDto?> GetLatestActivityAsync(string entityType, string entityId, CancellationToken ct)

@@ -1,7 +1,5 @@
 using System.Net;
 using System.Net.Http.Headers;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Reports.Endpoints;
 using MelodyTrack.Backend.Api.Reports.Requests;
 using MelodyTrack.Backend.Api.Reports.Responses;
@@ -45,8 +43,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             Id = Ulid.NewUlid(),
             UserId = teacher.Id,
             User = teacher,
-            StartDate = new DateOnly(2026, 7, 2),
-            EndDate = new DateOnly(2026, 7, 2)
+            StartDate = new DateTime(2026, 7, 2, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddRangeAsync(
         [
@@ -72,13 +70,15 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         report.Summary.Appointments.ShouldBe(4);
         report.Summary.Completed.ShouldBe(1);
         report.Summary.Burned.ShouldBe(1);
-        report.Summary.OccupiedHours.ShouldBe(3m);
-        report.Summary.AvailableHours.ShouldBe(8m);
-        report.Summary.WorkloadPercent.ShouldBe(37.5m);
+        report.Summary.WorkingCapacityHours.ShouldBe(8m);
+        report.Summary.OccupiedWorkingHours.ShouldBe(3m);
+        report.Summary.FreeWorkingHours.ShouldBe(5m);
+        report.Summary.UtilizationPercent.ShouldBe(37.5m);
         report.Summary.CancellationPercent.ShouldBe(25m);
         report.Statuses.Sum(item => item.Count).ShouldBe(report.Summary.Appointments);
         report.Trend.Sum(item => item.Appointments).ShouldBe(report.Summary.Appointments);
-        report.Trend.Sum(item => item.OccupiedHours).ShouldBe(report.Summary.OccupiedHours);
+        report.Trend.Sum(item => item.OccupiedWorkingHours).ShouldBe(report.Summary.OccupiedWorkingHours);
+        report.Trend.Sum(item => item.FreeWorkingHours).ShouldBe(report.Summary.FreeWorkingHours);
         report.Services.ShouldHaveSingleItem().Revenue.ShouldBe(250m);
         report.Providers.ShouldHaveSingleItem().ProviderId.ShouldBe(teacher.Id);
     }
@@ -140,7 +140,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         [
             Appointment(client, service, admin, day.AddHours(10), AppointmentStatus.Completed),
             Appointment(client, service, admin, day.AddHours(12), AppointmentStatus.Burned),
-            Appointment(client, service, admin, day.AddHours(14), AppointmentStatus.Cancelled)
+            Appointment(client, service, admin, day.AddHours(14), AppointmentStatus.Cancelled),
+            Appointment(client, service, admin, day.AddHours(16), AppointmentStatus.Planned)
         ], TestContext.Current.CancellationToken);
         await db.Payments.AddAsync(new Payment { Id = Ulid.NewUlid(), Client = client, Service = service, Amount = 50m, Date = day.AddHours(15), Description = "Оплата" }, TestContext.Current.CancellationToken);
         await db.Expenses.AddAsync(new Expense { Id = Ulid.NewUlid(), Amount = 20m, Date = day.AddHours(16), Description = "Студия", Category = category, CategoryId = category.Id }, TestContext.Current.CancellationToken);
@@ -153,11 +154,13 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         report.ShouldNotBeNull();
         report.Summary.Revenue.ShouldBe(200m);
+        report.Summary.ForecastIncome.ShouldBe(300m);
+        report.Summary.ForecastAppointments.ShouldBe(3);
         report.Summary.Payments.ShouldBe(50m);
         report.Summary.Expenses.ShouldBe(20m);
         report.Summary.NetProfit.ShouldBe(180m);
         report.Summary.OutstandingDebt.ShouldBe(150m);
-        report.Summary.AverageReceipt.ShouldBe(100m);
+        report.Summary.AverageRevenuePerVisit.ShouldBe(100m);
         report.Trend.Sum(item => item.Revenue).ShouldBe(report.Summary.Revenue);
         report.Trend.Sum(item => item.Payments ?? 0m).ShouldBe(report.Summary.Payments!.Value);
         report.Trend.Sum(item => item.Expenses ?? 0m).ShouldBe(report.Summary.Expenses!.Value);
@@ -316,6 +319,210 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         report.Summary.ActiveClients.ShouldBe(125);
         report.Trend.Sum(bucket => bucket.Visits).ShouldBe(1000);
         report.Clients.Count.ShouldBe(100);
+    }
+
+    [Fact]
+    public async Task WorkReport_UsesAllTeachersAndUnionsOccupiedTimeInsideCapacity()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var teacherWithoutAppointments = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Capacity", "Client", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Capacity service", TestContext.Current.CancellationToken);
+        var monday = new DateTime(2026, 7, 6, 0, 0, 0, DateTimeKind.Utc);
+
+        await db.UserWorkingHoursDays.AddRangeAsync(
+        [
+            new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Monday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 12 * 60 },
+            new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Tuesday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 12 * 60 }
+        ], TestContext.Current.CancellationToken);
+        await db.UserVacations.AddAsync(new UserVacation
+        {
+            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, StartDate = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+
+        var first = Appointment(client, service, teacher, monday.AddHours(8.5), AppointmentStatus.Planned);
+        first.EndDate = monday.AddHours(10.5);
+        var overlapping = Appointment(client, service, teacher, monday.AddHours(9.5), AppointmentStatus.Completed);
+        overlapping.EndDate = monday.AddHours(11.5);
+        var outside = Appointment(client, service, teacher, monday.AddHours(11), AppointmentStatus.Burned);
+        outside.EndDate = monday.AddHours(13);
+        await db.Appointments.AddRangeAsync([first, overlapping, outside], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Authenticate(teacher);
+        var (response, report) = await App.Client.GETAsync<GetWorkReportEndpoint, GetReportRequest, WorkReportResponse>(
+            Request(monday, monday.AddDays(1)));
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        report.ShouldNotBeNull();
+        report.Providers.ShouldContain(row => row.ProviderId == teacherWithoutAppointments.Id && row.Appointments == 0);
+        var teacherRow = report.Providers.Single(row => row.ProviderId == teacher.Id);
+        teacherRow.WorkingCapacityHours.ShouldBe(3m);
+        teacherRow.OccupiedWorkingHours.ShouldBe(3m);
+        teacherRow.FreeWorkingHours.ShouldBe(0m);
+        teacherRow.UtilizationPercent.ShouldBe(100m);
+        report.Providers.Sum(row => row.WorkingCapacityHours).ShouldBe(report.Summary.WorkingCapacityHours);
+        report.Providers.Sum(row => row.OccupiedWorkingHours).ShouldBe(report.Summary.OccupiedWorkingHours);
+        report.Summary.FreeWorkingHours.ShouldBe(report.Summary.WorkingCapacityHours - report.Summary.OccupiedWorkingHours);
+    }
+
+    [Fact]
+    public async Task WorkReport_CalculatesElapsedCapacityAcrossDaylightSavingTransition()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        await db.UserWorkingHoursDays.AddAsync(new UserWorkingHoursDay
+        {
+            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Sunday, IsWorkingDay = true, StartMinuteOfDay = 60, EndMinuteOfDay = 5 * 60
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Authenticate(teacher);
+        var request = Request(new DateTime(2026, 10, 25), new DateTime(2026, 10, 25));
+        request.ProviderId = teacher.Id;
+        request.Timezone = "Europe/Berlin";
+        var (_, report) = await App.Client.GETAsync<GetWorkReportEndpoint, GetReportRequest, WorkReportResponse>(request);
+
+        report.ShouldNotBeNull();
+        report.Summary.WorkingCapacityHours.ShouldBe(5m);
+        report.Summary.FreeWorkingHours.ShouldBe(5m);
+        report.Summary.UtilizationPercent.ShouldBe(0m);
+    }
+
+    [Fact]
+    public async Task FinanceReport_UsesEarliestKnownPriceAndTotalsDebtBeyondDisplayedRows()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Historical price", TestContext.Current.CancellationToken);
+        var day = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = day.AddDays(10)
+        }, TestContext.Current.CancellationToken);
+        var clients = Enumerable.Range(1, 101)
+            .Select(index => new Client
+            {
+                Id = Ulid.NewUlid(), FirstName = $"Debtor {index}", LastName = "Client", CreatedAtUtc = day.AddDays(-1), Contacts = new ClientContacts { Id = Ulid.NewUlid() }
+            })
+            .ToList();
+        await db.Clients.AddRangeAsync(clients, TestContext.Current.CancellationToken);
+        await db.Appointments.AddRangeAsync(
+            clients.Select((client, index) => Appointment(client, service, admin, day.AddHours(index % 20), AppointmentStatus.Completed)),
+            TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Authenticate(admin);
+        var (_, report) = await App.Client.GETAsync<GetFinanceReportEndpoint, GetReportRequest, FinanceReportResponse>(Request(day, day));
+
+        report.ShouldNotBeNull();
+        report.Summary.Revenue.ShouldBe(10100m);
+        report.Summary.OutstandingDebt.ShouldBe(10100m);
+        report.Debtors.Count.ShouldBe(100);
+        report.Debtors.Sum(row => row.Debt).ShouldBe(10000m);
+    }
+
+    [Fact]
+    public async Task ClientsReport_ClampsPartialBucketsAndPausesInactivityForVacations()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Client activity", TestContext.Current.CancellationToken);
+        var returning = await TestDataFactory.CreateClientAsync(db, "Returning", "Client", TestContext.Current.CancellationToken);
+        var vacation = await TestDataFactory.CreateClientAsync(db, "Vacation", "Client", TestContext.Current.CancellationToken);
+        var paused = await TestDataFactory.CreateClientAsync(db, "Paused", "Client", TestContext.Current.CancellationToken);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+        await db.Appointments.AddRangeAsync(
+        [
+            Appointment(returning, service, teacher, new DateTime(2026, 5, 11, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed),
+            Appointment(returning, service, teacher, new DateTime(2026, 5, 16, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed),
+            Appointment(vacation, service, teacher, new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed),
+            Appointment(paused, service, teacher, new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed)
+        ], TestContext.Current.CancellationToken);
+        await db.ClientVacations.AddRangeAsync(
+        [
+            new ClientVacation { Id = Ulid.NewUlid(), ClientId = vacation.Id, Client = vacation, StartDate = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ClientVacation { Id = Ulid.NewUlid(), ClientId = paused.Id, Client = paused, StartDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc) }
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Authenticate(teacher);
+        var request = Request(new DateTime(2026, 5, 15), new DateTime(2026, 5, 20));
+        request.ProviderId = teacher.Id;
+        request.GroupBy = "week";
+        var (_, report) = await App.Client.GETAsync<GetClientsReportEndpoint, GetReportRequest, ClientsReportResponse>(request);
+
+        report.ShouldNotBeNull();
+        report.Summary.AcquiredClients.ShouldBe(0);
+        report.Trend.Sum(bucket => bucket.AcquiredClients).ShouldBe(0);
+        report.Trend.Sum(bucket => bucket.Visits).ShouldBe(1);
+        report.Summary.OnVacationClients.ShouldBe(1);
+        report.Clients.Single(row => row.ClientId == vacation.Id).ActivityState.ShouldBe("on-vacation");
+        report.Clients.Single(row => row.ClientId == paused.Id).ActivityState.ShouldBe("inactive");
+    }
+
+    [Fact]
+    public async Task Reports_ExcludeTrialServicesFromFinancialAndClientValue()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var regularClient = await TestDataFactory.CreateClientAsync(db, "Regular", "Client", TestContext.Current.CancellationToken);
+        var trialClient = await TestDataFactory.CreateClientAsync(db, "Trial", "Lead", TestContext.Current.CancellationToken);
+        var regularService = await TestDataFactory.CreateServiceAsync(db, "Regular lesson", TestContext.Current.CancellationToken);
+        var trialService = await TestDataFactory.CreateServiceAsync(db, "Trial lesson", TestContext.Current.CancellationToken);
+        trialService.IsConsultation = true;
+        var day = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc);
+
+        await db.ServicePriceHistory.AddRangeAsync(
+        [
+            new ServicePrice { Id = Ulid.NewUlid(), Service = regularService, Price = 100m, EffectiveDate = day.AddDays(-1) },
+            new ServicePrice { Id = Ulid.NewUlid(), Service = trialService, Price = 500m, EffectiveDate = day.AddDays(-1) }
+        ], TestContext.Current.CancellationToken);
+        await db.Appointments.AddRangeAsync(
+        [
+            Appointment(regularClient, regularService, teacher, day.AddHours(10), AppointmentStatus.Completed),
+            Appointment(trialClient, trialService, teacher, day.AddHours(11), AppointmentStatus.Completed),
+            Appointment(regularClient, regularService, teacher, day.AddHours(12), AppointmentStatus.Planned),
+            Appointment(trialClient, trialService, teacher, day.AddHours(13), AppointmentStatus.Planned)
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Authenticate(teacher);
+        var request = Request(day, day);
+        var (_, work) = await App.Client.GETAsync<GetWorkReportEndpoint, GetReportRequest, WorkReportResponse>(request);
+        var (_, finance) = await App.Client.GETAsync<GetFinanceReportEndpoint, GetReportRequest, FinanceReportResponse>(request);
+        var (_, clients) = await App.Client.GETAsync<GetClientsReportEndpoint, GetReportRequest, ClientsReportResponse>(request);
+
+        work.ShouldNotBeNull();
+        work.Summary.Appointments.ShouldBe(4);
+        work.Summary.Completed.ShouldBe(2);
+        work.Services.Single(row => row.ServiceId == trialService.Id).Revenue.ShouldBe(0m);
+
+        finance.ShouldNotBeNull();
+        finance.Summary.Revenue.ShouldBe(100m);
+        finance.Summary.ForecastIncome.ShouldBe(200m);
+        finance.Summary.ForecastAppointments.ShouldBe(2);
+        finance.Summary.RevenueAppointments.ShouldBe(1);
+        finance.Summary.AverageRevenuePerVisit.ShouldBe(100m);
+        finance.Summary.OutstandingDebt.ShouldBe(100m);
+        finance.Services.ShouldHaveSingleItem().ServiceId.ShouldBe(regularService.Id);
+        finance.Debtors.ShouldHaveSingleItem().ClientId.ShouldBe(regularClient.Id);
+
+        clients.ShouldNotBeNull();
+        clients.Summary.AcquiredClients.ShouldBe(1);
+        clients.Summary.ActiveClients.ShouldBe(1);
+        clients.Summary.AverageClientValue.ShouldBe(100m);
+        clients.Trend.Sum(row => row.Visits).ShouldBe(1);
+        clients.Clients.ShouldHaveSingleItem().ClientId.ShouldBe(regularClient.Id);
     }
 
     private void Authenticate(User user)

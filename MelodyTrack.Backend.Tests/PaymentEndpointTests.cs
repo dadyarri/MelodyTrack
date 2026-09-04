@@ -81,6 +81,7 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
     [Fact]
     public async Task CreatePayment_ReturnsConflictWhenSameCallerReusesKeyForDifferentPayload()
     {
+        const string traceId = "70f5f15eecc7467ab9247b9a75e82a4d";
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
@@ -94,7 +95,8 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         var secondResponse = await SendCreatePaymentAsync(
             CreateRequest(client.Id, 2500m),
             "payment-mismatch",
-            TestContext.Current.CancellationToken);
+            TestContext.Current.CancellationToken,
+            $"00-{traceId}-2f4e32ea499f28cc-01");
 
         firstResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
         secondResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
@@ -104,6 +106,8 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         problem.Status.ShouldBe((int)HttpStatusCode.Conflict);
         problem.Type.ShouldBe(ApiProblemTypes.IdempotencyConflict);
         problem.Code.ShouldBe(ApiProblemCodes.IdempotencyConflict);
+        problem.TraceId.ShouldBe(traceId);
+        secondResponse.Headers.GetValues("X-Trace-Id").Single().ShouldBe(traceId);
     }
 
     [Fact]
@@ -282,13 +286,18 @@ public class PaymentEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
     private async Task<HttpResponseMessage> SendCreatePaymentAsync(
         CreatePaymentRequest request,
         string idempotencyKey,
-        CancellationToken ct)
+        CancellationToken ct,
+        string? traceParent = null)
     {
         using var message = new HttpRequestMessage(HttpMethod.Post, "/payments")
         {
             Content = JsonContent.Create(request)
         };
         message.Headers.Add("Idempotency-Key", idempotencyKey);
+        if (traceParent is not null)
+        {
+            message.Headers.TryAddWithoutValidation("traceparent", traceParent);
+        }
         return await App.Client.SendAsync(message, ct);
     }
 }

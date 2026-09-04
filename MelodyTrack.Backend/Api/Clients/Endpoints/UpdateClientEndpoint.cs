@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -11,17 +12,25 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateClientRequest>.Res<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/clients/{id}")]
+public sealed class UpdateClientEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/clients/{id}");
-    }
 
-    public override async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(UpdateClientRequest req,
-        CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        UpdateClientRequest req,
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IVacationRequestSubjectLock vacationRequestSubjectLock,
+        IEntityFreshnessService entityFreshnessService,
+        ILogger<UpdateClientEndpoint> logger,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -33,7 +42,13 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             return TypedResults.Forbid();
         }
 
-        Logger.LogInformation(
+        await using var transaction = req.Vacations is null ? null : await db.Database.BeginTransactionAsync(ct);
+        if (transaction is not null)
+        {
+            await vacationRequestSubjectLock.AcquireAsync(VacationRequestSubjectType.Client, req.Id, ct);
+        }
+
+        logger.LogInformation(
             "Updating client {ClientId}; fields present firstName={HasFirstName} lastName={HasLastName} patronymic={HasPatronymic} dateOfBirth={HasDateOfBirth} email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             req.Id,
             req.FirstName is not null,
@@ -58,12 +73,18 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             return TypedResults.NotFound();
         }
 
+        var vacationsChanged = ClientUpdateComparer.AreVacationsChanged(client, req);
+        if (vacationsChanged && !currentUserRole.Value.IsSuperuser())
+        {
+            return TypedResults.Forbid();
+        }
+
         if (req.SourceId is not null)
         {
             var sourceExists = await db.ClientSources.AnyAsync(e => e.Id == req.SourceId.Value, ct);
             if (!sourceExists)
             {
-                AddError(e => e.SourceId, "Источник не найден");
+                validationErrors.Add(nameof(req.SourceId), "Источник не найден");
                 return TypedResults.NotFound();
             }
         }
@@ -108,10 +129,10 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         client.Contacts.Vk = req.Vk;
         client.SourceId = req.SourceId;
 
-        if (req.Vacations is not null)
+        if (vacationsChanged)
         {
             db.ClientVacations.RemoveRange(client.Vacations);
-            client.Vacations = req.Vacations
+            client.Vacations = req.Vacations!
                 .Select(item => new Data.Models.ClientVacation
                 {
                     Id = Ulid.NewUlid(),
@@ -126,8 +147,9 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = req.Vacations is null ? "client_updated" : "client_vacations_updated",
+            Event = !vacationsChanged
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientUpdated
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientVacationsUpdatedDirectly,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
@@ -141,7 +163,7 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
                 AuditDetailsFormatter.DescribeChange("Telegram", beforeTelegram, client.Contacts.Telegram),
                 AuditDetailsFormatter.DescribeChange("VK", beforeVk, client.Contacts.Vk),
                 AuditDetailsFormatter.DescribeChange("Источник", beforeSourceName, client.Source?.Name),
-                req.Vacations is null
+                !vacationsChanged
                     ? null
                     : AuditDetailsFormatter.DescribeChange(
                         "Периоды отсутствия",
@@ -150,15 +172,20 @@ public class UpdateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             )
         }, ct);
 
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(ct);
+        }
+
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
     }
 
-    private static string? FormatVacationPeriods(IEnumerable<(DateOnly StartDate, DateOnly EndDate)> vacations)
+    private static string? FormatVacationPeriods(IEnumerable<(DateTime StartDate, DateTime EndDate)> vacations)
     {
         var periods = vacations
             .OrderBy(item => item.StartDate)
             .ThenBy(item => item.EndDate)
-            .Select(item => $"{item.StartDate:yyyy-MM-dd}–{item.EndDate:yyyy-MM-dd}")
+            .Select(item => $"{item.StartDate:yyyy-MM-dd HH:mm}–{item.EndDate:yyyy-MM-dd HH:mm} UTC")
             .ToArray();
 
         return periods.Length == 0 ? null : string.Join(", ", periods);

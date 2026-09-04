@@ -1,4 +1,6 @@
-using FastEndpoints;
+
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Tasks.Requests;
 
@@ -7,7 +9,7 @@ public class CancelRecurringTaskRequest
     public required string Timezone { get; set; }
     public required Ulid RuleId { get; set; }
     public required string Type { get; set; }
-    [BindFrom("taskId")]
+    [JsonIgnore]
     public string DeduplicationKey { get; set; } = string.Empty;
     public Ulid? ClientId { get; set; }
     public Ulid? TeacherId { get; set; }

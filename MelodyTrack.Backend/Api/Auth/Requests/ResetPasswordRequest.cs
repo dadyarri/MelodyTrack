@@ -1,6 +1,8 @@
-﻿namespace MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Backend.Validation;
 
-public class ResetPasswordRequest
+namespace MelodyTrack.Backend.Api.Auth.Requests;
+
+public class ResetPasswordRequest : IValidatableRequest
 {
     public required string Token { get; set; }
     public required string NewPassword { get; set; }

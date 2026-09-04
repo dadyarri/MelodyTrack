@@ -1,0 +1,57 @@
+<Project>
+  <PropertyGroup>
+    <MelodyTrackRepositoryRoot Condition="'$(MelodyTrackRepositoryRoot)' == ''">$([System.IO.Path]::GetFullPath('$(MSBuildThisFileDirectory)..'))</MelodyTrackRepositoryRoot>
+    <FrontendRoot Condition="'$(FrontendRoot)' == ''">$(MelodyTrackRepositoryRoot)/MelodyTrack.Web</FrontendRoot>
+    <FrontendDistRoot Condition="'$(FrontendDistRoot)' == ''">$(FrontendRoot)/dist</FrontendDistRoot>
+    <FrontendApiBaseUrl Condition="'$(FrontendApiBaseUrl)' == ''">/api</FrontendApiBaseUrl>
+    <FrontendGeneratedApiRoot Condition="'$(FrontendGeneratedApiRoot)' == ''">$(FrontendRoot)/src/shared/api/generated</FrontendGeneratedApiRoot>
+    <FrontendOpenApiInputRoot Condition="'$(FrontendOpenApiInputRoot)' == ''">$(MSBuildProjectDirectory)/obj/frontend-openapi/$(TargetFramework)</FrontendOpenApiInputRoot>
+    <FrontendOpenApiInput Condition="'$(FrontendOpenApiInput)' == ''">$(FrontendOpenApiInputRoot)/$(MSBuildProjectName).json</FrontendOpenApiInput>
+  </PropertyGroup>
+
+  <Target Name="BootstrapFrontendDependencies"
+          Condition="'$(DesignTimeBuild)' != 'true' AND '$(SkipFrontendBuild)' != 'true'">
+    <Exec Command="node &quot;$(MelodyTrackRepositoryRoot)/scripts/bootstrap-frontend.mjs&quot;"
+          WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
+  </Target>
+
+  <Target Name="GenerateFrontendApiClient"
+          AfterTargets="GenerateOpenApiDocuments"
+          DependsOnTargets="BootstrapFrontendDependencies;OpenApiGetDocuments"
+          Condition="'$(MSBuildProjectName)' == 'MelodyTrack.Backend' AND '$(RunFrontendContractBuild)' == 'true' AND '$(DesignTimeBuild)' != 'true' AND '$(IsCrossTargetingBuild)' != 'true' AND '$(SkipApiContractGeneration)' != 'true'">
+    <Error Text="Expected exactly one generated OpenAPI document, found @(_OpenApiProjectDocuments->Count())."
+           Condition="'@(_OpenApiProjectDocuments->Count())' != '1'" />
+    <MakeDir Directories="$(FrontendOpenApiInputRoot)" />
+    <Copy SourceFiles="@(_OpenApiProjectDocuments)"
+          DestinationFiles="$(FrontendOpenApiInput)" />
+    <Exec Command="dotnet tool restore"
+          WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
+    <Exec Command="node &quot;$(MelodyTrackRepositoryRoot)/scripts/run-kiota-generation.mjs&quot; --openapi &quot;$(FrontendOpenApiInput)&quot; --language TypeScript --class-name MelodyTrackApiClient --namespace-name MelodyTrack.Api --output &quot;$(FrontendGeneratedApiRoot)&quot; --clean-output --exclude-backward-compatible"
+          WorkingDirectory="$(MelodyTrackRepositoryRoot)" />
+    <Exec Command="npm run typecheck"
+          WorkingDirectory="$(FrontendRoot)" />
+  </Target>
+
+  <Target Name="BuildFrontendForPublish"
+          AfterTargets="ComputeFilesToPublish"
+          DependsOnTargets="BootstrapFrontendDependencies"
+          Condition="'$(MSBuildProjectName)' == 'MelodyTrack.Backend' AND '$(DesignTimeBuild)' != 'true'">
+    <Exec Command="npm run build"
+          WorkingDirectory="$(FrontendRoot)"
+          EnvironmentVariables="VITE_API_BASE_URL=$(FrontendApiBaseUrl)"
+          Condition="'$(SkipFrontendBuild)' != 'true'" />
+
+    <Error Text="The frontend publish output is missing: $(FrontendDistRoot)/index.html"
+           Condition="!Exists('$(FrontendDistRoot)/index.html')" />
+
+    <ItemGroup>
+      <FrontendPublishFile Include="$(FrontendDistRoot)/**/*" />
+      <ResolvedFileToPublish Include="@(FrontendPublishFile)"
+                             Exclude="@(ResolvedFileToPublish)">
+        <RelativePath>wwwroot/%(RecursiveDir)%(Filename)%(Extension)</RelativePath>
+        <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+        <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      </ResolvedFileToPublish>
+    </ItemGroup>
+  </Target>
+</Project>

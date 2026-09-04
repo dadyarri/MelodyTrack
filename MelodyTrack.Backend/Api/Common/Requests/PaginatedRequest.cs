@@ -1,15 +1,18 @@
+using Microsoft.AspNetCore.Mvc;
 using System.ComponentModel;
-using FastEndpoints;
 
 namespace MelodyTrack.Backend.Api.Common.Requests;
 
 public class PaginatedRequest
 {
-    [BindFrom("page")]
+    [FromQuery(Name = "page")]
     [DefaultValue(1)]
-    public int Page { get; set; }
+    public int? Page { get; set; }
 
-    [BindFrom("page_size")]
+    [FromQuery(Name = "page_size")]
     [DefaultValue(10)]
-    public int PageSize { get; set; }
+    public int? PageSize { get; set; }
+
+    internal int EffectivePage => Page ?? 1;
+    internal int EffectivePageSize => PageSize ?? 10;
 }

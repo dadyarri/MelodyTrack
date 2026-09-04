@@ -1,0 +1,4 @@
+interface:
+  display_name: "MelodyTrack Frontend Feature"
+  short_description: "Place and implement frontend feature changes"
+  default_prompt: "Use $melodytrack-frontend-feature to implement a MelodyTrack frontend feature in the correct FSD layer."

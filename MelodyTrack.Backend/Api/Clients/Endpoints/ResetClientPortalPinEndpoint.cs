@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -10,31 +11,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class ResetClientPortalPinEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/clients/{id}/portal-pin-resets")]
+public sealed class ResetClientPortalPinEndpoint
 {
-    public override void Configure()
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Post("/clients/{id}/portal-pin-resets");
-    }
-
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
-    {
-        var currentUser = await currentUserAccessor.GetAsync(ct);
-        if (currentUser is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!currentUser.Role.RoleName.IsAnyAdmin())
-        {
-            return TypedResults.Forbid();
-        }
+        var currentUser = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var loginLink = await db.ClientPortalLoginLinks
             .Include(item => item.User)
@@ -42,10 +34,10 @@ public class ResetClientPortalPinEndpoint(
 
         if (loginLink is null)
         {
-            AddError(item => item.Id, "Кабинет для этого клиента еще не создан.");
+            validationErrors.Add(nameof(req.Id), "Кабинет для этого клиента еще не создан.");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
@@ -53,6 +45,10 @@ public class ResetClientPortalPinEndpoint(
         loginLink.PinSetAtUtc = null;
         loginLink.FailedPinAttempts = 0;
         loginLink.LastFailedPinAttemptAtUtc = null;
+
+        await db.ClientPortalSavedIdentityReferences
+            .Where(item => item.LoginLinkId == loginLink.Id)
+            .ExecuteDeleteAsync(ct);
 
         await db.Sessions
             .Where(item => item.User.Id == loginLink.User.Id && !item.WasRevoked)
@@ -62,8 +58,7 @@ public class ResetClientPortalPinEndpoint(
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_portal_pin_reset",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalPinReset,
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,

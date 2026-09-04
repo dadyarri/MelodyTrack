@@ -1,10 +1,11 @@
 ﻿using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using FastEndpoints.Security;
-using Isopoh.Cryptography.Argon2;
-using Isopoh.Cryptography.SecureArray;
+using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data.Security;
+using Microsoft.Extensions.Options;
 using OtpNet;
 using QRCoder;
 
@@ -15,6 +16,23 @@ namespace MelodyTrack.Backend.Utils;
 /// </summary>
 public static class UserUtils
 {
+    private static CredentialHasher? _credentialHasher;
+    private static AuthenticationTokenHasher? _tokenHasher;
+    private static JwtTokenService? _jwtTokenService;
+    private static string? _personalDataKey;
+
+    public static void ConfigureAuthentication(
+        AuthenticationSecretsOptions authenticationSecrets,
+        JwtOptions jwtOptions,
+        string personalDataKey)
+    {
+        var secretOptions = Options.Create(authenticationSecrets);
+        _credentialHasher = new CredentialHasher(secretOptions);
+        _tokenHasher = new AuthenticationTokenHasher(secretOptions);
+        _jwtTokenService = new JwtTokenService(secretOptions, Options.Create(jwtOptions));
+        _personalDataKey = personalDataKey;
+    }
+
     /// <summary>
     ///     Hash password
     /// </summary>
@@ -22,50 +40,14 @@ public static class UserUtils
     /// <param name="hash">Hashed password</param>
     public static void HashPassword(string password, out string hash)
     {
-        var salt = new byte[16];
-        Random.Shared.NextBytes(salt);
-        var config = new Argon2Config
-        {
-            Type = Argon2Type.DataIndependentAddressing,
-            Version = Argon2Version.Nineteen,
-            TimeCost = 3,
-            MemoryCost = 3000,
-            Password = Encoding.UTF8.GetBytes(password),
-            Salt = salt,
-            Secret = Encoding.UTF8.GetBytes(
-                EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"))
-        };
-
-        var argon2 = new Argon2(config);
-        using var hashA = argon2.Hash();
-        hash = config.EncodeString(hashA.Buffer);
+        hash = GetCredentialHasher().HashPassword(password);
     }
 
-    public static bool IsValidPassword(string hash, string password)
-    {
-        var config = new Argon2Config
-        {
-            Password = Encoding.UTF8.GetBytes(password),
-            Secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"))
-        };
+    public static bool IsValidPassword(string hash, string password) => GetCredentialHasher().VerifyPassword(hash, password);
 
-        SecureArray<byte>? hashA = null;
-        try
-        {
-            if (config.DecodeString(hash, out hashA))
-            {
-                var argon2 = new Argon2(config);
-                using var hashToVerify = argon2.Hash();
-                return Argon2.FixedTimeEquals(hashA, hashToVerify);
-            }
-        }
-        finally
-        {
-            hashA?.Dispose();
-        }
+    public static string HashPortalPin(string pin) => GetCredentialHasher().HashPortalPin(pin);
 
-        return false;
-    }
+    public static bool IsValidPortalPin(string hash, string pin) => GetCredentialHasher().VerifyPortalPin(hash, pin);
 
     public static string GenerateRandomString(int length)
     {
@@ -97,11 +79,10 @@ public static class UserUtils
 
     public static string HashOpaqueToken(string token)
     {
-        var secret = Encoding.UTF8.GetBytes(EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY"));
-        var tokenBytes = Encoding.UTF8.GetBytes(token);
-        var hash = HMACSHA256.HashData(secret, tokenBytes);
-        return Convert.ToHexString(hash);
+        return AuthenticationTokenHasher.HashOpaqueToken(token);
     }
+
+    public static string HashRefreshToken(string token) => GetTokenHasher().HashRefreshToken(token);
 
     public static string NormalizeEmail(string email)
     {
@@ -112,7 +93,7 @@ public static class UserUtils
     {
         var normalizedEmail = NormalizeEmail(email);
         var indexKey = SHA256.HashData(
-            Encoding.UTF8.GetBytes($"melodytrack:email-index:{EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY")}"));
+            Encoding.UTF8.GetBytes($"melodytrack:email-index:{GetPersonalDataKey()}"));
         var emailBytes = Encoding.UTF8.GetBytes(normalizedEmail);
         var hash = HMACSHA256.HashData(indexKey, emailBytes);
         return Convert.ToHexString(hash);
@@ -147,19 +128,7 @@ public static class UserUtils
 
     public static string CreateAccessToken(User user, Ulid? sessionId = null, TimeProvider? timeProvider = null)
     {
-        var expireAt = (timeProvider ?? TimeProvider.System).GetUtcNow().UtcDateTime.AddMinutes(10);
-        return JwtBearer.CreateToken(opts =>
-        {
-            opts.SigningKey = EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY");
-            opts.Issuer = "MelodyTrack";
-            opts.ExpireAt = expireAt;
-            opts.User.Claims.Add(new Claim(ClaimTypes.Name, user.Email));
-
-            if (sessionId.HasValue)
-            {
-                opts.User.Claims.Add(new Claim(ClaimTypes.Sid, sessionId.Value.ToString()));
-            }
-        });
+        return GetJwtTokenService().CreateAccessToken(user, sessionId, timeProvider);
     }
 
     public static (string Secret, string OtpUrl) GenerateTotp(string email)
@@ -197,6 +166,24 @@ public static class UserUtils
 
         var sha512Totp = new Totp(secretKey, mode: OtpHashMode.Sha512);
         return sha512Totp.VerifyTotp(otp, out _, window);
+    }
+
+    private static CredentialHasher GetCredentialHasher()
+    {
+        return _credentialHasher ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
+    }
+
+    private static AuthenticationTokenHasher GetTokenHasher() =>
+        _tokenHasher ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
+
+    private static JwtTokenService GetJwtTokenService() =>
+        _jwtTokenService ?? throw new InvalidOperationException("Authentication crypto has not been configured.");
+
+    private static string GetPersonalDataKey()
+    {
+        return _personalDataKey
+               ?? Environment.GetEnvironmentVariable("PersonalData__CurrentKey")
+               ?? EnvironmentUtils.GetRequiredEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY");
     }
 
 }

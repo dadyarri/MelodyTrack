@@ -1,6 +1,8 @@
+using MelodyTrack.Backend.Validation;
+
 namespace MelodyTrack.Backend.Api.Courses.Requests;
 
-public class CreateCourseRequest
+public class CreateCourseRequest : IValidatableRequest
 {
     public required string Name { get; set; }
     public string? Description { get; set; }

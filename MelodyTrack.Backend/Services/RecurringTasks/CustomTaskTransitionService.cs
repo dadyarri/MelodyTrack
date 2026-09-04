@@ -4,6 +4,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Services.RecurringTasks;
 
@@ -42,7 +43,7 @@ internal sealed class CustomTaskTransitionService(
         task.CancelledByUserId = null;
         ClearDelay(task);
 
-        await SaveAndAuditAsync(task, "task_completed", null, ct);
+        await SaveAndAuditAsync(task, AuditCatalog.Events.TaskCompleted, null, ct);
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
     }
 
@@ -64,7 +65,7 @@ internal sealed class CustomTaskTransitionService(
         task.CancelledByUserId = actor.Id;
         ClearDelay(task);
 
-        await SaveAndAuditAsync(task, "task_cancelled", null, ct);
+        await SaveAndAuditAsync(task, AuditCatalog.Events.TaskCancelled, null, ct);
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
     }
 
@@ -91,7 +92,7 @@ internal sealed class CustomTaskTransitionService(
 
         await SaveAndAuditAsync(
             task,
-            "task_delayed",
+            AuditCatalog.Events.TaskDelayed,
             AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc),
             ct);
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Delayed);
@@ -133,7 +134,7 @@ internal sealed class CustomTaskTransitionService(
 
     private async Task SaveAndAuditAsync(
         CustomTask task,
-        string action,
+        AuditEventDefinition auditEvent,
         string? extraDetails,
         CancellationToken ct)
     {
@@ -141,8 +142,7 @@ internal sealed class CustomTaskTransitionService(
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "recurring_tasks",
-            Action = action,
+            Event = auditEvent,
             EntityType = "custom_task",
             EntityId = task.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

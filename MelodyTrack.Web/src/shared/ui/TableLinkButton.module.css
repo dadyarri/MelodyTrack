@@ -1,0 +1,23 @@
+:global(.ant-btn-link).button {
+  padding-inline: 0;
+  color: color-mix(in srgb, var(--text-main) 68%, var(--accent));
+  font-weight: 600;
+  text-decoration-line: underline;
+  text-decoration-color: transparent;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.18em;
+  transition:
+    color 0.18s ease,
+    text-decoration-color 0.18s ease;
+}
+
+:global(.ant-btn-link).button:hover,
+:global(.ant-btn-link).button:focus-visible {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+:global(.ant-btn-link).button:disabled,
+:global(.ant-btn-link).button[disabled] {
+  text-decoration-color: transparent;
+}

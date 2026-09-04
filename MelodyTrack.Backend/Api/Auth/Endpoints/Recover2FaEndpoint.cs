@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -8,27 +10,28 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class Recover2FaEndpoint(
-    AppDbContext db,
-    IUaDetector uaDetector,
-    RefreshSessionCookieService refreshCookieService,
-    TimeProvider timeProvider)
-    : Ep.Req<Recover2FaRequest>.Res<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/2fa/recover")]
+public sealed class Recover2FaEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/2fa/recover");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.RecoverTwoFactor));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.RecoverTwoFactor)]
+    public static async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         Recover2FaRequest req,
-        CancellationToken ct)
+        AppDbContext db,
+        [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
+        RefreshSessionCookieService refreshCookieService,
+        AuthenticationTokenHasher tokenHasher,
+        JwtTokenService jwtTokenService,
+        TimeProvider timeProvider,
+        ILogger<Recover2FaEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var normalizedEmail = UserUtils.NormalizeEmail(req.Email);
         var user = await db.Users
@@ -37,7 +40,7 @@ public class Recover2FaEndpoint(
 
         if (user is null)
         {
-            Logger.LogWarning("2FA recovery attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("2FA recovery attempt for non-existent {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Unauthorized();
         }
 
@@ -47,7 +50,7 @@ public class Recover2FaEndpoint(
 
         if (recoveryCode is null)
         {
-            Logger.LogWarning("2FA recovery attempt with invalid or used recovery code for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
+            logger.LogWarning("2FA recovery attempt with invalid or used recovery code for {EmailRef}", UserUtils.DescribeEmailForLogs(normalizedEmail));
             return TypedResults.Forbid();
         }
 
@@ -65,8 +68,8 @@ public class Recover2FaEndpoint(
         {
             Id = Ulid.NewUlid(),
             User = user,
-            RefreshToken = UserUtils.HashOpaqueToken(refreshToken),
-            DeviceInfo = BrowserUtils.GetDeviceInfo(HttpContext.Request.Headers, uaDetector),
+            RefreshToken = tokenHasher.HashRefreshToken(refreshToken),
+            DeviceInfo = BrowserUtils.GetDeviceInfo(httpContext.Request.Headers, uaDetector),
             ValidUntil = timeProvider.GetUtcNow().UtcDateTime.AddDays(7)
         };
 
@@ -75,7 +78,7 @@ public class Recover2FaEndpoint(
 
         var response = new Recover2FaResponse
         {
-            AccessToken = UserUtils.CreateAccessToken(user, session.Id, timeProvider),
+            AccessToken = jwtTokenService.CreateAccessToken(user, session.Id, timeProvider),
             Secret = secret,
             OtpUrl = otpUrl,
             AllCodes = recoveryCodes.Select(code => new RecoveryCodeDto
@@ -95,9 +98,9 @@ public class Recover2FaEndpoint(
         }), ct);
         await db.Sessions.AddAsync(session, ct);
         await db.SaveChangesAsync(ct);
-        refreshCookieService.Issue(HttpContext.Response, refreshToken, session.ValidUntil);
+        refreshCookieService.Issue(httpContext.Response, refreshToken, session.ValidUntil);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Successfully recovered 2FA for {EmailRef}. New session created from {DeviceInfo}",
             UserUtils.DescribeEmailForLogs(user.Email),
             session.DeviceInfo

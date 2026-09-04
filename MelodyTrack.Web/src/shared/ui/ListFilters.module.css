@@ -1,0 +1,54 @@
+.stack {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 12px;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  margin-bottom: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1 1 220px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.fieldWide {
+  flex-basis: 420px;
+}
+
+.fieldService {
+  flex-basis: 320px;
+}
+
+.field :global(.ant-picker) {
+  width: 100%;
+  min-width: 0;
+}
+
+@media (max-width: 720px) {
+  .stack {
+    flex-direction: column;
+  }
+
+  .field,
+  .fieldWide,
+  .fieldService {
+    width: 100%;
+    flex: 1 1 100%;
+    flex-basis: auto;
+  }
+
+  .stack :global(.ant-select),
+  .stack :global(.ant-picker),
+  .stack :global(.ant-input),
+  .stack :global(.ant-input-affix-wrapper) {
+    width: 100%;
+    min-width: 0;
+  }
+}

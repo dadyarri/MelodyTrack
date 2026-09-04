@@ -1,70 +1,64 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Authorization;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class LogoutEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.NoReq.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/logout")]
+public sealed class LogoutEndpoint
 {
-    public override void Configure()
+    [AllowAnonymous]
+    public static async Task<Results<NoContent, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        RefreshSessionCookieService refreshCookieService,
+        AuthenticationTokenHasher tokenHasher,
+        ILogger<LogoutEndpoint> logger,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
-        Post("/auth/logout");
-    }
-
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
-    {
-        var user = await currentUserAccessor.GetAsync(ct);
-        if (user is null)
-        {
-            Logger.LogWarning("Logout attempt without a current user");
-            return TypedResults.Unauthorized();
-        }
-
-        var refreshToken = refreshCookieService.ReadRefreshToken(HttpContext.Request);
+        var refreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);
         if (refreshToken is null)
         {
-            refreshCookieService.Clear(HttpContext.Response);
-            return TypedResults.Unauthorized();
+            refreshCookieService.Clear(httpContext.Response);
+            return TypedResults.NoContent();
         }
 
-        if (!refreshCookieService.HasValidCsrfToken(HttpContext.Request, refreshToken))
+        if (!refreshCookieService.HasValidCsrfToken(httpContext.Request, refreshToken))
         {
-            Logger.LogWarning("auth.logout.csrf_rejected {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+            logger.LogWarning("auth.logout.csrf_rejected");
             return TypedResults.Forbid();
         }
 
-        var refreshTokenHash = UserUtils.HashOpaqueToken(refreshToken);
-
-        var revokedCount = await db.Sessions
-            .Where(e => e.RefreshToken == refreshTokenHash && e.User.Id == user.Id)
-            .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
-
-        if (revokedCount == 0)
+        var refreshTokenHash = tokenHasher.HashRefreshToken(refreshToken);
+        var session = await db.Sessions
+            .Include(item => item.User)
+            .FirstOrDefaultAsync(item => item.RefreshToken == refreshTokenHash, ct);
+        if (session is null)
         {
-            refreshCookieService.Clear(HttpContext.Response);
-            Logger.LogWarning("Logout attempt by {EmailRef} for non-owned or unknown refresh token", UserUtils.DescribeEmailForLogs(user.Email));
-            return TypedResults.Unauthorized();
+            refreshCookieService.Clear(httpContext.Response);
+            return TypedResults.NoContent();
         }
 
-        refreshCookieService.Clear(HttpContext.Response);
+        session.WasRevoked = true;
+        await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(user.Email));
+        refreshCookieService.Clear(httpContext.Response);
+
+        logger.LogInformation("{EmailRef} successfully logged out", UserUtils.DescribeEmailForLogs(session.User.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "logout_succeeded",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.LogoutSucceeded,
             EntityType = "session",
-            ActorUserId = user.Id,
-            ActorEmail = user.Email,
-            ActorDisplayName = $"{user.LastName} {user.FirstName}".Trim(),
+            ActorUserId = session.User.Id,
+            ActorEmail = session.User.Email,
+            ActorDisplayName = $"{session.User.LastName} {session.User.FirstName}".Trim(),
             Details = "Выход из текущей сессии"
         }, ct);
         return TypedResults.NoContent();

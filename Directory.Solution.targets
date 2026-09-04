@@ -1,0 +1,10 @@
+<Project>
+  <Target Name="BuildFrontendCompatibility"
+          AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <MSBuild Projects="$(MSBuildThisFileDirectory)MelodyTrack.Backend/MelodyTrack.Backend.csproj"
+             Targets="GenerateFrontendApiClient"
+             BuildInParallel="false"
+             Properties="Configuration=$(Configuration);RunFrontendContractBuild=true" />
+  </Target>
+</Project>

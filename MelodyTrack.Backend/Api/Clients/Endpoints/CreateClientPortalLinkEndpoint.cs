@@ -1,4 +1,5 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -9,35 +10,28 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class CreateClientPortalLinkEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    IPublicUrlBuilder publicUrlBuilder,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetEntityRequest>.Res<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/clients/{id}/portal-links")]
+public sealed class CreateClientPortalLinkEndpoint
 {
-    public override void Configure()
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IPublicUrlBuilder publicUrlBuilder,
+        CredentialHasher credentialHasher,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Post("/clients/{id}/portal-links");
-    }
-
-    public override async Task<Results<Created<CreateClientPortalLinkResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
-    {
-        var currentUser = await currentUserAccessor.GetAsync(ct);
-        if (currentUser is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!currentUser.Role.RoleName.IsAnyAdmin())
-        {
-            return TypedResults.Forbid();
-        }
+        var currentUser = await currentUserAccessor.GetAsync(ct)
+            ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
         var client = await db.Clients
             .Include(item => item.Contacts)
@@ -45,10 +39,10 @@ public class CreateClientPortalLinkEndpoint(
 
         if (client is null)
         {
-            AddError(r => r.Id, "Клиент не найден");
+            validationErrors.Add(nameof(req.Id), "Клиент не найден");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
@@ -66,33 +60,31 @@ public class CreateClientPortalLinkEndpoint(
 
         if (hasRealEmail && existingUser is not null && existingUser.Role.RoleName != UserRoles.Client)
         {
-            AddError(r => r.Id, "Этот email уже используется в рабочем аккаунте. Для клиента нужен отдельный email.");
+            validationErrors.Add(nameof(req.Id), "Этот email уже используется в рабочем аккаунте. Для клиента нужен отдельный email.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status409Conflict);
         }
 
         if (existingUser is not null && existingUser.ClientId is not null && existingUser.ClientId != client.Id)
         {
-            AddError(r => r.Id, "Этот email уже привязан к другому клиентскому кабинету.");
+            validationErrors.Add(nameof(req.Id), "Этот email уже привязан к другому клиентскому кабинету.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status409Conflict);
         }
 
         if (existingUser is null)
         {
-            UserUtils.HashPassword(UserUtils.GenerateRandomString(32), out var passwordHash);
-
             existingUser = new User
             {
                 Id = Ulid.NewUlid(),
                 Email = desiredEmail,
                 FirstName = client.FirstName,
                 LastName = client.LastName,
-                Password = passwordHash,
+                Password = credentialHasher.HashPassword(UserUtils.GenerateRandomString(32)),
                 Role = clientRole,
                 ClientId = client.Id,
                 Phone = client.Contacts.Phone,
@@ -131,6 +123,9 @@ public class CreateClientPortalLinkEndpoint(
         }
         else
         {
+            await db.ClientPortalSavedIdentityReferences
+                .Where(item => item.LoginLinkId == loginLink.Id)
+                .ExecuteDeleteAsync(ct);
             loginLink.TokenHash = UserUtils.HashOpaqueToken(portalToken);
             loginLink.RevokedAtUtc = null;
             loginLink.FailedPinAttempts = 0;
@@ -145,8 +140,9 @@ public class CreateClientPortalLinkEndpoint(
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = isRotation ? "client_portal_link_rotated" : "client_portal_link_created",
+            Event = isRotation
+                ? MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalLinkRotated
+                : MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientPortalLinkCreated,
             EntityType = "client_portal_link",
             EntityId = loginLink.Id.ToString(),
             ActorUserId = currentUser.Id,

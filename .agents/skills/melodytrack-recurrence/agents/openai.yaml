@@ -1,0 +1,4 @@
+interface:
+  display_name: "MelodyTrack Recurrence"
+  short_description: "Change recurrence behavior without regressions"
+  default_prompt: "Use $melodytrack-recurrence to modify MelodyTrack appointment or recurring-task behavior safely."

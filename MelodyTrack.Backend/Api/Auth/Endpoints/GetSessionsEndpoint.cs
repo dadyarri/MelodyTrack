@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
@@ -8,21 +10,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetSessionsEndpoint(AppDbContext db, TimeProvider timeProvider, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/auth/sessions")]
+public sealed class GetSessionsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/auth/sessions");
-    }
-
-    public override async Task<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>> ExecuteAsync(
-        CancellationToken ct)
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
+    public static async Task<Results<Ok<GetSessionsResponse>, UnauthorizedHttpResult>> HandleAsync(
+        AppDbContext db,
+        TimeProvider timeProvider,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<GetSessionsEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Session list request without a current user");
+            logger.LogWarning("Session list request without a current user");
             return TypedResults.Unauthorized();
         }
 
@@ -44,11 +47,11 @@ public class GetSessionsEndpoint(AppDbContext db, TimeProvider timeProvider, ICu
                 Id = e.Id,
                 DeviceInfo = e.DeviceInfo,
                 IsCurrent = e.Id == currentUserAccessor.SessionId,
-                LastSeenAtUtc = e.Id.Time.UtcDateTime
+                CreatedAtUtc = e.Id.Time.UtcDateTime
             })
             .ToList();
 
-        Logger.LogInformation("Retrieved {Count} active sessions for {EmailRef}", sessions.Count, UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("Retrieved {Count} active sessions for {EmailRef}", sessions.Count, UserUtils.DescribeEmailForLogs(user.Email));
         return TypedResults.Ok(new GetSessionsResponse
         {
             Data = data

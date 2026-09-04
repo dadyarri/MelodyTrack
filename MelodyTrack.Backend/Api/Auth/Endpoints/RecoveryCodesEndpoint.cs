@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
@@ -9,26 +9,27 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/auth/recovery-codes")]
+public sealed class RecoveryCodesEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/recovery-codes");
-    }
 
-    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(
-        CancellationToken ct)
+    public static async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> HandleAsync(
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<RecoveryCodesEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
 
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes generation attempt without a current user");
+            logger.LogWarning("Recovery codes generation attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
-        Logger.LogDebug("Invalidating existing unused recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogDebug("Invalidating existing unused recovery codes for {EmailRef}", UserUtils.DescribeEmailForLogs(user.Email));
         await db.RecoveryCodes
             .Where(e => !e.WasUsed && e.User == user)
             .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasUsed, true), ct);
@@ -49,11 +50,10 @@ public class RecoveryCodesEndpoint(AppDbContext db, IAuditLogService auditLogSer
 
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(user.Email));
+        logger.LogInformation("Successfully generated {Count} new recovery codes for {EmailRef}", recoveryCodes.Count, UserUtils.DescribeEmailForLogs(user.Email));
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "recovery_codes_regenerated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RecoveryCodesRegenerated,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,

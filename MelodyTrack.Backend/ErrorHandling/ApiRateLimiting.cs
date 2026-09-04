@@ -1,7 +1,5 @@
 using System.Globalization;
-using System.Net;
 using System.Threading.RateLimiting;
-using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.ErrorHandling;
@@ -17,8 +15,10 @@ public static class ApiRateLimitPolicies
     public const string InviteInformation = "auth-invite-information";
     public const string PortalLinkStatus = "portal-link-status";
     public const string PortalAuthentication = "portal-authentication";
+    public const string CalendarSubscription = "calendar-subscription";
     public const string Releases = "public-releases";
     public const string ExpensiveRead = "expensive-read";
+    public const string VacationRequests = "vacation-requests";
 
     public static IServiceCollection AddApiRateLimiting(this IServiceCollection services)
     {
@@ -57,7 +57,9 @@ public static class ApiRateLimitPolicies
             AddPolicy(options, InviteInformation, 30, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalLinkStatus, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalAuthentication, 20, TimeSpan.FromMinutes(1));
+            AddPolicy(options, CalendarSubscription, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, Releases, 120, TimeSpan.FromMinutes(1));
+            AddPolicy(options, VacationRequests, 20, TimeSpan.FromMinutes(5));
             options.AddConcurrencyLimiter(ExpensiveRead, limiterOptions =>
             {
                 limiterOptions.PermitLimit = 8;
@@ -90,8 +92,8 @@ public static class ApiRateLimitPolicies
 
     private static string GetPartitionKey(HttpContext context)
     {
-        var configuration = context.RequestServices.GetRequiredService<StartupConfiguration>();
-        if (configuration.Environment == "Test"
+        var environment = context.RequestServices.GetRequiredService<IHostEnvironment>();
+        if (environment.IsEnvironment("Test")
             && context.Request.Headers.TryGetValue("X-Forwarded-For", out var testIdentity))
         {
             return testIdentity.ToString();
@@ -102,15 +104,6 @@ public static class ApiRateLimitPolicies
 
     internal static string GetClientAddressPartitionKey(HttpContext context)
     {
-        if (context.Request.Headers.TryGetValue("X-Forwarded-For", out var forwardedFor))
-        {
-            var lastProxyValue = forwardedFor.ToString().Split(',')[^1].Trim();
-            if (IPAddress.TryParse(lastProxyValue, out var clientAddress))
-            {
-                return clientAddress.ToString();
-            }
-        }
-
         return context.Connection.RemoteIpAddress?.ToString() ?? "unknown";
     }
 }

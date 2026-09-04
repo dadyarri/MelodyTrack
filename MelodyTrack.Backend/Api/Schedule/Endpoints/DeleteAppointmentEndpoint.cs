@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Requests;
 using MelodyTrack.Backend.Data;
@@ -9,21 +11,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule.Endpoints;
 
-public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDeletionService, AppDbContext db, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<DeleteAppointmentRequest>.Res<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Delete, "/appointments/{id}")]
+public sealed class DeleteAppointmentEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/appointments/{id}");
-    }
 
-    public override async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(DeleteAppointmentRequest req, CancellationToken ct)
+    public static async Task<Results<NoContent, NotFound<ApiProblemDetails>, UnauthorizedHttpResult, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+        [AsParameters] DeleteAppointmentRequest req,
+        IAppointmentDeletionService appointmentDeletionService,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        ILogger<DeleteAppointmentEndpoint> logger,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Logger.LogDebug("Attempting to delete appointment with ID: {AppointmentId}", req.Id);
+        logger.LogDebug("Attempting to delete appointment with ID: {AppointmentId}", req.Id);
         if (!TryParseScope(req.Scope, out var scope))
         {
-            AddError(r => r.Scope, "Некорректная область удаления");
-            return new ApiProblemDetails(ValidationFailures);
+            validationErrors.Add(nameof(req.Scope), "Некорректная область удаления");
+            return new ApiProblemDetails(validationErrors);
         }
 
         var appointment = await db.Appointments
@@ -41,7 +48,7 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
 
         if (appointment is null)
         {
-            Logger.LogInformation("Appointment with ID {AppointmentId} was already deleted or not found", req.Id);
+            logger.LogInformation("Appointment with ID {AppointmentId} was already deleted or not found", req.Id);
             return TypedResults.NoContent();
         }
 
@@ -61,21 +68,20 @@ public class DeleteAppointmentEndpoint(IAppointmentDeletionService appointmentDe
 
         if (result == DeleteAppointmentResult.NotFound)
         {
-            Logger.LogInformation("Appointment with ID {AppointmentId} was already deleted or not found", req.Id);
+            logger.LogInformation("Appointment with ID {AppointmentId} was already deleted or not found", req.Id);
             return TypedResults.NoContent();
         }
 
-        Logger.LogInformation("Successfully deleted appointment with ID: {AppointmentId}", req.Id);
+        logger.LogInformation("Successfully deleted appointment with ID: {AppointmentId}", req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "schedule",
-            Action = scope switch
+            Event = scope switch
             {
-                AppointmentDeleteScope.WeekdayThisAndFollowing => "appointments_deleted_selected_weekday_this_and_following",
-                AppointmentDeleteScope.WeekdayAll => "appointments_deleted_selected_weekday_all",
-                AppointmentDeleteScope.ThisAndFollowing => "appointments_deleted_this_and_following",
-                AppointmentDeleteScope.All => "appointments_deleted_all",
-                _ => "appointment_deleted"
+                AppointmentDeleteScope.WeekdayThisAndFollowing => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedSelectedWeekdayThisAndFollowing,
+                AppointmentDeleteScope.WeekdayAll => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedSelectedWeekdayAll,
+                AppointmentDeleteScope.ThisAndFollowing => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedThisAndFollowing,
+                AppointmentDeleteScope.All => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentsDeletedAll,
+                _ => MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentDeleted
             },
             EntityType = "appointment",
             EntityId = appointment.Id.ToString(),

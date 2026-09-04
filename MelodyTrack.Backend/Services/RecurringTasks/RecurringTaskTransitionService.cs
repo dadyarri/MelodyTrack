@@ -5,6 +5,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Services.RecurringTasks;
 
@@ -141,7 +142,7 @@ internal sealed class RecurringTaskTransitionService(
             await db.RecurringTaskExecutions.AddAsync(execution, ct);
         }
 
-        await SaveAndAuditAsync(execution, "task_completed", BuildRecurringTaskAuditDetails(candidate), ct);
+        await SaveAndAuditAsync(execution, AuditCatalog.Events.TaskCompleted, BuildRecurringTaskAuditDetails(candidate), ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Completed);
     }
@@ -221,7 +222,7 @@ internal sealed class RecurringTaskTransitionService(
             await db.RecurringTaskExecutions.AddAsync(execution, ct);
         }
 
-        await SaveAndAuditAsync(execution, "task_cancelled", BuildRecurringTaskAuditDetails(candidate), ct);
+        await SaveAndAuditAsync(execution, AuditCatalog.Events.TaskCancelled, BuildRecurringTaskAuditDetails(candidate), ct);
 
         return RecurringTaskActionResult.Success(RecurringTaskStatus.Cancelled);
     }
@@ -310,7 +311,7 @@ internal sealed class RecurringTaskTransitionService(
 
         await SaveAndAuditAsync(
             execution,
-            "task_delayed",
+            AuditCatalog.Events.TaskDelayed,
             AuditDetailsFormatter.JoinChanges(
                 BuildRecurringTaskAuditDetails(candidate),
                 AuditDetailsFormatter.DescribeContext("Отложено до", delayUntilUtc)),
@@ -331,7 +332,7 @@ internal sealed class RecurringTaskTransitionService(
 
     private async Task SaveAndAuditAsync(
         RecurringTaskExecution execution,
-        string action,
+        AuditEventDefinition auditEvent,
         string details,
         CancellationToken ct)
     {
@@ -339,8 +340,7 @@ internal sealed class RecurringTaskTransitionService(
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "recurring_tasks",
-            Action = action,
+            Event = auditEvent,
             EntityType = "recurring_task",
             EntityId = execution.Id.ToString(),
             Details = details

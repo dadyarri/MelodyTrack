@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,19 +11,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Users.Endpoints;
 
-public class GetUserAvailabilityEndpoint(
-    AppDbContext db,
-    IUserAvailabilityService userAvailabilityService,
-    IRecordActivityService recordActivityService,
-    ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetUserAvailabilityRequest>.Res<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Get, "/users/{id}/availability")]
+public sealed class GetUserAvailabilityEndpoint
 {
-    public override void Configure()
-    {
-        Get("/users/{id}/availability");
-    }
 
-    public override async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(GetUserAvailabilityRequest req, CancellationToken ct)
+    public static async Task<Results<Ok<UserAvailabilityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetUserAvailabilityRequest req,
+        AppDbContext db,
+        IUserAvailabilityService userAvailabilityService,
+        IRecordActivityService recordActivityService,
+        ICurrentUserAccessor currentUserAccessor,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
@@ -42,8 +45,8 @@ public class GetUserAvailabilityEndpoint(
 
         if (userExists is null)
         {
-            AddError(r => r.Id, "Пользователь не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Пользователь не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         if (userExists.RoleName == UserRoles.Superuser && !currentUser.Role.RoleName.IsSuperuser())
@@ -98,6 +101,7 @@ public class GetUserAvailabilityEndpoint(
 
 public class GetUserAvailabilityRequest
 {
-    [BindFrom("id")]
+    [FromQuery(Name = "id")]
+    [FromRoute]
     public Ulid Id { get; set; }
 }

@@ -1,10 +1,12 @@
-using FastEndpoints;
+
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Clients.Requests;
 
 public class SetLeadStatusRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public required bool IsClosed { get; set; }
 }

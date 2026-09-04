@@ -1,5 +1,5 @@
-using Facet.Mapping;
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,15 +11,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.Req<GetEntityRequest>.Res<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>>
+[ApiEndpoint(ApiMethod.Get, "/clients/{id}")]
+public sealed class GetClientEndpoint
 {
-    public override void Configure()
-    {
-        Get("/clients/{id}");
-    }
 
-    public override async Task<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> ExecuteAsync(GetEntityRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<ClientWithBalanceDto>, UnauthorizedHttpResult, ForbidHttpResult, NotFound>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ClientWithBalanceDtoMapper mapper,
+        IRecordActivityService recordActivityService,
+        ILogger<GetClientEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -32,7 +37,7 @@ public class GetClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Fetching client with ID: {ClientId}", req.Id);
+        logger.LogDebug("Fetching client with ID: {ClientId}", req.Id);
         var client = await db.Clients
             .AsNoTracking()
             .Include(e => e.Contacts)
@@ -42,14 +47,14 @@ public class GetClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUser
 
         if (client is null)
         {
-            Logger.LogWarning("Client with ID {ClientId} not found", req.Id);
+            logger.LogWarning("Client with ID {ClientId} not found", req.Id);
             return TypedResults.NotFound();
         }
 
-        var clientDto = (await new[] { client }.ToList().ToFacetsAsync(mapper, ct)).Single();
+        var clientDto = (await mapper.MapAsync([client], ct)).Single();
         clientDto.LastActivity = await recordActivityService.GetLatestActivityAsync("client", client.Id.ToString(), ct);
 
-        Logger.LogDebug("Successfully retrieved client {FirstName} {LastName} (ID: {ClientId})",
+        logger.LogDebug("Successfully retrieved client {FirstName} {LastName} (ID: {ClientId})",
             client.FirstName, client.LastName, client.Id);
         return TypedResults.Ok(clientDto);
     }

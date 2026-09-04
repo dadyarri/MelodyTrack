@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
 using MelodyTrack.Backend.Api.Courses.Responses;
@@ -11,16 +12,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class GetCourseEnrollmentsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, CourseProgressService courseProgressService)
-    : Ep.Req<GetCourseEnrollmentsRequest>.Res<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/course-enrollments")]
+public sealed class GetCourseEnrollmentsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/course-enrollments");
-    }
 
-    public override async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        GetCourseEnrollmentsRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<GetCourseEnrollmentsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetCourseEnrollmentsRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        CourseProgressService courseProgressService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -62,7 +65,7 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, ICurrentUserAccessor 
             .OrderByDescending(item => item.CreatedAtUtc)
             .ToListAsync(ct);
 
-        var linkedAppointments = await LoadLinkedAppointmentsAsync(enrollments, ct);
+        var linkedAppointments = await LoadLinkedAppointmentsAsync(db, enrollments, ct);
 
         return TypedResults.Ok(new GetCourseEnrollmentsResponse
         {
@@ -119,7 +122,8 @@ public class GetCourseEnrollmentsEndpoint(AppDbContext db, ICurrentUserAccessor 
         });
     }
 
-    private async Task<Dictionary<(Ulid ClientId, Ulid CourseThemeId), List<LinkedAppointmentRow>>> LoadLinkedAppointmentsAsync(
+    private static async Task<Dictionary<(Ulid ClientId, Ulid CourseThemeId), List<LinkedAppointmentRow>>> LoadLinkedAppointmentsAsync(
+        AppDbContext db,
         List<Data.Models.CourseEnrollment> enrollments,
         CancellationToken ct)
     {

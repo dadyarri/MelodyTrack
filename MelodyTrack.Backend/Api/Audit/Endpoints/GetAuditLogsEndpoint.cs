@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Audit.Requests;
 using MelodyTrack.Backend.Api.Audit.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
@@ -9,32 +10,22 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Core.Auditing;
 
 namespace MelodyTrack.Backend.Api.Audit.Endpoints;
 
-public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetAuditLogsPaginatedRequest>.Res<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/audit-logs")]
+public sealed class GetAuditLogsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/audit-logs");
-    }
-
-    public override async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(GetAuditLogsPaginatedRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Superuser)]
+    public static async Task<Results<Ok<GetAuditLogsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetAuditLogsPaginatedRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var timezone = ResolveTimezoneOrUtc(req.Timezone);
-        var user = await currentUserAccessor.GetAsync(ct);
-
-        if (user is null)
-        {
-            return TypedResults.Unauthorized();
-        }
-
-        if (!user.Role.RoleName.IsSuperuser())
-        {
-            return TypedResults.Forbid();
-        }
-
         var normalizedSearch = req.Search?.Trim().ToLowerInvariant();
 
         var query = db.AuditLogs
@@ -45,9 +36,13 @@ public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentU
         if (!string.IsNullOrWhiteSpace(normalizedSearch))
         {
             var pattern = $"%{normalizedSearch}%";
+            var categoryCodes = AuditCatalog.FindCategoryCodes(normalizedSearch);
+            var actionCodes = AuditCatalog.FindActionCodes(normalizedSearch);
             query = query.Where(item =>
                 EF.Functions.ILike(item.Category, pattern) ||
                 EF.Functions.ILike(item.Action, pattern) ||
+                categoryCodes.Contains(item.Category) ||
+                actionCodes.Contains(item.Action) ||
                 EF.Functions.ILike(item.EntityType, pattern) ||
                 (item.EntityId != null && EF.Functions.ILike(item.EntityId, pattern)) ||
                 (item.ActorEmail != null && EF.Functions.ILike(item.ActorEmail, pattern)) ||
@@ -64,7 +59,9 @@ public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentU
                 Id = item.Id,
                 CreatedAtUtc = item.CreatedAtUtc,
                 Category = item.Category,
+                CategoryLabel = item.Category,
                 Action = item.Action,
+                ActionLabel = item.Action,
                 EntityType = item.EntityType,
                 EntityId = item.EntityId,
                 ActorEmail = item.ActorEmail,
@@ -74,10 +71,16 @@ public class GetAuditLogsEndpoint(AppDbContext db, ICurrentUserAccessor currentU
             })
             .ToListAsync(ct);
 
+        foreach (var log in logs)
+        {
+            log.CategoryLabel = AuditCatalog.GetCategoryLabel(log.Category);
+            log.ActionLabel = AuditCatalog.GetActionLabel(log.Action);
+        }
+
         return TypedResults.Ok(new GetAuditLogsResponse
         {
-            Data = logs,
-            Info = PaginatedResponse.Create(logs, totalCount, req).Info
+            Items = logs,
+            Page = PaginatedResponse.Create(logs, totalCount, req).Page
         });
     }
 

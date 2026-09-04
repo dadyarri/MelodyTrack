@@ -1,6 +1,8 @@
+using MelodyTrack.Backend.Validation;
+
 namespace MelodyTrack.Backend.Api.Payments.Requests;
 
-public class CreatePaymentRequest
+public class CreatePaymentRequest : IValidatableRequest
 {
     public required Ulid ClientId { get; set; }
     public Ulid? ServiceId { get; set; }

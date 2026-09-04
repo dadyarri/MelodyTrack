@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Tasks.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,18 +9,19 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class CompleteRecurringTaskEndpoint(IRecurringTaskService recurringTaskService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<CompleteRecurringTaskRequest>.Res<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/tasks/{taskId}/completion")]
+public sealed class CompleteRecurringTaskEndpoint
 {
-    public override void Configure()
-    {
-        Post("/tasks/{taskId}/completion");
-    }
 
-    public override async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(
+    public static async Task<Results<Ok<RecurringTaskActionResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> HandleAsync(
         CompleteRecurringTaskRequest req,
-        CancellationToken ct)
+        string taskId,
+        IRecurringTaskService recurringTaskService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
+        req.DeduplicationKey = taskId;
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)
         {

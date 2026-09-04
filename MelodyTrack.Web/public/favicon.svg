@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="MelodyTrack">
+  <defs>
+    <linearGradient id="wood" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d88a32" />
+      <stop offset="0.52" stop-color="#c87422" />
+      <stop offset="1" stop-color="#a95618" />
+    </linearGradient>
+    <radialGradient id="hole">
+      <stop offset="0.72" stop-color="#17110c" />
+      <stop offset="1" stop-color="#2a170b" />
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="44" fill="url(#wood)" />
+  <rect x="8" y="8" width="496" height="496" rx="38" fill="none" stroke="#3b210e" stroke-width="8" />
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#3b210e" stroke-width="9" />
+  <circle cx="256" cy="256" r="139" fill="none" stroke="#8f4516" stroke-width="7" />
+  <circle cx="256" cy="256" r="127" fill="url(#hole)" stroke="#3b210e" stroke-width="7" />
+  <g fill="none" stroke-linecap="round">
+    <g stroke="#2d190c" stroke-width="7">
+      <path d="M78 0 84 512" />
+      <path d="M145 0 151 512" />
+      <path d="M212 0 218 512" />
+      <path d="M279 0 285 512" />
+      <path d="M346 0 352 512" />
+      <path d="M413 0 419 512" />
+    </g>
+    <g stroke="#f0b450" stroke-width="2">
+      <path d="M76 0 82 512" />
+      <path d="M143 0 149 512" />
+      <path d="M210 0 216 512" />
+      <path d="M277 0 283 512" />
+      <path d="M344 0 350 512" />
+      <path d="M411 0 417 512" />
+    </g>
+  </g>
+</svg>
