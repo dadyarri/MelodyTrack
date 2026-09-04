@@ -14,7 +14,7 @@ import {
   type RegisterInput,
 } from "@/entities/session";
 import { authQueryKeys, useAuth } from "@/entities/session";
-import { getApiErrorMessage, getApiErrorMessages, normalizeAppError } from "@/shared/api";
+import { getApiErrorMessage, normalizeAppError } from "@/shared/api";
 
 export type AuthMode = "login" | "register" | "recover2fa";
 export type TotpSetup = {
@@ -53,12 +53,6 @@ export function useAuthPageController() {
   const watchedInviteCode = Form.useWatch("inviteCode", registerForm);
   const registerInviteCode = (watchedInviteCode || inviteCode).trim();
   const { message } = AntdApp.useApp();
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
-
   const inviteQuery = useQuery({
     queryKey: authQueryKeys.invite(registerInviteCode),
     queryFn: () => authApi.getInviteInfo(registerInviteCode),
@@ -116,7 +110,6 @@ export function useAuthPageController() {
     },
     onError: (error) => {
       setPasswordResetGuidanceVisible(normalizeAppError(error).status === 401);
-      showErrors(error);
     },
   });
 
@@ -144,7 +137,6 @@ export function useAuthPageController() {
       secondFactorForm.resetFields();
       await finishLogin(result);
     },
-    onError: showErrors,
   });
 
   const registerMutation = useMutation({
@@ -171,7 +163,6 @@ export function useAuthPageController() {
       setMode("login");
       void navigate("/login", { replace: true });
     },
-    onError: showErrors,
   });
 
   const verify2FaMutation = useMutation({
@@ -192,7 +183,6 @@ export function useAuthPageController() {
       setTotpSetup(null);
       setMode("login");
     },
-    onError: showErrors,
   });
 
   const recover2FaMutation = useMutation({
@@ -202,7 +192,6 @@ export function useAuthPageController() {
       setRecoveryCodeUsername(values.email);
       message.success("Доступ восстановлен. Настройте новое приложение и сохраните новые коды восстановления.");
     },
-    onError: showErrors,
   });
 
   return {

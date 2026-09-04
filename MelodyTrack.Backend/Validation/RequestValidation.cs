@@ -108,10 +108,19 @@ internal static partial class RequestValidation
             case UpdateClientRequest value:
                 foreach (var vacation in value.Vacations ?? [])
                 {
-                    if (vacation.StartDate > vacation.EndDate)
+                    if (vacation.StartDate.Kind != DateTimeKind.Utc || vacation.EndDate.Kind != DateTimeKind.Utc)
                     {
-                        Add(errors, nameof(value.Vacations), "Дата окончания отсутствия не может быть раньше даты начала");
+                        Add(errors, nameof(value.Vacations), "Периоды отсутствия должны быть указаны в UTC");
                     }
+                    if (vacation.StartDate >= vacation.EndDate)
+                    {
+                        Add(errors, nameof(value.Vacations), "Дата и время окончания отсутствия должны быть позже начала");
+                    }
+                }
+                var orderedClientVacations = (value.Vacations ?? []).OrderBy(item => item.StartDate).ToList();
+                if (orderedClientVacations.Zip(orderedClientVacations.Skip(1)).Any(pair => pair.First.EndDate > pair.Second.StartDate))
+                {
+                    Add(errors, nameof(value.Vacations), "Периоды отсутствия не должны пересекаться");
                 }
                 break;
             case CreateCourseEnrollmentRequest value:
@@ -179,6 +188,9 @@ internal static partial class RequestValidation
             case CreateVacationRequest value:
                 VacationRange(errors, value.StartDate, value.EndDate);
                 Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                break;
+            case GetVacationAppointmentConflictCountRequest value:
+                VacationRange(errors, value.StartDate, value.EndDate);
                 break;
             case CreateWorkingHoursRequest value:
                 WorkingHours(errors, value.WorkingHours);
@@ -406,9 +418,14 @@ internal static partial class RequestValidation
             Add(errors, nameof(value.WorkingHours), "Каждый день недели должен быть указан ровно один раз.");
         foreach (var vacation in value.Vacations ?? [])
         {
-            if (vacation.EndDate < vacation.StartDate)
-                Add(errors, nameof(value.Vacations), "Дата окончания отпуска не может быть раньше даты начала.");
+            if (vacation.StartDate.Kind != DateTimeKind.Utc || vacation.EndDate.Kind != DateTimeKind.Utc)
+                Add(errors, nameof(value.Vacations), "Периоды отпуска должны быть указаны в UTC.");
+            if (vacation.EndDate <= vacation.StartDate)
+                Add(errors, nameof(value.Vacations), "Дата и время окончания отпуска должны быть позже начала.");
         }
+        var orderedVacations = (value.Vacations ?? []).OrderBy(item => item.StartDate).ToList();
+        if (orderedVacations.Zip(orderedVacations.Skip(1)).Any(pair => pair.First.EndDate > pair.Second.StartDate))
+            Add(errors, nameof(value.Vacations), "Периоды отпуска не должны пересекаться.");
     }
 
     private static void WorkingHours(List<ValidationResult> errors, IReadOnlyCollection<WorkingHoursRequestDayInput>? workingHours)
@@ -433,7 +450,7 @@ internal static partial class RequestValidation
             Add(errors, nameof(CreateWorkingHoursRequest.WorkingHours), "Каждый день недели должен быть указан ровно один раз.");
     }
 
-    private static void VacationRange(List<ValidationResult> errors, DateOnly startDate, DateOnly endDate)
+    private static void VacationRange(List<ValidationResult> errors, DateTime startDate, DateTime endDate)
     {
         if (startDate == default)
         {
@@ -443,11 +460,19 @@ internal static partial class RequestValidation
         {
             Add(errors, nameof(CreateVacationRequest.EndDate), "Укажите дату окончания отпуска.");
         }
-        if (startDate != default && endDate != default && endDate < startDate)
+        if (startDate != default && startDate.Kind != DateTimeKind.Utc)
         {
-            Add(errors, nameof(CreateVacationRequest.EndDate), "Дата окончания отпуска не может быть раньше даты начала.");
+            Add(errors, nameof(CreateVacationRequest.StartDate), "Дата и время начала отпуска должны быть указаны в UTC.");
         }
-        if (endDate == DateOnly.MaxValue)
+        if (endDate != default && endDate.Kind != DateTimeKind.Utc)
+        {
+            Add(errors, nameof(CreateVacationRequest.EndDate), "Дата и время окончания отпуска должны быть указаны в UTC.");
+        }
+        if (startDate != default && endDate != default && endDate <= startDate)
+        {
+            Add(errors, nameof(CreateVacationRequest.EndDate), "Дата и время окончания отпуска должны быть позже начала.");
+        }
+        if (endDate == DateTime.MaxValue)
         {
             Add(errors, nameof(CreateVacationRequest.EndDate), "Дата окончания отпуска находится вне поддерживаемого диапазона.");
         }

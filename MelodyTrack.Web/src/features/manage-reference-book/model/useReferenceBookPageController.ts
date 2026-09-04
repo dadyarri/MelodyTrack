@@ -54,7 +54,6 @@ export function useReferenceBookPageController<TItem extends ReferenceBookItem>(
       setCreateOpen(false);
       await queryClient.invalidateQueries({ queryKey: listQueryKey });
     },
-    onError: showErrors,
   });
 
   const deleteMutation = useMutation({
@@ -64,6 +63,7 @@ export function useReferenceBookPageController<TItem extends ReferenceBookItem>(
       await queryClient.invalidateQueries({ queryKey: listQueryKey });
       await Promise.all(invalidateQueryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,

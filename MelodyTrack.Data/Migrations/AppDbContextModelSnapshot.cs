@@ -359,11 +359,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bytea");
 
-                    b.Property<DateOnly>("EndDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 
@@ -1623,11 +1623,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
-                    b.Property<DateOnly>("EndDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateOnly>("StartDate")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<byte[]>("UserId")
                         .IsRequired()
@@ -1691,11 +1691,11 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
 
-                    b.Property<DateOnly>("RequestedEnd")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("RequestedEnd")
+                        .HasColumnType("timestamp with time zone");
 
-                    b.Property<DateOnly>("RequestedStart")
-                        .HasColumnType("date");
+                    b.Property<DateTime>("RequestedStart")
+                        .HasColumnType("timestamp with time zone");
 
                     b.Property<byte[]>("RequesterId")
                         .IsRequired()
@@ -1731,7 +1731,7 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.ToTable("VacationRequests", t =>
                         {
-                            t.HasCheckConstraint("CK_VacationRequests_Range", "\"RequestedStart\" <= \"RequestedEnd\"");
+                            t.HasCheckConstraint("CK_VacationRequests_Range", "\"RequestedStart\" < \"RequestedEnd\"");
 
                             t.HasCheckConstraint("CK_VacationRequests_Version", "\"Version\" > 0");
                         });

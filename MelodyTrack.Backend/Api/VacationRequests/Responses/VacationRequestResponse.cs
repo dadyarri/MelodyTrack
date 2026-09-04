@@ -10,8 +10,8 @@ public sealed class VacationRequestResponse
     public required Ulid SubjectId { get; init; }
     public required string SubjectName { get; init; }
     public required string SubjectClassification { get; init; }
-    public required DateOnly StartDate { get; init; }
-    public required DateOnly EndDate { get; init; }
+    public required DateTime StartDate { get; init; }
+    public required DateTime EndDate { get; init; }
     public required string Status { get; init; }
     public string? RequestMessage { get; init; }
     public required DateTime CreatedAtUtc { get; init; }
@@ -26,8 +26,8 @@ public sealed class VacationRequestResponse
 
 public sealed class VacationPeriodResponse
 {
-    public required DateOnly StartDate { get; init; }
-    public required DateOnly EndDate { get; init; }
+    public required DateTime StartDate { get; init; }
+    public required DateTime EndDate { get; init; }
 }
 
 public sealed class GetVacationRequestsResponse

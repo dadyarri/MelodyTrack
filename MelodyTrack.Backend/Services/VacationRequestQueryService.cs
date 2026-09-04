@@ -112,14 +112,12 @@ public sealed class VacationRequestQueryService(AppDbContext db) : IVacationRequ
 
         var minStart = requests.Min(item => item.RequestedStart);
         var maxEnd = requests.Max(item => item.RequestedEnd);
-        var minUtc = DateTime.SpecifyKind(minStart.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-        var maxExclusiveUtc = DateTime.SpecifyKind(maxEnd.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
         var appointments = await db.Appointments.AsNoTracking()
             .Where(item =>
                 !item.IsDeleted &&
                 item.Status == AppointmentStatus.Planned &&
-                item.StartDate < maxExclusiveUtc &&
-                item.EndDate > minUtc &&
+                item.StartDate < maxEnd &&
+                item.EndDate > minStart &&
                 (clientIds.Contains(item.Client.Id) || item.Provider != null && staffIds.Contains(item.Provider.Id)))
             .Select(item => new
             {
@@ -148,11 +146,9 @@ public sealed class VacationRequestQueryService(AppDbContext db) : IVacationRequ
                 : clientVacations.Where(item => item.SubjectId == request.SubjectId)
                     .Select(item => new VacationPeriodResponse { StartDate = item.StartDate, EndDate = item.EndDate })
                     .ToArray();
-            var requestStartUtc = DateTime.SpecifyKind(request.RequestedStart.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-            var requestEndExclusiveUtc = DateTime.SpecifyKind(request.RequestedEnd.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
             var conflictingAppointmentCount = appointments.Count(item =>
-                item.StartDate < requestEndExclusiveUtc &&
-                item.EndDate > requestStartUtc &&
+                item.StartDate < request.RequestedEnd &&
+                item.EndDate > request.RequestedStart &&
                 (request.SubjectType == VacationRequestSubjectType.Client
                     ? item.ClientId == request.SubjectId
                     : item.ProviderId == request.SubjectId));

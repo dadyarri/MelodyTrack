@@ -17,7 +17,7 @@ describe("vacationRequestsApi", () => {
   });
 
   it("uses the portal-owned submission endpoint without a client identifier", async () => {
-    const input = { startDate: "2030-06-01", endDate: "2030-06-07", message: "Отпуск" };
+    const input = { startDate: "2030-06-01T09:00:00.000Z", endDate: "2030-06-07T18:00:00.000Z", message: "Отпуск" };
     const response = { id: "request-id", status: "pending" };
     httpMock.post.mockResolvedValue({ data: response });
 
@@ -27,7 +27,7 @@ describe("vacationRequestsApi", () => {
   });
 
   it("passes the concurrency version when approving a request", async () => {
-    const input = { expectedVersion: 3, message: "Согласовано" };
+    const input = { expectedVersion: 3, message: "Согласовано", cancelConflictingAppointments: true };
     httpMock.post.mockResolvedValue({ data: { id: "request-id", status: "approved" } });
 
     await vacationRequestsApi.approve("request-id", input);

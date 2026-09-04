@@ -78,7 +78,6 @@ export function useUsersPageController() {
       });
       message.success("Приглашение создано");
     },
-    onError: showErrors,
   });
 
   const createPasswordResetLinkMutation = useMutation({
@@ -93,7 +92,6 @@ export function useUsersPageController() {
       });
       message.success("Ссылка на восстановление создана");
     },
-    onError: showErrors,
   });
 
   const updateUserMutation = useMutation({
@@ -118,6 +116,7 @@ export function useUsersPageController() {
       editForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: userQueryKeys.all });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,

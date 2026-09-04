@@ -10,7 +10,7 @@ import type {
 
 type ClientPortalCourseTheme = RequiredApiContract<ClientPortalCourseThemeDto, "id" | "title">;
 export type ClientPortalAppointment = Omit<
-  RequiredApiContract<ClientPortalAppointmentDto, "id" | "startDate" | "endDate" | "status">,
+  RequiredApiContract<ClientPortalAppointmentDto, "id" | "startDate" | "endDate" | "status" | "isTrial">,
   "status" | "courseTheme"
 > & {
   status: AppointmentStatus;

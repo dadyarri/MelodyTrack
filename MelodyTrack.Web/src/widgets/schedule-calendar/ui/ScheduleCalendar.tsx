@@ -20,9 +20,12 @@ export function AppointmentsCalendar({
   appointments,
   availability,
   canCreateAppointments = true,
+  canCreateVacations = false,
   loading,
   range,
   onCreateAt,
+  onCreateVacation,
+  onEditVacation,
   onReschedule,
   onSelect,
   onComplete,
@@ -33,9 +36,12 @@ export function AppointmentsCalendar({
   appointments: Appointment[];
   availability?: UserAvailability;
   canCreateAppointments?: boolean;
+  canCreateVacations?: boolean;
   loading: boolean;
   range: [Dayjs, Dayjs];
   onCreateAt: (startDate: Dayjs) => void;
+  onCreateVacation: (startDate: Dayjs, endDate: Dayjs) => void;
+  onEditVacation?: (vacationId: string) => void;
   onReschedule: (appointment: Appointment, startDate: Dayjs) => void;
   onSelect: (appointment: Appointment) => void;
   onComplete: (appointment: Appointment) => void;
@@ -47,6 +53,7 @@ export function AppointmentsCalendar({
   const hours = getHours(visibleHours?.startHour, visibleHours?.endHour);
   const appointmentsByDay = groupAppointmentsByDay(appointments);
   const [draggedAppointmentId, setDraggedAppointmentId] = useState<string | null>(null);
+  const [vacationDragStart, setVacationDragStart] = useState<Dayjs | null>(null);
   const [dropTarget, setDropTarget] = useState<{
     dayKey: string;
     hour: number;
@@ -65,6 +72,7 @@ export function AppointmentsCalendar({
     ? (appointments.find((appointment) => appointment.id === draggedAppointmentId) ?? null)
     : null;
   const dayIndexByKey = new Map(days.map((day, index) => [day.format("YYYY-MM-DD"), index]));
+  const vacationSelection = getVacationSelection(vacationDragStart, dropTarget, days);
 
   const activateHoveredSlot = (nextSlot: { dayKey: string; hour: number }) => {
     setHoveredSlot((current) => {
@@ -170,6 +178,13 @@ export function AppointmentsCalendar({
   };
 
   const handleColumnDragOver = (event: DragEvent<HTMLDivElement>, day: Dayjs) => {
+    if (vacationDragStart) {
+      event.preventDefault();
+      event.dataTransfer.dropEffect = "copy";
+      setDropTarget({ dayKey: day.format("YYYY-MM-DD"), hour: getDropHour(event, hours[0], hours[hours.length - 1]) });
+      return;
+    }
+
     if (!draggedAppointment) {
       return;
     }
@@ -190,6 +205,21 @@ export function AppointmentsCalendar({
   };
 
   const handleColumnDrop = (event: DragEvent<HTMLDivElement>, day: Dayjs) => {
+    if (vacationDragStart) {
+      event.preventDefault();
+      const dropStart = day
+        .hour(getDropHour(event, hours[0], hours[hours.length - 1]))
+        .minute(0)
+        .second(0)
+        .millisecond(0);
+      const startDate = vacationDragStart.isBefore(dropStart) ? vacationDragStart : dropStart;
+      const endDate = (vacationDragStart.isAfter(dropStart) ? vacationDragStart : dropStart).add(1, "hour");
+      setVacationDragStart(null);
+      setDropTarget(null);
+      onCreateVacation(startDate, endDate);
+      return;
+    }
+
     if (!draggedAppointment) {
       return;
     }
@@ -222,11 +252,16 @@ export function AppointmentsCalendar({
       return;
     }
 
-    setDropTarget((current) => (current?.dayKey === day.format("YYYY-MM-DD") ? null : current));
+    if (!vacationDragStart) {
+      setDropTarget((current) => (current?.dayKey === day.format("YYYY-MM-DD") ? null : current));
+    }
   };
 
   return (
-    <section className={`${styles.calendar}${draggedAppointmentId ? ` ${styles.dragActive}` : ""}`} aria-busy={loading}>
+    <section
+      className={`${styles.calendar}${draggedAppointmentId || vacationDragStart ? ` ${styles.dragActive}` : ""}`}
+      aria-busy={loading}
+    >
       {hasHiddenAppointmentsAbove ? (
         <div className={`${styles.scrollIndicator} ${styles.scrollIndicatorTop}`}>
           <span>Есть записи выше</span>
@@ -296,21 +331,42 @@ export function AppointmentsCalendar({
                 handleColumnDrop(event, day);
               }}
             >
-              {getBlockedRanges(availability, day, hours[0], hours[hours.length - 1] + 1).map((range) => (
-                <div
-                  className={`${styles.blockedRange}${range.isVacation ? ` ${styles.blockedRangeVacation}` : ""}`}
-                  key={[day.format("YYYY-MM-DD"), String(range.startMinute), String(range.endMinute)].join(":")}
-                  style={getBlockedRangeStyle(range.startMinute, range.endMinute, hours[0])}
-                />
-              ))}
+              {getBlockedRanges(availability, day, hours[0], hours[hours.length - 1] + 1).map((blockedRange) => {
+                const key = [day.format("YYYY-MM-DD"), String(blockedRange.startMinute), String(blockedRange.endMinute)].join(":");
+                const className = `${styles.blockedRange}${blockedRange.isVacation ? ` ${styles.blockedRangeVacation}` : ""}`;
+                const style = getBlockedRangeStyle(blockedRange.startMinute, blockedRange.endMinute, hours[0]);
+                const vacationId = blockedRange.vacationId;
+                if (vacationId && onEditVacation) {
+                  return (
+                    <button
+                      type="button"
+                      aria-label={`Изменить отпуск ${formatDate(day)} ${formatMinutes(blockedRange.startMinute)}–${formatMinutes(blockedRange.endMinute)}`}
+                      title="Нажмите, чтобы изменить отпуск"
+                      className={`${className} ${styles.blockedRangeEditable}`}
+                      key={key}
+                      style={style}
+                      onClick={() => {
+                        onEditVacation(vacationId);
+                      }}
+                    />
+                  );
+                }
+
+                return <div className={className} key={key} style={style} />;
+              })}
               {hours.map((hour) => {
                 const dayKey = day.format("YYYY-MM-DD");
                 const isHovered = hoveredSlot?.dayKey === dayKey && hoveredSlot.hour === hour;
+                const slotStart = day.hour(hour).minute(0).second(0).millisecond(0);
+                const slotAvailable = isSlotAvailable(availability, slotStart);
+                const isVacationSelected = Boolean(
+                  vacationSelection && !slotStart.isBefore(vacationSelection[0]) && slotStart.isBefore(vacationSelection[1]),
+                );
 
                 return (
                   <button
                     type="button"
-                    className={`${styles.hourLine} ${styles.hourSlotButton}${isHovered ? ` ${styles.hourSlotButtonActive}` : ""}${dropTarget?.dayKey === dayKey && dropTarget.hour === hour ? ` ${styles.hourSlotDropTarget}` : ""}${!isSlotAvailable(availability, day.hour(hour).minute(0).second(0).millisecond(0)) ? ` ${styles.hourSlotBlocked}` : ""}`}
+                    className={`${styles.hourLine} ${styles.hourSlotButton}${isHovered ? ` ${styles.hourSlotButtonActive}` : ""}${isVacationSelected ? ` ${styles.hourSlotVacationSelection}` : ""}${dropTarget?.dayKey === dayKey && dropTarget.hour === hour ? ` ${styles.hourSlotDropTarget}` : ""}${!slotAvailable && !canCreateVacations ? ` ${styles.hourSlotBlocked}` : ""}${canCreateVacations ? ` ${styles.hourSlotVacationDraggable}` : ""}`}
                     key={hour}
                     style={
                       isHovered
@@ -320,13 +376,38 @@ export function AppointmentsCalendar({
                           } as CSSProperties)
                         : undefined
                     }
-                    aria-label={`Создать запись на ${formatDate(day)} ${hour.toString().padStart(2, "0")}:00`}
-                    disabled={!(canCreateAppointments && isSlotAvailable(availability, day.hour(hour).minute(0).second(0).millisecond(0)))}
+                    aria-label={`${canCreateAppointments ? "Создать запись" : "Создать отпуск"} на ${formatDate(day)} ${hour.toString().padStart(2, "0")}:00`}
+                    data-vacation-selected={isVacationSelected ? "true" : undefined}
+                    draggable={canCreateVacations}
+                    disabled={!canCreateVacations && !(canCreateAppointments && slotAvailable)}
                     onBlur={() => {
                       setHoveredSlot((current) => (current?.dayKey === dayKey && current.hour === hour ? null : current));
                     }}
                     onClick={() => {
-                      onCreateAt(day.hour(hour).minute(0).second(0).millisecond(0));
+                      if (canCreateAppointments) {
+                        if (slotAvailable) {
+                          onCreateAt(slotStart);
+                        }
+                        return;
+                      }
+
+                      onCreateVacation(slotStart, slotStart.add(1, "hour"));
+                    }}
+                    onDragEnd={() => {
+                      setVacationDragStart(null);
+                      setDropTarget(null);
+                    }}
+                    onDragStart={(event) => {
+                      if (!canCreateVacations) {
+                        event.preventDefault();
+                        return;
+                      }
+
+                      event.dataTransfer.effectAllowed = "copy";
+                      event.dataTransfer.setData("text/plain", "vacation-range");
+                      suppressNativeDragPreview(event);
+                      setVacationDragStart(slotStart);
+                      setDropTarget({ dayKey, hour });
                     }}
                     onFocus={() => {
                       activateHoveredSlot({ dayKey, hour });
@@ -363,12 +444,47 @@ export function AppointmentsCalendar({
       <div className={styles.mobile}>
         {days.map((day) => {
           const dayAppointments = appointmentsByDay.get(day.format("YYYY-MM-DD")) ?? [];
+          const dayStart = day.startOf("day");
+          const dayEnd = dayStart.add(1, "day");
+          const dayVacations = (availability?.vacations ?? []).filter(
+            (vacation) => dayjs(vacation.startDate).isBefore(dayEnd) && dayjs(vacation.endDate).isAfter(dayStart),
+          );
           return (
             <section className={styles.agendaDay} key={day.format("YYYY-MM-DD")}>
               <div className={day.isSame(dayjs(), "day") ? `${styles.agendaHeading} ${styles.agendaHeadingToday}` : styles.agendaHeading}>
                 <Typography.Text strong>{formatDate(day)}</Typography.Text>
                 <Typography.Text type="secondary">{formatWeekday(day)}</Typography.Text>
               </div>
+              {dayVacations.map((vacation) => {
+                const visibleStart = dayjs(vacation.startDate).isAfter(dayStart) ? dayjs(vacation.startDate) : dayStart;
+                const visibleEnd = dayjs(vacation.endDate).isBefore(dayEnd) ? dayjs(vacation.endDate) : dayEnd;
+                const content = (
+                  <>
+                    <strong>Отпуск</strong>
+                    <span>
+                      {visibleStart.format(TIME_FORMAT)}–{visibleEnd.isSame(dayEnd) ? "24:00" : visibleEnd.format(TIME_FORMAT)}
+                    </span>
+                  </>
+                );
+
+                return onEditVacation ? (
+                  <button
+                    type="button"
+                    aria-label={`Изменить отпуск ${formatDate(day)} ${visibleStart.format(TIME_FORMAT)}–${visibleEnd.isSame(dayEnd) ? "24:00" : visibleEnd.format(TIME_FORMAT)}`}
+                    className={`${styles.agendaVacation} ${styles.agendaVacationEditable}`}
+                    key={vacation.id}
+                    onClick={() => {
+                      onEditVacation(vacation.id);
+                    }}
+                  >
+                    {content}
+                  </button>
+                ) : (
+                  <div className={styles.agendaVacation} key={vacation.id}>
+                    {content}
+                  </div>
+                );
+              })}
               {dayAppointments.length > 0 ? (
                 dayAppointments.map((appointment) => (
                   <AppointmentAgendaItem
@@ -475,7 +591,7 @@ function AppointmentStack({
               "--stack-index": String(index),
               "--stack-top": `${String(index * stackOffset)}px`,
               "--stack-card-height": `${String(cardHeight)}px`,
-              ...getAppointmentStatusColorVars(item.status),
+              ...getAppointmentColorVars(item),
             } as CSSProperties
           }
           key={item.id}
@@ -518,7 +634,7 @@ function AppointmentAgendaItem({
       role="button"
       tabIndex={0}
       className={`${styles.entry} ${styles.agendaItem} ${getAppointmentClassName(appointment)}${isSelected ? ` ${styles.entrySelected}` : ""}`}
-      style={getAppointmentStatusColorVars(appointment.status)}
+      style={getAppointmentColorVars(appointment)}
       onClick={() => {
         onSelect(appointment);
       }}
@@ -648,6 +764,10 @@ function formatWeekday(day: Dayjs) {
   return day.format("dd").toUpperCase();
 }
 
+function formatMinutes(totalMinutes: number) {
+  return `${String(Math.floor(totalMinutes / 60)).padStart(2, "0")}:${String(totalMinutes % 60).padStart(2, "0")}`;
+}
+
 function getStackDensity(stackSize: number): "full" | "compact" | "dense" {
   if (stackSize <= 1) {
     return "full";
@@ -657,6 +777,10 @@ function getStackDensity(stackSize: number): "full" | "compact" | "dense" {
 }
 
 function getAppointmentClassName(appointment: Appointment) {
+  if (appointment.service.isTrial) {
+    return styles.eventTrial;
+  }
+
   switch (appointment.status) {
     case "completed":
       return styles.eventCompleted;
@@ -667,6 +791,23 @@ function getAppointmentClassName(appointment: Appointment) {
     default:
       return styles.eventPlanned;
   }
+}
+
+function getAppointmentColorVars(appointment: Appointment): CSSProperties {
+  if (!appointment.service.isTrial) {
+    return getAppointmentStatusColorVars(appointment.status);
+  }
+
+  return {
+    "--schedule-entry-border": "#7C3AED",
+    "--schedule-entry-background": "#DDD6FE",
+    "--schedule-entry-background-dark": "#3B1D66",
+    "--schedule-entry-border-dark": "#6D28D9",
+    "--schedule-entry-selected-ring": "rgba(124, 58, 237, 0.45)",
+    "--schedule-entry-icon-color": "#5B21B6",
+    "--schedule-entry-text": "#3B0764",
+    "--schedule-entry-text-dark": "#F5F3FF",
+  } as CSSProperties;
 }
 
 function getAppointmentStatusRank(appointment: Appointment) {
@@ -689,6 +830,38 @@ function getDropHour(event: DragEvent<HTMLDivElement>, startHour: number, endHou
   const offset = Math.max(0, event.clientY - bounds.top);
   const relativeHour = Math.floor(offset / hourHeight);
   return Math.min(endHour, Math.max(startHour, startHour + relativeHour));
+}
+
+function getVacationSelection(
+  startDate: Dayjs | null,
+  target: { dayKey: string; hour: number } | null,
+  days: Dayjs[],
+): [Dayjs, Dayjs] | null {
+  if (!startDate || !target) {
+    return null;
+  }
+
+  const targetDay = days.find((day) => day.format("YYYY-MM-DD") === target.dayKey);
+  if (!targetDay) {
+    return null;
+  }
+
+  const targetDate = targetDay.hour(target.hour).minute(0).second(0).millisecond(0);
+  return startDate.isBefore(targetDate) ? [startDate, targetDate.add(1, "hour")] : [targetDate, startDate.add(1, "hour")];
+}
+
+function suppressNativeDragPreview(event: DragEvent<HTMLElement>) {
+  const preview = document.createElement("span");
+  preview.style.position = "fixed";
+  preview.style.inset = "0 auto auto 0";
+  preview.style.width = "1px";
+  preview.style.height = "1px";
+  preview.style.pointerEvents = "none";
+  document.body.append(preview);
+  event.dataTransfer.setDragImage(preview, 0, 0);
+  requestAnimationFrame(() => {
+    preview.remove();
+  });
 }
 
 function buildRescheduledStartDate(day: Dayjs, originalStart: Dayjs, nextHour: number) {

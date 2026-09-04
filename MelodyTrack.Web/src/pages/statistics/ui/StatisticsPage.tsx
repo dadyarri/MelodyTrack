@@ -271,6 +271,16 @@ function FinanceContent({ report, loading }: { report?: FinanceReport; loading: 
         <SummaryCard
           title={
             <InfoLabel
+              label="Плановый доход"
+              tooltip="Стоимость запланированных, проведённых и сгоревших непробных занятий, начинающихся в выбранном периоде."
+            />
+          }
+          value={formatMoney(summary?.forecastIncome)}
+          caption={`Занятий в расчёте: ${String(summary?.forecastAppointments ?? 0)}`}
+        />
+        <SummaryCard
+          title={
+            <InfoLabel
               label="Фактические платежи"
               tooltip="Платёжные операции по дате получения; они могут погашать долг другого периода."
             />

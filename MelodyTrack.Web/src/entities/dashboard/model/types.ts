@@ -133,7 +133,10 @@ export type WorkReport = Omit<
   busyHours: WorkHour[];
 };
 
-type FinanceSummary = RequiredApiContract<FinanceReportSummaryDto, "revenue" | "revenueAppointments" | "organizationOnlyFiguresAvailable">;
+type FinanceSummary = RequiredApiContract<
+  FinanceReportSummaryDto,
+  "revenue" | "forecastIncome" | "forecastAppointments" | "revenueAppointments" | "organizationOnlyFiguresAvailable"
+>;
 type FinanceTrend = RequiredApiContract<FinanceTrendDto, "startDate" | "endDate" | "revenue">;
 type FinanceExpenseCategory = RequiredApiContract<FinanceExpenseCategoryDto, "categoryName" | "amount">;
 type FinanceDebtor = RequiredApiContract<FinanceDebtorDto, "clientId" | "clientName" | "revenue" | "payments" | "debt">;

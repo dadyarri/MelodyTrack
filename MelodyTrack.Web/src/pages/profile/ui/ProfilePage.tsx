@@ -237,8 +237,8 @@ export function ProfilePage() {
               locale={{ emptyText: "Одобренных отпусков пока нет" }}
               renderItem={(vacation) => (
                 <List.Item>
-                  {new Intl.DateTimeFormat("ru-RU").format(new Date(`${vacation.startDate}T00:00:00`))} —{" "}
-                  {new Intl.DateTimeFormat("ru-RU").format(new Date(`${vacation.endDate}T00:00:00`))}
+                  {new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(vacation.startDate))} —{" "}
+                  {new Intl.DateTimeFormat("ru-RU", { dateStyle: "medium", timeStyle: "short" }).format(new Date(vacation.endDate))}
                 </List.Item>
               )}
             />

@@ -113,7 +113,6 @@ export function useExpensesPageController() {
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const editMutation = useMutation({
@@ -126,6 +125,7 @@ export function useExpensesPageController() {
       editForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -152,6 +152,7 @@ export function useExpensesPageController() {
       message.success("Расход удален");
       await queryClient.invalidateQueries({ queryKey: expenseQueryKeys.all });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -183,7 +184,6 @@ export function useExpensesPageController() {
       downloadBlob(blob, `expenses_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`);
       message.success("Экспорт готов");
     },
-    onError: showErrors,
   });
   const exportExpenses = exportMutation.mutate;
 
@@ -196,7 +196,6 @@ export function useExpensesPageController() {
       setCategoryCreateOpen(false);
       await queryClient.invalidateQueries({ queryKey: referenceBookQueryKeys.expenseCategories });
     },
-    onError: showErrors,
   });
 
   useEffect(() => {

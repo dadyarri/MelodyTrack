@@ -29,8 +29,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var (response, result) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
             new CreateVacationRequest
             {
-                StartDate = new DateOnly(2030, 6, 1),
-                EndDate = new DateOnly(2030, 6, 7),
+                StartDate = Utc(2030, 6, 1, 9),
+                EndDate = Utc(2030, 6, 7, 18),
                 Message = "Плановый отпуск"
             });
 
@@ -57,8 +57,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var (_, created) = await App.Client.POSTAsync<CreateClientVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
             new CreateVacationRequest
             {
-                StartDate = new DateOnly(2030, 7, 1),
-                EndDate = new DateOnly(2030, 7, 5)
+                StartDate = Utc(2030, 7, 1, 9),
+                EndDate = Utc(2030, 7, 5, 18)
             });
 
         created.SubjectId.ShouldBe(firstClient.Id);
@@ -79,8 +79,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var (_, created) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
             new CreateVacationRequest
             {
-                StartDate = new DateOnly(2030, 8, 1),
-                EndDate = new DateOnly(2030, 8, 10)
+                StartDate = Utc(2030, 8, 1, 9),
+                EndDate = Utc(2030, 8, 10, 18)
             });
         App.Client.DefaultRequestHeaders.Authorization = Bearer(superuser);
 
@@ -106,7 +106,11 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         approved.Status.ShouldBe("approved");
         approved.ResultingVacationId.ShouldNotBeNull();
         retryResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        (await db.UserVacations.CountAsync(item => item.UserId == administrator.Id, TestContext.Current.CancellationToken)).ShouldBe(1);
+        var vacation = await db.UserVacations.SingleAsync(
+            item => item.UserId == administrator.Id,
+            TestContext.Current.CancellationToken);
+        vacation.StartDate.ShouldBe(Utc(2030, 8, 1, 9));
+        vacation.EndDate.ShouldBe(Utc(2030, 8, 10, 18));
         (await db.Notifications.AnyAsync(item =>
             item.UserId == administrator.Id && item.Type == "vacation_request.approved",
             TestContext.Current.CancellationToken)).ShouldBeTrue();
@@ -141,8 +145,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var (_, created) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
             new CreateVacationRequest
             {
-                StartDate = new DateOnly(2030, 9, 1),
-                EndDate = new DateOnly(2030, 9, 5)
+                StartDate = Utc(2030, 9, 1, 9),
+                EndDate = Utc(2030, 9, 5, 18)
             });
         App.Client.DefaultRequestHeaders.Authorization = Bearer(superuser);
 
@@ -156,6 +160,53 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
     }
 
     [Fact]
+    public async Task Approve_RequestWithConflictCancellation_CancelsPlannedAppointmentAndCreatesVacation()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Занятый", "Клиент", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Занятие", TestContext.Current.CancellationToken);
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = teacher,
+            StartDate = Utc(2030, 9, 3, 10),
+            EndDate = Utc(2030, 9, 3, 11),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = Bearer(teacher);
+        var (_, created) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
+            new CreateVacationRequest { StartDate = Utc(2030, 9, 1, 9), EndDate = Utc(2030, 9, 20, 18) });
+        App.Client.DefaultRequestHeaders.Authorization = Bearer(superuser);
+
+        var (response, approved) = await App.Client.POSTAsync<ApproveVacationRequestEndpoint, VacationRequestDecisionRequest, VacationRequestResponse>(
+            new VacationRequestDecisionRequest
+            {
+                Id = created.Id,
+                ExpectedVersion = created.Version,
+                CancelConflictingAppointments = true
+            });
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        approved.Status.ShouldBe("approved");
+        db.ChangeTracker.Clear();
+        (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
+            .ShouldBe(AppointmentStatus.Cancelled);
+        (await db.UserVacations.SingleAsync(item => item.UserId == teacher.Id, TestContext.Current.CancellationToken)).EndDate
+            .ShouldBe(Utc(2030, 9, 20, 18));
+        (await db.AuditLogs.AnyAsync(
+            item => item.Action == "appointment_updated" && item.EntityId == appointment.Id.ToString(),
+            TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
+    [Fact]
     public async Task DeclineAndCancel_PendingRequests_PreserveImmutableHistoryWithoutVacations()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -164,9 +215,9 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = Bearer(teacher);
         var (_, declinedCandidate) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
-            new CreateVacationRequest { StartDate = new DateOnly(2030, 10, 1), EndDate = new DateOnly(2030, 10, 2) });
+            new CreateVacationRequest { StartDate = Utc(2030, 10, 1, 9), EndDate = Utc(2030, 10, 2, 18) });
         var (_, cancelledCandidate) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
-            new CreateVacationRequest { StartDate = new DateOnly(2030, 11, 1), EndDate = new DateOnly(2030, 11, 2) });
+            new CreateVacationRequest { StartDate = Utc(2030, 11, 1, 9), EndDate = Utc(2030, 11, 2, 18) });
         var cancelResponse = await App.Client.POSTAsync<CancelVacationRequestEndpoint, CancelVacationRequest>(
             new CancelVacationRequest { Id = cancelledCandidate.Id, ExpectedVersion = cancelledCandidate.Version });
         App.Client.DefaultRequestHeaders.Authorization = Bearer(superuser);
@@ -194,14 +245,14 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         App.Client.DefaultRequestHeaders.Authorization = Bearer(teacher);
         await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest>(new CreateVacationRequest
         {
-            StartDate = new DateOnly(2030, 12, 1),
-            EndDate = new DateOnly(2030, 12, 10)
+            StartDate = Utc(2030, 12, 1, 9),
+            EndDate = Utc(2030, 12, 10, 18)
         });
 
         var response = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest>(new CreateVacationRequest
         {
-            StartDate = new DateOnly(2030, 12, 5),
-            EndDate = new DateOnly(2030, 12, 12)
+            StartDate = Utc(2030, 12, 5, 9),
+            EndDate = Utc(2030, 12, 12, 18)
         });
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
@@ -218,8 +269,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         App.Client.DefaultRequestHeaders.Authorization = Bearer(teacher);
         var input = new CreateVacationRequest
         {
-            StartDate = new DateOnly(2031, 2, 1),
-            EndDate = new DateOnly(2031, 2, 5),
+            StartDate = Utc(2031, 2, 1, 9),
+            EndDate = Utc(2031, 2, 5, 18),
             Message = "Повторяемый запрос"
         };
 
@@ -241,7 +292,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         var administrator = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = Bearer(teacher);
         var (_, created) = await App.Client.POSTAsync<CreateStaffVacationRequestEndpoint, CreateVacationRequest, VacationRequestResponse>(
-            new CreateVacationRequest { StartDate = new DateOnly(2031, 1, 1), EndDate = new DateOnly(2031, 1, 2) });
+            new CreateVacationRequest { StartDate = Utc(2031, 1, 1, 9), EndDate = Utc(2031, 1, 2, 18) });
         App.Client.DefaultRequestHeaders.Authorization = Bearer(administrator);
 
         var response = await App.Client.POSTAsync<ApproveVacationRequestEndpoint, VacationRequestDecisionRequest>(
@@ -252,6 +303,9 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
 
     private static AuthenticationHeaderValue Bearer(User user) =>
         new("Bearer", UserUtils.CreateAccessToken(user));
+
+    private static DateTime Utc(int year, int month, int day, int hour) =>
+        new(year, month, day, hour, 0, 0, DateTimeKind.Utc);
 
     private static async Task<User> CreatePortalUserAsync(AppDbContext db, Client client, CancellationToken ct)
     {

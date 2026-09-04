@@ -4,6 +4,6 @@ public class UserVacation : BaseModel
 {
     public required Ulid UserId { get; set; }
     public required User User { get; set; }
-    public required DateOnly StartDate { get; set; }
-    public required DateOnly EndDate { get; set; }
+    public required DateTime StartDate { get; set; }
+    public required DateTime EndDate { get; set; }
 }

@@ -1,6 +1,13 @@
 import dayjs, { type Dayjs } from "dayjs";
 
-import type { UserAvailability, WeekdayKey } from "@/entities/user";
+import type { UserAvailability, WeekdayKey } from "../model/types";
+
+export type AvailabilityBlockedRange = {
+  startMinute: number;
+  endMinute: number;
+  isVacation: boolean;
+  vacationId?: string;
+};
 
 export const weekdayOrder: WeekdayKey[] = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
 
@@ -19,11 +26,11 @@ export function isSlotAvailable(availability: UserAvailability | null | undefine
     return true;
   }
 
-  const vacationDay = availability.vacations.some((vacation) => {
-    const current = startDate.startOf("day");
-    return !current.isBefore(dayjs(vacation.startDate), "day") && !current.isAfter(dayjs(vacation.endDate), "day");
-  });
-  if (vacationDay) {
+  const endDate = startDate.add(durationMinutes, "minute");
+  const overlapsVacation = availability.vacations.some(
+    (vacation) => startDate.isBefore(dayjs(vacation.endDate)) && endDate.isAfter(dayjs(vacation.startDate)),
+  );
+  if (overlapsVacation) {
     return false;
   }
 
@@ -49,25 +56,35 @@ export function getBlockedRanges(availability: UserAvailability | null | undefin
 
   const dayStart = startHour * 60;
   const dayEnd = endHour * 60;
-  const ranges: Array<{ startMinute: number; endMinute: number; isVacation: boolean }> = [];
+  const ranges: AvailabilityBlockedRange[] = [];
 
-  const isVacation = availability.vacations.some((vacation) => {
-    const current = day.startOf("day");
-    return !current.isBefore(dayjs(vacation.startDate), "day") && !current.isAfter(dayjs(vacation.endDate), "day");
+  const visibleStart = day.startOf("day").add(dayStart, "minute");
+  const visibleEnd = day.startOf("day").add(dayEnd, "minute");
+  const vacationRanges = availability.vacations.flatMap((vacation) => {
+    const start = dayjs(vacation.startDate);
+    const end = dayjs(vacation.endDate);
+    if (!start.isBefore(visibleEnd) || !end.isAfter(visibleStart)) {
+      return [];
+    }
+
+    return [
+      {
+        startMinute: Math.max(dayStart, start.isAfter(visibleStart) ? start.diff(day.startOf("day"), "minute") : dayStart),
+        endMinute: Math.min(dayEnd, end.isBefore(visibleEnd) ? end.diff(day.startOf("day"), "minute") : dayEnd),
+        isVacation: true,
+        vacationId: vacation.id,
+      },
+    ];
   });
-
-  if (isVacation) {
-    return [{ startMinute: dayStart, endMinute: dayEnd, isVacation: true }];
-  }
 
   const dayKey = getWeekdayKey(day);
   const workingDay = availability.workingHours.find((item) => item.dayOfWeek === dayKey);
   if (!workingDay) {
-    return [];
+    return vacationRanges;
   }
 
   if (!workingDay.isWorkingDay || !workingDay.startTime || !workingDay.endTime) {
-    return [{ startMinute: dayStart, endMinute: dayEnd, isVacation: false }];
+    return [...vacationRanges, { startMinute: dayStart, endMinute: dayEnd, isVacation: false }];
   }
 
   const workStart = parseTimeToMinutes(workingDay.startTime);
@@ -81,7 +98,7 @@ export function getBlockedRanges(availability: UserAvailability | null | undefin
     ranges.push({ startMinute: workEnd, endMinute: dayEnd, isVacation: false });
   }
 
-  return ranges.filter((range) => range.endMinute > range.startMinute);
+  return [...ranges, ...vacationRanges].filter((range) => range.endMinute > range.startMinute);
 }
 
 export function getVisibleScheduleHours(

@@ -38,12 +38,11 @@ public sealed class ClientsReportQueryService(
         var previousClientIds = previousVisits.Select(appointment => appointment.ClientId).ToHashSet();
         var retainedClientIds = previousClientIds.Where(currentClientIds.Contains).ToHashSet();
         var clientIds = visits.Select(appointment => appointment.ClientId).Distinct().ToList();
-        var reportEndDate = DateOnly.FromDateTime(context.EndLocal);
         var vacations = clientIds.Count == 0
             ? []
             : await db.ClientVacations.AsNoTracking()
                 .Where(vacation => clientIds.Contains(vacation.ClientId)
-                                   && vacation.StartDate <= reportEndDate)
+                                   && vacation.StartDate < context.EndExclusiveUtc)
                 .Select(vacation => new ClientVacationRow(vacation.ClientId, vacation.StartDate, vacation.EndDate))
                 .ToListAsync(ct);
         var vacationsByClient = vacations
@@ -120,9 +119,10 @@ public sealed class ClientsReportQueryService(
                 var last = ordered[^1];
                 var vacations = vacationsByClient.GetValueOrDefault(group.Key.ClientId, []);
                 var reportEnd = DateOnly.FromDateTime(context.EndLocal);
+                var reportEndUtc = context.EndExclusiveUtc.AddTicks(-1);
                 var lastVisitDate = DateOnly.FromDateTime(last.StartLocal);
-                var isOnVacation = vacations.Any(vacation => vacation.StartDate <= reportEnd && vacation.EndDate >= reportEnd);
-                var vacationDaysSinceLastVisit = CountVacationDays(vacations, lastVisitDate.AddDays(1), reportEnd);
+                var isOnVacation = vacations.Any(vacation => vacation.StartDate <= reportEndUtc && vacation.EndDate > reportEndUtc);
+                var vacationDaysSinceLastVisit = CountVacationDays(vacations, lastVisitDate.AddDays(1), reportEnd, context.Timezone);
                 var effectiveDaysSinceLastVisit = Math.Max(0, reportEnd.DayNumber - lastVisitDate.DayNumber - vacationDaysSinceLastVisit);
                 var activityState = currentClientIds.Contains(group.Key.ClientId)
                     ? "active"
@@ -151,7 +151,8 @@ public sealed class ClientsReportQueryService(
     private static int CountVacationDays(
         IReadOnlyCollection<ClientVacationRow> vacations,
         DateOnly start,
-        DateOnly end)
+        DateOnly end,
+        TimeZoneInfo timezone)
     {
         if (end < start)
         {
@@ -161,8 +162,10 @@ public sealed class ClientsReportQueryService(
         var days = new HashSet<int>();
         foreach (var vacation in vacations)
         {
-            var overlapStart = vacation.StartDate > start ? vacation.StartDate : start;
-            var overlapEnd = vacation.EndDate < end ? vacation.EndDate : end;
+            var vacationStart = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(vacation.StartDate, timezone));
+            var vacationEnd = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(vacation.EndDate.AddTicks(-1), timezone));
+            var overlapStart = vacationStart > start ? vacationStart : start;
+            var overlapEnd = vacationEnd < end ? vacationEnd : end;
             for (var date = overlapStart; date <= overlapEnd; date = date.AddDays(1))
             {
                 days.Add(date.DayNumber);
@@ -209,5 +212,5 @@ public sealed class ClientsReportQueryService(
         decimal? AverageIntervalDays,
         string ActivityState);
 
-    private sealed record ClientVacationRow(Ulid ClientId, DateOnly StartDate, DateOnly EndDate);
+    private sealed record ClientVacationRow(Ulid ClientId, DateTime StartDate, DateTime EndDate);
 }

@@ -33,7 +33,6 @@ import type {
 import { courseEnrollmentsApi, courseQueryKeys } from "@/entities/course";
 import { useUpdateCourseProgress } from "@/features/update-course-progress";
 import type { Ulid } from "@/shared/api";
-import { getApiErrorMessages } from "@/shared/api";
 import { pluralizeRu } from "@/shared/lib";
 import { jsonDurableFormCodec, useDurableForm } from "@/shared/lib/react";
 import { DraftFormModal, DraftModalTitle, PageLayout } from "@/shared/ui";
@@ -187,11 +186,6 @@ export function CourseWorkspace() {
   const updateThemeProgressMutation = useUpdateCourseProgress({
     onSuccess: ({ action }) => {
       void message.success(getThemeProgressSuccessMessage(action));
-    },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
     },
   });
 

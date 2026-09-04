@@ -14,12 +14,13 @@ import {
   type RecurrenceType,
 } from "@/entities/appointment";
 import { type CourseEnrollment, courseEnrollmentsApi, courseQueryKeys, type CourseThemeProgressState } from "@/entities/course";
-import { hasAdminAccess, useAuth } from "@/entities/session";
+import { hasAdminAccess, hasSuperuserAccess, useAuth } from "@/entities/session";
 import { userQueryKeys, usersApi } from "@/entities/user";
 import { getVisibleScheduleHours } from "@/entities/user";
 import type { AppointmentEditFormValues, AppointmentFormValues } from "@/features/manage-appointment";
+import { type VacationRangeFormValues, vacationRequestQueryKeys, vacationRequestsApi } from "@/features/manage-vacation-requests";
 import { usePaymentCreateController } from "@/features/record-payment";
-import { getApiErrorMessages, isHttpRequestCanceled, type Ulid } from "@/shared/api";
+import { getApiErrorMessages, type Ulid } from "@/shared/api";
 import { useOpenCreateRouteIntent } from "@/shared/lib";
 import { useCreatedReferenceOptions } from "@/shared/lib";
 import { createIdempotencyKey } from "@/shared/lib";
@@ -103,19 +104,23 @@ export function useSchedulePageController() {
   const [appointmentToRescheduleBaselineActivityId, setAppointmentToRescheduleBaselineActivityId] = useState<Ulid | null | undefined>();
   const [isQuickClientCreateOpen, setQuickClientCreateOpen] = useState(false);
   const createdClientOptions = useCreatedReferenceOptions("client");
-  const providerFilterId = searchParams.get("provider") ?? undefined;
+  const auth = useAuth();
+  const providerFilterParam = searchParams.get("provider");
+  const providerFilterId =
+    providerFilterParam === "all" ? undefined : (providerFilterParam ?? (hasSuperuserAccess(auth.user) ? auth.user?.id : undefined));
   const setProviderFilterId = useCallback(
     (next?: string) => {
-      setUrlState({ provider: next });
+      setUrlState({ provider: next ?? (hasSuperuserAccess(auth.user) ? "all" : null) });
     },
-    [setUrlState],
+    [auth.user, setUrlState],
   );
+  const [vacationInitialPeriod, setVacationInitialPeriod] = useState<[Dayjs, Dayjs] | null>(null);
+  const [editingVacationId, setEditingVacationId] = useState<string | null>(null);
   const [pendingCreateStartDate, setPendingCreateStartDate] = useState<Dayjs | null>(null);
   const [pendingCreateProviderId, setPendingCreateProviderId] = useState<string | undefined>();
   const [, setCreateClientLabel] = useState<string | undefined>();
   const [, setCreateServiceLabel] = useState<string | undefined>();
   const [, setCreateProviderLabel] = useState<string | undefined>();
-  const auth = useAuth();
   const [form] = Form.useForm<AppointmentFormValues>();
   const createRequestControllerRef = useRef<AbortController | null>(null);
   const [editForm] = Form.useForm<AppointmentEditFormValues>();
@@ -135,6 +140,10 @@ export function useSchedulePageController() {
   const canCreateAppointments = hasAdminAccess(auth.user);
   const isSpecialistFilterLocked = Boolean(auth.user && !hasAdminAccess(auth.user));
   const effectiveProviderFilterId = isSpecialistFilterLocked ? auth.user?.id : providerFilterId;
+  const canCreateVacations = Boolean(
+    effectiveProviderFilterId && (hasSuperuserAccess(auth.user) || effectiveProviderFilterId === auth.user?.id),
+  );
+  const canManageVacations = Boolean(effectiveProviderFilterId && hasSuperuserAccess(auth.user));
   const lockedProviderId = isSpecialistFilterLocked ? auth.user?.id : undefined;
   const createPrefillClientId = createRouteIntent.prefillClientId;
   const isCreateModalOpen = canCreateAppointments && (isOpen || createRouteIntent.hasOpenCreateIntent);
@@ -213,6 +222,14 @@ export function useSchedulePageController() {
         return;
       }
 
+      if (matchesPlainKey(event, "v") && canCreateVacations) {
+        event.preventDefault();
+        const start = dayjs().add(1, "hour").startOf("hour");
+        setEditingVacationId(null);
+        setVacationInitialPeriod([start, start.add(1, "hour")]);
+        return;
+      }
+
       if (matchesPlainKey(event, "m") && !isSpecialistFilterLocked && auth.user?.id) {
         event.preventDefault();
         setProviderFilterId(providerFilterId === auth.user.id ? undefined : auth.user.id);
@@ -226,6 +243,7 @@ export function useSchedulePageController() {
   }, [
     auth.user?.id,
     canCreateAppointments,
+    canCreateVacations,
     effectiveProviderFilterId,
     isSpecialistFilterLocked,
     lockedProviderId,
@@ -264,6 +282,131 @@ export function useSchedulePageController() {
     enabled: hasAdminAccess(auth.user) && !effectiveProviderFilterId,
     retry: false,
   });
+
+  const closeVacationModal = () => {
+    setVacationInitialPeriod(null);
+    setEditingVacationId(null);
+  };
+
+  const openVacationModal = (period: [Dayjs, Dayjs]) => {
+    setEditingVacationId(null);
+    setVacationInitialPeriod(period);
+  };
+
+  const openVacationEditor = (vacationId: string) => {
+    const vacation = providerAvailabilityQuery.data?.vacations.find((item) => item.id === vacationId);
+    if (!vacation || !canManageVacations) {
+      void message.error("Отпуск больше недоступен для изменения. Обновите календарь.");
+      return;
+    }
+
+    setEditingVacationId(vacation.id);
+    setVacationInitialPeriod([dayjs(vacation.startDate), dayjs(vacation.endDate)]);
+  };
+
+  const vacationMutation = useMutation({
+    mutationFn: (values: VacationRangeFormValues) => {
+      const providerId = effectiveProviderFilterId;
+      if (!providerId || !canCreateVacations) {
+        throw new Error("Выберите свой календарь или календарь сотрудника, доступный для управления.");
+      }
+
+      const input = {
+        startDate: values.period[0].toISOString(),
+        endDate: values.period[1].toISOString(),
+      };
+      if (editingVacationId && !hasSuperuserAccess(auth.user)) {
+        throw new Error("Изменять утверждённые отпуска может только суперпользователь.");
+      }
+      if (!hasSuperuserAccess(auth.user)) {
+        return vacationRequestsApi.create(input, false);
+      }
+
+      const availability = providerAvailabilityQuery.data;
+      if (!availability || availability.userId !== providerId) {
+        throw new Error("Дождитесь загрузки доступности выбранного сотрудника.");
+      }
+
+      if (editingVacationId && !availability.vacations.some((item) => item.id === editingVacationId)) {
+        throw new Error("Отпуск уже был изменён или удалён. Обновите календарь.");
+      }
+
+      const vacations = editingVacationId
+        ? availability.vacations.map((item) =>
+            item.id === editingVacationId ? input : { startDate: item.startDate, endDate: item.endDate },
+          )
+        : [...availability.vacations.map((item) => ({ startDate: item.startDate, endDate: item.endDate })), input];
+
+      return usersApi.updateAvailability(
+        providerId,
+        {
+          workingHours: availability.workingHours,
+          vacations,
+          cancelConflictingAppointments: values.cancelConflictingAppointments,
+        },
+        { expectedActivityId: availability.lastActivity?.id },
+      );
+    },
+    onSuccess: async () => {
+      const successMessage = editingVacationId
+        ? "Отпуск изменён"
+        : hasSuperuserAccess(auth.user)
+          ? "Отпуск добавлен"
+          : "Заявка на отпуск отправлена";
+      closeVacationModal();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll }),
+        queryClient.invalidateQueries({ queryKey: userQueryKeys.availability(effectiveProviderFilterId) }),
+        queryClient.invalidateQueries({ queryKey: vacationRequestQueryKeys.all }),
+      ]);
+      void message.success(successMessage);
+    },
+  });
+
+  const removeVacationMutation = useMutation({
+    mutationFn: (vacationId: string) => {
+      const providerId = effectiveProviderFilterId;
+      const availability = providerAvailabilityQuery.data;
+      if (!providerId || !canManageVacations || !availability || availability.userId !== providerId) {
+        throw new Error("Отпуск больше недоступен для удаления. Обновите календарь.");
+      }
+      if (!availability.vacations.some((item) => item.id === vacationId)) {
+        throw new Error("Отпуск уже был удалён.");
+      }
+
+      return usersApi.updateAvailability(
+        providerId,
+        {
+          workingHours: availability.workingHours,
+          vacations: availability.vacations
+            .filter((item) => item.id !== vacationId)
+            .map((item) => ({ startDate: item.startDate, endDate: item.endDate })),
+        },
+        { expectedActivityId: availability.lastActivity?.id },
+      );
+    },
+    onSuccess: async () => {
+      closeVacationModal();
+      await queryClient.invalidateQueries({ queryKey: userQueryKeys.availability(effectiveProviderFilterId) });
+      void message.success("Отпуск удалён");
+    },
+  });
+
+  const confirmVacationRemoval = () => {
+    if (!editingVacationId) {
+      return;
+    }
+
+    const vacationId = editingVacationId;
+    modal.confirm({
+      title: "Удалить отпуск?",
+      content: "Период снова станет доступен для записей.",
+      okText: "Удалить",
+      cancelText: "Отмена",
+      okButtonProps: { danger: true },
+      onOk: () => removeVacationMutation.mutateAsync(vacationId),
+    });
+  };
 
   const visibleHours = effectiveProviderFilterId
     ? getVisibleScheduleHours([providerAvailabilityQuery.data])
@@ -378,11 +521,6 @@ export function useSchedulePageController() {
       closeCreateModal();
       await queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll });
     },
-    onError: (error) => {
-      if (!isHttpRequestCanceled(error)) {
-        showErrors(error);
-      }
-    },
   });
 
   const updateMutation = useMutation({
@@ -406,6 +544,7 @@ export function useSchedulePageController() {
       await queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll });
       syncAppointmentBaseline(variables.id);
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -459,6 +598,7 @@ export function useSchedulePageController() {
       setAppointmentToEditBaselineActivityId(undefined);
       await queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       if (!appointmentToEdit) {
         showErrors(error);
@@ -550,6 +690,7 @@ export function useSchedulePageController() {
       await queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll });
       syncAppointmentBaseline(variables.appointment.id);
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -611,6 +752,7 @@ export function useSchedulePageController() {
       setAppointmentToDeleteBaselineActivityId(undefined);
       await queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -708,6 +850,8 @@ export function useSchedulePageController() {
   return {
     auth,
     canCreateAppointments,
+    canCreateVacations,
+    canManageVacations,
     weekStart,
     setWeekStart,
     query,
@@ -752,6 +896,14 @@ export function useSchedulePageController() {
     editMutation,
     rescheduleMutation,
     deleteMutation,
+    vacationMutation,
+    removeVacationMutation,
+    vacationInitialPeriod,
+    editingVacationId,
+    openVacationModal,
+    openVacationEditor,
+    closeVacationModal,
+    confirmVacationRemoval,
     openCreateModal,
     openCreateModalAt,
     closeCreateModal,

@@ -622,7 +622,7 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VacationRequest>()
             .ToTable(table => table.HasCheckConstraint(
                 "CK_VacationRequests_Range",
-                "\"RequestedStart\" <= \"RequestedEnd\""));
+                "\"RequestedStart\" < \"RequestedEnd\""));
         modelBuilder.Entity<VacationRequest>()
             .ToTable(table => table.HasCheckConstraint(
                 "CK_VacationRequests_Version",

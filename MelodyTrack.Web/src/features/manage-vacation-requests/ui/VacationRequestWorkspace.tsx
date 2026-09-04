@@ -1,9 +1,23 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App as AntdApp, Button, Card, DatePicker, Empty, Form, Input, List, Modal, Segmented, Space, Tag, Typography } from "antd";
+import {
+  Alert,
+  App as AntdApp,
+  Button,
+  Card,
+  Checkbox,
+  DatePicker,
+  Empty,
+  Form,
+  Input,
+  List,
+  Modal,
+  Segmented,
+  Space,
+  Tag,
+  Typography,
+} from "antd";
 import type { Dayjs } from "dayjs";
 import { useState } from "react";
-
-import { getApiErrorMessages } from "@/shared/api";
 
 import { vacationRequestQueryKeys, vacationRequestsApi } from "../api/vacationRequestApi";
 import type { VacationRequest, VacationRequestStatus } from "../model/types";
@@ -16,6 +30,7 @@ type RequestFormValues = {
 
 type DecisionFormValues = {
   message?: string;
+  cancelConflictingAppointments?: boolean;
 };
 
 type DecisionState = {
@@ -37,19 +52,14 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
     queryFn: ({ signal }) => (review ? vacationRequestsApi.listReview(reviewView, signal) : vacationRequestsApi.listMine(portal, signal)),
   });
 
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
   const invalidate = () => queryClient.invalidateQueries({ queryKey: vacationRequestQueryKeys.all });
 
   const createMutation = useMutation({
     mutationFn: (values: RequestFormValues) =>
       vacationRequestsApi.create(
         {
-          startDate: values.period[0].format("YYYY-MM-DD"),
-          endDate: values.period[1].format("YYYY-MM-DD"),
+          startDate: values.period[0].toISOString(),
+          endDate: values.period[1].toISOString(),
           message: values.message?.trim() || undefined,
         },
         portal,
@@ -59,7 +69,6 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
       await invalidate();
       void message.success("Заявка отправлена суперпользователю");
     },
-    onError: showErrors,
   });
 
   const cancelMutation = useMutation({
@@ -68,7 +77,6 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
       await invalidate();
       void message.success("Заявка отозвана");
     },
-    onError: showErrors,
   });
 
   const decisionMutation = useMutation({
@@ -76,6 +84,7 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
       const input = {
         expectedVersion: state.request.version,
         message: values.message?.trim() || undefined,
+        cancelConflictingAppointments: values.cancelConflictingAppointments,
       };
       return state.action === "approve"
         ? vacationRequestsApi.approve(state.request.id, input)
@@ -87,7 +96,6 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
       await invalidate();
       void message.success(variables.state.action === "approve" ? "Отпуск согласован" : "Заявка отклонена");
     },
-    onError: showErrors,
   });
 
   const requests = query.data ?? [];
@@ -111,7 +119,7 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
             }}
           >
             <Form.Item name="period" label="Период отпуска" rules={[{ required: true, message: "Укажите период отпуска" }]}>
-              <DatePicker.RangePicker className="wide" format="DD.MM.YYYY" />
+              <DatePicker.RangePicker className="wide" format="DD.MM.YYYY HH:mm" showTime={{ format: "HH:mm", minuteStep: 15 }} />
             </Form.Item>
             <Form.Item name="message" label="Комментарий" rules={[{ max: 500, message: "Не больше 500 символов" }]}>
               <Input.TextArea rows={3} maxLength={500} showCount placeholder="Необязательное сообщение для суперпользователя" />
@@ -238,7 +246,8 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
             type="warning"
             showIcon
             className={styles.notice}
-            title="Есть конфликты расписания. Система повторно проверит период и не изменит занятия автоматически."
+            title={`Есть конфликты расписания: ${String(decision.request.conflictingAppointmentCount)}.`}
+            description="Можно явно отменить только пересекающиеся запланированные занятия. Завершённые занятия и правило повторения не изменятся."
           />
         ) : null}
         <Form<DecisionFormValues>
@@ -253,6 +262,11 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
           <Form.Item name="message" label="Комментарий" rules={[{ max: 500, message: "Не больше 500 символов" }]}>
             <Input.TextArea rows={3} maxLength={500} showCount />
           </Form.Item>
+          {decision?.action === "approve" && decision.request.conflictingAppointmentCount > 0 ? (
+            <Form.Item name="cancelConflictingAppointments" valuePropName="checked">
+              <Checkbox>Отменить пересекающиеся запланированные занятия, если они есть, и одобрить отпуск</Checkbox>
+            </Form.Item>
+          ) : null}
         </Form>
       </Modal>
     </Space>
@@ -271,11 +285,7 @@ function StatusTag({ status }: { status: VacationRequestStatus }) {
 }
 
 function formatPeriod(startDate: string, endDate: string) {
-  return `${formatDate(startDate)} — ${formatDate(endDate)}`;
-}
-
-function formatDate(value: string) {
-  return new Intl.DateTimeFormat("ru-RU").format(new Date(`${value}T00:00:00`));
+  return `${formatDateTime(startDate)} — ${formatDateTime(endDate)}`;
 }
 
 function formatDateTime(value: string) {

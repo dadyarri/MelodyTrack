@@ -180,12 +180,12 @@ public sealed class UpdateClientEndpoint
         return TypedResults.Ok(new CreateEntityResponse { Id = req.Id });
     }
 
-    private static string? FormatVacationPeriods(IEnumerable<(DateOnly StartDate, DateOnly EndDate)> vacations)
+    private static string? FormatVacationPeriods(IEnumerable<(DateTime StartDate, DateTime EndDate)> vacations)
     {
         var periods = vacations
             .OrderBy(item => item.StartDate)
             .ThenBy(item => item.EndDate)
-            .Select(item => $"{item.StartDate:yyyy-MM-dd}–{item.EndDate:yyyy-MM-dd}")
+            .Select(item => $"{item.StartDate:yyyy-MM-dd HH:mm}–{item.EndDate:yyyy-MM-dd HH:mm} UTC")
             .ToArray();
 
         return periods.Length == 0 ? null : string.Join(", ", periods);

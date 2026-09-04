@@ -19,6 +19,7 @@ const appointment: Appointment = {
   service: {
     id: "01JTESTSERVICE0000000000000",
     name: "Урок",
+    isTrial: false,
   },
   startDate: "2026-07-27T10:00:00Z",
   endDate: "2026-07-27T11:00:00Z",

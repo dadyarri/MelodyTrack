@@ -26,6 +26,7 @@ public sealed record ReportAppointment(
     public bool IsOccupied => Status is AppointmentStatus.Planned or AppointmentStatus.Completed or AppointmentStatus.Burned;
     public bool IsVisit => Status is AppointmentStatus.Completed or AppointmentStatus.Burned;
     public bool IsValueVisit => IsVisit && !IsConsultation;
+    public bool IsPlannedIncomeValue => IsOccupied && !IsConsultation;
 }
 
 public interface IReportAppointmentQuery

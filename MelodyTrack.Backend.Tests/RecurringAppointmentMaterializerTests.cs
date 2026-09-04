@@ -1,5 +1,6 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -109,5 +110,49 @@ public class RecurringAppointmentMaterializerTests(MelodyTrackFixture fixture)
             .Select(appointment => appointment.Status)
             .SingleAsync(TestContext.Current.CancellationToken);
         persistedStatus.ShouldBe(AppointmentStatus.Completed);
+    }
+
+    [Fact]
+    public async Task EnsureAppointmentsGeneratedAsync_ProviderHasMultiWeekVacation_SkipsOccurrencesInsideVacation()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
+        var provider = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var rule = await TestDataFactory.CreateDailyRuleAsync(
+            db,
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc),
+            "Anna",
+            "Morozova",
+            "Voice",
+            TestContext.Current.CancellationToken);
+        rule.Provider = provider;
+        await db.UserVacations.AddAsync(new UserVacation
+        {
+            Id = Ulid.NewUlid(),
+            UserId = provider.Id,
+            User = provider,
+            StartDate = new DateTime(2025, 11, 15, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2025, 12, 1, 0, 0, 0, DateTimeKind.Utc)
+        }, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        await materializer.EnsureAppointmentsGeneratedAsync(
+            new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 3, 23, 59, 59, DateTimeKind.Utc),
+            TestContext.Current.CancellationToken);
+
+        var starts = await db.Appointments
+            .Where(appointment => appointment.RecurringRule != null && appointment.RecurringRule.Id == rule.Id)
+            .OrderBy(appointment => appointment.StartDate)
+            .Select(appointment => appointment.StartDate)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        starts.ShouldBe([
+            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 1, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 2, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2025, 12, 3, 15, 0, 0, DateTimeKind.Utc)
+        ]);
     }
 }

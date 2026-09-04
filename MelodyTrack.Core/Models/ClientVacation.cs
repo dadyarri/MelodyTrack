@@ -7,6 +7,6 @@ public class ClientVacation : BaseModel
     public required Ulid ClientId { get; set; }
     [JsonIgnore]
     public Client Client { get; set; } = null!;
-    public required DateOnly StartDate { get; set; }
-    public required DateOnly EndDate { get; set; }
+    public required DateTime StartDate { get; set; }
+    public required DateTime EndDate { get; set; }
 }

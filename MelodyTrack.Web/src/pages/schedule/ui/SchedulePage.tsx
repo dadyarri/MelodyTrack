@@ -10,6 +10,7 @@ import {
   RecurringRescheduleModal,
 } from "@/features/manage-appointment";
 import { ClientQuickCreateModal } from "@/features/manage-client";
+import { VacationRangeModal } from "@/features/manage-vacation-requests";
 import { PaymentCreateModal } from "@/features/record-payment";
 import { PageLayout, ShortcutButton } from "@/shared/ui";
 import { LeftOutlined, PlusOutlined, RightOutlined } from "@/shared/ui/icons";
@@ -62,6 +63,16 @@ export function SchedulePage() {
                 onClick={controller.openCreateModal}
               />
             ) : null}
+            {controller.canCreateVacations ? (
+              <ShortcutButton
+                shortcut="V"
+                label="Отпуск"
+                onClick={() => {
+                  const start = dayjs().add(1, "hour").startOf("hour");
+                  controller.openVacationModal([start, start.add(1, "hour")]);
+                }}
+              />
+            ) : null}
           </Space>
         }
       >
@@ -105,6 +116,7 @@ export function SchedulePage() {
               appointments={controller.filteredAppointments}
               availability={controller.providerAvailabilityQuery.data}
               canCreateAppointments={controller.canCreateAppointments}
+              canCreateVacations={controller.canCreateVacations}
               loading={controller.query.isLoading}
               onReschedule={(appointment, startDate) => {
                 if (appointment.recurringRule) {
@@ -132,6 +144,10 @@ export function SchedulePage() {
                 controller.rescheduleMutation.isPending ? controller.rescheduleMutation.variables.appointment.id : null
               }
               onCreateAt={controller.openCreateModalAt}
+              onCreateVacation={(startDate, endDate) => {
+                controller.openVacationModal([startDate, endDate]);
+              }}
+              onEditVacation={controller.canManageVacations ? controller.openVacationEditor : undefined}
               onSelect={(appointment) => {
                 controller.setSelectedAppointment(appointment);
                 controller.setSelectedAppointmentBaselineActivityId(appointment.lastActivity?.id ?? null);
@@ -193,6 +209,25 @@ export function SchedulePage() {
               });
             },
           });
+        }}
+      />
+      <VacationRangeModal
+        initialPeriod={controller.vacationInitialPeriod}
+        open={controller.vacationInitialPeriod !== null}
+        pending={controller.vacationMutation.isPending || controller.removeVacationMutation.isPending}
+        requestApproval={!controller.auth.user?.isSuperuser}
+        editing={controller.editingVacationId !== null}
+        removePending={controller.removeVacationMutation.isPending}
+        subjectId={controller.effectiveProviderFilterId}
+        subjectName={
+          controller.effectiveProviderFilterId === controller.auth.user?.id
+            ? [controller.auth.user?.lastName, controller.auth.user?.firstName].filter(Boolean).join(" ")
+            : undefined
+        }
+        onCancel={controller.closeVacationModal}
+        onRemove={controller.editingVacationId ? controller.confirmVacationRemoval : undefined}
+        onSubmit={(values) => {
+          controller.vacationMutation.mutate(values);
         }}
       />
       <RecurringDeleteModal

@@ -19,7 +19,7 @@ export type AppointmentClientContacts = ApiJsonContract<AppointmentClientContact
 export type AppointmentClient = Omit<RequiredApiContract<AppointmentClientDto, "id" | "firstName" | "lastName">, "contacts"> & {
   contacts?: AppointmentClientContacts | null;
 };
-export type AppointmentService = RequiredApiContract<AppointmentServiceDto, "id" | "name">;
+export type AppointmentService = RequiredApiContract<AppointmentServiceDto, "id" | "name" | "isTrial">;
 export type AppointmentProvider = RequiredApiContract<AppointmentProviderDto, "id" | "firstName" | "lastName" | "roleDisplayName">;
 export type AppointmentCourseTheme = RequiredApiContract<AppointmentCourseThemeDto, "id" | "title" | "courseId" | "courseName">;
 export type AppointmentRecurrenceRule = RequiredApiContract<AppointmentRecurrenceRuleDto, "id" | "startDate" | "key">;

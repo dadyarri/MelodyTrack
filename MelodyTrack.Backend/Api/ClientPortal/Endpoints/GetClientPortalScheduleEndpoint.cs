@@ -51,11 +51,13 @@ public sealed class GetClientPortalScheduleEndpoint
         var appointment = await db.Appointments
             .AsNoTracking()
             .Include(item => item.CourseTheme)
+            .Include(item => item.Service)
             .Where(item =>
                 !item.IsDeleted &&
                 item.Client.Id == clientId &&
                 item.Status == AppointmentStatus.Planned &&
-                item.EndDate >= nowUtc)
+                item.EndDate >= nowUtc &&
+                !item.Client.Vacations.Any(vacation => item.StartDate < vacation.EndDate && item.EndDate > vacation.StartDate))
             .OrderBy(item => item.StartDate)
             .Take(1)
             .SingleOrDefaultAsync(ct);

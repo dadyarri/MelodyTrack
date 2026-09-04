@@ -25,8 +25,8 @@ public record UserWorkingHoursDaySnapshot(
 
 public record UserVacationSnapshot(
     Ulid Id,
-    DateOnly StartDate,
-    DateOnly EndDate);
+    DateTime StartDate,
+    DateTime EndDate);
 
 public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
 {
@@ -135,16 +135,15 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
 
     public static bool IsAvailable(UserAvailabilitySnapshot availability, DateTime startUtc, DateTime endUtc, string timezoneId)
     {
-        var localStart = DateTimeUtils.ConvertDateToTimezone(startUtc, timezoneId);
-        var localEnd = DateTimeUtils.ConvertDateToTimezone(endUtc, timezoneId);
-
-        if (localStart.Date != localEnd.Date)
+        if (availability.Vacations.Any(vacation => startUtc < vacation.EndDate && endUtc > vacation.StartDate))
         {
             return false;
         }
 
-        var localDate = DateOnly.FromDateTime(localStart);
-        if (availability.Vacations.Any(vacation => vacation.StartDate <= localDate && vacation.EndDate >= localDate))
+        var localStart = DateTimeUtils.ConvertDateToTimezone(startUtc, timezoneId);
+        var localEnd = DateTimeUtils.ConvertDateToTimezone(endUtc, timezoneId);
+
+        if (localStart.Date != localEnd.Date)
         {
             return false;
         }

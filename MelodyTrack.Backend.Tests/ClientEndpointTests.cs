@@ -193,8 +193,8 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
                 Id = Ulid.NewUlid(),
                 ClientId = client.Id,
                 Client = client,
-                StartDate = new DateOnly(2026, 8, 1),
-                EndDate = new DateOnly(2026, 8, 10)
+                StartDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc),
+                EndDate = new DateTime(2026, 8, 11, 0, 0, 0, DateTimeKind.Utc)
             },
             TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
@@ -208,7 +208,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
                 lastName = client.LastName,
                 vacations = new[]
                 {
-                    new { startDate = "2026-09-02", endDate = "2026-09-12" }
+                    new { startDate = "2026-09-02T09:00:00Z", endDate = "2026-09-12T18:00:00Z" }
                 }
             },
             TestContext.Current.CancellationToken);
@@ -221,7 +221,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             .FirstAsync(item => item.EntityId == client.Id.ToString(), TestContext.Current.CancellationToken);
         auditLog.Action.ShouldBe("client_vacations_updated_directly");
         auditLog.Details.ShouldBe(
-            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01–2026-08-10 → 2026-09-02–2026-09-12");
+            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01 00:00–2026-08-11 00:00 UTC → 2026-09-02 09:00–2026-09-12 18:00 UTC");
     }
 
     [Fact]
@@ -239,7 +239,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             {
                 firstName = client.FirstName,
                 lastName = client.LastName,
-                vacations = new[] { new { startDate = "2026-09-02", endDate = "2026-09-12" } }
+                vacations = new[] { new { startDate = "2026-09-02T09:00:00Z", endDate = "2026-09-12T18:00:00Z" } }
             },
             TestContext.Current.CancellationToken);
 

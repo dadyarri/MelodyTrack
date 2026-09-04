@@ -56,7 +56,7 @@ export function ClientVacationsModal({
       }}
       confirmLoading={saving}
     >
-      <Typography.Paragraph type="secondary">Встречи в эти даты не будут показаны или созданы.</Typography.Paragraph>
+      <Typography.Paragraph type="secondary">Встречи, пересекающие эти периоды, не будут показаны или созданы.</Typography.Paragraph>
       <Form form={form} layout="vertical" onFinish={onSubmit} onValuesChange={onValuesChange}>
         <Form.List name="vacations">
           {(fields, { add, remove }) => (
@@ -64,7 +64,7 @@ export function ClientVacationsModal({
               {fields.map((field) => (
                 <Space key={field.key} className="wide">
                   <Form.Item name={[field.name, "period"]} rules={[{ required: true, message: "Укажите период отсутствия" }]} noStyle>
-                    <DatePicker.RangePicker format={DATE_FORMAT} />
+                    <DatePicker.RangePicker format={`${DATE_FORMAT} HH:mm`} showTime={{ format: "HH:mm", minuteStep: 15 }} />
                   </Form.Item>
                   <Button
                     danger

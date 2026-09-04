@@ -333,11 +333,6 @@ public sealed class DevelopmentFullDemoDataSeeder(
             var availability = availabilities[provider.Id];
             for (var date = firstLocalDate; date <= lastLocalDate; date = date.AddDays(1))
             {
-                if (availability.Vacations.Any(vacation => vacation.StartDate <= date && vacation.EndDate >= date))
-                {
-                    continue;
-                }
-
                 var workingDay = availability.WorkingHours.FirstOrDefault(day => day.DayOfWeek == date.DayOfWeek);
                 if (workingDay is null || !workingDay.IsWorkingDay)
                 {
@@ -353,11 +348,17 @@ public sealed class DevelopmentFullDemoDataSeeder(
                         continue;
                     }
 
+                    var startUtc = TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone);
+                    if (availability.Vacations.Any(vacation => startUtc < vacation.EndDate && startUtc.AddHours(1) > vacation.StartDate))
+                    {
+                        continue;
+                    }
+
                     result.Add(new ProviderSlot(
                         provider,
                         date,
                         minute,
-                        TimeZoneInfo.ConvertTimeToUtc(localStart, timeZone)));
+                        startUtc));
                 }
             }
         }
@@ -771,9 +772,8 @@ public sealed class DevelopmentFullDemoDataSeeder(
     {
         var localStart = TimeZoneInfo.ConvertTimeFromUtc(startUtc, timeZone);
         var localEnd = TimeZoneInfo.ConvertTimeFromUtc(endUtc, timeZone);
-        var date = DateOnly.FromDateTime(localStart);
         if (localStart.Date != localEnd.Date
-            || availability.Vacations.Any(vacation => vacation.StartDate <= date && vacation.EndDate >= date))
+            || availability.Vacations.Any(vacation => startUtc < vacation.EndDate && endUtc > vacation.StartDate))
         {
             return false;
         }

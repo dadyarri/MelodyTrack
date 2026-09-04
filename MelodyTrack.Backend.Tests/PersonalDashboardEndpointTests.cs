@@ -91,8 +91,8 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         {
             Id = Ulid.NewUlid(),
             ClientId = vacationClient.Id,
-            StartDate = DateOnly.FromDateTime(todayStartUtc),
-            EndDate = DateOnly.FromDateTime(todayStartUtc)
+            StartDate = todayStartUtc,
+            EndDate = todayStartUtc.AddDays(1)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddRangeAsync(
             [
@@ -133,6 +133,7 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         var nowUtc = DateTime.UtcNow;
         var localToday = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(nowUtc, timezone));
         var todayStartUtc = TimeZoneInfo.ConvertTimeToUtc(localToday.ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timezone);
+        var tomorrowStartUtc = TimeZoneInfo.ConvertTimeToUtc(localToday.AddDays(1).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timezone);
         var dayAfterTomorrowStartUtc = TimeZoneInfo.ConvertTimeToUtc(localToday.AddDays(2).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timezone);
         var visibleId = Ulid.NewUlid();
 
@@ -140,8 +141,8 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         {
             Id = Ulid.NewUlid(),
             ClientId = vacationClient.Id,
-            StartDate = localToday,
-            EndDate = localToday
+            StartDate = todayStartUtc,
+            EndDate = tomorrowStartUtc
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddRangeAsync(
             [

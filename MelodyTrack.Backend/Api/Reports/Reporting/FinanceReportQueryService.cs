@@ -21,6 +21,7 @@ public sealed class FinanceReportQueryService(
         await materializer.EnsureAppointmentsGeneratedAsync(context.StartUtc, context.EndExclusiveUtc.AddTicks(-1), ct);
         var appointments = await appointmentQuery.LoadAsync(context, context.StartUtc, context.EndExclusiveUtc, ct);
         var revenueAppointments = appointments.Where(appointment => appointment.IsValueVisit).ToList();
+        var plannedIncomeAppointments = appointments.Where(appointment => appointment.IsPlannedIncomeValue).ToList();
         var includesOrganizationFigures = context.ProviderId is null;
 
         var payments = includesOrganizationFigures
@@ -43,6 +44,7 @@ public sealed class FinanceReportQueryService(
             ? await BuildDebtorsAsync(context, ct)
             : DebtResult.Empty;
         var revenue = revenueAppointments.Sum(appointment => appointment.Price);
+        var forecastIncome = plannedIncomeAppointments.Sum(appointment => appointment.Price);
         var paymentTotal = payments.Sum(payment => payment.Amount);
         var expenseTotal = expenses.Sum(expense => expense.Amount);
 
@@ -52,6 +54,8 @@ public sealed class FinanceReportQueryService(
             Summary = new FinanceReportSummaryDto
             {
                 Revenue = revenue,
+                ForecastIncome = forecastIncome,
+                ForecastAppointments = plannedIncomeAppointments.Count,
                 Payments = includesOrganizationFigures ? paymentTotal : null,
                 Expenses = includesOrganizationFigures ? expenseTotal : null,
                 NetProfit = includesOrganizationFigures ? revenue - expenseTotal : null,

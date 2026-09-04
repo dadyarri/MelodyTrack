@@ -132,12 +132,6 @@ public sealed class WorkReportQueryService(
         {
             for (var date = context.StartLocal; date < context.EndExclusiveLocal; date = date.AddDays(1))
             {
-                var localDate = DateOnly.FromDateTime(date);
-                if (availability.Vacations.Any(vacation => vacation.StartDate <= localDate && vacation.EndDate >= localDate))
-                {
-                    continue;
-                }
-
                 var workingDay = availability.WorkingHours.FirstOrDefault(day => day.DayOfWeek == date.DayOfWeek);
                 if (workingDay is null || !workingDay.IsWorkingDay || workingDay.EndMinuteOfDay <= workingDay.StartMinuteOfDay)
                 {
@@ -150,12 +144,35 @@ public sealed class WorkReportQueryService(
                 var endUtc = ReportBuckets.ToUtc(localEnd, context.Timezone);
                 if (endUtc > startUtc)
                 {
-                    result.Add(new WorkingInterval(availability.UserId, date.Date, startUtc, endUtc));
+                    var intervals = new List<(DateTime StartUtc, DateTime EndUtc)> { (startUtc, endUtc) };
+                    foreach (var vacation in availability.Vacations.Where(vacation => vacation.StartDate < endUtc && vacation.EndDate > startUtc))
+                    {
+                        intervals = intervals.SelectMany(interval => Subtract(interval, vacation.StartDate, vacation.EndDate)).ToList();
+                    }
+
+                    result.AddRange(intervals.Select(interval =>
+                        new WorkingInterval(availability.UserId, date.Date, interval.StartUtc, interval.EndUtc)));
                 }
             }
         }
 
         return result;
+    }
+
+    private static IEnumerable<(DateTime StartUtc, DateTime EndUtc)> Subtract(
+        (DateTime StartUtc, DateTime EndUtc) interval,
+        DateTime blockedStartUtc,
+        DateTime blockedEndUtc)
+    {
+        if (blockedStartUtc > interval.StartUtc)
+        {
+            yield return (interval.StartUtc, blockedStartUtc < interval.EndUtc ? blockedStartUtc : interval.EndUtc);
+        }
+
+        if (blockedEndUtc < interval.EndUtc)
+        {
+            yield return (blockedEndUtc > interval.StartUtc ? blockedEndUtc : interval.StartUtc, interval.EndUtc);
+        }
     }
 
     private static WorkingTimeMetrics CalculateWorkingTime(

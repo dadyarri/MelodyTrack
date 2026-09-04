@@ -11,6 +11,7 @@ public class UpdateUserAvailabilityRequest : IValidatableRequest
     public Ulid? ExpectedActivityId { get; set; }
     public required List<UserWorkingHoursDayItem> WorkingHours { get; set; }
     public required List<UserVacationItem> Vacations { get; set; }
+    public bool CancelConflictingAppointments { get; set; }
 }
 
 public class UserWorkingHoursDayItem
@@ -23,6 +24,6 @@ public class UserWorkingHoursDayItem
 
 public class UserVacationItem
 {
-    public required DateOnly StartDate { get; set; }
-    public required DateOnly EndDate { get; set; }
+    public required DateTime StartDate { get; set; }
+    public required DateTime EndDate { get; set; }
 }

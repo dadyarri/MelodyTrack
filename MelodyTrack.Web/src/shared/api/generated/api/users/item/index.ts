@@ -10,6 +10,8 @@ import { CalendarSubscriptionsRequestBuilderRequestsMetadata, type CalendarSubsc
 // @ts-ignore
 import { PasswordResetLinksRequestBuilderRequestsMetadata, type PasswordResetLinksRequestBuilder } from './passwordResetLinks/index.js';
 // @ts-ignore
+import { type VacationAppointmentConflictCountRequestBuilder, VacationAppointmentConflictCountRequestBuilderRequestsMetadata } from './vacationAppointmentConflictCount/index.js';
+// @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type Parsable, type ParsableFactory, type RequestConfiguration, type RequestInformation, type RequestsMetadata } from '@microsoft/kiota-abstractions';
 
 /**
@@ -28,6 +30,10 @@ export interface UsersItemRequestBuilder extends BaseRequestBuilder<UsersItemReq
      * The passwordResetLinks property
      */
     get passwordResetLinks(): PasswordResetLinksRequestBuilder;
+    /**
+     * The vacationAppointmentConflictCount property
+     */
+    get vacationAppointmentConflictCount(): VacationAppointmentConflictCountRequestBuilder;
     /**
      * @param body The request body
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
@@ -64,6 +70,9 @@ export const UsersItemRequestBuilderNavigationMetadata: Record<Exclude<keyof Use
     },
     passwordResetLinks: {
         requestsMetadata: PasswordResetLinksRequestBuilderRequestsMetadata,
+    },
+    vacationAppointmentConflictCount: {
+        requestsMetadata: VacationAppointmentConflictCountRequestBuilderRequestsMetadata,
     },
 };
 /**

@@ -1884,7 +1884,7 @@ Cover at least:
 
 ---
 
-## Stage 14: Calendar Workflow and Income Forecast Improvements
+## Stage 14: Calendar Workflow and Income Forecast Improvements ✅
 
 ### Goal
 
@@ -1896,20 +1896,22 @@ Address the latest customer feedback around trial lessons, calendar workflow, sc
 - add the missing recurring-task reminder for trial lessons;
 - allow vacations to include a start and end time instead of being date-only;
 - upgrade the Stage 13 vacation-request forms, validation, superuser review, and approved-vacation creation to use the same time-aware range;
+- preserve multi-week vacation ranges across calendar weeks and require an explicit choice before cancelling overlapping planned appointments;
 - add a calendar shortcut for creating a vacation by dragging time slots, with an interaction that does not conflict with drag-to-create appointments;
 - when a superuser opens the calendar, select that user's calendar automatically while continuing to allow selection of other users;
 - show administrators the full schedule;
 - continue showing teachers only their own schedule, without a control or API path for switching to another user's calendar;
-- add forecast income for the selected date/time range to the income statistics page, calculated from planned appointments in that range.
+- add planned income for the selected date/time range to the income statistics page, calculated from planned, completed, and burned appointments in that range.
 
 ### Done looks like
 
 - trial lessons are immediately distinguishable from ordinary appointments in every supported calendar layout;
 - trial-lesson reminders are generated once at the intended time and follow the existing recurring-task deduplication, cancellation, and delay rules;
 - timed vacations persist, render, and enforce availability using their actual time range, while existing date-only vacation data has an explicit migration/default interpretation;
+- multi-week vacations render in every affected week, existing planned occurrences are cancelled only with explicit approval, and future recurring occurrences inside the vacation are not materialized;
 - users can deliberately choose between creating an appointment and creating a vacation from calendar time slots without accidental cross-triggering on desktop or mobile;
 - calendar defaults and user-selection controls match the superuser, administrator, and teacher rules above, with authorization enforced server-side;
-- income statistics clearly separate forecast income from realized income and calculate the forecast only from planned appointments inside the selected range;
+- income statistics clearly separate planned income from realized income and calculate planned income from planned, completed, and burned appointments inside the selected range;
 - integration and browser tests cover role visibility, calendar gestures, trial-lesson presentation/reminders, timed vacation requests/approvals and boundaries, and forecast calculations.
 
 ---
@@ -3855,10 +3857,10 @@ Stage 11 God mode + system notices
 Stage 12 Notification infrastructure + Web Push
    ↓
 Stage 13 Vacation requests + superuser approval
-
-CURRENT / DEFERRED GENERAL PRODUCT WORK
+   ↓
 Stage 14 Calendar workflow + income forecast improvements
 
+CURRENT / DEFERRED GENERAL PRODUCT WORK
 Stage 15 Services Progress
    └─ merged into Stage 24; do not implement separately
 

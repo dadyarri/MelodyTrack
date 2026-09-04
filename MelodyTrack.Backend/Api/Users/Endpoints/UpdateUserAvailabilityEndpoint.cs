@@ -16,7 +16,7 @@ namespace MelodyTrack.Backend.Api.Users.Endpoints;
 public sealed class UpdateUserAvailabilityEndpoint
 {
 
-    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>, Conflict<ApiProblemDetails>>> HandleAsync(
         UpdateUserAvailabilityRequest req,
         Ulid id,
         AppDbContext db,
@@ -87,6 +87,24 @@ public sealed class UpdateUserAvailabilityEndpoint
             return TypedResults.NoContent();
         }
 
+        List<Appointment> conflictingAppointments = vacationsChanged
+            ? await GetConflictingAppointmentsAsync(db, user.Id, req.Vacations, ct)
+            : [];
+        if (conflictingAppointments.Count > 0 && !req.CancelConflictingAppointments)
+        {
+            validationErrors.Add(
+                nameof(req.Vacations),
+                $"Выбранные отпуска пересекаются с запланированными занятиями: {conflictingAppointments.Count}. Разрешите их отмену или сначала измените расписание.",
+                "appointment_conflict");
+            ApiProblemDetails problem = new(validationErrors, httpContext, StatusCodes.Status409Conflict);
+            return TypedResults.Conflict(problem);
+        }
+
+        foreach (var appointment in conflictingAppointments)
+        {
+            appointment.Status = AppointmentStatus.Cancelled;
+        }
+
         db.UserWorkingHoursDays.RemoveRange(user.WorkingHours);
 
         user.WorkingHours = req.WorkingHours
@@ -122,6 +140,7 @@ public sealed class UpdateUserAvailabilityEndpoint
         }
 
         await db.SaveChangesAsync(ct);
+        await WriteCancelledAppointmentAuditsAsync(auditLogService, conflictingAppointments, ct);
         if (workingHoursChanged)
         {
             await WriteDirectAuditAsync(
@@ -140,6 +159,58 @@ public sealed class UpdateUserAvailabilityEndpoint
         }
         await transaction.CommitAsync(ct);
         return TypedResults.NoContent();
+    }
+
+    private static async Task<List<Appointment>> GetConflictingAppointmentsAsync(
+        AppDbContext db,
+        Ulid userId,
+        IReadOnlyCollection<UserVacationItem> vacations,
+        CancellationToken ct)
+    {
+        if (vacations.Count == 0)
+        {
+            return [];
+        }
+
+        var earliestStart = vacations.Min(item => item.StartDate);
+        var latestEnd = vacations.Max(item => item.EndDate);
+        var candidates = await db.Appointments
+            .Include(item => item.Client)
+            .Include(item => item.Service)
+            .Where(item =>
+                !item.IsDeleted &&
+                item.Status == AppointmentStatus.Planned &&
+                item.Provider != null &&
+                item.Provider.Id == userId &&
+                item.StartDate < latestEnd &&
+                item.EndDate > earliestStart)
+            .ToListAsync(ct);
+
+        return candidates
+            .Where(item => vacations.Any(vacation => item.StartDate < vacation.EndDate && item.EndDate > vacation.StartDate))
+            .ToList();
+    }
+
+    private static async Task WriteCancelledAppointmentAuditsAsync(
+        IAuditLogService auditLogService,
+        IReadOnlyCollection<Appointment> appointments,
+        CancellationToken ct)
+    {
+        foreach (var appointment in appointments)
+        {
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentUpdated,
+                EntityType = "appointment",
+                EntityId = appointment.Id.ToString(),
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Клиент", $"{appointment.Client.LastName} {appointment.Client.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
+                    AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
+                    AuditDetailsFormatter.DescribeChange("Статус", AppointmentStatus.Planned.ToDisplayName(), AppointmentStatus.Cancelled.ToDisplayName()),
+                    AuditDetailsFormatter.DescribeContext("Причина", "Отпуск"))
+            }, ct);
+        }
     }
 
     private static bool IsNoOp(User user, UpdateUserAvailabilityRequest req)

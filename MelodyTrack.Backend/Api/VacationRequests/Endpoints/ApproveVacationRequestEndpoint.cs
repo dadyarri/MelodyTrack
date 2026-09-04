@@ -30,7 +30,13 @@ public sealed class ApproveVacationRequestEndpoint
             return TypedResults.Unauthorized();
         }
 
-        var result = await workflow.ApproveAsync(id, request.ExpectedVersion, request.Message, currentUser, ct);
+        var result = await workflow.ApproveAsync(
+            id,
+            request.ExpectedVersion,
+            request.Message,
+            request.CancelConflictingAppointments,
+            currentUser,
+            ct);
         if (result.Failure == VacationRequestWorkflowFailure.Forbidden)
         {
             return TypedResults.Forbid();

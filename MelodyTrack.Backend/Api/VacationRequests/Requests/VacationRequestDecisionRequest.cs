@@ -9,4 +9,5 @@ public sealed class VacationRequestDecisionRequest : IValidatableRequest
     public Ulid Id { get; set; }
     public int ExpectedVersion { get; set; }
     public string? Message { get; set; }
+    public bool CancelConflictingAppointments { get; set; }
 }

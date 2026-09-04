@@ -79,6 +79,7 @@ export function usePaymentsPageController() {
         queryClient.invalidateQueries({ queryKey: clientQueryKeys.history() }),
       ]);
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -112,7 +113,6 @@ export function usePaymentsPageController() {
       downloadBlob(blob, `payments_${dayjs().format("YYYYMMDD_HHmmss")}.xlsx`);
       message.success("Экспорт готов");
     },
-    onError: showErrors,
   });
   const exportPayments = exportMutation.mutate;
 

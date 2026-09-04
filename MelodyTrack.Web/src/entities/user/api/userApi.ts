@@ -26,9 +26,21 @@ export const usersApi = {
   getAvailability(id: Ulid) {
     return http.get<UserAvailability>(`/users/${id}/availability`).then((response) => response.data);
   },
+  getVacationAppointmentConflictCount(id: Ulid, startDate: string, endDate: string, signal?: AbortSignal) {
+    return http
+      .get<number>(`/users/${id}/vacation-appointment-conflict-count`, {
+        params: { startDate, endDate },
+        signal,
+      })
+      .then((response) => response.data);
+  },
   updateAvailability(
     id: Ulid,
-    input: { workingHours: UserWorkingHoursDay[]; vacations: Array<{ startDate: string; endDate: string }> },
+    input: {
+      workingHours: UserWorkingHoursDay[];
+      vacations: Array<{ startDate: string; endDate: string }>;
+      cancelConflictingAppointments?: boolean;
+    },
     options?: { expectedActivityId?: Ulid },
   ) {
     return http

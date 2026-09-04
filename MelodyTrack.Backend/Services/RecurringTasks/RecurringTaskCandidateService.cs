@@ -297,6 +297,7 @@ internal sealed class RecurringTaskCandidateService(
             .Where(appointment =>
                 !appointment.IsDeleted
                 && appointment.Status == AppointmentStatus.Completed
+                && appointment.Service.IsConsultation
                 && appointment.StartDate <= latestAllowedStartUtc)
             .OrderBy(appointment => appointment.StartDate)
             .ToListAsync(ct);
@@ -368,29 +369,6 @@ internal sealed class RecurringTaskCandidateService(
         foreach (var appointment in appointments)
         {
             if (!HasAnyClientContact(appointment.Client))
-            {
-                continue;
-            }
-
-            var serviceName = appointment.Service.Name.ToLowerInvariant();
-            var serviceDescription = appointment.Service.Description?.ToLowerInvariant();
-            if (!serviceName.Contains("проб", StringComparison.Ordinal)
-                && !(serviceDescription?.Contains("проб", StringComparison.Ordinal) ?? false))
-            {
-                continue;
-            }
-
-            if (!pricesByServiceId.TryGetValue(appointment.Service.Id, out var servicePrices))
-            {
-                continue;
-            }
-
-            var effectivePrice = servicePrices
-                .Where(entry => entry.EffectiveDate <= appointment.StartDate)
-                .OrderByDescending(entry => entry.EffectiveDate)
-                .FirstOrDefault();
-
-            if (effectivePrice is null || effectivePrice.Price != 0)
             {
                 continue;
             }
@@ -865,12 +843,13 @@ internal sealed class RecurringTaskCandidateService(
             .Where(vacation => clientIds.Contains(vacation.ClientId))
             .Select(vacation => new { vacation.ClientId, vacation.StartDate, vacation.EndDate })
             .ToListAsync(ct);
+        var nowUtc = UtcNow;
 
         return candidates
             .Where(candidate => candidate.ClientId is null || !vacations.Any(vacation =>
                 vacation.ClientId == candidate.ClientId
-                && vacation.StartDate <= candidate.BusinessDate
-                && vacation.EndDate >= candidate.BusinessDate))
+                && vacation.StartDate <= nowUtc
+                && vacation.EndDate > nowUtc))
             .ToList();
     }
 

@@ -7,7 +7,6 @@ import { getAppointmentStatusLabel, getAppointmentStatusTagColor } from "@/entit
 import { clientsApi } from "@/entities/client";
 import { useAuth } from "@/entities/session";
 import { clientPortalApi, type ClientPortalAppointment, clientPortalQueryKeys } from "@/features/client-portal";
-import { getApiErrorMessages } from "@/shared/api";
 import { formatMoney } from "@/shared/lib";
 import { UrlCopyModal, useUrlCopyModal } from "@/shared/ui";
 import { CalendarCheckOutlined } from "@/shared/ui/icons";
@@ -57,11 +56,6 @@ export function ClientPortalSchedulePage() {
       });
       message.success("Ссылка на календарь создана");
     },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
-    },
   });
 
   const nextAppointment = query.data;
@@ -81,6 +75,7 @@ export function ClientPortalSchedulePage() {
                     <Tag color={getAppointmentStatusTagColor(nextAppointment.status)}>
                       {getAppointmentStatusLabel(nextAppointment.status)}
                     </Tag>
+                    {nextAppointment.isTrial ? <Tag color="purple">Пробное занятие</Tag> : null}
                     {nextAppointment.courseTheme ? <Tag color="blue">Тема: {nextAppointment.courseTheme.title}</Tag> : null}
                   </Space>
                 </>

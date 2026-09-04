@@ -56,7 +56,7 @@ internal sealed class PersonalDashboardQueryService(
             .ToListAsync(ct);
 
         var visibleAppointments = agendaAppointments
-            .Where(appointment => !IsClientVacation(appointment, timezone))
+            .Where(appointment => !IsClientVacation(appointment))
             .ToList();
         var todayAppointments = MapAppointments(
             visibleAppointments.Where(appointment => appointment.StartDate < period.TomorrowStartUtc),
@@ -224,10 +224,10 @@ internal sealed class PersonalDashboardQueryService(
             price => price.EffectiveDate,
             price => price.Price);
 
-    private static bool IsClientVacation(Appointment appointment, TimeZoneInfo timezone)
+    private static bool IsClientVacation(Appointment appointment)
     {
-        var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(AsUtc(appointment.StartDate), timezone));
-        return appointment.Client.Vacations.Any(vacation => vacation.StartDate <= localDate && vacation.EndDate >= localDate);
+        return appointment.Client.Vacations.Any(vacation =>
+            appointment.StartDate < vacation.EndDate && appointment.EndDate > vacation.StartDate);
     }
 
     private static List<DashboardAppointmentResponse> MapAppointments(IEnumerable<Appointment> appointments, TimeZoneInfo timezone)

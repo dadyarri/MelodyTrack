@@ -41,6 +41,7 @@ public interface IVacationRequestWorkflowService
         Ulid requestId,
         int expectedVersion,
         string? decisionMessage,
+        bool cancelConflictingAppointments,
         User superuser,
         CancellationToken ct);
 
@@ -112,6 +113,7 @@ public sealed class VacationRequestWorkflowService(
         Ulid requestId,
         int expectedVersion,
         string? decisionMessage,
+        bool cancelConflictingAppointments,
         User superuser,
         CancellationToken ct)
     {
@@ -142,11 +144,22 @@ public sealed class VacationRequestWorkflowService(
         {
             return new VacationRequestWorkflowResult(VacationRequestWorkflowFailure.Conflict, "Запрошенный период пересекается с существующим отпуском.");
         }
-        if (await CountConflictingAppointmentsAsync(request.SubjectType, request.SubjectId, request.RequestedStart, request.RequestedEnd, ct) > 0)
+        var conflictingAppointments = await GetConflictingAppointmentsAsync(
+            request.SubjectType,
+            request.SubjectId,
+            request.RequestedStart,
+            request.RequestedEnd,
+            ct);
+        if (conflictingAppointments.Count > 0 && !cancelConflictingAppointments)
         {
             return new VacationRequestWorkflowResult(
                 VacationRequestWorkflowFailure.Conflict,
-                "В запрошенном периоде есть запланированные занятия. Сначала разрешите конфликты расписания; занятия не были изменены.");
+                $"В запрошенном периоде есть запланированные занятия: {conflictingAppointments.Count}. Разрешите их отмену при одобрении или сначала измените расписание; занятия не были изменены.");
+        }
+
+        foreach (var appointment in conflictingAppointments)
+        {
+            appointment.Status = AppointmentStatus.Cancelled;
         }
 
         var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
@@ -191,8 +204,21 @@ public sealed class VacationRequestWorkflowService(
         }
 
         await db.SaveChangesAsync(ct);
-        await NotifyRequesterAsync(request, "vacation_request.approved", "Отпуск согласован", "Заявка одобрена. Отпуск добавлен в календарь.", ct);
-        await WriteAuditAsync(request, MelodyTrack.Core.Auditing.AuditCatalog.Events.VacationRequestApproved, ct);
+        await WriteCancelledAppointmentAuditsAsync(conflictingAppointments, ct);
+        var cancelledSummary = conflictingAppointments.Count > 0
+            ? $" Пересекающиеся занятия отменены: {conflictingAppointments.Count}."
+            : string.Empty;
+        await NotifyRequesterAsync(
+            request,
+            "vacation_request.approved",
+            "Отпуск согласован",
+            $"Заявка одобрена. Отпуск добавлен в календарь.{cancelledSummary}",
+            ct);
+        await WriteAuditAsync(
+            request,
+            MelodyTrack.Core.Auditing.AuditCatalog.Events.VacationRequestApproved,
+            ct,
+            conflictingAppointments.Count);
         await transaction.CommitAsync(ct);
 
         return VacationRequestWorkflowResult.Success(request.WithState(
@@ -314,8 +340,8 @@ public sealed class VacationRequestWorkflowService(
                 item.SubjectType == subjectType &&
                 item.SubjectId == subjectId &&
                 item.Status == VacationRequestStatus.Pending &&
-                item.RequestedStart <= input.EndDate &&
-                item.RequestedEnd >= input.StartDate, ct);
+                item.RequestedStart < input.EndDate &&
+                item.RequestedEnd > input.StartDate, ct);
         if (overlappingPendingRequest is not null)
         {
             if (overlappingPendingRequest.RequesterPrincipalType == requesterType &&
@@ -377,35 +403,58 @@ public sealed class VacationRequestWorkflowService(
     private Task<bool> HasExistingVacationAsync(
         VacationRequestSubjectType subjectType,
         Ulid subjectId,
-        DateOnly start,
-        DateOnly end,
+        DateTime start,
+        DateTime end,
         CancellationToken ct)
     {
         return subjectType == VacationRequestSubjectType.Staff
             ? db.UserVacations.AsNoTracking().AnyAsync(item =>
-                item.UserId == subjectId && item.StartDate <= end && item.EndDate >= start, ct)
+                item.UserId == subjectId && item.StartDate < end && item.EndDate > start, ct)
             : db.ClientVacations.AsNoTracking().AnyAsync(item =>
-                item.ClientId == subjectId && item.StartDate <= end && item.EndDate >= start, ct);
+                item.ClientId == subjectId && item.StartDate < end && item.EndDate > start, ct);
     }
 
-    internal Task<int> CountConflictingAppointmentsAsync(
+    private Task<List<Appointment>> GetConflictingAppointmentsAsync(
         VacationRequestSubjectType subjectType,
         Ulid subjectId,
-        DateOnly start,
-        DateOnly end,
+        DateTime start,
+        DateTime end,
         CancellationToken ct)
     {
-        var startUtc = DateTime.SpecifyKind(start.ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-        var endExclusiveUtc = DateTime.SpecifyKind(end.AddDays(1).ToDateTime(TimeOnly.MinValue), DateTimeKind.Utc);
-        var appointments = db.Appointments.AsNoTracking().Where(item =>
-            !item.IsDeleted &&
-            item.Status == AppointmentStatus.Planned &&
-            item.StartDate < endExclusiveUtc &&
-            item.EndDate > startUtc);
+        var appointments = db.Appointments
+            .Include(item => item.Client)
+            .Include(item => item.Service)
+            .Include(item => item.Provider)
+            .Where(item =>
+                !item.IsDeleted &&
+                item.Status == AppointmentStatus.Planned &&
+                item.StartDate < end &&
+                item.EndDate > start);
 
         return subjectType == VacationRequestSubjectType.Staff
-            ? appointments.CountAsync(item => item.Provider != null && item.Provider.Id == subjectId, ct)
-            : appointments.CountAsync(item => item.Client.Id == subjectId, ct);
+            ? appointments.Where(item => item.Provider != null && item.Provider.Id == subjectId).ToListAsync(ct)
+            : appointments.Where(item => item.Client.Id == subjectId).ToListAsync(ct);
+    }
+
+    private async Task WriteCancelledAppointmentAuditsAsync(
+        IReadOnlyCollection<Appointment> appointments,
+        CancellationToken ct)
+    {
+        foreach (var appointment in appointments)
+        {
+            await auditLogService.WriteAsync(new AuditLogWriteRequest
+            {
+                Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentUpdated,
+                EntityType = "appointment",
+                EntityId = appointment.Id.ToString(),
+                Details = AuditDetailsFormatter.JoinChanges(
+                    AuditDetailsFormatter.DescribeContext("Клиент", $"{appointment.Client.LastName} {appointment.Client.FirstName}".Trim()),
+                    AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
+                    AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
+                    AuditDetailsFormatter.DescribeChange("Статус", AppointmentStatus.Planned.ToDisplayName(), AppointmentStatus.Cancelled.ToDisplayName()),
+                    AuditDetailsFormatter.DescribeContext("Причина", "Отпуск"))
+            }, ct);
+        }
     }
 
     private async Task NotifySuperusersAsync(
@@ -455,7 +504,8 @@ public sealed class VacationRequestWorkflowService(
     private Task WriteAuditAsync(
         VacationRequest request,
         MelodyTrack.Core.Auditing.AuditEventDefinition auditEvent,
-        CancellationToken ct)
+        CancellationToken ct,
+        int cancelledAppointmentCount = 0)
     {
         return auditLogService.WriteAsync(new AuditLogWriteRequest
         {
@@ -465,7 +515,10 @@ public sealed class VacationRequestWorkflowService(
             Details = AuditDetailsFormatter.JoinChanges(
                 AuditDetailsFormatter.DescribeContext("Тип получателя", request.SubjectType.ToString()),
                 AuditDetailsFormatter.DescribeContext("Получатель", request.SubjectId.ToString()),
-                AuditDetailsFormatter.DescribeContext("Период", $"{request.RequestedStart:yyyy-MM-dd}–{request.RequestedEnd:yyyy-MM-dd}"))
+                AuditDetailsFormatter.DescribeContext("Период", $"{request.RequestedStart:yyyy-MM-dd}–{request.RequestedEnd:yyyy-MM-dd}"),
+                cancelledAppointmentCount > 0
+                    ? AuditDetailsFormatter.DescribeContext("Отменено занятий", cancelledAppointmentCount.ToString())
+                    : null)
         }, ct);
     }
 

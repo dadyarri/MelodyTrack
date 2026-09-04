@@ -5,7 +5,6 @@ import * as v from "valibot";
 
 import { type Service, serviceQueryKeys, servicesApi } from "@/entities/service";
 import { hasAdminAccess, useAuth } from "@/entities/session";
-import { getApiErrorMessages } from "@/shared/api";
 import { createIdempotencyKey, isShortcutTarget, matchesPlainKey } from "@/shared/lib";
 import { jsonDurableFormCodec, readPositiveInteger, useDurableForm, useUrlState } from "@/shared/lib/react";
 
@@ -95,12 +94,6 @@ export function useServicesPageController() {
   const queryClient = useQueryClient();
   const { message } = AntdApp.useApp();
   const canManageServices = hasAdminAccess(auth.user);
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
-
   const query = useQuery({
     queryKey: serviceQueryKeys.list(page),
     queryFn: () => servicesApi.list({ page, page_size: 10 }),
@@ -116,7 +109,6 @@ export function useServicesPageController() {
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: serviceQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const priceMutation = useMutation({
@@ -127,7 +119,6 @@ export function useServicesPageController() {
       setPricing(null);
       await queryClient.invalidateQueries({ queryKey: serviceQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const updateMutation = useMutation({
@@ -138,7 +129,6 @@ export function useServicesPageController() {
       setEditing(null);
       await queryClient.invalidateQueries({ queryKey: serviceQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const deleteMutation = useMutation({
@@ -147,7 +137,6 @@ export function useServicesPageController() {
       message.success("Услуга удалена");
       await queryClient.invalidateQueries({ queryKey: serviceQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   useEffect(() => {

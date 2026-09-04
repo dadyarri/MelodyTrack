@@ -5,7 +5,6 @@ import * as v from "valibot";
 
 import { clientsApi, normalizePhone, normalizeSocialLink } from "@/entities/client";
 import { clientSourcesApi } from "@/entities/reference-book";
-import { getApiErrorMessages } from "@/shared/api";
 import { useCreatedReferenceOptions } from "@/shared/lib";
 import { jsonDurableFormCodec, useDurableForm } from "@/shared/lib/react";
 import { DraftFormModal } from "@/shared/ui";
@@ -52,12 +51,6 @@ export function ClientQuickCreateModal({ open, onCancel, onCreated }: ClientQuic
     enabled: open,
   });
   const { message } = AntdApp.useApp();
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
-
   const createMutation = useMutation({
     mutationFn: (values: ClientQuickCreateValues) =>
       clientsApi.create({
@@ -78,7 +71,6 @@ export function ClientQuickCreateModal({ open, onCancel, onCreated }: ClientQuic
         displayName: formatClientName(values),
       });
     },
-    onError: showErrors,
   });
 
   const createSourceMutation = useMutation({
@@ -89,7 +81,6 @@ export function ClientQuickCreateModal({ open, onCancel, onCreated }: ClientQuic
       form.setFieldValue("sourceId", result.id);
       setSourceCreateOpen(false);
     },
-    onError: showErrors,
   });
 
   return (

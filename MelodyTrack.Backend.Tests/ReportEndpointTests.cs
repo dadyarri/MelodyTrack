@@ -43,8 +43,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             Id = Ulid.NewUlid(),
             UserId = teacher.Id,
             User = teacher,
-            StartDate = new DateOnly(2026, 7, 2),
-            EndDate = new DateOnly(2026, 7, 2)
+            StartDate = new DateTime(2026, 7, 2, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 3, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddRangeAsync(
         [
@@ -140,7 +140,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         [
             Appointment(client, service, admin, day.AddHours(10), AppointmentStatus.Completed),
             Appointment(client, service, admin, day.AddHours(12), AppointmentStatus.Burned),
-            Appointment(client, service, admin, day.AddHours(14), AppointmentStatus.Cancelled)
+            Appointment(client, service, admin, day.AddHours(14), AppointmentStatus.Cancelled),
+            Appointment(client, service, admin, day.AddHours(16), AppointmentStatus.Planned)
         ], TestContext.Current.CancellationToken);
         await db.Payments.AddAsync(new Payment { Id = Ulid.NewUlid(), Client = client, Service = service, Amount = 50m, Date = day.AddHours(15), Description = "Оплата" }, TestContext.Current.CancellationToken);
         await db.Expenses.AddAsync(new Expense { Id = Ulid.NewUlid(), Amount = 20m, Date = day.AddHours(16), Description = "Студия", Category = category, CategoryId = category.Id }, TestContext.Current.CancellationToken);
@@ -153,6 +154,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         report.ShouldNotBeNull();
         report.Summary.Revenue.ShouldBe(200m);
+        report.Summary.ForecastIncome.ShouldBe(300m);
+        report.Summary.ForecastAppointments.ShouldBe(3);
         report.Summary.Payments.ShouldBe(50m);
         report.Summary.Expenses.ShouldBe(20m);
         report.Summary.NetProfit.ShouldBe(180m);
@@ -336,7 +339,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         ], TestContext.Current.CancellationToken);
         await db.UserVacations.AddAsync(new UserVacation
         {
-            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, StartDate = new DateOnly(2026, 7, 7), EndDate = new DateOnly(2026, 7, 7)
+            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, StartDate = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
 
         var first = Appointment(client, service, teacher, monday.AddHours(8.5), AppointmentStatus.Planned);
@@ -446,8 +449,8 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         ], TestContext.Current.CancellationToken);
         await db.ClientVacations.AddRangeAsync(
         [
-            new ClientVacation { Id = Ulid.NewUlid(), ClientId = vacation.Id, Client = vacation, StartDate = new DateOnly(2026, 5, 10), EndDate = new DateOnly(2026, 5, 31) },
-            new ClientVacation { Id = Ulid.NewUlid(), ClientId = paused.Id, Client = paused, StartDate = new DateOnly(2026, 4, 10), EndDate = new DateOnly(2026, 4, 29) }
+            new ClientVacation { Id = Ulid.NewUlid(), ClientId = vacation.Id, Client = vacation, StartDate = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new ClientVacation { Id = Ulid.NewUlid(), ClientId = paused.Id, Client = paused, StartDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc) }
         ], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -487,7 +490,9 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         await db.Appointments.AddRangeAsync(
         [
             Appointment(regularClient, regularService, teacher, day.AddHours(10), AppointmentStatus.Completed),
-            Appointment(trialClient, trialService, teacher, day.AddHours(11), AppointmentStatus.Completed)
+            Appointment(trialClient, trialService, teacher, day.AddHours(11), AppointmentStatus.Completed),
+            Appointment(regularClient, regularService, teacher, day.AddHours(12), AppointmentStatus.Planned),
+            Appointment(trialClient, trialService, teacher, day.AddHours(13), AppointmentStatus.Planned)
         ], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -498,12 +503,14 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var (_, clients) = await App.Client.GETAsync<GetClientsReportEndpoint, GetReportRequest, ClientsReportResponse>(request);
 
         work.ShouldNotBeNull();
-        work.Summary.Appointments.ShouldBe(2);
+        work.Summary.Appointments.ShouldBe(4);
         work.Summary.Completed.ShouldBe(2);
         work.Services.Single(row => row.ServiceId == trialService.Id).Revenue.ShouldBe(0m);
 
         finance.ShouldNotBeNull();
         finance.Summary.Revenue.ShouldBe(100m);
+        finance.Summary.ForecastIncome.ShouldBe(200m);
+        finance.Summary.ForecastAppointments.ShouldBe(2);
         finance.Summary.RevenueAppointments.ShouldBe(1);
         finance.Summary.AverageRevenuePerVisit.ShouldBe(100m);
         finance.Summary.OutstandingDebt.ShouldBe(100m);

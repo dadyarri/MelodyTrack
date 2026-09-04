@@ -4,7 +4,7 @@ namespace MelodyTrack.Backend.Api.VacationRequests.Requests;
 
 public sealed class CreateVacationRequest : IValidatableRequest
 {
-    public DateOnly StartDate { get; set; }
-    public DateOnly EndDate { get; set; }
+    public DateTime StartDate { get; set; }
+    public DateTime EndDate { get; set; }
     public string? Message { get; set; }
 }

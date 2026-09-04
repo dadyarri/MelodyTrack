@@ -125,6 +125,7 @@ export function usePaymentCreateController({ useRouteIntent = false }: { useRout
         queryClient.invalidateQueries({ queryKey: clientQueryKeys.history() }),
       ]);
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       if (!editingPayment) {
         showErrors(error);

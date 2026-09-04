@@ -201,7 +201,6 @@ export function useProfilePageController() {
       message.success("Пароль изменен. Войдите снова.");
       await auth.logout();
     },
-    onError: showErrors,
   });
 
   const setup2FaMutation = useMutation({
@@ -209,7 +208,6 @@ export function useProfilePageController() {
     onSuccess: (data, variables) => {
       setSetupState({ ...data, password: variables.password });
     },
-    onError: showErrors,
   });
 
   const verify2FaMutation = useMutation({
@@ -231,7 +229,6 @@ export function useProfilePageController() {
       setRecoveryCodes(data.allCodes);
       void meQuery.refetch();
     },
-    onError: showErrors,
   });
 
   const getRecoveryCodesMutation = useMutation({
@@ -239,7 +236,6 @@ export function useProfilePageController() {
     onSuccess: (data) => {
       setRecoveryCodes(data.allCodes);
     },
-    onError: showErrors,
   });
 
   const regenerateRecoveryCodesMutation = useMutation({
@@ -248,7 +244,6 @@ export function useProfilePageController() {
       message.success("Новые коды восстановления созданы.");
       setRecoveryCodes(data.allCodes);
     },
-    onError: showErrors,
   });
 
   const remove2FaMutation = useMutation({
@@ -258,7 +253,6 @@ export function useProfilePageController() {
       void meQuery.refetch();
       setRecoveryCodes(null);
     },
-    onError: showErrors,
   });
   const getRecoveryCodes = getRecoveryCodesMutation.mutate;
   const regenerateRecoveryCodes = regenerateRecoveryCodesMutation.mutate;
@@ -270,7 +264,6 @@ export function useProfilePageController() {
       message.success("Все сессии завершены. Войдите снова.");
       await auth.logout();
     },
-    onError: showErrors,
   });
 
   const revokeSessionMutation = useMutation({
@@ -290,7 +283,6 @@ export function useProfilePageController() {
         queryKey: authQueryKeys.sessions,
       });
     },
-    onError: showErrors,
   });
 
   const savePersonalInfoMutation = useMutation({
@@ -320,6 +312,7 @@ export function useProfilePageController() {
         queryClient.invalidateQueries({ queryKey: userQueryKeys.all }),
       ]);
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -381,6 +374,7 @@ export function useProfilePageController() {
         queryKey: requiresScheduleApproval ? workingHoursRequestQueryKeys.all : userQueryKeys.availability(meQuery.data?.id),
       });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       if (requiresScheduleApproval) {
         showErrors(error);
@@ -416,7 +410,6 @@ export function useProfilePageController() {
         queryKey: onboardingQueryKeys.state,
       });
     },
-    onError: showErrors,
   });
 
   const calendarSubscriptionMutation = useMutation({
@@ -430,7 +423,6 @@ export function useProfilePageController() {
       });
       message.success("Ссылка на календарь создана");
     },
-    onError: showErrors,
   });
 
   const me = meQuery.data;

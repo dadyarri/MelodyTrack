@@ -159,6 +159,7 @@ function renderRouteFamily(family: (typeof routeFamilies)[number]) {
             loading={false}
             range={[dayjs("2026-07-20"), dayjs("2026-07-26")]}
             onCreateAt={() => undefined}
+            onCreateVacation={() => undefined}
             onReschedule={() => undefined}
             onSelect={() => undefined}
             onComplete={() => undefined}

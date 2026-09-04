@@ -220,6 +220,7 @@ export function useClientsPageController() {
       form.resetFields();
       await queryClient.invalidateQueries({ queryKey: clientQueryKeys.all });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       if (!editing) {
         showErrors(error);
@@ -272,7 +273,6 @@ export function useClientsPageController() {
       vacationsForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: clientQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const deleteMutation = useMutation({
@@ -283,6 +283,7 @@ export function useClientsPageController() {
       message.success("Клиент удален");
       await queryClient.invalidateQueries({ queryKey: clientQueryKeys.all });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -314,7 +315,6 @@ export function useClientsPageController() {
       message.success(variables.isClosed ? "Лид закрыт" : "Лид возвращен в работу");
       await queryClient.invalidateQueries({ queryKey: clientQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const createPortalLinkMutation = useMutation({
@@ -328,7 +328,6 @@ export function useClientsPageController() {
       });
       message.success("Новая ссылка на портал создана");
     },
-    onError: showErrors,
   });
 
   const revokePortalLinkMutation = useMutation({
@@ -336,7 +335,6 @@ export function useClientsPageController() {
     onSuccess: () => {
       message.success("Ссылка клиентского кабинета отключена");
     },
-    onError: showErrors,
   });
 
   const createCalendarSubscriptionMutation = useMutation({
@@ -350,7 +348,6 @@ export function useClientsPageController() {
       });
       message.success("Ссылка на календарь создана");
     },
-    onError: showErrors,
   });
 
   const resetPortalPinMutation = useMutation({
@@ -358,7 +355,6 @@ export function useClientsPageController() {
     onSuccess: () => {
       message.success("PIN клиентского кабинета сброшен");
     },
-    onError: showErrors,
   });
 
   const openEditor = (client?: Client) => {
@@ -400,7 +396,6 @@ export function useClientsPageController() {
         queryKey: clientQueryKeys.sources,
       });
     },
-    onError: showErrors,
   });
 
   const createEnrollmentMutation = useMutation({
@@ -416,7 +411,6 @@ export function useClientsPageController() {
       setEnrollmentCreateOpen(false);
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.enrollments.all });
     },
-    onError: showErrors,
   });
 
   const deleteEnrollmentMutation = useMutation({
@@ -425,10 +419,9 @@ export function useClientsPageController() {
       message.success("Курс снят с клиента");
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.enrollments.all });
     },
-    onError: showErrors,
   });
 
-  const updateThemeProgressMutation = useUpdateCourseProgress({ onError: showErrors });
+  const updateThemeProgressMutation = useUpdateCourseProgress();
 
   const clientHistoryActions = getClientHistoryActions(auth.user, navigate);
 
@@ -726,7 +719,7 @@ function prepareClientVacationUpdate(client: Client, values: ClientVacationsForm
     vk: getClientContactValue(client, "vk"),
     sourceId: client.sourceId,
     vacations: (values.vacations ?? []).flatMap((vacation) =>
-      vacation.period ? [{ startDate: vacation.period[0].format("YYYY-MM-DD"), endDate: vacation.period[1].format("YYYY-MM-DD") }] : [],
+      vacation.period ? [{ startDate: vacation.period[0].toISOString(), endDate: vacation.period[1].toISOString() }] : [],
     ),
   };
 }

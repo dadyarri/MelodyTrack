@@ -11,7 +11,6 @@ import {
   workingHoursRequestsApi,
   type WorkingHoursRequestStatus,
 } from "@/entities/user";
-import { getApiErrorMessages } from "@/shared/api";
 
 import styles from "./VacationRequestWorkspace.module.css";
 
@@ -30,11 +29,6 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
     queryFn: ({ signal }) => (review ? workingHoursRequestsApi.listReview(reviewView, signal) : workingHoursRequestsApi.listMine(signal)),
   });
 
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
   const invalidate = () => queryClient.invalidateQueries({ queryKey: workingHoursRequestQueryKeys.all });
 
   const cancelMutation = useMutation({
@@ -43,7 +37,6 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
       await invalidate();
       void message.success("Заявка отозвана");
     },
-    onError: showErrors,
   });
 
   const decisionMutation = useMutation({
@@ -59,7 +52,6 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
       await invalidate();
       void message.success(variables.state.action === "approve" ? "Рабочие дни согласованы" : "Заявка отклонена");
     },
-    onError: showErrors,
   });
 
   return (

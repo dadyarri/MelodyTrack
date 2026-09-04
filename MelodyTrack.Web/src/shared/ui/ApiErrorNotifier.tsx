@@ -29,7 +29,6 @@ export function ApiErrorNotifier() {
       if (event.mutation.meta?.suppressErrorNotification === true) {
         return;
       }
-
       publishError(event.mutation, event.mutation.state.submittedAt, event.mutation.state.error);
     });
 
@@ -62,6 +61,8 @@ export function ApiErrorNotifier() {
         type="error"
         showIcon
         closable={{
+          closeIcon: true,
+          "aria-label": "Закрыть уведомление об ошибке",
           onClose: () => {
             setError(null);
           },

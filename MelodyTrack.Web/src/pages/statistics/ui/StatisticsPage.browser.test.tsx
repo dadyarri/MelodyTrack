@@ -26,6 +26,7 @@ describe("statistics reports in supported browsers", () => {
     );
 
     await expect.element(screen.getByText("Фактические платежи")).toBeVisible();
+    await expect.element(screen.getByText("Плановый доход")).toBeVisible();
     await expect.element(screen.getByText(/нельзя достоверно связать/)).toBeVisible();
     expect(finance).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -105,6 +106,8 @@ const emptyFinanceReport: FinanceReport = {
   context,
   summary: {
     revenue: 0,
+    forecastIncome: 0,
+    forecastAppointments: 0,
     payments: null,
     expenses: null,
     netProfit: null,

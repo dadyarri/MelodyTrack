@@ -313,6 +313,10 @@ export interface AppointmentServiceDto extends AdditionalDataHolder, Parsable {
      */
     id?: string | null;
     /**
+     * The isTrial property
+     */
+    isTrial?: boolean | null;
+    /**
      * The name property
      */
     name?: string | null;
@@ -612,6 +616,10 @@ export interface ClientPortalAppointmentDto extends AdditionalDataHolder, Parsab
      */
     id?: string | null;
     /**
+     * The isTrial property
+     */
+    isTrial?: boolean | null;
+    /**
      * The startDate property
      */
     startDate?: Date | null;
@@ -747,7 +755,7 @@ export interface ClientVacation extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The id property
      */
@@ -755,17 +763,17 @@ export interface ClientVacation extends AdditionalDataHolder, Parsable {
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 export interface ClientVacationRequest extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 export interface ClientValueReportDto extends AdditionalDataHolder, Parsable {
     /**
@@ -3949,7 +3957,7 @@ export interface CreateVacationRequest extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The message property
      */
@@ -3957,7 +3965,7 @@ export interface CreateVacationRequest extends AdditionalDataHolder, Parsable {
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4591,6 +4599,7 @@ export function deserializeIntoAppointmentRecurrenceRuleDto(appointmentRecurrenc
 export function deserializeIntoAppointmentServiceDto(appointmentServiceDto: Partial<AppointmentServiceDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "id": n => { appointmentServiceDto.id = n.getStringValue(); },
+        "isTrial": n => { appointmentServiceDto.isTrial = n.getBooleanValue(); },
         "name": n => { appointmentServiceDto.name = n.getStringValue(); },
     }
 }
@@ -4820,6 +4829,7 @@ export function deserializeIntoClientPortalAppointmentDto(clientPortalAppointmen
         "courseTheme": n => { clientPortalAppointmentDto.courseTheme = n.getObjectValue<ClientPortalAppointmentDto_courseThemeMember1>(createClientPortalAppointmentDto_courseThemeMember1FromDiscriminatorValue) ?? n.getObjectValue<ClientPortalCourseThemeDto>(createClientPortalCourseThemeDtoFromDiscriminatorValue); },
         "endDate": n => { clientPortalAppointmentDto.endDate = n.getDateValue(); },
         "id": n => { clientPortalAppointmentDto.id = n.getStringValue(); },
+        "isTrial": n => { clientPortalAppointmentDto.isTrial = n.getBooleanValue(); },
         "startDate": n => { clientPortalAppointmentDto.startDate = n.getDateValue(); },
         "status": n => { clientPortalAppointmentDto.status = n.getStringValue(); },
     }
@@ -4941,9 +4951,9 @@ export function deserializeIntoClientsReportSummaryDto(clientsReportSummaryDto: 
 export function deserializeIntoClientVacation(clientVacation: Partial<ClientVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "clientId": n => { clientVacation.clientId = n.getStringValue(); },
-        "endDate": n => { clientVacation.endDate = n.getDateOnlyValue(); },
+        "endDate": n => { clientVacation.endDate = n.getDateValue(); },
         "id": n => { clientVacation.id = n.getStringValue(); },
-        "startDate": n => { clientVacation.startDate = n.getDateOnlyValue(); },
+        "startDate": n => { clientVacation.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -4954,8 +4964,8 @@ export function deserializeIntoClientVacation(clientVacation: Partial<ClientVaca
 // @ts-ignore
 export function deserializeIntoClientVacationRequest(clientVacationRequest: Partial<ClientVacationRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { clientVacationRequest.endDate = n.getDateOnlyValue(); },
-        "startDate": n => { clientVacationRequest.startDate = n.getDateOnlyValue(); },
+        "endDate": n => { clientVacationRequest.endDate = n.getDateValue(); },
+        "startDate": n => { clientVacationRequest.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -5634,9 +5644,9 @@ export function deserializeIntoCreateServiceRequest(createServiceRequest: Partia
 // @ts-ignore
 export function deserializeIntoCreateVacationRequest(createVacationRequest: Partial<CreateVacationRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { createVacationRequest.endDate = n.getDateOnlyValue(); },
+        "endDate": n => { createVacationRequest.endDate = n.getDateValue(); },
         "message": n => { createVacationRequest.message = n.getStringValue(); },
-        "startDate": n => { createVacationRequest.startDate = n.getDateOnlyValue(); },
+        "startDate": n => { createVacationRequest.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -5862,6 +5872,8 @@ export function deserializeIntoFinanceReportSummaryDto(financeReportSummaryDto: 
     return {
         "averageRevenuePerVisit": n => { financeReportSummaryDto.averageRevenuePerVisit = n.getNumberValue(); },
         "expenses": n => { financeReportSummaryDto.expenses = n.getNumberValue(); },
+        "forecastAppointments": n => { financeReportSummaryDto.forecastAppointments = n.getNumberValue(); },
+        "forecastIncome": n => { financeReportSummaryDto.forecastIncome = n.getNumberValue(); },
         "netProfit": n => { financeReportSummaryDto.netProfit = n.getNumberValue(); },
         "organizationOnlyFiguresAvailable": n => { financeReportSummaryDto.organizationOnlyFiguresAvailable = n.getBooleanValue(); },
         "outstandingDebt": n => { financeReportSummaryDto.outstandingDebt = n.getNumberValue(); },
@@ -7347,6 +7359,7 @@ export function deserializeIntoUpdateServiceRequest(updateServiceRequest: Partia
 // @ts-ignore
 export function deserializeIntoUpdateUserAvailabilityRequest(updateUserAvailabilityRequest: Partial<UpdateUserAvailabilityRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "cancelConflictingAppointments": n => { updateUserAvailabilityRequest.cancelConflictingAppointments = n.getBooleanValue(); },
         "expectedActivityId": n => { updateUserAvailabilityRequest.expectedActivityId = n.getStringValue(); },
         "vacations": n => { updateUserAvailabilityRequest.vacations = n.getCollectionOfObjectValues<UserVacationItem>(createUserVacationItemFromDiscriminatorValue); },
         "workingHours": n => { updateUserAvailabilityRequest.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDayItem>(createUserWorkingHoursDayItemFromDiscriminatorValue); },
@@ -7503,9 +7516,9 @@ export function deserializeIntoUserOnboardingState(userOnboardingState: Partial<
 // @ts-ignore
 export function deserializeIntoUserVacation(userVacation: Partial<UserVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { userVacation.endDate = n.getDateOnlyValue(); },
+        "endDate": n => { userVacation.endDate = n.getDateValue(); },
         "id": n => { userVacation.id = n.getStringValue(); },
-        "startDate": n => { userVacation.startDate = n.getDateOnlyValue(); },
+        "startDate": n => { userVacation.startDate = n.getDateValue(); },
         "user": n => { userVacation.user = n.getObjectValue<User>(createUserFromDiscriminatorValue); },
         "userId": n => { userVacation.userId = n.getStringValue(); },
     }
@@ -7518,9 +7531,9 @@ export function deserializeIntoUserVacation(userVacation: Partial<UserVacation> 
 // @ts-ignore
 export function deserializeIntoUserVacationDto(userVacationDto: Partial<UserVacationDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { userVacationDto.endDate = n.getDateOnlyValue(); },
+        "endDate": n => { userVacationDto.endDate = n.getDateValue(); },
         "id": n => { userVacationDto.id = n.getStringValue(); },
-        "startDate": n => { userVacationDto.startDate = n.getDateOnlyValue(); },
+        "startDate": n => { userVacationDto.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -7531,8 +7544,8 @@ export function deserializeIntoUserVacationDto(userVacationDto: Partial<UserVaca
 // @ts-ignore
 export function deserializeIntoUserVacationItem(userVacationItem: Partial<UserVacationItem> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { userVacationItem.endDate = n.getDateOnlyValue(); },
-        "startDate": n => { userVacationItem.startDate = n.getDateOnlyValue(); },
+        "endDate": n => { userVacationItem.endDate = n.getDateValue(); },
+        "startDate": n => { userVacationItem.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -7588,8 +7601,8 @@ export function deserializeIntoUserWorkingHoursDayItem(userWorkingHoursDayItem: 
 // @ts-ignore
 export function deserializeIntoVacationPeriodResponse(vacationPeriodResponse: Partial<VacationPeriodResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-        "endDate": n => { vacationPeriodResponse.endDate = n.getDateOnlyValue(); },
-        "startDate": n => { vacationPeriodResponse.startDate = n.getDateOnlyValue(); },
+        "endDate": n => { vacationPeriodResponse.endDate = n.getDateValue(); },
+        "startDate": n => { vacationPeriodResponse.startDate = n.getDateValue(); },
     }
 }
 /**
@@ -7600,6 +7613,7 @@ export function deserializeIntoVacationPeriodResponse(vacationPeriodResponse: Pa
 // @ts-ignore
 export function deserializeIntoVacationRequestDecisionRequest(vacationRequestDecisionRequest: Partial<VacationRequestDecisionRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "cancelConflictingAppointments": n => { vacationRequestDecisionRequest.cancelConflictingAppointments = n.getBooleanValue(); },
         "expectedVersion": n => { vacationRequestDecisionRequest.expectedVersion = n.getNumberValue(); },
         "message": n => { vacationRequestDecisionRequest.message = n.getStringValue(); },
     }
@@ -7615,7 +7629,7 @@ export function deserializeIntoVacationRequestResponse(vacationRequestResponse: 
         "conflictingAppointmentCount": n => { vacationRequestResponse.conflictingAppointmentCount = n.getNumberValue(); },
         "createdAtUtc": n => { vacationRequestResponse.createdAtUtc = n.getDateValue(); },
         "decisionMessage": n => { vacationRequestResponse.decisionMessage = n.getStringValue(); },
-        "endDate": n => { vacationRequestResponse.endDate = n.getDateOnlyValue(); },
+        "endDate": n => { vacationRequestResponse.endDate = n.getDateValue(); },
         "existingVacations": n => { vacationRequestResponse.existingVacations = n.getCollectionOfObjectValues<VacationPeriodResponse>(createVacationPeriodResponseFromDiscriminatorValue); },
         "id": n => { vacationRequestResponse.id = n.getStringValue(); },
         "processedAtUtc": n => { vacationRequestResponse.processedAtUtc = n.getDateValue(); },
@@ -7625,7 +7639,7 @@ export function deserializeIntoVacationRequestResponse(vacationRequestResponse: 
         "requesterType": n => { vacationRequestResponse.requesterType = n.getStringValue(); },
         "requestMessage": n => { vacationRequestResponse.requestMessage = n.getStringValue(); },
         "resultingVacationId": n => { vacationRequestResponse.resultingVacationId = n.getStringValue(); },
-        "startDate": n => { vacationRequestResponse.startDate = n.getDateOnlyValue(); },
+        "startDate": n => { vacationRequestResponse.startDate = n.getDateValue(); },
         "status": n => { vacationRequestResponse.status = n.getStringValue(); },
         "subjectClassification": n => { vacationRequestResponse.subjectClassification = n.getStringValue(); },
         "subjectId": n => { vacationRequestResponse.subjectId = n.getStringValue(); },
@@ -7930,6 +7944,14 @@ export interface FinanceReportSummaryDto extends AdditionalDataHolder, Parsable 
      * The expenses property
      */
     expenses?: number | null;
+    /**
+     * The forecastAppointments property
+     */
+    forecastAppointments?: number | null;
+    /**
+     * The forecastIncome property
+     */
+    forecastIncome?: number | null;
     /**
      * The netProfit property
      */
@@ -9566,6 +9588,7 @@ export function serializeAppointmentRecurrenceRuleDto(writer: SerializationWrite
 export function serializeAppointmentServiceDto(writer: SerializationWriter, appointmentServiceDto: Partial<AppointmentServiceDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentServiceDto || isSerializingDerivedType) { return; }
     writer.writeStringValue("id", appointmentServiceDto.id);
+    writer.writeBooleanValue("isTrial", appointmentServiceDto.isTrial);
     writer.writeStringValue("name", appointmentServiceDto.name);
     writer.writeAdditionalData(appointmentServiceDto.additionalData);
 }
@@ -9809,6 +9832,7 @@ export function serializeClientPortalAppointmentDto(writer: SerializationWriter,
     writer.writeObjectValue<ClientPortalAppointmentDto_courseThemeMember1 | ClientPortalCourseThemeDto>("courseTheme", clientPortalAppointmentDto.courseTheme, serializeClientPortalAppointmentDto_courseTheme);
     writer.writeDateValue("endDate", clientPortalAppointmentDto.endDate);
     writer.writeStringValue("id", clientPortalAppointmentDto.id);
+    writer.writeBooleanValue("isTrial", clientPortalAppointmentDto.isTrial);
     writer.writeDateValue("startDate", clientPortalAppointmentDto.startDate);
     writer.writeStringValue("status", clientPortalAppointmentDto.status);
     writer.writeAdditionalData(clientPortalAppointmentDto.additionalData);
@@ -9937,9 +9961,9 @@ export function serializeClientsReportSummaryDto(writer: SerializationWriter, cl
 export function serializeClientVacation(writer: SerializationWriter, clientVacation: Partial<ClientVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientVacation || isSerializingDerivedType) { return; }
     writer.writeStringValue("clientId", clientVacation.clientId);
-    writer.writeDateOnlyValue("endDate", clientVacation.endDate);
+    writer.writeDateValue("endDate", clientVacation.endDate);
     writer.writeStringValue("id", clientVacation.id);
-    writer.writeDateOnlyValue("startDate", clientVacation.startDate);
+    writer.writeDateValue("startDate", clientVacation.startDate);
     writer.writeAdditionalData(clientVacation.additionalData);
 }
 /**
@@ -9951,8 +9975,8 @@ export function serializeClientVacation(writer: SerializationWriter, clientVacat
 // @ts-ignore
 export function serializeClientVacationRequest(writer: SerializationWriter, clientVacationRequest: Partial<ClientVacationRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientVacationRequest || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", clientVacationRequest.endDate);
-    writer.writeDateOnlyValue("startDate", clientVacationRequest.startDate);
+    writer.writeDateValue("endDate", clientVacationRequest.endDate);
+    writer.writeDateValue("startDate", clientVacationRequest.startDate);
     writer.writeAdditionalData(clientVacationRequest.additionalData);
 }
 /**
@@ -10670,9 +10694,9 @@ export function serializeCreateServiceRequest(writer: SerializationWriter, creat
 // @ts-ignore
 export function serializeCreateVacationRequest(writer: SerializationWriter, createVacationRequest: Partial<CreateVacationRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createVacationRequest || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", createVacationRequest.endDate);
+    writer.writeDateValue("endDate", createVacationRequest.endDate);
     writer.writeStringValue("message", createVacationRequest.message);
-    writer.writeDateOnlyValue("startDate", createVacationRequest.startDate);
+    writer.writeDateValue("startDate", createVacationRequest.startDate);
     writer.writeAdditionalData(createVacationRequest.additionalData);
 }
 /**
@@ -10911,6 +10935,8 @@ export function serializeFinanceReportSummaryDto(writer: SerializationWriter, fi
     if (!financeReportSummaryDto || isSerializingDerivedType) { return; }
     writer.writeNumberValue("averageRevenuePerVisit", financeReportSummaryDto.averageRevenuePerVisit);
     writer.writeNumberValue("expenses", financeReportSummaryDto.expenses);
+    writer.writeNumberValue("forecastAppointments", financeReportSummaryDto.forecastAppointments);
+    writer.writeNumberValue("forecastIncome", financeReportSummaryDto.forecastIncome);
     writer.writeNumberValue("netProfit", financeReportSummaryDto.netProfit);
     writer.writeBooleanValue("organizationOnlyFiguresAvailable", financeReportSummaryDto.organizationOnlyFiguresAvailable);
     writer.writeNumberValue("outstandingDebt", financeReportSummaryDto.outstandingDebt);
@@ -12487,6 +12513,7 @@ export function serializeUpdateServiceRequest(writer: SerializationWriter, updat
 // @ts-ignore
 export function serializeUpdateUserAvailabilityRequest(writer: SerializationWriter, updateUserAvailabilityRequest: Partial<UpdateUserAvailabilityRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateUserAvailabilityRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("cancelConflictingAppointments", updateUserAvailabilityRequest.cancelConflictingAppointments);
     writer.writeStringValue("expectedActivityId", updateUserAvailabilityRequest.expectedActivityId);
     writer.writeCollectionOfObjectValues<UserVacationItem>("vacations", updateUserAvailabilityRequest.vacations, serializeUserVacationItem);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDayItem>("workingHours", updateUserAvailabilityRequest.workingHours, serializeUserWorkingHoursDayItem);
@@ -12648,9 +12675,9 @@ export function serializeUserOnboardingState(writer: SerializationWriter, userOn
 // @ts-ignore
 export function serializeUserVacation(writer: SerializationWriter, userVacation: Partial<UserVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacation || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", userVacation.endDate);
+    writer.writeDateValue("endDate", userVacation.endDate);
     writer.writeStringValue("id", userVacation.id);
-    writer.writeDateOnlyValue("startDate", userVacation.startDate);
+    writer.writeDateValue("startDate", userVacation.startDate);
     writer.writeObjectValue<User>("user", userVacation.user, serializeUser);
     writer.writeStringValue("userId", userVacation.userId);
     writer.writeAdditionalData(userVacation.additionalData);
@@ -12664,9 +12691,9 @@ export function serializeUserVacation(writer: SerializationWriter, userVacation:
 // @ts-ignore
 export function serializeUserVacationDto(writer: SerializationWriter, userVacationDto: Partial<UserVacationDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacationDto || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", userVacationDto.endDate);
+    writer.writeDateValue("endDate", userVacationDto.endDate);
     writer.writeStringValue("id", userVacationDto.id);
-    writer.writeDateOnlyValue("startDate", userVacationDto.startDate);
+    writer.writeDateValue("startDate", userVacationDto.startDate);
     writer.writeAdditionalData(userVacationDto.additionalData);
 }
 /**
@@ -12678,8 +12705,8 @@ export function serializeUserVacationDto(writer: SerializationWriter, userVacati
 // @ts-ignore
 export function serializeUserVacationItem(writer: SerializationWriter, userVacationItem: Partial<UserVacationItem> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacationItem || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", userVacationItem.endDate);
-    writer.writeDateOnlyValue("startDate", userVacationItem.startDate);
+    writer.writeDateValue("endDate", userVacationItem.endDate);
+    writer.writeDateValue("startDate", userVacationItem.startDate);
     writer.writeAdditionalData(userVacationItem.additionalData);
 }
 /**
@@ -12739,8 +12766,8 @@ export function serializeUserWorkingHoursDayItem(writer: SerializationWriter, us
 // @ts-ignore
 export function serializeVacationPeriodResponse(writer: SerializationWriter, vacationPeriodResponse: Partial<VacationPeriodResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!vacationPeriodResponse || isSerializingDerivedType) { return; }
-    writer.writeDateOnlyValue("endDate", vacationPeriodResponse.endDate);
-    writer.writeDateOnlyValue("startDate", vacationPeriodResponse.startDate);
+    writer.writeDateValue("endDate", vacationPeriodResponse.endDate);
+    writer.writeDateValue("startDate", vacationPeriodResponse.startDate);
     writer.writeAdditionalData(vacationPeriodResponse.additionalData);
 }
 /**
@@ -12752,6 +12779,7 @@ export function serializeVacationPeriodResponse(writer: SerializationWriter, vac
 // @ts-ignore
 export function serializeVacationRequestDecisionRequest(writer: SerializationWriter, vacationRequestDecisionRequest: Partial<VacationRequestDecisionRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!vacationRequestDecisionRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("cancelConflictingAppointments", vacationRequestDecisionRequest.cancelConflictingAppointments);
     writer.writeNumberValue("expectedVersion", vacationRequestDecisionRequest.expectedVersion);
     writer.writeStringValue("message", vacationRequestDecisionRequest.message);
     writer.writeAdditionalData(vacationRequestDecisionRequest.additionalData);
@@ -12768,7 +12796,7 @@ export function serializeVacationRequestResponse(writer: SerializationWriter, va
     writer.writeNumberValue("conflictingAppointmentCount", vacationRequestResponse.conflictingAppointmentCount);
     writer.writeDateValue("createdAtUtc", vacationRequestResponse.createdAtUtc);
     writer.writeStringValue("decisionMessage", vacationRequestResponse.decisionMessage);
-    writer.writeDateOnlyValue("endDate", vacationRequestResponse.endDate);
+    writer.writeDateValue("endDate", vacationRequestResponse.endDate);
     writer.writeCollectionOfObjectValues<VacationPeriodResponse>("existingVacations", vacationRequestResponse.existingVacations, serializeVacationPeriodResponse);
     writer.writeStringValue("id", vacationRequestResponse.id);
     writer.writeDateValue("processedAtUtc", vacationRequestResponse.processedAtUtc);
@@ -12778,7 +12806,7 @@ export function serializeVacationRequestResponse(writer: SerializationWriter, va
     writer.writeStringValue("requesterType", vacationRequestResponse.requesterType);
     writer.writeStringValue("requestMessage", vacationRequestResponse.requestMessage);
     writer.writeStringValue("resultingVacationId", vacationRequestResponse.resultingVacationId);
-    writer.writeDateOnlyValue("startDate", vacationRequestResponse.startDate);
+    writer.writeDateValue("startDate", vacationRequestResponse.startDate);
     writer.writeStringValue("status", vacationRequestResponse.status);
     writer.writeStringValue("subjectClassification", vacationRequestResponse.subjectClassification);
     writer.writeStringValue("subjectId", vacationRequestResponse.subjectId);
@@ -13374,6 +13402,10 @@ export interface UpdateServiceRequest extends AdditionalDataHolder, Parsable {
 }
 export interface UpdateUserAvailabilityRequest extends AdditionalDataHolder, Parsable {
     /**
+     * The cancelConflictingAppointments property
+     */
+    cancelConflictingAppointments?: boolean | null;
+    /**
      * The expectedActivityId property
      */
     expectedActivityId?: string | null;
@@ -13555,7 +13587,7 @@ export interface UserVacation extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The id property
      */
@@ -13563,7 +13595,7 @@ export interface UserVacation extends AdditionalDataHolder, Parsable {
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
     /**
      * The user property
      */
@@ -13577,7 +13609,7 @@ export interface UserVacationDto extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The id property
      */
@@ -13585,17 +13617,17 @@ export interface UserVacationDto extends AdditionalDataHolder, Parsable {
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 export interface UserVacationItem extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 export interface UserWorkingHoursDay extends AdditionalDataHolder, Parsable {
     /**
@@ -13667,13 +13699,17 @@ export interface VacationPeriodResponse extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
 }
 export interface VacationRequestDecisionRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The cancelConflictingAppointments property
+     */
+    cancelConflictingAppointments?: boolean | null;
     /**
      * The expectedVersion property
      */
@@ -13699,7 +13735,7 @@ export interface VacationRequestResponse extends AdditionalDataHolder, Parsable 
     /**
      * The endDate property
      */
-    endDate?: DateOnly | null;
+    endDate?: Date | null;
     /**
      * The existingVacations property
      */
@@ -13739,7 +13775,7 @@ export interface VacationRequestResponse extends AdditionalDataHolder, Parsable 
     /**
      * The startDate property
      */
-    startDate?: DateOnly | null;
+    startDate?: Date | null;
     /**
      * The status property
      */

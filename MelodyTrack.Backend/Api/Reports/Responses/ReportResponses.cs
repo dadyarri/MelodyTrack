@@ -106,6 +106,8 @@ public sealed class FinanceReportResponse
 public sealed class FinanceReportSummaryDto
 {
     public required decimal Revenue { get; init; }
+    public required decimal ForecastIncome { get; init; }
+    public required int ForecastAppointments { get; init; }
     public decimal? Payments { get; init; }
     public decimal? Expenses { get; init; }
     public decimal? NetProfit { get; init; }

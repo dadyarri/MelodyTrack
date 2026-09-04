@@ -136,6 +136,7 @@ function SavedClientPinForm({
   const authenticateMutation = useMutation({
     mutationFn: (pin: string) => authApi.authenticateSavedClientPortalIdentity({ reference: identity.reference, pin }),
     onSuccess: onAuthenticated,
+    meta: { suppressErrorNotification: true },
     onError: (error) => {
       setPinError(getFieldErrors(getApiFieldErrors(error), "pin")[0] ?? getApiErrorMessage(error));
     },
@@ -220,6 +221,7 @@ function LinkPinForm({
   const authenticateMutation = useMutation({
     mutationFn: (input: ClientPortalPinAuthInput) => authApi.authenticateClientPortalLink(input),
     onSuccess: onAuthenticated,
+    meta: { suppressErrorNotification: true },
     onError: (error) => {
       const fieldErrors = getPortalPinFieldErrors(error, statusQuery.data?.hasPin ?? false, pinSetupStep, getApiErrorMessage(error));
       setPinError(fieldErrors.pin);

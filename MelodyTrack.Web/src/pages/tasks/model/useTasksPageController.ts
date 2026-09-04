@@ -155,11 +155,6 @@ export function useTasksPageController() {
       void message.success("Задача отмечена выполненной");
       await queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
     },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
-    },
   });
 
   const cancelMutation = useMutation({
@@ -176,11 +171,6 @@ export function useTasksPageController() {
     onSuccess: async () => {
       void message.success("Задача отменена");
       await queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-    },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
     },
   });
 
@@ -201,11 +191,6 @@ export function useTasksPageController() {
       setDelayingTask(null);
       delayTaskForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-    },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
     },
   });
   const updateRuleMutation = useMutation({
@@ -228,6 +213,7 @@ export function useTasksPageController() {
       ruleForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: taskQueryKeys.rules });
     },
+    meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {
       await handleStaleEntityConflict({
         error,
@@ -287,11 +273,6 @@ export function useTasksPageController() {
       setIsCustomTaskModalOpen(false);
       customTaskForm.resetFields();
       await queryClient.invalidateQueries({ queryKey: taskQueryKeys.all });
-    },
-    onError: (error) => {
-      for (const errorMessage of getApiErrorMessages(error)) {
-        void message.error(errorMessage);
-      }
     },
   });
 

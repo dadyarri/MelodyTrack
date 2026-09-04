@@ -6,7 +6,6 @@ import * as v from "valibot";
 import { type Course, courseQueryKeys, coursesApi } from "@/entities/course";
 import { hasAdminAccess, useAuth } from "@/entities/session";
 import type { Ulid } from "@/shared/api";
-import { getApiErrorMessages } from "@/shared/api";
 import { jsonDurableFormCodec, useDurableForm } from "@/shared/lib/react";
 
 type EditorTheme = {
@@ -229,12 +228,6 @@ export function useCoursesPageController() {
   const [draftCourseState, setDraftCourseState] = useState<EditorCourse | null>(null);
 
   const canManageCourses = hasAdminAccess(auth.user);
-  const showErrors = (error: unknown) => {
-    for (const errorMessage of getApiErrorMessages(error)) {
-      void message.error(errorMessage);
-    }
-  };
-
   const coursesQuery = useQuery({
     queryKey: courseQueryKeys.list(deferredSearch),
     queryFn: () => coursesApi.list(deferredSearch.trim() || undefined),
@@ -309,7 +302,6 @@ export function useCoursesPageController() {
       setDraftCourseState(null);
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const updateMutation = useMutation({
@@ -355,7 +347,6 @@ export function useCoursesPageController() {
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.all });
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.selected(selectedCourseId ?? undefined) });
     },
-    onError: showErrors,
   });
 
   const deleteMutation = useMutation({
@@ -366,7 +357,6 @@ export function useCoursesPageController() {
       setDraftCourseState(null);
       await queryClient.invalidateQueries({ queryKey: courseQueryKeys.all });
     },
-    onError: showErrors,
   });
 
   const themeOptions = useMemo<ThemeOption[]>(() => {

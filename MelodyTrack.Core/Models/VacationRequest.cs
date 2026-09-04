@@ -9,8 +9,8 @@ public sealed class VacationRequest : BaseModel
     public required Ulid RequesterId { get; set; }
     public required VacationRequestSubjectType SubjectType { get; set; }
     public required Ulid SubjectId { get; set; }
-    public required DateOnly RequestedStart { get; set; }
-    public required DateOnly RequestedEnd { get; set; }
+    public required DateTime RequestedStart { get; set; }
+    public required DateTime RequestedEnd { get; set; }
     public required VacationRequestStatus Status { get; set; }
 
     [MaxLength(500)]
