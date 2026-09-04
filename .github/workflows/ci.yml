@@ -101,11 +101,27 @@ jobs:
       matrix:
         include:
           - name: unit
-            filter: "/*/*/*/*[Category!=Integration]"
+            arguments: "-trait- Category=Integration"
           - name: integration-a-m
-            filter: "/*/*/(A*)|(B*)|(C*)|(D*)|(E*)|(F*)|(G*)|(H*)|(I*)|(J*)|(K*)|(L*)|(M*)/*[Category=Integration]"
+            arguments: >-
+              -trait Category=Integration
+              -class MelodyTrack.Backend.Tests.A* -class MelodyTrack.Backend.Tests.B*
+              -class MelodyTrack.Backend.Tests.C* -class MelodyTrack.Backend.Tests.D*
+              -class MelodyTrack.Backend.Tests.E* -class MelodyTrack.Backend.Tests.F*
+              -class MelodyTrack.Backend.Tests.G* -class MelodyTrack.Backend.Tests.H*
+              -class MelodyTrack.Backend.Tests.I* -class MelodyTrack.Backend.Tests.J*
+              -class MelodyTrack.Backend.Tests.K* -class MelodyTrack.Backend.Tests.L*
+              -class MelodyTrack.Backend.Tests.M*
           - name: integration-n-z
-            filter: "/*/*/(N*)|(O*)|(P*)|(Q*)|(R*)|(S*)|(T*)|(U*)|(V*)|(W*)|(X*)|(Y*)|(Z*)/*[Category=Integration]"
+            arguments: >-
+              -trait Category=Integration
+              -class MelodyTrack.Backend.Tests.N* -class MelodyTrack.Backend.Tests.O*
+              -class MelodyTrack.Backend.Tests.P* -class MelodyTrack.Backend.Tests.Q*
+              -class MelodyTrack.Backend.Tests.R* -class MelodyTrack.Backend.Tests.S*
+              -class MelodyTrack.Backend.Tests.T* -class MelodyTrack.Backend.Tests.U*
+              -class MelodyTrack.Backend.Tests.V* -class MelodyTrack.Backend.Tests.W*
+              -class MelodyTrack.Backend.Tests.X* -class MelodyTrack.Backend.Tests.Y*
+              -class MelodyTrack.Backend.Tests.Z*
     steps:
       - name: Checkout code
         uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
@@ -123,7 +139,8 @@ jobs:
       - name: Run tests
         run: |
           chmod +x MelodyTrack.Backend.Tests/bin/Release/net10.0/MelodyTrack.Backend.Tests
-          MelodyTrack.Backend.Tests/bin/Release/net10.0/MelodyTrack.Backend.Tests --filter-query '${{ matrix.filter }}'
+          read -ra test_arguments <<< '${{ matrix.arguments }}'
+          MelodyTrack.Backend.Tests/bin/Release/net10.0/MelodyTrack.Backend.Tests "${test_arguments[@]}"
 
   backend-verify:
     name: backend verify
