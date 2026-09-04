@@ -1,12 +1,18 @@
 # MelodyTrack Roadmap
 
-This roadmap contains active or deliberately deferred work only. Completed implementation history belongs in Git, not in this document.
+This document is the implementation contract and staged product roadmap for MelodyTrack. Completed stages are retained as the verified architectural/product baseline and are marked with `✅`; detailed implementation history still belongs in Git.
 
-The roadmap is ordered by dependency. **The refactor program is the mandatory first block. Do not begin later product stages until the refactor exit criteria are satisfied, unless a stage explicitly says it can be developed independently.**
+The roadmap is ordered by dependency where a dependency is known. Deliberately deferred stages may be reprioritized when they are independent of the active workstream.
 
-This document is written as an implementation contract for a coding agent. Locked architectural decisions are not invitations for redesign. If implementation exposes a concrete incompatibility, document it and make the smallest change that preserves the intent of this roadmap.
+Completed stages are historical contracts: later product stages may explicitly supersede individual decisions from the completed refactor baseline, but do not retroactively rewrite completed-stage scope to make the history look different.
+
+Locked architectural decisions are not invitations for redesign. If implementation exposes a concrete incompatibility, document it and make the smallest change that preserves the intent of this roadmap.
 
 ---
+
+# Refactor Baseline
+
+The architecture and execution rules below describe the baseline produced by the completed refactor. Later product stages may intentionally replace specific product-level assumptions, such as the client portal PIN flow.
 
 ## 1. Locked target architecture
 
@@ -422,7 +428,7 @@ Keep Quartz hosted inside `MelodyTrack.Backend`.
 - graceful Backend shutdown waits for running jobs within a bounded timeout;
 - Backend assumes initialization has already completed successfully.
 
-### 1.23 Build contract
+### 1.22 Build contract
 
 A root solution build is the cross-stack compatibility build.
 
@@ -460,7 +466,7 @@ git diff --exit-code -- <generated-client-path>
 
 Full frontend `npm run verify` remains a separate repository/CI quality gate and is not replaced by the fast root-build typecheck.
 
-### 1.24 Publish and image contract
+### 1.23 Publish and image contract
 
 `dotnet publish` for the production Backend application must:
 
@@ -472,7 +478,7 @@ The Docker build then packages that publish artifact. The final image contains t
 
 Image integration tests must verify the artifact itself, not an accidental behavior of a separate nginx container.
 
-### 1.25 Testing model
+### 1.24 Testing model
 
 The main backend/integration test suite remains directly runnable with `dotnet test`.
 
@@ -487,7 +493,7 @@ Do not make the main integration suite depend on Aspire AppHost.
 
 Aspire-level distributed tests may be added later only for a concrete cross-resource scenario that cannot be covered more simply.
 
-### 1.26 Release and branch model
+### 1.25 Release and branch model
 
 Keep `develop`, but it remains intentionally **local-only**.
 
@@ -570,7 +576,9 @@ These rules apply to every refactor stage.
 
 ---
 
-# Refactor Program
+---
+
+# Refactor Program — Completed
 
 The refactor program must complete before normal product-stage work resumes.
 
@@ -1312,9 +1320,169 @@ The refactor program is complete only when all of the following are true:
 
 ---
 
+## Explicit non-goals for the refactor
+
+Do not add these merely because the architecture is changing:
+
+- production Aspire AppHost orchestration;
+- Kubernetes/k3s migration;
+- Redis/Valkey dependency;
+- multi-replica Backend/Quartz clustering;
+- repository/unit-of-work abstraction over EF Core;
+- `MelodyTrack.Application` layer;
+- general-purpose plugin/event bus architecture;
+- API route versioning;
+- backward DB compatibility with old releases;
+- online multi-key crypto rotation/key rings;
+- public Aspire Dashboard;
+- Prometheus/Loki/Tempo stack;
+- PostgreSQL server-log ingestion;
+- frontend/browser telemetry, OTLP relay endpoints, session replay, and source-map symbolication;
+- parallel staff+portal browser identities;
+- multi-staff-account browser switching before its dedicated product stage;
+- offline mutation support before the Offline-First Operations stage;
+- Web Push as a prerequisite for any business operation;
+- client ability to change teacher/provider in rescheduling;
+- recurrence-series changes through client rescheduling;
+- god mode user impersonation/arbitrary DB editing/SQL shell.
+
+---
+
+---
+
+## Final refactor acceptance checklist
+
+Before declaring the refactor finished, verify all items below in a production-like environment.
+
+Verified on 2026-08-28 with a fresh local clone Release build (including deterministic Kiota regeneration and dependency-stamp reuse), 404 passing .NET tests, the complete frontend verification pipeline (188 unit, 72 Chromium, and 72 WebKit tests), standalone `dotnet publish`, ReleaseTool self-tests, and the unified production-image HTTP/failed-Init verifier.
+
+### Repository/build
+
+- [x] frontend history preserved in monorepo
+- [x] root solution build succeeds from a clean clone
+- [x] frontend dependencies bootstrap only when required
+- [x] OpenAPI generation is side-effect free
+- [x] Kiota sources regenerate in-place
+- [x] CI fails on stale generated client
+- [x] full frontend verify still runs separately
+- [x] individual .NET project builds remain scoped
+- [x] `dotnet publish` produces complete SPA+Backend artifact
+
+### Runtime
+
+- [x] one production MelodyTrack container
+- [x] no Node/nginx in final runtime
+- [x] Init runs before Backend
+- [x] failed Init prevents Backend startup
+- [x] Kestrel serves SPA and `/api`
+- [x] SPA fallback never catches `/api`, `/health`, `/alive`
+- [x] asset caching/compression/security headers verified over HTTP
+- [x] production CORS removed
+- [x] canonical public base URL used for generated links
+- [x] forwarded headers trust only intended proxy/network
+
+### Development
+
+- [x] Aspire AppHost starts Postgres/Init/Backend/Vite/Dashboard
+- [x] dev PostgreSQL volume persists
+- [x] versioned seed upgrades work
+- [x] deterministic dev superuser exists
+- [x] dev SQL parameter diagnostics can be enabled without changing production defaults
+
+### API
+
+- [x] no FastEndpoints endpoint remains
+- [x] source-generated registration works for every endpoint
+- [x] every handler is `public static HandleAsync` with `CancellationToken`
+- [x] every operation has stable unique operation ID
+- [x] typed results used by default
+- [x] native validation preserves existing rules
+- [x] centralized Problem Details includes canonical trace ID
+- [x] pagination uses `items/page`
+- [x] native OpenAPI 3.1 is authoritative
+- [x] Scalar/OpenAPI runtime endpoints are Development-only
+- [x] FastEndpoints/FastEndpoints.Swagger/FluentValidation removed
+
+### Frontend contract/transport
+
+- [x] Axios removed from API transport
+- [x] Kiota Fetch adapter is singleton/application-wide
+- [x] generated API models are authoritative
+- [x] handwritten duplicate API DTOs removed
+- [x] semantic API wrappers remain
+- [x] shared refresh operation handles concurrent `401`s
+- [x] original request retries at most once
+- [x] inactivity/suspend resume is reliable
+- [x] temporary network failure does not erase valid session state
+- [x] terminal auth failure clears state once
+- [x] cancellation/idempotency/blob downloads preserved
+- [x] persistent `AppError` UI exposes trace ID where available
+
+### Authentication/security
+
+- [x] JWT uses ES256 only
+- [x] issuer/audience/signature/lifetime explicitly validated
+- [x] auth secrets are independent
+- [x] passwords use Argon2id + password pepper
+- [x] portal PIN uses Argon2id + portal PIN pepper
+- [x] old sessions revoked at breaking cutover
+- [x] first superuser has a documented server-local reset/recovery path
+- [x] legacy browser refresh-token migration removed
+- [x] CSRF scoped to cookie-authenticated session operations
+- [x] coarse role authorization uses DB-backed policies
+- [x] `LockedUntil`/dead account-lockout mechanism removed
+- [x] rate limits reviewed for brute-forceable anonymous endpoints
+- [x] portal PIN cooldown enforced
+- [x] portal link remains permanent/reusable and is treated as a credential
+- [x] portal normal login supports multiple device sessions
+- [x] portal refresh preserves portal sliding lifetime
+- [x] no auth/portal credential appears in logs/telemetry
+
+### Data
+
+- [x] Core has no EF dependency
+- [x] Data owns EF/migrations/configuration
+- [x] versioned AES-256-GCM PII encryption preserved
+- [x] PII keys are real high-entropy 256-bit material
+- [x] Init migrates/re-encrypts old PII key versions
+- [x] missing referenced PII key version fails initialization
+
+### Observability
+
+- [x] Serilog remains logging provider as intended
+- [x] SerilogTracing removed
+- [x] exactly one intended OTLP log export path
+- [x] Backend and Init have distinct service names
+- [x] Npgsql traces/metrics enabled
+- [x] no production SQL parameter logging
+- [x] `X-Trace-Id` equals W3C trace ID
+- [x] Problem Details `traceId` equals the same ID
+- [x] incoming `traceparent` propagation tested
+- [x] backend error -> copied trace ID -> configured telemetry backend search works
+- [x] no frontend telemetry or browser OTLP relay is shipped
+- [x] telemetry exporter outage does not break app
+- [x] production Dashboard operations follow `docs/production-telemetry.md`
+
+### Tests/releases
+
+- [x] integration tests use PostgreSQL Testcontainers
+- [x] tests run real Init test mode
+- [x] tests use standard ASP.NET Core test host
+- [x] unified image integration suite passes
+- [x] release tool is monorepo-only
+- [x] one-file-per-release changelog works
+- [x] release/hotfix version allocation works
+- [x] hotfix merge-back to local develop/active release is documented/tested
+- [x] merge of valid release/hotfix PR to `master` publishes image/tag/GitHub Release
+- [x] deployment remains manual
+- [x] obsolete frontend release workflow removed
+
+---
+
 # Post-Refactor Product Roadmap
 
-All stages below are product work and begin after the refactor exit criteria above.
+All stages below are product work on top of the completed refactor baseline. Stages 11–13 are already completed and are retained without changing their implemented scope. Stage numbers are stable identifiers: when scope is merged into another stage, the old number is not reused.
+
 
 ## Stage 11: God Mode and System Notices ✅
 
@@ -1716,205 +1884,13 @@ Cover at least:
 
 ---
 
-## Stage 14: Client Appointment Rescheduling Requests
-
-### Goal
-
-Allow a client to request a new time for the **next eligible future appointment visible in the client portal**, without exposing other clients' calendar data or letting the client change the assigned teacher/provider.
-
-Administrators review the request. Accepting the request automatically reschedules the single appointment occurrence after re-validating availability. Declining it records the decision. The client receives durable confirmation and, where available, Web Push.
-
-### Product rules
-
-- client can request rescheduling only for the next eligible future appointment exposed by the portal;
-- teacher/provider cannot be changed;
-- service/appointment identity remains the same; this is a time change, not a replacement appointment;
-- duration remains the appointment's existing duration unless existing business rules already define otherwise;
-- for a recurring appointment, this workflow changes **only the selected materialized occurrence**;
-- do not modify the recurrence pattern or future occurrences through this client workflow;
-- recurrence rematerialization must preserve the accepted per-occurrence exception using the project's existing recurrence exception semantics;
-- at most one active pending reschedule request per appointment;
-- do not invent a minimum-notice/deadline rule unless existing scheduling rules already provide one or product requirements later specify it.
-
-### Privacy-safe teacher calendar
-
-Add a dedicated client-safe availability contract. Do **not** reuse a rich staff calendar DTO and merely hide selected fields.
-
-The client may see only enough information to choose a viable time, e.g. intervals/status such as:
-
-- `Available`;
-- `Busy`/unavailable;
-- `Vacation`;
-- `Weekend`/outside working schedule.
-
-Never expose through this contract:
-
-- other client names/IDs;
-- service names/types for other appointments;
-- appointment notes;
-- prices/payments;
-- staff-only status/details;
-- any unnecessary identifier that lets a client correlate another person's appointments.
-
-The calendar is fixed to the appointment's existing teacher/provider.
-
-Availability generation must use the same authoritative scheduling rules as normal staff booking so the portal does not advertise slots the backend would immediately reject.
-
-### Request entity/state machine
-
-Create a first-class request entity, not a notification-only payload.
-
-Suggested fields/concepts:
-
-```text
-AppointmentRescheduleRequest
-- Id
-- AppointmentId
-- ClientId
-- Teacher/UserId (immutable snapshot/reference for authorization)
-- OriginalStart/End
-- RequestedStart/End
-- Status: Pending | Accepted | Declined
-- CreatedAtUtc
-- ProcessedAtUtc?
-- ProcessedByUserId?
-- DeclineMessage?
-- concurrency/version field as appropriate
-```
-
-If appointment state can materially change while a request is pending, store enough original appointment/version information to detect stale requests safely.
-
-### Client workflow
-
-1. Client opens next appointment.
-2. Client selects “Request another time”.
-3. Portal loads privacy-safe availability for the fixed teacher.
-4. Client chooses a valid slot.
-5. Backend re-validates basic eligibility and creates a `Pending` request.
-6. UI immediately confirms that the request was submitted and shows its current status.
-7. Administrators receive an in-app notification and Web Push where subscribed.
-8. Client can continue to see pending/processed status in the portal.
-
-Do not imply that submission has changed the appointment.
-
-### Administrator workflow
-
-Provide a staff/admin review surface showing:
-
-- client/appointment identity that the administrator is already authorized to see;
-- original appointment time;
-- requested time;
-- current slot availability;
-- request age/status;
-- Accept;
-- Decline;
-- optional short decline message.
-
-### Accept transaction
-
-Acceptance must be transactional and must re-check current state at processing time:
-
-1. request exists and is still `Pending`;
-2. appointment still exists and is eligible;
-3. appointment/teacher relationship still matches the request;
-4. requested slot is still valid under working hours/weekends/vacations/business rules;
-5. requested slot is still free and does not create a collision;
-6. appointment has not been changed in a way that invalidates the request;
-7. for recurring appointments, update only the concrete occurrence and preserve recurrence exception behavior;
-8. write appointment change + request `Accepted` state + audit event atomically where practical;
-9. create client notification after/during the durable transaction through the notification infrastructure.
-
-If the slot is no longer available:
-
-- do not double-book;
-- do not silently move to another slot;
-- fail the Accept action with a clear conflict;
-- keep the request pending unless the administrator explicitly declines it, so the decision remains intentional.
-
-### Decline flow
-
-- request must still be pending;
-- mark `Declined`;
-- optional short administrator message;
-- do not change the appointment;
-- create client in-app notification;
-- send privacy-safe push where possible.
-
-### Client confirmation
-
-Processed requests remain visibly confirmed in the portal even when push is unavailable.
-
-Accepted example:
-
-```text
-Your rescheduling request was accepted.
-New appointment: <date/time>
-```
-
-Declined example:
-
-```text
-Your rescheduling request was declined.
-<optional administrator message>
-```
-
-### Authorization and abuse controls
-
-- client can read/create requests only for their own visible appointment;
-- client cannot substitute another teacher/appointment ID;
-- admin processing endpoints use staff/admin policy as appropriate;
-- request creation is rate-limited enough to prevent trivial spam without making ordinary use annoying;
-- duplicate pending requests for the same appointment are rejected/returned idempotently as appropriate;
-- all state transitions are audited.
-
-### Testing
-
-Backend/integration tests:
-
-- next-appointment eligibility;
-- privacy-safe calendar serialization;
-- vacation/weekend/busy/free calculations;
-- cross-client access denial;
-- teacher cannot be changed;
-- duplicate pending request handling;
-- accept happy path;
-- accept race where slot becomes occupied;
-- accept stale appointment state;
-- decline;
-- recurring appointment changes one occurrence only;
-- future recurrence remains unchanged;
-- notification creation;
-- audit events.
-
-Frontend/browser tests:
-
-- client can discover/request a free slot;
-- no other-client details appear in UI/network contract;
-- pending state is clear;
-- admin receives/reviews request;
-- accepting updates appointment UI;
-- declining shows client confirmation;
-- push unsupported/denied still leaves durable in-app result.
-
-### Done looks like
-
-- a client can request a new time without contacting staff through another channel;
-- the client never sees sensitive details from the teacher's calendar;
-- staff retains final control;
-- accepting cannot double-book an appointment;
-- recurring series are not accidentally rewritten;
-- client receives durable processed-state confirmation;
-- push improves timeliness but is never required for correctness.
-
----
-
-## Stage 15: Calendar Workflow and Income Forecast Improvements
+## Stage 14: Calendar Workflow and Income Forecast Improvements
 
 ### Goal
 
 Address the latest customer feedback around trial lessons, calendar workflow, schedule visibility, and forward-looking income.
 
-### Scope
+### Remaining scope
 
 - render trial lessons on the calendar with a distinct color that is not reused by ordinary appointment states;
 - add the missing recurring-task reminder for trial lessons;
@@ -1938,48 +1914,17 @@ Address the latest customer feedback around trial lessons, calendar workflow, sc
 
 ---
 
-## Stage 16: Services Progress — Planned for later
-
-MelodyTrack should track structured learning progress alongside scheduling. Services remain appointment and billing concepts; courses represent a client's long-term learning path.
-
-### Remaining scope
-
-- Reconsider and approve the client-facing course-progress experience before restoring it to the portal. Use [the course progress map brief](docs/course-progress-map-brief.md) as design context, not as an implementation checklist.
-- Keep the client schedule available independently from course progress.
-- Harden enrollment, dependency, unlock, completion, points, audit, and template-evolution behavior for daily use.
-- Add focused backend and frontend verification for course assignment, appointment-to-theme linkage, progress transitions, and authorization.
-- Improve explanations and recovery paths for blocked themes, invalid graphs, and stale enrollment state.
-
-### Deferred product work
-
-- Client-facing course progress and shared theme-content access remain deferred until their visual and usability direction is approved.
-- Chat, homework uploads, automated homework checking, feedback threads, achievements, leaderboards, marketplace features, and inline media attachments are outside this stage.
-- Completion remains teacher-controlled; do not infer it from appointment count, notes, or homework submission alone.
-
-### Integration with the refactored architecture
-
-- new/changed APIs use generated Minimal API registration and Kiota DTOs;
-- authorization uses the centralized policy model plus resource ownership checks;
-- errors use Problem Details/AppError/trace-ID UI;
-- notifications may be used when a real workflow benefit exists, but do not turn every progress state change into push noise;
-- preserve auditability and OTel visibility for important failures.
-
-### Done looks like
-
-- Staff can run course enrollment and progress without fragile manual workarounds.
-- Progress rules and point changes are explicit, auditable, and covered by tests.
-- Clients can access only their own approved portal surfaces.
-- Any restored client course-progress UI is understandable and useful in normal teaching work.
+> **Course-progress scope consolidation:** the former standalone Stage 15, **Services Progress**, is no longer an independent implementation stage. Its remaining scope is consolidated into Stage 24, **Course Progress Integration and Hardening**, so course progress is redesigned together with the client portal instead of being restored twice. The Stage 15 number is not reused.
 
 ---
 
-## Stage 17: Multiple Staff Accounts in One Browser — Planned for later
+## Stage 16: Multiple Staff Accounts in One Browser — Planned for later
 
 Allow the main staff portal to remember several staff user accounts in one browser and switch between them without repeatedly entering full credentials. This stage intentionally changes the refactor-era “one renewable identity per browser profile” limitation for **staff accounts only**.
 
 Client-portal identities remain a separate experience and are not part of the staff account switcher.
 
-### Scope
+### Remaining scope
 
 - Define the server/browser session model needed to keep several staff accounts available simultaneously.
 - The single refresh-cookie model must no longer silently choose one active staff account; introduce an explicit revocable session/account identity or another server-backed switching model.
@@ -2024,13 +1969,13 @@ Every refresh response/cross-tab event must be scoped to the intended account co
 
 ---
 
-## Stage 18: Offline-First Operations Architecture — Planned for later
+## Stage 17: Offline-First Operations Architecture — Planned for later
 
 Design how MelodyTrack can keep the most common daily staff work available during internet outages and infrastructure shutdowns. The target is more than cached read-only pages: authorized staff should be able to create, edit, and delete supported records locally, close the browser if necessary, and synchronize safely when Backend returns.
 
 This is an architecture/product-discovery stage. It must produce a validated design and thin end-to-end prototype before broad implementation. Do not enable offline mutations across all domains until conflict, security, and reconciliation rules are explicit.
 
-### Scope
+### Remaining scope
 
 - Inventory workflows required during outage for clients, schedule, services, payments, and closely related reference data.
 - Rank operations by frequency, criticality, conflict risk, and whether they can be made safe without a live server decision.
@@ -2069,7 +2014,7 @@ This is an architecture/product-discovery stage. It must produce a validated des
   - whether provisional until sync;
   - duplicate receipt prevention;
   - corrections requiring online/elevated action.
-- Design sync coordinator around login, Stage 17 account switching, connectivity changes, app startup, browser background limitations, and manual retry.
+- Design sync coordinator around login, Stage 16 account switching, connectivity changes, app startup, browser background limitations, and manual retry.
 - UI must show queue status, unsynchronized changes, conflicts, blocked dependencies, and last successful sync.
 - Do not treat `navigator.onLine` as proof Backend is reachable.
 - Define offline application shell/asset strategy and service-worker/PWA requirements.
@@ -2111,13 +2056,13 @@ If a minimal service worker already exists for Web Push, treat it as infrastruct
 
 ---
 
-## Stage 19: Accounting and Staff Compensation Architecture — Planned for later
+## Stage 18: Accounting and Staff Compensation Architecture — Planned for later
 
 Define how accounting should integrate with MelodyTrack's existing services, appointments, payments, expenses, users, and statistics. The design must cover staff salary calculation/payment while keeping scheduling, cash movement, earned revenue, expenses, payroll liabilities, and actual payouts as distinct concepts.
 
 This is an accounting-domain discovery/architecture stage. Validate the model with the people who will reconcile the numbers before building UI or automating salary calculations.
 
-### Scope
+### Remaining scope
 
 - Document the accounting questions MelodyTrack must answer:
   - money received;
@@ -2195,6 +2140,8 @@ This is an accounting-domain discovery/architecture stage. Validate the model wi
   - staged delivery plan;
   - representative acceptance scenarios reviewed by a domain stakeholder.
 
+---
+
 ### Done looks like
 
 - revenue, cash receipts, receivables, expenses, salary accruals, liabilities, payouts, and profit each have one documented meaning/reconciliation rule;
@@ -2206,11 +2153,1682 @@ This is an accounting-domain discovery/architecture stage. Validate the model wi
 
 ---
 
-# Dependency summary
+---
 
-Implement in this order unless a concrete blocker requires a documented deviation:
+# Client Portal Redesign Program
+
+The portal redesign is a dedicated product workstream starting at Stage 20. Stage 19 is intentionally left unassigned so the redesign keeps its agreed Stage 20–39 numbering. The program intentionally supersedes the refactor-era client portal PIN model while preserving the completed refactor history above.
+
+Stages 20–38 form the main redesign sequence. Stage 39 is an optional follow-up optimization and is not required to complete the redesign.
+
+## Stage 20: Portal Architecture and Access Foundation
+
+The client portal should become a distinct application surface with its own navigation, session behavior, visual system, and client-specific components. The current PIN-based access flow should be replaced with permanent passwordless portal links.
+
+### Remaining scope
+
+- Treat the client portal as a separate application surface from the administrative UI.
+- Establish the new portal shell, routing boundaries, client-specific navigation, and session model.
+- Replace the current portal PIN flow with permanent opaque portal links.
+- Generate a random URL-safe portal token with approximately 128 bits of entropy.
+- Store only a hash of the portal token on the existing user entity.
+- Enforce uniqueness of the stored token hash.
+- Resolve `GET /p/{token}` by hashing the supplied token, finding the corresponding user, resolving or creating the current browser/device session, activating the client profile, and redirecting to the normal portal home route.
+- Allow one browser/device session to remember multiple authorized client users.
+- Treat portal-link activation as idempotent for a client already remembered in the current browser/device session:
+
+  - do not create a duplicate remembered-profile/session membership;
+  - make that client the active profile;
+  - redirect directly to the portal home page without showing an intermediate profile chooser.
+- Opening a different client's valid portal link in the same browser should add that client to the existing browser/device session and make that client active.
+- Enforce uniqueness of the browser-session/client membership at the database level, conceptually `UNIQUE(DeviceSessionId, UserId)`.
+- Provide client-profile switching and removal for remembered clients without introducing PIN confirmation.
+- Do not keep the portal token in the URL during ordinary portal navigation.
+- Add an administrative action for regenerating a client's portal link.
+- Regenerating a link must immediately invalidate the previous token.
+- Remove the existing PIN mechanism completely.
+
+### Deferred product work
+
+- Player aliases are handled in Stage 21.
+- Multi-profile session behavior is established in this stage; the final profile-switcher placement and presentation are integrated into the portal shell in Stage 23.
+- RPG visuals are handled in Stage 22.
+- Course progress, structured homework, trainers, scoring, and leaderboards are handled separately.
+
+### Integration with the refactored architecture
+
+- Keep portal access tied to the existing user model rather than introducing a separate client identity table.
+- Portal authentication should resolve users through the token hash and then rely on secure browser/device session state.
+- Use secure `HttpOnly` session cookies after the initial portal-link access.
+- Portal link regeneration must use the same administrative authorization model as other client-management operations.
+- Errors should use the existing Problem Details/AppError/trace-ID flow.
+
+### Done looks like
+
+- A client can open a permanent personal portal link without a username, password, or PIN.
+- The same link remains usable until explicitly regenerated.
+- The raw token is not stored in the database.
+- Regenerating a link invalidates the old one immediately.
+- Normal portal navigation no longer exposes the token in the address bar.
+- Reopening the same personal portal link in the same browser does not create duplicate session/profile membership and goes directly to that client's portal home.
+- Opening another client's portal link adds that client to the same browser/device session, and remembered clients can be switched without a PIN.
+
+---
+
+## Stage 21: Player Identity and Alias Dictionaries
+
+Each portal client should have a stable public fantasy identity used in the portal header and competitive features. Alias generation should be server-controlled and backed by administrator-managed Russian dictionaries.
+
+### Remaining scope
+
+- Add nullable `PortalAlias` to the existing user entity.
+- Enforce database-level uniqueness for non-null aliases.
+- Keep the client's real or administrative name unchanged outside the public portal identity.
+- Support exactly two alias patterns:
+
+  - positive fantasy/magical epithet + fantasy creature;
+  - positive fantasy/magical epithet + musical/bardic term.
+- Add three database-backed dictionaries:
+
+  - `AliasEpithets`;
+  - `AliasCreatures`;
+  - `AliasBardicTerms`.
+- Each dictionary entry should contain only:
+
+  - `Id`;
+  - `Value`;
+  - `IsEnabled`.
+- Do not add:
+
+  - manual weight fields;
+  - category/type fields;
+  - created/updated timestamps.
+- Prevent duplicate values inside each dictionary.
+- Add a database migration that creates all three dictionaries and seeds an initial usable Russian-language vocabulary for:
+
+  - positive fantasy/magical epithets;
+  - fantasy creatures;
+  - musical/bardic terms.
+- Treat seeded values as normal editable dictionary entries after migration.
+- Add administrative CRUD for all three dictionaries:
+
+  - list;
+  - search;
+  - add;
+  - edit;
+  - enable/disable;
+  - delete.
+- Dictionary changes must affect newly generated candidates without requiring application deployment.
+- If `PortalAlias == null`, require alias selection on first portal entry.
+- Return one generated candidate from the server.
+- Provide `Another name` and `Choose this name` actions.
+- Each `Another name` request should return exactly one new candidate.
+- Do not send the complete dictionaries to the frontend.
+- Generate candidates randomly from enabled dictionary values.
+- Store the selected alias as a final string on the user.
+- Existing aliases must not change when dictionary values are later edited or deleted.
+- Avoid returning already assigned aliases where possible.
+- Keep the database unique constraint as the final protection against concurrent alias collisions.
+- If a chosen alias loses a save race and the database reports that it has become unavailable:
+
+  - do not generate or assign a replacement automatically;
+  - return a visible conflict error;
+  - keep the client on the alias-selection screen;
+  - let the client explicitly press `Another name` to request a new candidate.
+
+### Deferred product work
+
+- Dynamic anti-repetition weighting is deferred to Stage 39.
+- No manual per-word weighting is required.
+- Avatars, titles, cosmetics, frames, and similar profile customization are not part of this stage.
+- Leaderboards are handled later.
+
+### Integration with the refactored architecture
+
+- Keep aliases directly on the existing user entity rather than introducing a separate portal profile.
+- Keep alias dictionaries in the database because administrators must manage them through MelodyTrack.
+- The generator may cache enabled dictionary values in memory, but administrative mutations must invalidate the relevant cache.
+- Existing assigned aliases remain independent from current dictionary contents.
+
+### Done looks like
+
+- A new portal client must choose a unique fantasy alias before normal portal use.
+- Initial Russian dictionaries are available immediately after migration.
+- Administrators can manage all three dictionaries without deployment.
+- Existing aliases survive later dictionary edits and deletions.
+- Alias uniqueness is enforced even under concurrent selection.
+- A client who loses an alias-selection race sees an explicit conflict and remains in control of generating the next candidate.
+
+---
+
+## Stage 22: RPG Design System
+
+The redesigned client portal should look and feel like an RPG interface rather than a conventional SaaS application. The visual system should be established before the remaining portal pages are rebuilt.
+
+### Remaining scope
+
+- Define a dedicated fantasy/RPG visual language for the client portal.
+- Create portal-specific reusable UI components for:
+
+  - navigation;
+  - portal header;
+  - player identity;
+  - course presentation;
+  - homework presentation;
+  - trainer presentation;
+  - leaderboard presentation;
+  - progress indicators;
+  - dialogs;
+  - buttons;
+  - reusable panels/cards.
+- Use fantasy and magical visual motifs.
+- Support game-like panels and controls.
+- Add expressive animated UI states and magical visual effects where appropriate.
+- Keep animations consistent across components instead of implementing unrelated effects page by page.
+- Support reduced-motion behavior.
+- Keep the client portal visually independent from the administrative Ant Design language.
+
+### Deferred product work
+
+- Individual portal pages are implemented in later stages.
+- Final animation polish is deferred to Stage 37.
+- No additional gamification mechanics are introduced here.
+
+### Integration with the refactored architecture
+
+- The administrative UI may continue using Ant Design.
+- The client portal should use a dedicated component layer and theme.
+- Shared low-level utilities may still be reused where they do not leak administrative styling into the portal.
+- Portal components should be reusable across home, courses, homework, trainers, and leaderboards.
+
+### Done looks like
+
+- Later portal features can be implemented against a coherent RPG-style component system.
+- The portal no longer visually reads as Ant Design with fantasy decoration.
+- Reduced-motion users retain a usable interface.
+
+---
+
+## Stage 23: New Portal Shell and Home
+
+The new portal shell should establish the redesigned user experience before the more specialized course, homework, trainer, and leaderboard features are introduced.
+
+### Remaining scope
+
+- Build the new portal shell using the new access model, player aliases, and RPG design system.
+- Establish the main portal areas:
+
+  - Home;
+  - Courses;
+  - Homework;
+  - Trainers;
+  - Leaderboards;
+  - profile switching.
+- Display `PortalAlias` prominently in the portal header.
+- Build the new RPG-style home page.
+- At this stage, the home page may use existing course and homework data where the replacement systems are not yet available.
+- Provide navigation to:
+
+  - course content;
+  - homework;
+  - standalone trainers;
+  - leaderboards;
+  - profile switching when multiple clients are saved in the browser.
+
+### Deferred product work
+
+- Course progress is integrated in Stage 24.
+- Structured homework is implemented in Stage 25.
+- Trainers and leaderboards are implemented later.
+- Final gamification data on the home page is added in Stage 35.
+
+### Integration with the refactored architecture
+
+- Keep the portal shell independent from the administrative shell.
+- Route all later client-facing features through the new portal navigation.
+- Reuse the RPG component system from Stage 22.
+- Preserve existing authorization rules while moving portal presentation into the new shell.
+
+### Done looks like
+
+- The redesigned portal is usable before all later features are complete.
+- Clients see the new RPG shell, navigation, alias, and home page.
+- New portal functionality can be added without rebuilding the shell again.
+
+---
+
+## Stage 24: Course Progress Integration and Hardening
+
+MelodyTrack should restore client-facing course progress as part of the redesigned portal while hardening the existing course-progress domain for daily teaching use. Services remain appointment and billing concepts; courses represent a client's long-term learning path.
+
+### Remaining scope
+
+- Reconsider and approve the client-facing course-progress experience before restoring it to the portal.
+- Use `docs/course-progress-map-brief.md` as design context, not as an implementation checklist.
+- Integrate the approved course-progress experience into the new RPG portal rather than restoring the previous UI unchanged.
+- Keep the client schedule independently accessible from course progress.
+- Harden:
+
+  - course enrollment;
+  - dependency behavior;
+  - unlocking;
+  - completion;
+  - points;
+  - auditing;
+  - course-template evolution.
+- Add focused backend and frontend verification for:
+
+  - course assignment;
+  - appointment-to-theme linkage;
+  - progress transitions;
+  - authorization.
+- Improve explanations and recovery paths for:
+
+  - blocked themes;
+  - invalid dependency graphs;
+  - stale enrollment state.
+- Keep completion teacher-controlled.
+- Do not infer completion from:
+
+  - appointment count;
+  - notes;
+  - homework submission alone;
+  - trainer usage.
+
+### Deferred product work
+
+- Chat is outside this stage.
+- Homework uploads are outside this stage.
+- Automated homework checking is outside this stage.
+- Feedback threads are outside this stage.
+- Achievements are outside this stage.
+- Leaderboards are outside this stage.
+- Marketplace features are outside this stage.
+- Inline media attachments are outside this stage.
+- Shared theme-content access remains deferred until its client-facing visual and usability direction is approved.
+- Structured homework and trainers are implemented in later stages.
+
+### Integration with the refactored architecture
+
+- New or changed APIs use generated Minimal API registration and Kiota DTOs.
+- Authorization uses the centralized policy model plus resource ownership checks.
+- Errors use Problem Details/AppError/trace-ID UI.
+- Preserve auditability and OpenTelemetry visibility for important failures.
+- Notifications may be used when they provide a real workflow benefit, but ordinary progress-state changes should not become push noise.
+- Client-facing progress must follow the new RPG design system.
+
+### Done looks like
+
+- Staff can run course enrollment and progress without fragile manual workarounds.
+- Progress rules and point changes are explicit, auditable, and covered by focused tests.
+- Clients can access only their own approved portal surfaces.
+- The restored client course-progress UI is understandable and useful in normal teaching work.
+
+---
+
+## Stage 25: Replace BBCode Homework with Structured Documents
+
+Homework should move from SCEditor/BBCode to a structured document model capable of supporting both rich text and interactive application nodes. Existing BBCode data does not need to be migrated.
+
+### Remaining scope
+
+- Replace BBCode homework storage with versioned JSON documents.
+- Use a document envelope containing:
+
+  - `schemaVersion`;
+  - the structured document payload.
+- Replace SCEditor with Tiptap/ProseMirror.
+- Restore the formatting features already available in the current homework editor:
+
+  - paragraphs;
+  - bold;
+  - italic;
+  - underline;
+  - strikethrough;
+  - links;
+  - lists;
+  - blockquotes;
+  - code blocks.
+- Use one shared document schema for:
+
+  - editing;
+  - persistence;
+  - read-only rendering.
+- Validate:
+
+  - document schema version;
+  - allowed nodes;
+  - document size;
+  - references contained in custom application nodes.
+- Remove:
+
+  - SCEditor;
+  - `BbcodeEditor`;
+  - `BbcodeContent`;
+  - BBCode parsing;
+  - BBCode-specific homework contracts.
+
+### Deferred product work
+
+- Custom application nodes are added in Stage 26.
+- Interactive trainers are added later.
+- No BBCode migration layer is required.
+
+### Integration with the refactored architecture
+
+- Avoid recreating the current split between one editor implementation and a separate custom display parser.
+- Keep the structured document format compatible with Tiptap/ProseMirror.
+- Do not create a large C# hierarchy mirroring every ProseMirror node unless server-side behavior later requires it.
+- Use the existing backend error and authorization conventions.
+
+### Done looks like
+
+- Homework is no longer stored or rendered as BBCode.
+- Editing and read-only display use the same document schema.
+- The document model can safely host future interactive nodes.
+
+---
+
+## Stage 26: Custom Homework Document Nodes
+
+Homework documents should support real MelodyTrack components rather than only formatted text.
+
+### Remaining scope
+
+- Add reusable custom-node infrastructure to the structured homework model.
+- Implement the first custom node:
+
+  - `practiceExercise`.
+- Store only an exercise reference in the homework document rather than embedding the full exercise configuration.
+- Render custom nodes through React NodeViews in the editor.
+- Show teachers a meaningful exercise preview rather than raw JSON or an opaque ID.
+- Support editing and removing the embedded exercise node.
+- Render the same node as the interactive exercise runtime in the client portal.
+- Keep the node infrastructure general enough for future application-specific nodes.
+
+### Deferred product work
+
+Possible future node categories may include:
+
+- audio;
+- attachment;
+- quiz.
+
+They do not need to be implemented in this stage.
+
+### Integration with the refactored architecture
+
+- Keep the document node as a reference to the exercise domain.
+- Do not couple the homework editor to trainer runtime internals.
+- Reuse the same structured document schema for both teacher and client rendering.
+
+### Done looks like
+
+- Teachers can insert application-specific exercise nodes into homework.
+- Clients see those nodes as real interactive components.
+- The custom-node mechanism is reusable beyond the first trainer.
+
+---
+
+## Stage 27: Shared Practice Platform Architecture
+
+Interactive practice should be implemented as one reusable platform shared by homework, standalone trainer pages, the client portal, and the primary authenticated MelodyTrack application.
+
+Trainer implementations must not depend on a particular UI surface.
+
+### Remaining scope
+
+- Keep exercise type separate from exercise configuration.
+- Use a reusable model conceptually similar to:
 
 ```text
+PracticeExercise
+├── Id
+├── Type
+└── Configuration
+```
+
+- Keep trainer-specific configuration structured and versionable.
+- Do not create a separate exercise type for every parameter combination.
+- Separate:
+
+  - exercise definition;
+  - configuration;
+  - runtime;
+  - timing/audio engine;
+  - rendering;
+  - optional browser audio-analysis integration.
+- Ensure the same trainer runtime can be used:
+
+  - inside a homework document;
+  - in teacher preview;
+  - from standalone trainer pages in the client portal;
+  - from standalone trainer pages in the primary authenticated MelodyTrack application.
+- Do not create separate trainer implementations for staff/main-application and client-portal use.
+- All supported exercise parameters must be explicitly configurable by the teacher when preparing an exercise. Do not hide required teaching parameters behind fixed hard-coded presets.
+
+### Shared rhythmic values
+
+Use one common rhythmic-value model across trainers.
+
+The currently required values are:
+
+- whole note;
+- half note;
+- quarter note;
+- eighth note;
+- sixteenth note;
+- eighth-note triplet.
+
+Internally, timing must be represented independently from rendered notation so the same musical structure drives:
+
+- visual notation;
+- simplified trainer visualization;
+- metronome synchronization;
+- playhead movement;
+- browser audio-analysis expectations.
+
+### Shared tempo behavior
+
+Trainer configurations that use tempo should support:
+
+- BPM;
+- time signature;
+- count-in where applicable;
+- looping where applicable;
+- optional automatic BPM progression.
+
+Automatic BPM progression must support configuration of:
+
+- BPM increment;
+- trigger interval;
+- trigger unit:
+
+  - after N bars;
+  - or after N completed repetitions.
+
+### Runtime timing
+
+Use the Web Audio API clock as the timing authority.
+
+Schedule musical events against:
+
+```text
+AudioContext.currentTime
+```
+
+React renders current state and the visual playhead but does not act as the musical clock.
+
+Do not use `setInterval()` as the timing authority.
+
+### Deferred product work
+
+- Browser audio analysis and local recording are implemented separately in Stage 32.
+- Scale practice remains a future trainer idea.
+- Picking/arpeggio training is not part of the currently approved trainer set.
+- Exercises requiring ML-based microphone evaluation are outside the current trainer platform scope.
+
+### Integration with the refactored architecture
+
+- Keep the trainer runtime independent from the Tiptap homework editor.
+- Homework documents reference exercises rather than embedding trainer runtime implementation details.
+- Keep trainer configuration compatible with both embedded and standalone execution.
+- Reuse the same timing primitives across all trainer types.
+
+### Done looks like
+
+- MelodyTrack has one trainer architecture shared by every application surface.
+- Trainer configuration, timing, rendering, and optional analysis concerns are separable.
+- Homework and standalone training do not require duplicate trainer implementations.
+- New trainer types can reuse the platform without changing homework infrastructure.
+
+---
+
+## Stage 28: Guitar Strumming Trainer
+
+The first trainer should implement configurable guitar-strumming exercises while explicitly separating the rhythmic action performed on the strings from the physical hand-motion pattern.
+
+The trainer may optionally include the chord-change runtime from Stage 29 so one exercise can train strumming and chord changes together.
+
+### Remaining scope
+
+Support configuration for:
+
+- BPM;
+- time signature;
+- number of bars;
+- number of repetitions;
+- the shared supported rhythmic values;
+- rests in the rhythmic pattern;
+- accents;
+- count-in;
+- looping;
+- automatic BPM progression.
+
+### Structured strumming model
+
+Do not store the exercise as a compact pattern string such as:
+
+```text
+D-DU-UDU
+```
+
+Represent the rhythmic pattern structurally.
+
+Each position on the musical timeline must distinguish:
+
+1. hand movement;
+2. action performed on the strings;
+3. accent state.
+
+Conceptually:
+
+```text
+StrummingEvent
+├── RhythmicValue
+├── HandMotion
+├── Action
+└── Accent
+```
+
+### Hand movement
+
+Support exactly the currently required hand-motion directions:
+
+```text
+HandMotion
+├── Down
+└── Up
+```
+
+Hand movement is an independent exercise layer.
+
+Do not infer hand movement from the action on the strings. The configured hand-motion direction may differ from the visible rhythmic-stroke direction.
+
+A rest in the rhythmic pattern does not imply that hand movement stops.
+
+### Actions on the strings
+
+Support the following explicit actions:
+
+```text
+StrumAction
+├── Down
+├── Up
+├── DownClick
+├── DownDeadNotes
+├── UpDeadNotes
+├── DownBassStrings
+├── UpBassStrings
+├── DownTrebleStrings
+├── UpTrebleStrings
+└── Rest
+```
+
+Their meanings are:
+
+- normal downstroke;
+- normal upstroke;
+- downstroke with click;
+- downstroke on dead notes;
+- upstroke on dead notes;
+- downstroke across the three thick/bass strings;
+- upstroke across the three thick/bass strings;
+- downstroke across the three thin/treble strings;
+- upstroke across the three thin/treble strings;
+- rest/no audible stroke.
+
+Do not model these as combinations inferred from several loosely related flags when the configured action itself has a distinct teaching meaning.
+
+### Accents
+
+Any sounding strum action may be marked as accented.
+
+Accent is a property of the action, not a separate hand motion and not a separate rhythmic event.
+
+The exercise UI must make the required accent visually explicit without changing the hand-motion layer.
+
+### Visual presentation and layout
+
+Use the provided strumming-trainer reference as a layout reference, not as a visual-style reference.
+
+Keep the MelodyTrack RPG/fantasy visual system.
+
+Arrange the trainer in this order:
+
+1. **Rhythmic pattern**
+   - large visual action cells;
+   - synchronized musical notation for the same structured pattern;
+2. **Hand movement**
+   - a separate synchronized row showing the configured `Down`/`Up` trajectory;
+3. **Optional chord block**
+   - uses the shared chord-change runtime from Stage 29;
+   - can be enabled or disabled for the exercise;
+4. **Shared exercise controls**
+   - BPM;
+   - time signature;
+   - rhythmic settings;
+   - bar/repetition settings;
+   - count-in;
+   - loop;
+   - metronome;
+   - automatic BPM progression;
+   - start/stop and related runtime controls.
+
+The arrow/grid representation and musical notation must be two views of the same structured exercise data rather than independently maintained patterns.
+
+### Optional chord-change layer
+
+Allow the teacher to enable the chord-change trainer inside a strumming exercise.
+
+When enabled, the exercise runs three synchronized layers on the same musical timeline:
+
+```text
+rhythmic actions
+hand movement
+chord progression
+```
+
+Do not run separate clocks for strumming and chord changes.
+
+The embedded chord layer reuses all relevant Stage 29 behavior, including fixed/random progression, chord durations, next-chord preview, and optional fingering visualization.
+
+The same chord-change runtime must remain usable independently as its own trainer.
+
+### Playback
+
+Use the shared Web Audio timing engine.
+
+React should render:
+
+- current rhythmic position;
+- current hand movement;
+- current expected action;
+- current chord when the chord layer is enabled;
+- playhead;
+- current repetition/bar;
+- current BPM.
+
+### Audio-analysis boundary
+
+The base trainer does not attempt to determine from microphone audio:
+
+- hand movement where no sound was produced;
+- physical hand direction;
+- reliable downstroke/upstroke classification;
+- which part of the strings the hand physically crossed.
+
+Browser audio analysis in Stage 32 evaluates audible events and timing without pretending to reconstruct the complete hand-motion layer.
+
+### Integration with the refactored architecture
+
+- Implement through the shared practice runtime.
+- Keep both visual representations derived from the structured exercise configuration.
+- Support:
+
+  - homework embeds;
+  - teacher preview;
+  - standalone use in the primary authenticated application;
+  - standalone use in the client portal.
+
+### Done looks like
+
+- Hand movement and actions on the strings are modeled independently.
+- Every approved string action, accent, and rest can be represented explicitly.
+- Arrow/grid and musical-notation views remain synchronized.
+- The optional chord layer can train strumming and chord changes in one exercise without duplicating runtime logic.
+- The trainer runs from all intended MelodyTrack surfaces.
+
+---
+
+## Stage 29: Chord-Change and Rhythm Trainers
+
+After the strumming runtime validates the shared timing model, implement the two additional trainer types currently approved for the product.
+
+The chord-change runtime must work both independently and as the optional chord layer inside the Guitar Strumming Trainer.
+
+### Chord-change trainer
+
+The chord-change trainer should display and time transitions between teacher-configured chords under the shared metronome.
+
+Support:
+
+- chord list;
+- fixed-order mode;
+- random-next-chord mode;
+- BPM;
+- time signature;
+- count-in;
+- repetitions or exercise duration;
+- looping where applicable;
+- automatic BPM progression;
+- optional chord-fingering visualization.
+
+#### Fixed-order mode
+
+In a fixed sequence, each chord event may have its own duration.
+
+Default duration:
+
+```text
+1 bar
+```
+
+The teacher may manually change the duration of each chord with a resolution of one sixteenth note.
+
+Conceptually:
+
+```text
+ChordEvent
+├── Chord
+└── Duration
+```
+
+The timeline must therefore support durations such as one bar, half a bar, three quarters of a bar, or another duration representable as an integer multiple of a sixteenth note.
+
+#### Random mode
+
+In random mode, the teacher configures the allowed chord set and one shared duration used by every randomly selected chord.
+
+The next randomly selected chord must never equal the currently active chord.
+
+Given:
+
+```text
+F, C, Am
+```
+
+this is valid:
+
+```text
+F → C → Am → C → F
+```
+
+and this is invalid:
+
+```text
+F → F → Am → C
+```
+
+A chord may appear again later in the sequence.
+
+Conceptually:
+
+```text
+candidates = configuredChords excluding currentChord
+nextChord = random(candidates)
+```
+
+Random mode requires at least two distinct configured chords.
+
+Do not add random ordering to the other currently approved trainer types.
+
+#### Current and next chord
+
+In standalone presentation, show only:
+
+- the current chord;
+- the next chord.
+
+Do not show a longer queue of future chords.
+
+The next chord must be selected/resolved and displayed exactly one full bar before the transition so the student has time to prepare.
+
+This rule applies to both fixed and random modes.
+
+#### Chord fingering visualization
+
+Show a chord-fingering diagram for the current/next chord when fingering hints are enabled.
+
+Provide an exercise/display parameter that hides fingering diagrams while keeping chord names visible so the student can progressively practise from memory.
+
+The diagram orientation must match the approved reference:
+
+- the nut is on the left;
+- frets progress from left to right;
+- strings are horizontal;
+- from top to bottom the strings are ordered from the 1st/high-E thin string to the 6th/low-E thick string;
+- open-string and muted-string markers appear to the left of the nut;
+- finger positions appear as numbered circles on the corresponding string/fret positions.
+
+Do not rotate the diagram into the more common vertical-neck orientation.
+
+### Rhythm trainer
+
+Implement a trainer for practising rhythm independently from a particular chord progression or strumming technique.
+
+Support:
+
+- BPM;
+- time signature;
+- number of bars;
+- count-in;
+- looping;
+- automatic BPM progression;
+- rhythmic event sequence;
+- whole notes;
+- half notes;
+- quarter notes;
+- eighth notes;
+- sixteenth notes;
+- eighth-note triplets;
+- rests;
+- accents;
+- ties.
+
+#### Rhythmic events and rests
+
+Represent the pattern structurally rather than as display text.
+
+Conceptually:
+
+```text
+RhythmEvent
+├── RhythmicValue
+├── IsRest
+├── Accent
+├── TieFromPrevious
+└── TieToNext
+```
+
+Rests occupy real musical duration and participate in bar-length validation.
+
+Accent may be set on any sounding rhythmic event. A rest cannot be accented.
+
+All supported rhythmic values may be mixed within the same bar as long as the bar remains musically valid.
+
+#### Eighth-note triplets
+
+Eighth-note triplets are inserted and edited only as a complete group of three.
+
+Conceptually:
+
+```text
+EighthTripletGroup
+├── Event 1
+├── Event 2
+└── Event 3
+```
+
+Do not allow isolated eighth-triplet members to be inserted independently outside a complete triplet group.
+
+#### Bar validation
+
+Incomplete bars and pickup/anacrusis bars are not supported.
+
+Every configured bar must be completely and correctly filled according to the configured time signature before the pattern is considered valid.
+
+The editor should make invalid/unfinished bar duration explicit and prevent such a pattern from being treated as a valid completed exercise configuration.
+
+#### Ties
+
+Support ties between adjacent sounding notes:
+
+- within a beat;
+- across beat boundaries;
+- across bar boundaries.
+
+Tied segments represent one continuing sound rather than repeated attacks.
+
+The data model may represent ties through adjacent event references/flags, but the runtime semantics are fixed:
+
+- the first segment begins the sound;
+- a tied continuation extends it;
+- no new onset is expected at the beginning of a tied continuation.
+
+Stage 32 audio analysis must use the same semantics and must not classify the absence of a new attack on a tied continuation as a missed note.
+
+#### Visual presentation
+
+Render the same structured rhythm in:
+
+- standard musical notation;
+- a simplified synchronized timeline/grid with the current playhead.
+
+Both views must be generated from one underlying rhythmic structure.
+
+### Deferred trainer ideas
+
+Do not implement a picking/arpeggio trainer.
+
+Keep a scale trainer as an idea only.
+
+If scale training is revisited later, its visual model must support:
+
+- note names / musical notes;
+- tablature;
+- fingering.
+
+The exact scale-training interaction model remains intentionally undefined.
+
+### Integration with the refactored architecture
+
+Both approved trainers reuse:
+
+- `PracticeExercise`;
+- common rhythmic values;
+- the shared timing engine;
+- shared metronome behavior;
+- homework custom-node integration;
+- primary-application standalone execution;
+- client-portal standalone execution.
+
+### Done looks like
+
+- Chord-change exercises support fixed progressions with per-chord durations and non-repeating random transitions with one shared random-mode duration.
+- The current and next chord are shown with a one-bar preview window.
+- Chord fingering can be shown or hidden without hiding the chord name.
+- Rhythm exercises support every currently required rhythmic value, rests, accents, complete triplet groups, and ties.
+- Rhythm bars are always complete and valid; pickup bars are not accepted.
+- Neither trainer introduces a separate timing/runtime subsystem.
+
+---
+
+## Stage 30: Shared Metronome and Exercise Timing
+
+Every currently approved trainer operates under the shared metronome.
+
+The metronome should be a reusable timing component rather than a separate implementation inside each trainer.
+
+### Remaining scope
+
+Support:
+
+- enabled/disabled state;
+- BPM;
+- volume;
+- time signature;
+- accented first beat where applicable;
+- count-in;
+- manual tempo;
+- automatic exercise-following mode;
+- automatic BPM progression defined by the active exercise.
+
+### Homework behavior
+
+A homework page may contain several exercises.
+
+By default, the page-level metronome follows the currently active exercise.
+
+For example:
+
+```text
+Exercise A → 70 BPM
+Metronome  → 70 BPM
+
+Exercise B → 95 BPM
+Metronome  → 95 BPM
+```
+
+Exercises publish their desired timing configuration to the shared metronome rather than creating separate global metronomes.
+
+### Standalone behavior
+
+Use the same metronome/timing implementation when a trainer runs:
+
+- in the client portal;
+- in the primary authenticated MelodyTrack application.
+
+Standalone trainers should therefore behave musically the same way as their homework-embedded versions.
+
+### Manual override
+
+Allow the user to override automatically followed tempo.
+
+The UI must clearly indicate when automatic exercise tempo following is disabled by a manual override.
+
+### Automatic BPM progression
+
+Implement the shared progression behavior defined in Stage 27.
+
+After the configured number of:
+
+- bars;
+- or completed repetitions,
+
+increase BPM by the configured amount.
+
+The exercise configuration determines whether this behavior is enabled.
+
+### Integration with the refactored architecture
+
+- Keep one timing authority based on Web Audio rather than React timers.
+- Keep metronome state at page/service/runtime scope rather than duplicating musical clocks inside individual trainer components.
+- Ensure several embedded exercises can safely share the page-level metronome.
+
+### Done looks like
+
+- Every trainer uses one common musical clock and metronome implementation.
+- Switching active homework exercises switches metronome configuration correctly.
+- Standalone and embedded trainer timing is consistent.
+- Automatic BPM progression works by bars or repetitions.
+
+---
+
+## Stage 31: Shared Trainer Catalogue and Cross-Surface Availability
+
+Trainers should be usable independently from homework and courses and must not be restricted to the client portal.
+
+### Remaining scope
+
+Expose standalone trainers in both:
+
+- the client portal;
+- the primary authenticated MelodyTrack application.
+
+Both surfaces use the same trainer definitions, configurations, and runtime implementations.
+
+Available standalone trainers at this point are:
+
+- guitar strumming;
+- chord changes;
+- rhythm.
+
+Appropriate users of either surface should be able to:
+
+- browse trainer types;
+- open a trainer;
+- configure its supported parameters;
+- start/stop practice;
+- use it independently from a course;
+- use it independently from homework.
+
+Homework exercises continue to reuse the same runtimes.
+
+### Configuration
+
+Do not create simplified hidden trainer implementations for standalone use.
+
+Expose the same underlying configuration capabilities supported by each trainer.
+
+All exercise parameters required for teaching must remain manually configurable rather than being replaced by hard-coded presets.
+
+### Deferred product work
+
+The architecture may later support:
+
+- saved presets;
+- recent configurations;
+- favorites;
+- teacher presets;
+- practice history.
+
+These remain future work unless separately scheduled.
+
+### Integration with the refactored architecture
+
+- Reuse the same trainer entity/configuration/runtime on all surfaces.
+- Do not create separate client and primary-application trainer implementations.
+- Client-facing presentation follows the RPG portal design system.
+- Primary-application presentation follows the main application UI while preserving identical trainer behavior and musical semantics.
+
+### Done looks like
+
+- The same trainer can run in homework, the client portal, and the primary MelodyTrack application.
+- Standalone practice does not require course enrollment or homework.
+- Trainer behavior does not diverge between application surfaces.
+
+---
+
+## Stage 32: Browser Audio Analysis and Local Practice Recording
+
+Add optional microphone-based analysis to supported trainer sessions using browser-native audio capabilities.
+
+This stage intentionally avoids machine-learning models and server-side audio processing.
+
+Raw recordings must remain on the user's device and must not be uploaded to MelodyTrack.
+
+### Audio capture
+
+Request microphone access only when the user explicitly starts recording or enables analysis.
+
+Use:
+
+```text
+navigator.mediaDevices.getUserMedia(...)
+```
+
+to obtain the microphone `MediaStream`.
+
+Feed the same stream into separate recording and analysis consumers:
+
+```text
+Microphone MediaStream
+        ├── MediaRecorder → local recording
+        │
+        └── Web Audio API
+                ↓
+           AudioWorklet
+                ↓
+          non-ML DSP analysis
+```
+
+Do not send the raw microphone stream to Backend.
+
+### Real-time processing
+
+Use `AudioWorklet` for realtime PCM processing outside the React UI thread.
+
+Keep React responsible for displaying analysis results rather than processing realtime audio blocks.
+
+Start with TypeScript/JavaScript DSP inside the worklet where it is sufficient.
+
+WebAssembly may be used only as an internal DSP implementation detail if profiling or a selected DSP library justifies it.
+
+Do not migrate the React application or the frontend as a whole to WebAssembly.
+
+### Non-ML onset and timing analysis
+
+Implement detection of audible attacks/onsets using conventional signal-processing techniques such as:
+
+- amplitude/energy envelope changes;
+- spectral-flux style onset detection;
+- adaptive thresholds;
+- minimum spacing/debouncing between detected attacks.
+
+Compare detected attacks against the expected exercise timeline generated by the same Web Audio timing system.
+
+For expected audible events, support classifications such as:
+
+- on time;
+- early;
+- late;
+- missed;
+- unexpected/extra attack.
+
+Calculate useful session-level timing information such as:
+
+- average timing offset;
+- timing variance/consistency;
+- tendency to speed up or slow down.
+
+Include a latency/tolerance mechanism so constant device/input latency is not incorrectly presented as a musical timing error.
+
+### Rhythm and tie semantics
+
+The rhythm trainer's structured timeline is authoritative for expected onsets.
+
+For tied notes:
+
+- expect an onset only on the first segment;
+- do not expect a new onset on tied continuation segments;
+- do not report the intended continuation as a missed attack.
+
+### Accent analysis
+
+Where real-device testing shows useful results, estimate expected accents using relative local signal energy around detected onsets.
+
+Treat this as approximate feedback rather than an exact measurement of technique or absolute loudness.
+
+### Guitar-strumming limitations
+
+Do not attempt to infer reliably from microphone audio:
+
+- silent hand movement;
+- physical hand-motion direction;
+- downstroke versus upstroke direction;
+- whether the performer physically crossed exactly the thick or thin three-string group.
+
+For strumming, the reliable analysis target is the timing/presence of audible actions rather than reconstruction of the complete hand-motion instruction.
+
+### Non-ML chord comparison
+
+For chord-change exercises, allow conventional DSP-based comparison against the expected/configured chord set without introducing ML.
+
+A possible processing model is:
+
+```text
+PCM
+ ↓
+frequency-domain analysis
+ ↓
+pitch-class / chroma representation
+ ↓
+comparison with expected chord templates
+```
+
+Limit recognition to the expected/configured chord set rather than attempting unrestricted transcription of arbitrary music.
+
+Use confidence thresholds.
+
+If the signal cannot be classified with sufficient confidence, return an uncertain/unrecognized result rather than a false definitive error.
+
+Chord recognition is less reliable than onset/timing analysis and must be validated with representative real guitar recordings before it is treated as authoritative feedback.
+
+### Future non-ML pitch analysis
+
+Monophonic pitch detection using conventional autocorrelation/YIN-style techniques is compatible with the same browser pipeline.
+
+Keep this deferred while the scale trainer remains only an idea.
+
+### Metronome leakage
+
+The microphone may capture MelodyTrack's own metronome when it is played through speakers.
+
+Analysis mode should recommend headphones.
+
+Do not assume browser echo cancellation can reliably distinguish the application's metronome from musical attacks.
+
+### Local recording
+
+Record the microphone stream using `MediaRecorder`.
+
+Collect recorded chunks into a `Blob`.
+
+Do not upload the Blob to Backend.
+
+Persist recordings locally using the existing IndexedDB/Dexie frontend persistence layer so they can be replayed later in the same browser/device.
+
+Keep only the browser-local metadata required to associate a recording with its practice session and analysis results.
+
+Users must be able to delete local recordings.
+
+Recordings are device/browser-local and may disappear if the browser's site storage is cleared.
+
+### Playback with audible evaluation overlay
+
+Allow locally stored recordings to be replayed directly inside MelodyTrack.
+
+Keep the original recording unchanged.
+
+Do not bake evaluation sounds into the recorded Blob.
+
+Store analysis events separately and, during playback, optionally overlay short diagnostic sounds for errors such as:
+
+- early attack;
+- late attack;
+- missed expected attack;
+- unexpected/extra attack.
+
+The user must be able to disable the evaluation overlay and listen to the untouched recording alone.
+
+Schedule the recording and diagnostic sounds against the same browser audio clock so the audible markers stay aligned with the recorded performance.
+
+The playback UI should remain compatible with synchronized visual playhead/error highlighting.
+
+### Privacy boundary
+
+This stage does not introduce:
+
+- server-side audio storage;
+- audio uploads;
+- cloud transcription;
+- ML inference;
+- background microphone capture.
+
+Microphone access is active only for an explicitly started recording/analysis session.
+
+Normal non-audio practice events required by later practice tracking/scoring remain a separate concern; raw audio must not become part of those server events.
+
+### Integration with trainers
+
+The same analysis pipeline must work wherever the trainer runtime is used:
+
+- homework;
+- client portal;
+- primary authenticated MelodyTrack application.
+
+Trainer runtimes provide the expected musical-event timeline.
+
+The analysis subsystem consumes that timeline and reports observed timing/results back to the trainer UI.
+
+### Done looks like
+
+- A user can explicitly enable microphone analysis for a supported trainer.
+- Timing feedback is calculated entirely in the browser without ML.
+- Rhythm ties are evaluated with correct onset semantics.
+- A user's performance can be recorded, stored locally, and replayed later on the same device.
+- Playback can overlay synchronized audible error markers without modifying the original recording.
+- Raw recordings never leave the browser.
+- Strumming analysis does not pretend to infer physical hand movement from audio.
+- The architecture can optionally adopt WASM DSP later without changing the surrounding React application.
+
+---
+
+## Stage 33: Scoring Model
+
+Leaderboards should be based on a dedicated scoring domain rather than calculated directly from the current state of courses, homework, or trainer screens.
+
+### Remaining scope
+
+- Introduce a scoring flow conceptually based on:
+
+  - learning activity;
+  - scoring rules;
+  - score events/ledger;
+  - aggregations;
+  - leaderboard projections.
+- Keep the model capable of supporting the score sources already discussed:
+
+  - homework completion;
+  - course progress;
+  - lesson completion;
+  - trainer practice;
+  - consistency/streaks;
+  - achievements;
+  - special events.
+- Keep scoring separate from educational completion.
+- Preserve teacher-controlled completion.
+- Do not let trainer activity automatically mark course content complete.
+
+### Deferred product work
+
+- Not all possible score sources need to be implemented immediately.
+- Achievements are not introduced here.
+- Practice-specific scoring is integrated later in Stage 36.
+- Leaderboard presentation is handled in Stage 34.
+
+### Integration with the refactored architecture
+
+- Keep score history explicit and auditable.
+- Avoid deriving competitive ranking directly from mutable UI state.
+- Integrate course-related points without changing teacher-controlled completion rules.
+
+### Done looks like
+
+- MelodyTrack has a single scoring source suitable for leaderboard aggregation.
+- Score changes can be explained and audited.
+- Competitive points remain separate from course mastery.
+
+---
+
+## Stage 34: Leaderboards
+
+The portal should support competitive rankings across courses and time periods using public fantasy aliases.
+
+### Remaining scope
+
+- Implement:
+
+  - course leaderboard;
+  - global leaderboard across all courses;
+  - monthly leaderboard;
+  - yearly leaderboard.
+- Display:
+
+  - rank;
+  - player alias;
+  - score.
+- Use `User.PortalAlias` as the public identity.
+- Do not expose real client names in leaderboard UI.
+- Make the current client's position visible even if they are outside the currently displayed top entries.
+- Present leaderboards through the RPG portal design system.
+
+### Deferred product work
+
+- Achievements are not required.
+- Historical rank-movement indicators are not required unless separately added.
+- Dynamic scoring expansion continues in later stages.
+
+### Integration with the refactored architecture
+
+- Build leaderboard views from the scoring domain rather than directly from course state.
+- Respect client authorization boundaries.
+- Reuse the portal alias and RPG component infrastructure.
+
+### Done looks like
+
+- Clients can see rankings within a course, globally, monthly, and yearly.
+- Public identities use aliases only.
+- A client can always understand their own current position.
+
+---
+
+## Stage 35: Portal Home Gamification Integration
+
+The portal home should become the player's central hub once scoring and leaderboard data are available.
+
+### Remaining scope
+
+- Extend the existing Stage 23 home page with:
+
+  - current courses;
+  - current homework;
+  - trainer access;
+  - player alias;
+  - relevant leaderboard positions;
+  - available progress information.
+- Keep the existing home page structure rather than rebuilding it again.
+- Present the new gamification data using the RPG design system.
+
+### Deferred product work
+
+- Achievements are not required.
+- Additional profile cosmetics are not required.
+- Practice-specific score integration is handled separately.
+
+### Integration with the refactored architecture
+
+- Consume the scoring and leaderboard data introduced in Stages 33–34.
+- Keep course-progress presentation aligned with Stage 24.
+- Keep trainer entry points aligned with Stage 31.
+
+### Done looks like
+
+- The portal home serves as a coherent RPG-style hub.
+- Clients can see their current learning, practice, and competitive context from one page.
+
+---
+
+## Stage 36: Practice Tracking and Scoring Integration
+
+Practice activity should participate in gamification without becoming equivalent to teacher-controlled course completion.
+
+### Remaining scope
+
+- Record useful practice events such as:
+
+  - trainer used;
+  - practice session start;
+  - practice session completion;
+  - duration;
+  - configured BPM;
+  - repetitions.
+- Avoid collecting high-frequency telemetry without a concrete product purpose.
+- Allow practice activity to contribute to the score ledger.
+- Keep scoring rules from making trivial repeated actions an unlimited source of points.
+- Define anti-farming behavior together with the actual scoring model rather than hardcoding it into trainer components.
+- Keep practice history and score separate from teacher-controlled course completion.
+- Keep Stage 32 raw audio recordings local; do not upload them as part of practice tracking/scoring.
+
+### Deferred product work
+
+- No automatic homework checking is introduced.
+- No automatic mastery inference is introduced.
+- No additional telemetry is required unless it supports a concrete future feature.
+
+### Integration with the refactored architecture
+
+- Emit practice-related scoring events through the scoring domain.
+- Keep trainer runtime independent from course progress transitions.
+- Preserve auditability for point changes.
+- Do not make browser-local recording storage a server-side scoring dependency.
+
+### Done looks like
+
+- Homework-based and standalone practice can contribute to score.
+- Repeated trivial actions cannot be treated as unlimited progress.
+- Practice never automatically completes course content.
+- Practice scoring does not require uploading locally recorded audio.
+
+---
+
+## Stage 37: RPG Experience Polish
+
+The completed portal should receive a final interaction and visual polish pass after the major functional systems are present.
+
+### Remaining scope
+
+Refine:
+
+- portal navigation;
+- page transitions;
+- homework interaction;
+- exercise start/stop states;
+- exercise completion states;
+- alias selection;
+- leaderboard transitions;
+- progress presentation;
+- loading states;
+- empty states;
+- error states;
+- responsive behavior.
+
+Add the stronger magical and RPG-style animation treatment discussed for the redesign.
+
+Keep motion consistent with the Stage 22 design system.
+
+Respect reduced-motion preferences.
+
+### Deferred product work
+
+- Do not introduce unrelated new product mechanics during polish.
+- Sound should not autoplay merely as decoration.
+
+### Integration with the refactored architecture
+
+- Polish existing shared portal components rather than introducing one-off page effects.
+- Keep accessibility and responsive behavior intact while adding animation.
+
+### Done looks like
+
+- The portal feels like one coherent fantasy RPG interface.
+- Animations support the experience rather than obscuring functionality.
+- Reduced-motion users retain a complete usable experience.
+
+---
+
+## Stage 38: Final Legacy Cleanup
+
+The redesign should finish by removing obsolete client-portal infrastructure once all replacement flows are operational.
+
+### Remaining scope
+
+- Remove remaining:
+
+  - old portal routes;
+  - old portal UI;
+  - PIN-related code;
+  - obsolete session assumptions;
+  - obsolete portal-authentication endpoints;
+  - temporary compatibility code;
+  - dead portal components.
+- Verify the permanent portal-link flow.
+- Verify repeated use of the same portal link.
+- Verify multiple client profiles in one browser.
+- Verify alias generation and uniqueness.
+- Verify structured homework and interactive exercises.
+- Verify shared metronome behavior.
+- Verify standalone trainers in both application surfaces.
+- Verify browser audio-analysis/local-recording boundaries.
+- Verify course progress.
+- Verify scoring and all leaderboard scopes.
+
+### Deferred product work
+
+- Alias diversity weighting remains deferred to Stage 39.
+- No new product functionality should be introduced during cleanup.
+
+### Integration with the refactored architecture
+
+- BBCode and SCEditor should already have been removed during Stage 25.
+- PIN authentication should already have been removed during Stage 20.
+- This stage should remove only remaining legacy and transitional code.
+
+### Done looks like
+
+- Only the new client portal architecture remains in active use.
+- No obsolete authentication, UI, or rendering path is required for normal portal operation.
+- Trainer behavior is shared rather than duplicated across portal/main-application surfaces.
+- All major client flows have focused verification coverage.
+
+---
+
+## Stage 39: Alias Generation Diversity Improvements — Optional follow-up
+
+If production usage shows that clients repeatedly see the same alias candidates, the generator can later improve diversity automatically without introducing administrator-configured weights.
+
+### Remaining scope
+
+- Persist enough information about generated alias candidates to reconstruct generation frequency.
+- Track generated candidates, not only aliases eventually selected by users.
+- Record which:
+
+  - epithet;
+  - creature or bardic term;
+  - exact pair
+    was generated.
+- Derive dynamic selection weights automatically from previous generation frequency.
+- Reduce the probability of:
+
+  - frequently generated epithets;
+  - frequently generated creatures;
+  - frequently generated bardic terms;
+  - exact combinations already shown repeatedly.
+- Increase the relative probability of rarely generated words and combinations.
+- Do not permanently ban an old combination only because it has appeared before.
+- Continue excluding aliases already permanently assigned to users.
+- Keep database uniqueness of `User.PortalAlias` as the final duplicate protection.
+- Maintain aggregated counters for:
+
+  - individual epithets;
+  - individual creatures;
+  - individual bardic terms;
+  - exact pairs.
+- Keep aggregated generator state in memory for fast candidate selection.
+- Rebuild the in-memory counters from persisted generation history on application startup.
+- Update the counters after each generated candidate.
+
+A possible weighting model is:
+
+```text
+wordWeight =
+    1 / sqrt(
+        (1 + epithetGenerationCount)
+        *
+        (1 + nounGenerationCount)
+    )
+
+pairWeight =
+    1 / (1 + pairGenerationCount)
+
+finalWeight =
+    wordWeight * pairWeight
+```
+
+The exact formula may be adjusted during implementation as long as the intended behavior remains the same.
+
+### Deferred product work
+
+- Do not add manual `Weight` fields to dictionary tables.
+- Do not expose dynamic weights in the administrative UI.
+- Administrators continue to manage only:
+
+  - `Value`;
+  - `IsEnabled`.
+
+### Integration with the refactored architecture
+
+- Reuse the alias dictionaries from Stage 21.
+- Keep generation-history persistence separate from dictionary management.
+- Avoid querying and aggregating the complete history on every `Another name` request.
+- Treat dynamic weighting as an internal generator optimization.
+
+### Done looks like
+
+- Alias generation automatically favors less frequently shown words and combinations.
+- Repeated candidates become noticeably less common.
+- Administrators do not need to manually tune probabilities.
+- Existing alias uniqueness behavior remains unchanged.
+
+---
+
+# Dependency Summary
+
+Use the following order where stages are on the same dependency chain. Deferred independent work does not block the client portal redesign unless a concrete implementation dependency is discovered and documented.
+
+```text
+COMPLETED REFACTOR
 Stage 1  Monorepo baseline
    ↓
 Stage 2  Core/Data/Init/config boundary
@@ -2230,184 +3848,68 @@ Stage 8  ES256/auth/portal/security cutover
 Stage 9  Backend + Init OpenTelemetry
    ↓
 Stage 10 Test/release cleanup and refactor exit
-   ↓
-────────────────────────────────────────────
-POST-REFACTOR PRODUCT WORK
-   ↓
+
+COMPLETED POST-REFACTOR PRODUCT WORK
 Stage 11 God mode + system notices
    ↓
 Stage 12 Notification infrastructure + Web Push
    ↓
 Stage 13 Vacation requests + superuser approval
+
+CURRENT / DEFERRED GENERAL PRODUCT WORK
+Stage 14 Calendar workflow + income forecast improvements
+
+Stage 15 Services Progress
+   └─ merged into Stage 24; do not implement separately
+
+Stage 16 Multiple staff accounts in one browser — planned for later
    ↓
-Stage 14 Client appointment rescheduling requests
+Stage 17 Offline-first architecture — planned for later
+
+Stage 18 Accounting/staff compensation architecture — planned for later
+
+CLIENT PORTAL REDESIGN
+Stage 20 Portal architecture + access foundation
    ↓
-Stage 15 Calendar workflow + income forecast improvements
+Stage 21 Player identity + alias dictionaries
    ↓
-Stage 16 Services progress — planned for later
+Stage 22 RPG design system
    ↓
-Stage 17 Multiple staff accounts in one browser — planned for later
+Stage 23 New portal shell + home
    ↓
-Stage 18 Offline-first architecture — planned for later
+Stage 24 Course progress integration + hardening
    ↓
-Stage 19 Accounting/staff compensation architecture — planned for later
+Stage 25 Structured homework documents
+   ↓
+Stage 26 Custom homework document nodes
+   ↓
+Stage 27 Shared practice platform architecture
+   ↓
+Stage 28 Guitar strumming trainer
+   ↓
+Stage 29 Chord-change + rhythm trainers
+   ↓
+Stage 30 Shared metronome + exercise timing
+   ↓
+Stage 31 Shared trainer catalogue + cross-surface availability
+   ↓
+Stage 32 Browser audio analysis + local practice recording
+   ↓
+Stage 33 Scoring model
+   ↓
+Stage 34 Leaderboards
+   ↓
+Stage 35 Portal home gamification integration
+   ↓
+Stage 36 Practice tracking + scoring integration
+   ↓
+Stage 37 RPG experience polish
+   ↓
+Stage 38 Final legacy cleanup
+   ↓
+Stage 39 Alias generation diversity improvements — optional follow-up
 ```
 
-Stages 16-19 are intentionally planned for later and may be reprioritized when that work resumes. They remain **after the refactor**. Stages 13 and 14 depend on Stage 12. Stage 17 should precede broad offline account-scoped persistence because offline storage must understand final account identity boundaries.
+Stages 16–18 remain deliberately deferred and may be reprioritized independently. Stage 17 extends the account-boundary work of Stage 16 for offline state. Stage 18 is an accounting-domain discovery/architecture track.
 
 ---
-
-# Explicit non-goals for the refactor
-
-Do not add these merely because the architecture is changing:
-
-- production Aspire AppHost orchestration;
-- Kubernetes/k3s migration;
-- Redis/Valkey dependency;
-- multi-replica Backend/Quartz clustering;
-- repository/unit-of-work abstraction over EF Core;
-- `MelodyTrack.Application` layer;
-- general-purpose plugin/event bus architecture;
-- API route versioning;
-- backward DB compatibility with old releases;
-- online multi-key crypto rotation/key rings;
-- public Aspire Dashboard;
-- Prometheus/Loki/Tempo stack;
-- PostgreSQL server-log ingestion;
-- frontend/browser telemetry, OTLP relay endpoints, session replay, and source-map symbolication;
-- parallel staff+portal browser identities;
-- multi-staff-account browser switching before Stage 17;
-- offline mutation support before Stage 18;
-- Web Push as a prerequisite for any business operation;
-- client ability to change teacher/provider in rescheduling;
-- recurrence-series changes through client rescheduling;
-- god mode user impersonation/arbitrary DB editing/SQL shell.
-
----
-
-# Final refactor acceptance checklist
-
-Before declaring the refactor finished, verify all items below in a production-like environment.
-
-Verified on 2026-08-28 with a fresh local clone Release build (including deterministic Kiota regeneration and dependency-stamp reuse), 404 passing .NET tests, the complete frontend verification pipeline (188 unit, 72 Chromium, and 72 WebKit tests), standalone `dotnet publish`, ReleaseTool self-tests, and the unified production-image HTTP/failed-Init verifier.
-
-## Repository/build
-
-- [x] frontend history preserved in monorepo
-- [x] root solution build succeeds from a clean clone
-- [x] frontend dependencies bootstrap only when required
-- [x] OpenAPI generation is side-effect free
-- [x] Kiota sources regenerate in-place
-- [x] CI fails on stale generated client
-- [x] full frontend verify still runs separately
-- [x] individual .NET project builds remain scoped
-- [x] `dotnet publish` produces complete SPA+Backend artifact
-
-## Runtime
-
-- [x] one production MelodyTrack container
-- [x] no Node/nginx in final runtime
-- [x] Init runs before Backend
-- [x] failed Init prevents Backend startup
-- [x] Kestrel serves SPA and `/api`
-- [x] SPA fallback never catches `/api`, `/health`, `/alive`
-- [x] asset caching/compression/security headers verified over HTTP
-- [x] production CORS removed
-- [x] canonical public base URL used for generated links
-- [x] forwarded headers trust only intended proxy/network
-
-## Development
-
-- [x] Aspire AppHost starts Postgres/Init/Backend/Vite/Dashboard
-- [x] dev PostgreSQL volume persists
-- [x] versioned seed upgrades work
-- [x] deterministic dev superuser exists
-- [x] dev SQL parameter diagnostics can be enabled without changing production defaults
-
-## API
-
-- [x] no FastEndpoints endpoint remains
-- [x] source-generated registration works for every endpoint
-- [x] every handler is `public static HandleAsync` with `CancellationToken`
-- [x] every operation has stable unique operation ID
-- [x] typed results used by default
-- [x] native validation preserves existing rules
-- [x] centralized Problem Details includes canonical trace ID
-- [x] pagination uses `items/page`
-- [x] native OpenAPI 3.1 is authoritative
-- [x] Scalar/OpenAPI runtime endpoints are Development-only
-- [x] FastEndpoints/FastEndpoints.Swagger/FluentValidation removed
-
-## Frontend contract/transport
-
-- [x] Axios removed from API transport
-- [x] Kiota Fetch adapter is singleton/application-wide
-- [x] generated API models are authoritative
-- [x] handwritten duplicate API DTOs removed
-- [x] semantic API wrappers remain
-- [x] shared refresh operation handles concurrent `401`s
-- [x] original request retries at most once
-- [x] inactivity/suspend resume is reliable
-- [x] temporary network failure does not erase valid session state
-- [x] terminal auth failure clears state once
-- [x] cancellation/idempotency/blob downloads preserved
-- [x] persistent `AppError` UI exposes trace ID where available
-
-## Authentication/security
-
-- [x] JWT uses ES256 only
-- [x] issuer/audience/signature/lifetime explicitly validated
-- [x] auth secrets are independent
-- [x] passwords use Argon2id + password pepper
-- [x] portal PIN uses Argon2id + portal PIN pepper
-- [x] old sessions revoked at breaking cutover
-- [x] first superuser has a documented server-local reset/recovery path
-- [x] legacy browser refresh-token migration removed
-- [x] CSRF scoped to cookie-authenticated session operations
-- [x] coarse role authorization uses DB-backed policies
-- [x] `LockedUntil`/dead account-lockout mechanism removed
-- [x] rate limits reviewed for brute-forceable anonymous endpoints
-- [x] portal PIN cooldown enforced
-- [x] portal link remains permanent/reusable and is treated as a credential
-- [x] portal normal login supports multiple device sessions
-- [x] portal refresh preserves portal sliding lifetime
-- [x] no auth/portal credential appears in logs/telemetry
-
-## Data
-
-- [x] Core has no EF dependency
-- [x] Data owns EF/migrations/configuration
-- [x] versioned AES-256-GCM PII encryption preserved
-- [x] PII keys are real high-entropy 256-bit material
-- [x] Init migrates/re-encrypts old PII key versions
-- [x] missing referenced PII key version fails initialization
-
-## Observability
-
-- [x] Serilog remains logging provider as intended
-- [x] SerilogTracing removed
-- [x] exactly one intended OTLP log export path
-- [x] Backend and Init have distinct service names
-- [x] Npgsql traces/metrics enabled
-- [x] no production SQL parameter logging
-- [x] `X-Trace-Id` equals W3C trace ID
-- [x] Problem Details `traceId` equals the same ID
-- [x] incoming `traceparent` propagation tested
-- [x] backend error -> copied trace ID -> configured telemetry backend search works
-- [x] no frontend telemetry or browser OTLP relay is shipped
-- [x] telemetry exporter outage does not break app
-- [x] production Dashboard operations follow `docs/production-telemetry.md`
-
-## Tests/releases
-
-- [x] integration tests use PostgreSQL Testcontainers
-- [x] tests run real Init test mode
-- [x] tests use standard ASP.NET Core test host
-- [x] unified image integration suite passes
-- [x] release tool is monorepo-only
-- [x] one-file-per-release changelog works
-- [x] release/hotfix version allocation works
-- [x] hotfix merge-back to local develop/active release is documented/tested
-- [x] merge of valid release/hotfix PR to `master` publishes image/tag/GitHub Release
-- [x] deployment remains manual
-- [x] obsolete frontend release workflow removed
