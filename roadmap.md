@@ -2163,47 +2163,42 @@ The portal redesign is a dedicated product workstream starting at Stage 20. Stag
 
 Stages 20–38 form the main redesign sequence. Stage 39 is an optional follow-up optimization and is not required to complete the redesign.
 
-## Stage 20: Portal Architecture and Access Foundation
+## Stage 20: Portal URL, PIN Removal, and Shell Foundation
 
-The client portal should become a distinct application surface with its own navigation, session behavior, visual system, and client-specific components. The current PIN-based access flow should be replaced with permanent passwordless portal links.
+Simplify client portal entry and establish the structural foundation for the redesigned portal without replacing the working per-user session model. The current PIN-based access flow should become direct passwordless access through the existing permanent portal link, and the portal should begin moving into a shell that is independent from the administrative UI.
 
 ### Remaining scope
 
 - Treat the client portal as a separate application surface from the administrative UI.
-- Establish the new portal shell, routing boundaries, client-specific navigation, and session model.
-- Replace the current portal PIN flow with permanent opaque portal links.
-- Generate a random URL-safe portal token with approximately 128 bits of entropy.
-- Store only a hash of the portal token on the existing user entity.
-- Enforce uniqueness of the stored token hash.
-- Resolve `GET /p/{token}` by hashing the supplied token, finding the corresponding user, resolving or creating the current browser/device session, activating the client profile, and redirecting to the normal portal home route.
-- Allow one browser/device session to remember multiple authorized client users.
-- Treat portal-link activation as idempotent for a client already remembered in the current browser/device session:
-
-  - do not create a duplicate remembered-profile/session membership;
-  - make that client the active profile;
-  - redirect directly to the portal home page without showing an intermediate profile chooser.
-- Opening a different client's valid portal link in the same browser should add that client to the existing browser/device session and make that client active.
-- Enforce uniqueness of the browser-session/client membership at the database level, conceptually `UNIQUE(DeviceSessionId, UserId)`.
-- Provide client-profile switching and removal for remembered clients without introducing PIN confirmation.
+- Establish the portal route tree and an initial, minimally styled shell for the existing client-facing pages.
+- Keep the shell structural at this stage: final RPG components and visuals are introduced in Stage 22, and the redesigned home and completed shell presentation are delivered in Stage 23.
+- Replace `/portal/access/{token}` and the current PIN flow with direct access through `GET /p/{token}`.
+- Preserve the existing permanent opaque portal-token model, including random URL-safe tokens with approximately 128 bits of entropy, hash-only database storage, and uniqueness of stored token hashes.
+- Resolve `GET /p/{token}` by hashing the supplied token, finding the corresponding user, creating a normal portal session through the existing per-user session model, and redirecting to the normal portal home route.
+- Preserve the existing short-lived access token, rotating refresh cookie, server-side active-session validation, portal sliding lifetime, and support for the same client using multiple devices.
+- Keep one renewable MelodyTrack identity per browser profile. Opening another client's valid portal link in the same browser replaces the currently renewable identity rather than adding a multi-profile session model.
 - Do not keep the portal token in the URL during ordinary portal navigation.
+- Redirect invalid or revoked link navigations to a token-free portal error state with an actionable message.
 - Add an administrative action for regenerating a client's portal link.
 - Regenerating a link must immediately invalidate the previous token.
+- Preserve the existing security behavior in which portal-link regeneration or revocation invalidates the affected client's active sessions.
 - Remove the existing PIN mechanism completely.
+- Remove saved-client references and the PIN-based saved-profile chooser that depend on the old access flow.
 
 ### Deferred product work
 
 - Player aliases are handled in Stage 21.
-- Multi-profile session behavior is established in this stage; the final profile-switcher placement and presentation are integrated into the portal shell in Stage 23.
 - RPG visuals are handled in Stage 22.
+- The final portal shell presentation and redesigned home are handled in Stage 23.
+- Remembering and switching multiple client profiles in one browser is not part of this redesign.
 - Course progress, structured homework, trainers, scoring, and leaderboards are handled separately.
 
 ### Integration with the refactored architecture
 
-- Keep portal access tied to the existing user model rather than introducing a separate client identity table.
-- Portal authentication should resolve users through the token hash and then rely on secure browser/device session state.
-- Use secure `HttpOnly` session cookies after the initial portal-link access.
+- Keep portal access tied to the existing user and portal-link model rather than introducing a separate client identity or device-membership system.
+- Reuse the current per-user server-side session, in-memory access-token, refresh-rotation, CSRF, and secure `HttpOnly` cookie infrastructure.
 - Portal link regeneration must use the same administrative authorization model as other client-management operations.
-- Errors should use the existing Problem Details/AppError/trace-ID flow.
+- Supporting API errors should use the existing Problem Details/AppError/trace-ID flow; direct browser navigation failures should render through the token-free portal error state.
 
 ### Done looks like
 
@@ -2212,8 +2207,10 @@ The client portal should become a distinct application surface with its own navi
 - The raw token is not stored in the database.
 - Regenerating a link invalidates the old one immediately.
 - Normal portal navigation no longer exposes the token in the address bar.
-- Reopening the same personal portal link in the same browser does not create duplicate session/profile membership and goes directly to that client's portal home.
-- Opening another client's portal link adds that client to the same browser/device session, and remembered clients can be switched without a PIN.
+- Reopening the same personal portal link creates or replaces the normal portal session and goes directly to that client's portal home.
+- Opening another client's portal link replaces the current browser identity without introducing a profile chooser or multi-profile device session.
+- The initial portal shell and route boundary are independent from the administrative shell and ready for the Stage 22–23 visual redesign.
+- No PIN setup, entry, reset, cooldown, or saved-profile access flow remains.
 
 ---
 
@@ -2364,8 +2361,7 @@ The new portal shell should establish the redesigned user experience before the 
   - Courses;
   - Homework;
   - Trainers;
-  - Leaderboards;
-  - profile switching.
+  - Leaderboards.
 - Display `PortalAlias` prominently in the portal header.
 - Build the new RPG-style home page.
 - At this stage, the home page may use existing course and homework data where the replacement systems are not yet available.
@@ -2374,8 +2370,7 @@ The new portal shell should establish the redesigned user experience before the 
   - course content;
   - homework;
   - standalone trainers;
-  - leaderboards;
-  - profile switching when multiple clients are saved in the browser.
+  - leaderboards.
 
 ### Deferred product work
 
@@ -3711,13 +3706,13 @@ The redesign should finish by removing obsolete client-portal infrastructure onc
   - old portal routes;
   - old portal UI;
   - PIN-related code;
-  - obsolete session assumptions;
+  - saved-profile references and chooser code;
   - obsolete portal-authentication endpoints;
   - temporary compatibility code;
   - dead portal components.
 - Verify the permanent portal-link flow.
 - Verify repeated use of the same portal link.
-- Verify multiple client profiles in one browser.
+- Verify that opening another client's portal link replaces the current browser identity cleanly.
 - Verify alias generation and uniqueness.
 - Verify structured homework and interactive exercises.
 - Verify shared metronome behavior.
@@ -3871,7 +3866,7 @@ Stage 17 Offline-first architecture — planned for later
 Stage 18 Accounting/staff compensation architecture — planned for later
 
 CLIENT PORTAL REDESIGN
-Stage 20 Portal architecture + access foundation
+Stage 20 Portal URL + PIN removal + shell foundation
    ↓
 Stage 21 Player identity + alias dictionaries
    ↓
