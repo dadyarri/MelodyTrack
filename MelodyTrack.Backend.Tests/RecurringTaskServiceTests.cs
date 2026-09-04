@@ -29,6 +29,7 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
         inactiveReminderRule.CooldownDays = 7;
 
         var trialService = await TestDataFactory.CreateServiceAsync(db, "Пробное занятие", TestContext.Current.CancellationToken);
+        trialService.IsConsultation = true;
         var paidService = await TestDataFactory.CreateServiceAsync(db, "Регулярное занятие", TestContext.Current.CancellationToken);
         var priceEffectiveAtUtc = DateTime.UtcNow.AddMonths(-2);
         await db.ServicePriceHistory.AddRangeAsync(
@@ -51,6 +52,65 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
 
         trialTasks.ShouldNotContain(task => task.ClientId == client.Id);
         inactiveTasks.ShouldContain(task => task.ClientId == client.Id);
+    }
+
+    [Fact]
+    public async Task TrialFollowUp_PaidTrialService_GeneratesExactlyOnce()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Ирина", "Лебедева", TestContext.Current.CancellationToken);
+        client.Contacts.Phone = "+79991234561";
+        var trialService = await TestDataFactory.CreateServiceAsync(db, "Знакомство", TestContext.Current.CancellationToken);
+        trialService.IsConsultation = true;
+        var trialAtUtc = DateTime.UtcNow.AddDays(-2);
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = trialService,
+            StartDate = trialAtUtc,
+            EndDate = trialAtUtc.AddHours(1),
+            Status = AppointmentStatus.Completed,
+            IsDeleted = false
+        };
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = trialService,
+            Price = 1_000m,
+            EffectiveDate = trialAtUtc.AddDays(-1)
+        }, TestContext.Current.CancellationToken);
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.TrialFollowUp,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+        var task = tasks.ShouldHaveSingleItem();
+
+        var result = await recurringTaskService.CompleteAsync(new MelodyTrack.Backend.Api.Tasks.Requests.CompleteRecurringTaskRequest
+        {
+            Timezone = "Europe/Moscow",
+            RuleId = task.RuleId,
+            Type = task.Type,
+            DeduplicationKey = task.DeduplicationKey,
+            ClientId = task.ClientId,
+            AppointmentId = task.AppointmentId,
+            PreparedMessage = task.PreparedMessage
+        }, admin, TestContext.Current.CancellationToken);
+        var remaining = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.TrialFollowUp,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        result.Succeeded.ShouldBeTrue();
+        remaining.ShouldBeEmpty();
     }
 
     [Fact]
@@ -322,6 +382,70 @@ public class RecurringTaskServiceTests(MelodyTrackFixture app) : IntegrationTest
         var debtStartDate = DateOnly.FromDateTime(DateTimeUtils.ConvertDateToTimezone(debtStartedAtUtc, "Europe/Moscow"));
         tasks.Count.ShouldBe(1);
         tasks.ShouldContain(task => task.BusinessDate == debtStartDate.AddDays(3));
+    }
+
+    [Fact]
+    public async Task DebtorReminder_ManyClientsAndRules_UsesBoundedDatabaseCommands()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var recurringTaskService = scope.ServiceProvider.GetRequiredService<IRecurringTaskService>();
+
+        var service = new Service
+        {
+            Id = Ulid.NewUlid(),
+            Name = "Групповое фортепиано"
+        };
+        var priceEffectiveAtUtc = DateTime.UtcNow.AddMonths(-2);
+        var debtStartedAtUtc = DateTime.UtcNow.AddDays(-16);
+
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 1_000m,
+            EffectiveDate = priceEffectiveAtUtc
+        }, TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 12; index++)
+        {
+            var client = new Client
+            {
+                Id = Ulid.NewUlid(),
+                FirstName = $"Ученик {index}",
+                LastName = "Должник",
+                CreatedAtUtc = DateTime.UtcNow,
+                Contacts = new ClientContacts
+                {
+                    Id = Ulid.NewUlid(),
+                    Phone = $"+79990000{index:D3}"
+                }
+            };
+
+            await db.Appointments.AddAsync(new Appointment
+            {
+                Id = Ulid.NewUlid(),
+                Client = client,
+                Service = service,
+                StartDate = debtStartedAtUtc.AddMinutes(index),
+                EndDate = debtStartedAtUtc.AddMinutes(index).AddHours(1),
+                Status = AppointmentStatus.Completed,
+                IsDeleted = false
+            }, TestContext.Current.CancellationToken);
+        }
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        db.ChangeTracker.Clear();
+        App.DatabaseCommands.Reset();
+
+        var tasks = await recurringTaskService.GetTasksAsync(
+            "Europe/Moscow",
+            RecurringTaskType.DebtorReminder,
+            RecurringTaskListStatus.Open,
+            TestContext.Current.CancellationToken);
+
+        tasks.Count.ShouldBe(12);
+        App.DatabaseCommands.Count.ShouldBeLessThanOrEqualTo(6);
     }
 
     [Fact]

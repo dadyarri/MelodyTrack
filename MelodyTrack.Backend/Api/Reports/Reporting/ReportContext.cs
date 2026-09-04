@@ -76,8 +76,8 @@ public sealed class ReportContextFactory(AppDbContext db) : IReportContextFactor
             start,
             end,
             endExclusive,
-            TimeZoneInfo.ConvertTimeToUtc(start, timezone),
-            TimeZoneInfo.ConvertTimeToUtc(endExclusive, timezone),
+            ReportBuckets.ToUtc(start, timezone),
+            ReportBuckets.ToUtc(endExclusive, timezone),
             timezone,
             request.ProviderId,
             groupBy), null, null);
@@ -144,6 +144,16 @@ internal static class ReportBuckets
     }
 
     public static decimal? Percent(decimal part, decimal total) => total == 0m ? null : part / total * 100m;
+
+    public static DateTime ToUtc(DateTime local, TimeZoneInfo timezone)
+    {
+        while (timezone.IsInvalidTime(local))
+        {
+            local = local.AddMinutes(1);
+        }
+
+        return TimeZoneInfo.ConvertTimeToUtc(DateTime.SpecifyKind(local, DateTimeKind.Unspecified), timezone);
+    }
 
     private static int MondayOffset(DayOfWeek day) => day == DayOfWeek.Sunday ? 6 : (int)day - 1;
 }

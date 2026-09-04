@@ -1,17 +1,24 @@
 using System.Security.Cryptography;
 using System.Text;
-using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data.Security;
 using Microsoft.AspNetCore.WebUtilities;
+using Microsoft.Extensions.Options;
 
 namespace MelodyTrack.Backend.Api.Auth;
 
-public sealed class RefreshSessionCookieService(StartupConfiguration configuration, TimeProvider timeProvider)
+public sealed class RefreshSessionCookieService(
+    IOptions<AuthenticationSecretsOptions> authenticationSecrets,
+    IHostEnvironment environment,
+    TimeProvider timeProvider)
 {
     public const string RefreshCookieName = "MelodyTrack.Refresh";
     public const string CsrfCookieName = "MelodyTrack.Csrf";
     public const string CsrfHeaderName = "X-CSRF-Token";
 
-    private readonly byte[] _csrfSigningKey = Encoding.UTF8.GetBytes(configuration.JwtSigningKey);
+    private readonly byte[] _csrfSigningKey = AuthenticationSecretMaterial.DecodeSymmetricKey(
+        authenticationSecrets.Value.CsrfSigningKey,
+        "AuthenticationSecrets:CsrfSigningKey");
 
     public string? ReadRefreshToken(HttpRequest request)
     {
@@ -53,7 +60,7 @@ public sealed class RefreshSessionCookieService(StartupConfiguration configurati
         return new CookieOptions
         {
             HttpOnly = httpOnly,
-            Secure = configuration.Environment is not ("Development" or "Test"),
+            Secure = !environment.IsDevelopment() && !environment.IsEnvironment("Test"),
             SameSite = SameSiteMode.Strict,
             IsEssential = true,
             Path = "/",

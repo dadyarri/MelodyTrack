@@ -1,5 +1,5 @@
-using Facet.Mapping;
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -10,15 +10,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, ClientToClientWithBalanceDtoMapConfig mapper, IRecordActivityService recordActivityService)
-    : Ep.NoReq.Res<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/client-debts")]
+public sealed class GetClientsWithNegativeBalanceEndpoint
 {
-    public override void Configure()
-    {
-        Get("/client-debts");
-    }
 
-    public override async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<GetClientsWithNegativeBalanceResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ClientWithBalanceDtoMapper mapper,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -39,7 +42,7 @@ public class GetClientsWithNegativeBalanceEndpoint(AppDbContext db, ICurrentUser
             .Include(e => e.Source)
             .ToListAsync(ct);
 
-        var clientsFacets = await clients.ToFacetsAsync(mapper, ct);
+        var clientsFacets = await mapper.MapAsync(clients, ct);
         var clientActivities = await recordActivityService.GetLatestActivitiesAsync(
             "client",
             clientsFacets.Select(client => client.Id.ToString()).ToList(),

@@ -1,5 +1,4 @@
 using Facet;
-using Facet.Mapping;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -23,36 +22,53 @@ public partial class ClientWithBalanceDto
     public RecordActivityDto? LastActivity { get; set; }
 }
 
-public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider timeProvider)
-    : IFacetMapConfigurationAsyncInstance<Client, ClientWithBalanceDto>
+public sealed class ClientWithBalanceDtoMapper(AppDbContext db, TimeProvider timeProvider)
 {
-    public async Task MapAsync(Client source, ClientWithBalanceDto target,
+    public async Task<List<ClientWithBalanceDto>> MapAsync(
+        IReadOnlyCollection<Client> clients,
         CancellationToken cancellationToken = default)
     {
-        var totalPayments = await db.Payments
-            .Where(e => e.Client.Id == source.Id)
-            .SumAsync(e => e.Amount, cancellationToken);
+        if (clients.Count == 0)
+        {
+            return [];
+        }
 
+        var clientIds = clients.Select(client => client.Id).ToArray();
+        var paymentsByClient = await db.Payments
+            .AsNoTracking()
+            .Where(payment => clientIds.Contains(payment.Client.Id))
+            .GroupBy(payment => payment.Client.Id)
+            .Select(group => new ClientPaymentTotal(group.Key, group.Sum(payment => payment.Amount)))
+            .ToDictionaryAsync(item => item.ClientId, item => item.Amount, cancellationToken);
+
+        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
         var appointments = await db.Appointments
-            .Where(e => e.Client.Id == source.Id
-                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
-                        && !e.IsDeleted)
-            .Select(e => new
-            {
-                ServiceId = e.Service.Id,
-                e.StartDate
-            })
+            .AsNoTracking()
+            .Where(appointment => clientIds.Contains(appointment.Client.Id)
+                && !appointment.IsDeleted
+                && (appointment.Status == AppointmentStatus.Planned
+                    || appointment.Status == AppointmentStatus.Completed
+                    || appointment.Status == AppointmentStatus.Burned))
+            .Select(appointment => new ClientAppointment(
+                appointment.Client.Id,
+                appointment.Service.Id,
+                appointment.StartDate,
+                appointment.Status,
+                appointment.Service.IsConsultation))
             .ToListAsync(cancellationToken);
 
-        var serviceIds = appointments.Select(appointment => appointment.ServiceId).Distinct().ToList();
+        var serviceIds = appointments
+            .Where(IsBillable)
+            .Select(appointment => appointment.ServiceId)
+            .Distinct()
+            .ToArray();
         var priceLookup = await db.ServicePriceHistory
-            .Where(e => serviceIds.Contains(e.Service.Id))
-            .Select(e => new
-            {
-                ServiceId = e.Service.Id,
-                e.EffectiveDate,
-                e.Price
-            })
+            .AsNoTracking()
+            .Where(price => serviceIds.Contains(price.Service.Id))
+            .Select(price => new ServicePriceRow(
+                price.Service.Id,
+                price.EffectiveDate,
+                price.Price))
             .ToListAsync(cancellationToken);
 
         var groupedPriceLookup = priceLookup
@@ -62,10 +78,44 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider
                 group => group
                     .Select(price => new ServicePriceSnapshot(price.EffectiveDate, price.Price))
                     .ToList());
+        var appointmentsByClient = appointments
+            .GroupBy(appointment => appointment.ClientId)
+            .ToDictionary(group => group.Key, group => group.ToList());
+
+        return clients.Select(client => MapClient(
+            client,
+            paymentsByClient.GetValueOrDefault(client.Id),
+            appointmentsByClient.GetValueOrDefault(client.Id) ?? [],
+            groupedPriceLookup,
+            nowUtc)).ToList();
+    }
+
+    private static ClientWithBalanceDto MapClient(
+        Client source,
+        decimal totalPayments,
+        IReadOnlyCollection<ClientAppointment> appointments,
+        IReadOnlyDictionary<Ulid, List<ServicePriceSnapshot>> priceLookup,
+        DateTime nowUtc)
+    {
+        var target = new ClientWithBalanceDto(source);
+        var billableAppointments = appointments.Where(IsBillable).ToList();
+        var completedConsultations = appointments
+            .Where(appointment => appointment.Status == AppointmentStatus.Completed && appointment.IsConsultation)
+            .ToList();
 
         var totalServiceCost = ClientBalanceCalculator.CalculateServiceCost(
-            appointments.Select(appointment => (appointment.ServiceId, appointment.StartDate)),
-            groupedPriceLookup);
+            billableAppointments.Select(appointment => (appointment.ServiceId, appointment.StartDate)),
+            priceLookup);
+        var hasFutureRegularAppointment = appointments.Any(appointment =>
+            appointment.Status == AppointmentStatus.Planned
+            && appointment.StartDate >= nowUtc
+            && !appointment.IsConsultation);
+        var hasCompletedConsultation = completedConsultations.Count > 0;
+        var hasPaidAppointmentAfterConsultation = billableAppointments.Any(appointment =>
+            !appointment.IsConsultation
+            && completedConsultations.Any(consultation => consultation.StartDate < appointment.StartDate));
+        var hasPlannedConsultation = appointments.Any(appointment =>
+            appointment.Status == AppointmentStatus.Planned && appointment.IsConsultation);
 
         target.Balance = totalPayments - totalServiceCost;
         target.Telegram = source.Contacts.Telegram;
@@ -74,36 +124,31 @@ public class ClientToClientWithBalanceDtoMapConfig(AppDbContext db, TimeProvider
         target.SourceId = source.SourceId;
         target.DateOfBirth = source.DateOfBirth;
         target.SourceName = source.Source?.Name;
-        target.LastAppointmentAtUtc = await db.Appointments
-            .Where(e => e.Client.Id == source.Id
-                        && (e.Status == AppointmentStatus.Completed || e.Status == AppointmentStatus.Burned)
-                        && !e.IsDeleted)
-            .OrderByDescending(e => e.StartDate)
-            .Select(e => (DateTime?)e.StartDate)
-            .FirstOrDefaultAsync(cancellationToken);
-        var nowUtc = timeProvider.GetUtcNow().UtcDateTime;
-        target.NextAppointmentAtUtc = await db.Appointments
-            .Where(e => e.Client.Id == source.Id
-                        && e.Status == AppointmentStatus.Planned
-                        && !e.IsDeleted
-                        && e.StartDate >= nowUtc)
-            .OrderBy(e => e.StartDate)
-            .Select(e => (DateTime?)e.StartDate)
-            .FirstOrDefaultAsync(cancellationToken);
-
-        var hasFutureRegularAppointment = await db.Appointments.AnyAsync(e =>
-            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.StartDate >= nowUtc && !e.Service.IsConsultation,
-            cancellationToken);
-        var hasCompletedConsultation = await db.Appointments.AnyAsync(e =>
-            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Completed && e.Service.IsConsultation,
-            cancellationToken);
-        var hasPlannedConsultation = await db.Appointments.AnyAsync(e =>
-            e.Client.Id == source.Id && !e.IsDeleted && e.Status == AppointmentStatus.Planned && e.Service.IsConsultation,
-            cancellationToken);
+        target.LastAppointmentAtUtc = billableAppointments.Count == 0
+            ? null
+            : billableAppointments.Max(appointment => appointment.StartDate);
+        target.NextAppointmentAtUtc = appointments
+            .Where(appointment => appointment.Status == AppointmentStatus.Planned && appointment.StartDate >= nowUtc)
+            .Select(appointment => (DateTime?)appointment.StartDate)
+            .Min();
         target.LifecycleStatus = ClientLifecycleResolver.Resolve(
             source.IsLeadClosed,
             hasFutureRegularAppointment,
             hasCompletedConsultation,
+            hasPaidAppointmentAfterConsultation,
             hasPlannedConsultation);
+        return target;
     }
+
+    private static bool IsBillable(ClientAppointment appointment) =>
+        appointment.Status is AppointmentStatus.Completed or AppointmentStatus.Burned;
+
+    private sealed record ClientPaymentTotal(Ulid ClientId, decimal Amount);
+    private sealed record ClientAppointment(
+        Ulid ClientId,
+        Ulid ServiceId,
+        DateTime StartDate,
+        AppointmentStatus Status,
+        bool IsConsultation);
+    private sealed record ServicePriceRow(Ulid ServiceId, DateTime EffectiveDate, decimal Price);
 }

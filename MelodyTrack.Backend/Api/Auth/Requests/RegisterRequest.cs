@@ -1,9 +1,11 @@
-﻿namespace MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Backend.Validation;
+
+namespace MelodyTrack.Backend.Api.Auth.Requests;
 
 /// <summary>
 ///     Request to register new user
 /// </summary>
-public class RegisterRequest
+public class RegisterRequest : IValidatableRequest
 {
     /// <summary>
     ///     Invite code

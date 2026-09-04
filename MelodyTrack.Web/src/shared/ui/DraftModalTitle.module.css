@@ -1,0 +1,34 @@
+.title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.titleText {
+  min-width: 0;
+}
+
+.titleState {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-subtle);
+  font-size: 14px;
+  line-height: 1;
+}
+
+button.titleState {
+  cursor: pointer;
+}
+
+.titleStateRestored {
+  color: var(--accent);
+}
+
+.titleStateFailed {
+  color: var(--ant-color-error);
+}

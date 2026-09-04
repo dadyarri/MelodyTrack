@@ -6,8 +6,8 @@ MelodyTrack is an internet-facing scheduling and CRM application whose highest-v
 
 ## Scope and assumptions
 
-- In scope: `MelodyTrack.Web/src`, `MelodyTrack.Web/nginx`, `MelodyTrack.Web/Dockerfile`, `MelodyTrack.Backend/MelodyTrack.Backend`, both dependency manifests, both GitHub Actions configurations, browser storage, PostgreSQL, and the test-container boundary.
-- Out of scope: the host operating system, the live deployment state beyond the repository's canonical Caddy compose and smoke check, GitHub and container-registry internals, the managed DNS and Let's Encrypt issuance process, administrator endpoint security, and real iOS Safari hardware behavior.
+- In scope: `MelodyTrack.Web/src`, the unified Kestrel static host, `MelodyTrack.Backend/Dockerfile`, Backend, both dependency manifests, the monorepo GitHub Actions workflow, browser storage, PostgreSQL, and the test-container boundary.
+- Out of scope: the host operating system, the externally maintained homelab Compose/Caddy configuration and live deployment state, GitHub and container-registry internals, the managed DNS and Let's Encrypt issuance process, administrator endpoint security, and real iOS Safari hardware behavior.
 - Production frontend and API are reachable only through Caddy Docker Proxy and use publicly trusted Let's Encrypt TLS certificates. Direct access to the API container is assumed to be blocked.
 - Caddy's default `reverse_proxy` behavior discards untrusted incoming forwarded values and supplies the observed client address to the backend. The backend connection peer is Caddy's Docker-network address rather than loopback or the server's public IP.
 - The application is assumed to be a single-organization deployment with trusted staff roles and less-privileged client-portal users. The database contains personal contact details, schedules, notes, course progress, and financial records.
@@ -21,16 +21,16 @@ Open questions that would materially change ranking:
 
 ### Primary components
 
-- React/Vite single-page application served as static files by nginx (`MelodyTrack.Web/Dockerfile`, `MelodyTrack.Web/nginx/nginx.conf`).
+- React/Vite single-page application compiled during publish and served by Kestrel (`build/Frontend.targets`, `MelodyTrack.Backend/Hosting/UnifiedRuntimeExtensions.cs`).
 - ASP.NET Core 10 API using FastEndpoints, JWT bearer authentication, role checks, rate limiting, Quartz, and structured Problem Details (`MelodyTrack.Backend/MelodyTrack.Backend/Program.cs`).
-- PostgreSQL accessed through EF Core and used for domain records, hashed session artifacts, audit logs, and Quartz state (`MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs`).
+- PostgreSQL accessed through EF Core and used for domain records, hashed session artifacts, audit logs, and Quartz state (`MelodyTrack.Data/AppDbContext.cs`).
 - Browser memory, cookies, and local storage: the access token remains in memory, the refresh credential is a Secure/HttpOnly/SameSite cookie, a readable cookie supplies the matching CSRF proof, and local storage contains only a non-secret session marker, UI preferences, and account-scoped durable form drafts (`MelodyTrack.Web/src/entities/session/model/authStore.ts`, `MelodyTrack.Web/src/shared/api/http.ts`, `Api/Auth/RefreshSessionCookieService.cs`).
-- GitHub Actions and container builds that restore dependencies, test/build the applications, and publish images (`MelodyTrack.Backend/.github/workflows/main.yml`, `MelodyTrack.Web/.github/workflows/main.yml`).
+- GitHub Actions and the unified container build that restore dependencies, test/build both stacks, and publish one application image (`.github/workflows/ci.yml`, `MelodyTrack.Backend/Dockerfile`).
 
 ### Data flows and trust boundaries
 
-- Internet user → reverse proxy → frontend nginx: HTML, JavaScript, and static assets over HTTPS; TLS terminates at the proxy, nginx adds CSP, anti-framing, MIME-sniffing, referrer, and permissions headers.
-- Browser → reverse proxy → API: credentials, bearer tokens, HttpOnly refresh cookies, CSRF proofs, portal link tokens, PINs, PII, and domain mutations over HTTPS/JSON; FastEndpoints schemas and validators parse input, CORS restricts browser origins, JWT and role policies protect authenticated endpoints, and sensitive anonymous endpoints are rate limited.
+- Internet user → reverse proxy → Kestrel: HTML, JavaScript, static assets, and `/api/*` over HTTPS; TLS terminates at the proxy, while Kestrel adds CSP, anti-framing, MIME-sniffing, referrer, and permissions headers.
+- Browser → reverse proxy → `/api`: credentials, bearer tokens, HttpOnly refresh cookies, CSRF proofs, portal link tokens, PINs, PII, and domain mutations over same-origin HTTPS/JSON; FastEndpoints schemas and validators parse input, JWT and role policies protect authenticated endpoints, and sensitive anonymous endpoints are rate limited.
 - API → PostgreSQL: PII, domain records, hashed authentication tokens, roles, audit data, and Quartz state over the configured PostgreSQL connection; EF Core parameterizes queries and personal contact fields are encrypted with versioned keys.
 - API → browser: JSON and Problem Details containing domain data and session artifacts; sensitive responses are marked no-store and production exception details are suppressed.
 - Browser → local storage: a non-secret session-presence marker, theme, and account-scoped durable drafts. A one-time compatibility path exchanges and immediately removes refresh tokens created by the previous frontend version.
@@ -45,10 +45,9 @@ flowchart LR
     end
     subgraph Edge
         P[Reverse proxy]
-        W[Frontend nginx]
     end
     subgraph Application
-        A[ASP.NET API]
+        A[Kestrel SPA + API]
         Q[Quartz]
     end
     subgraph Data
@@ -60,9 +59,8 @@ flowchart LR
         R[Container registry]
     end
     U --> P
-    P --> W
     P --> A
-    W --> U
+    A --> U
     U --> L
     A --> D
     Q --> D
@@ -105,9 +103,9 @@ flowchart LR
 | Authenticated FastEndpoints | Bearer-authenticated HTTPS JSON | Browser → API | Active-session preprocessing and role/ownership checks protect mutations | `MelodyTrack.Backend/MelodyTrack.Backend/Program.cs`; `Api/Auth/PreProcessors/ActiveSessionPreProcessor.cs` |
 | Contact and rich-text rendering | Stored API data rendered in React | Database → API → browser | Contact handles and BBCode links are normalized before navigation | `MelodyTrack.Web/src/entities/client/lib/contact.ts`; `src/shared/ui/editors/BbcodeContent.tsx` |
 | Browser session and draft storage | Same-origin JavaScript | Browser runtime → memory/cookies/local storage | Access token stays in memory; JavaScript cannot read the refresh cookie; mutations supply a cookie-bound CSRF proof | `MelodyTrack.Web/src/entities/session/model/authStore.ts`; `src/shared/api/http.ts`; `Api/Auth/RefreshSessionCookieService.cs` |
-| PostgreSQL connection | Backend-only configured connection | API → database | EF parameterization, encrypted PII, hashed opaque tokens | `MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs`; `Utils/UserUtils.cs` |
-| Static deployment | Public HTTPS asset requests | Internet → nginx | CSP and hardening headers are applied to all cache-policy locations | `MelodyTrack.Web/nginx/nginx.conf`; `nginx/security-headers.inc` |
-| CI and container publication | Push or pull request | GitHub → runners → registry | Restore/build/test gates publication; actions and base images are external inputs | `MelodyTrack.Backend/.github/workflows/main.yml`; `MelodyTrack.Web/.github/workflows/main.yml` |
+| PostgreSQL connection | Backend/Init configured connection | API/Init → database | EF parameterization, encrypted PII, hashed opaque tokens | `MelodyTrack.Data/AppDbContext.cs`; `MelodyTrack.Backend/Utils/UserUtils.cs` |
+| Static deployment | Public HTTPS asset requests | Internet → Kestrel | CSP and hardening headers are applied to SPA, static, API, and error responses | `MelodyTrack.Backend/Hosting/UnifiedRuntimeExtensions.cs`; `MelodyTrack.Backend.Tests/UnifiedRuntimeHostingTests.cs` |
+| CI and container publication | Push or pull request | GitHub → runners → registry | Restore/build/test and unified-image HTTP gates precede publication; actions and base images are external inputs | `.github/workflows/ci.yml`; `scripts/verify-unified-image.sh` |
 
 ## Top abuse paths
 
@@ -122,14 +120,14 @@ flowchart LR
 
 | Threat ID | Threat source | Prerequisites | Threat action | Impact | Impacted assets | Existing controls (evidence) | Gaps | Recommended mitigations | Detection ideas | Likelihood | Impact severity | Priority |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| TM-001 | Remote unauthenticated attacker | API is reachable only through the Caddy Docker network | Evade or exhaust authentication rate limits through forwarded-header manipulation | Account takeover or authentication denial of service | Sessions, accounts, availability | The deployment compose file publishes only Caddy, preserves default forwarding behavior, and provides a deployed smoke check proving forged `X-Forwarded-For` values cannot select a bucket (`deploy/compose.caddy.yml`, `deploy/verify-caddy-ingress.sh`) | The smoke check must be run against each deployed topology after proxy/network changes | Operations: run the ingress check after deployment and alert on a failure | Track 429s, unique partition counts, authentication failures, and connection-vs-forwarded anomalies | Low | High | low |
-| TM-002 | Authenticated data author or compromised imported record | Crafted contact/rich-text value is displayed to staff | Cause unsafe external navigation or script execution | Staff session theft or phishing | Browser sessions, PII, domain integrity | Strict handle normalization, safe BBCode URL handling, CSP and regression test (`src/entities/client/lib/contact.ts`, `src/shared/ui/editors/BbcodeContent.tsx`, `nginx/security-headers.inc`) | React dependencies and future renderers remain part of the trusted script surface | Frontend owner: keep URL construction centralized and retain CSP checks in canonical verification | Collect CSP violation reports if a reporting endpoint is introduced | Low | High | medium |
+| TM-001 | Remote unauthenticated attacker | API is reachable only through the Caddy Docker network | Evade or exhaust authentication rate limits through forwarded-header manipulation | Account takeover or authentication denial of service | Sessions, accounts, availability | ASP.NET Core processes forwarding headers only from configured proxy addresses/networks; rate limiting uses the normalized connection address and ignores raw forwarding headers (`Hosting/ReverseProxyExtensions.cs`, `ErrorHandling/ApiRateLimiting.cs`) | The external Compose network must supply the correct Caddy CIDR and be revalidated after topology changes | Operations: verify the configured proxy network after deployment and alert on a failure | Track 429s, unique partition counts, authentication failures, and connection-vs-forwarded anomalies | Low | High | low |
+| TM-002 | Authenticated data author or compromised imported record | Crafted contact/rich-text value is displayed to staff | Cause unsafe external navigation or script execution | Staff session theft or phishing | Browser sessions, PII, domain integrity | Strict handle normalization, safe BBCode URL handling, Kestrel CSP, and regression tests (`src/entities/client/lib/contact.ts`, `src/shared/ui/editors/BbcodeContent.tsx`, `Hosting/UnifiedRuntimeExtensions.cs`) | React dependencies and future renderers remain part of the trusted script surface | Frontend owner: keep URL construction centralized and retain CSP checks in canonical verification | Collect CSP violation reports if a reporting endpoint is introduced | Low | High | medium |
 | TM-003 | Same-origin script injection or malicious runtime dependency | Attacker executes JavaScript in the frontend origin | Act through the victim browser or attempt to retain a session | Account misuse while the compromised page is active | Refresh tokens, user data | Refresh credential is Secure/HttpOnly/SameSite, cookie use requires a matching CSRF proof, access tokens are memory-only, rotation rejects replays, and fan-out/replay are audited (`RefreshSessionCookieService.cs`, `RefreshEndpoint.cs`, `SessionSecurityMonitor.cs`) | Same-origin script execution can still perform actions available to the current page until it is closed or the session is revoked | Frontend owner: preserve strict CSP and centralized URL/rendering controls; backend owner: retain session anomaly alerts | Alert on refresh replay, unusual active-session fan-out, and unexpected destructive mutations | Low | High | low |
 | TM-004 | Authenticated lower-privilege user | A resource endpoint omits a role or ownership constraint | Change identifiers or call staff-only operations | Cross-user disclosure or destructive mutation | PII, schedules, payments, roles | JWT authentication, endpoint role declarations, active-session preprocessing, and authorization integration tests (`Program.cs`, `Api/Auth/PreProcessors/ActiveSessionPreProcessor.cs`, `MelodyTrack.Backend.Tests/AuthorizationTests.cs`) | Authorization remains distributed across endpoints and queries | Backend owner: require a focused authorization regression test for every new resource family and destructive transition | Audit denied and privileged mutations with actor/resource identifiers | Low | High | medium |
 | TM-005 | Holder of a disclosed portal link | Capability URL is known and PIN can be guessed | Brute-force PIN or reuse a leaked link | Client schedule/course disclosure | Portal sessions, client data | Link tokens are stored as hashes and can be rotated or revoked; rotation/revocation invalidates portal sessions; PINs use a slow one-way hash; repeated failures are audited; client claims are scoped and endpoints are rate limited (`Api/ClientPortal`, `Api/Clients/Endpoints/*PortalLink*`) | A leaked, unrevoked link and correct PIN remain valid by design | Product/operations: rotate or revoke a link immediately when disclosure is suspected | Alert on repeated PIN failures and unusual portal-session creation | Low | Medium | low |
 | TM-006 | Database reader or deployment-secret thief | Database or PII/JWT key is exposed | Decrypt PII or forge/steal sessions | Broad confidentiality and identity compromise | PII, signing keys, sessions | Versioned PII encryption, blind email index, minimum key validation, hashed opaque tokens (`Data/AppDbContext.cs`, `Utils/StartupConfigurationValidator.cs`, `Utils/UserUtils.cs`) | Repository cannot prove secret-store ACLs, backup encryption, or rotation operations | Operations owner: restrict secret and backup access, rehearse key rotation, and separate database from application networks | Secret-access audit logs, backup access alerts, and key-version inventory | Low | High | medium |
 | TM-007 | Compromised dependency, action, or base image | Upstream package or build dependency is malicious | Execute during CI/build and publish altered artifacts | Deployment-wide compromise | Source integrity, images, sessions, PII | npm lockfile, NuGet restore graph, Node 26 full verification before publication, commit-pinned actions, least-privilege workflow permissions, and SBOM/provenance generation (`package-lock.json`, both workflow files) | Registry packages and tagged base/runtime images remain upstream trust dependencies | Platform owner: review dependency alerts and periodically resolve/review image digests where operational updates remain maintainable | Registry attestations, dependency alerts, and unexpected image-digest monitoring | Low | High | low |
-| TM-008 | Remote authenticated or anonymous attacker | Attacker can call a costly route repeatedly | Send concurrent expensive queries or oversized requests | API/database exhaustion and missed scheduled work | API, PostgreSQL, Quartz | Caddy limits request bodies and upstream timeouts; analytics/exports use a bounded concurrency policy with structured rejection logging; Quartz delay is measured (`deploy/compose.caddy.yml`, `ErrorHandling/ApiRateLimiting.cs`, `Jobs/CreateRecurringAppointments.cs`) | Thresholds require production tuning and observability outside the repository | Operations/backend owners: tune from observed latency and alert on the documented signals | 429s, ASP.NET active requests, DB-pool saturation, Quartz delays, Caddy upstream errors, and per-route concurrency | Low | Medium | low |
+| TM-008 | Remote authenticated or anonymous attacker | Attacker can call a costly route repeatedly | Send concurrent expensive queries or oversized requests | API/database exhaustion and missed scheduled work | API, PostgreSQL, Quartz | The external Caddy deployment is expected to limit request bodies and upstream timeouts; analytics/exports use a bounded concurrency policy with structured rejection logging; Quartz delay is measured (`docs/unified-runtime-deployment.md`, `ErrorHandling/ApiRateLimiting.cs`, `Jobs/CreateRecurringAppointments.cs`) | External proxy controls and thresholds require production validation and observability outside the repository | Operations/backend owners: tune from observed latency and alert on the documented signals | 429s, ASP.NET active requests, DB-pool saturation, Quartz delays, Caddy upstream errors, and per-route concurrency | Low | Medium | low |
 
 ## Criticality calibration
 
@@ -142,25 +140,24 @@ flowchart LR
 
 | Path | Why it matters | Related Threat IDs |
 |---|---|---|
-| `MelodyTrack.Backend/MelodyTrack.Backend/Program.cs` | Defines middleware order, CORS, authentication, errors, migrations, and deployment behavior | TM-001, TM-004, TM-008 |
+| `MelodyTrack.Backend/Program.cs` | Defines middleware order, proxy trust, authentication, errors, and deployment behavior | TM-001, TM-004, TM-008 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/ErrorHandling/ApiRateLimiting.cs` | Establishes anonymous authentication-abuse partitions | TM-001, TM-005 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Api/Auth` | Creates, rotates, revokes, and recovers privileged sessions | TM-001, TM-003, TM-004 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Api/ClientPortal` | Implements capability-link and PIN authentication plus client-scoped reads | TM-001, TM-004, TM-005 |
-| `MelodyTrack.Backend/MelodyTrack.Backend/Data/AppDbContext.cs` | Maps encrypted PII and authorization-critical relationships | TM-004, TM-006 |
+| `MelodyTrack.Data/AppDbContext.cs` | Maps encrypted PII and authorization-critical relationships | TM-004, TM-006 |
 | `MelodyTrack.Backend/MelodyTrack.Backend/Utils/UserUtils.cs` | Implements password, opaque-token, logging-reference, and JWT helpers | TM-003, TM-006 |
 | `MelodyTrack.Web/src/entities/session/model` | Controls in-memory and persistent browser session state | TM-002, TM-003 |
 | `MelodyTrack.Web/src/entities/client/lib/contact.ts` | Normalizes externally navigable stored contact values | TM-002 |
 | `MelodyTrack.Web/src/shared/ui/editors/BbcodeContent.tsx` | Parses and renders user-authored rich text and links | TM-002 |
-| `MelodyTrack.Web/nginx` | Defines production browser-side security and cache headers | TM-002, TM-003 |
-| `deploy/compose.caddy.yml`; `deploy/verify-caddy-ingress.sh` | Defines and verifies the only supported API ingress boundary | TM-001, TM-008 |
-| `MelodyTrack.Backend/.github/workflows` | Restores, validates, and publishes backend artifacts | TM-007 |
-| `MelodyTrack.Web/.github/workflows` | Restores and publishes frontend artifacts | TM-007 |
+| `MelodyTrack.Backend/Hosting/UnifiedRuntimeExtensions.cs` | Defines production browser-side security, static caching, and SPA fallback boundaries | TM-002, TM-003 |
+| `docs/unified-runtime-deployment.md` | Records the external Compose/Caddy ingress and trusted-proxy contract | TM-001, TM-008 |
+| `.github/workflows/ci.yml`; `scripts/verify-unified-image.sh` | Restores, validates, tests, and publishes the unified application artifact | TM-007 |
 
 ## Residual risk register
 
 | Severity | Evidence | Decision and owner | Follow-up condition |
 |---|---|---|---|
-| Low | The repository cannot force production to use `deploy/compose.caddy.yml` or run its smoke check | Operations owner must keep Caddy as the only published ingress and run `deploy/verify-caddy-ingress.sh` after deployment | Revalidate whenever Docker networks, published ports, upstream proxy chains, or Caddy labels change |
+| Low | The repository cannot change or validate the externally maintained production Compose/Caddy files | Operations owner must keep Caddy as the only published ingress, configure its network under `ReverseProxy`, and run the unified-runtime smoke checks after deployment | Revalidate whenever Docker networks, published ports, upstream proxy chains, or Caddy labels change |
 | Low | Packages and tagged runtime/base images remain external build inputs | Platform owner accepts normal upstream dependency trust with pinned actions, lock files, audits, and image attestations | Review dependency alerts and unexpected published-image digest changes |
 | Open | A future multi-organization deployment would change the current single-organization authorization model | Product/backend owner must decide tenancy before sharing one database between independent organizations | Introduce explicit tenant keys and isolation tests before enabling multi-organization hosting |
 

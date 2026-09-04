@@ -1,0 +1,176 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.loading {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  border: 1px solid var(--border-soft);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.editorShell :global(.sceditor-container) {
+  border: 1px solid var(--border-main);
+  border-radius: 16px;
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow-soft);
+  overflow: hidden;
+}
+
+.editorShell :global(.sceditor-container):focus-within {
+  border-color: var(--accent);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent),
+    var(--shadow-soft);
+}
+
+.editorShell :global(.sceditor-toolbar) {
+  border-bottom: 1px solid var(--border-soft);
+  background:
+    radial-gradient(circle at top left, color-mix(in srgb, var(--accent) 12%, transparent), transparent 35%),
+    linear-gradient(180deg, var(--bg-hover), var(--bg-elevated));
+  padding: 10px;
+}
+
+.editorShell :global(.sceditor-group) {
+  display: inline-flex;
+  gap: 2px;
+  border: 1px solid var(--border-soft);
+  border-radius: 12px;
+  background: var(--bg-card);
+  padding: 2px;
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.editorShell :global(.sceditor-button) {
+  position: relative;
+  height: 32px;
+  width: 32px;
+  padding: 0;
+  border-radius: 8px;
+  color: var(--text-main);
+  line-height: 0;
+  transition:
+    background-color 0.2s ease,
+    color 0.2s ease;
+}
+
+.editorShell :global(.sceditor-button.active),
+.editorShell :global(.sceditor-button:hover),
+.editorShell :global(.sceditor-button:focus) {
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.editorShell :global(.sceditor-button div) {
+  position: absolute;
+  inset: 0;
+  width: auto;
+  height: auto;
+  margin: 0;
+  background-image: none;
+  background-repeat: no-repeat;
+  background-position: center;
+  line-height: 0;
+}
+
+.editorShell :global(.sceditor-button svg) {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  fill: currentColor;
+  transform: translate(-50%, -50%);
+}
+
+.editorShell :global(.sceditor-button svg .sce-color) {
+  fill: currentColor;
+}
+
+.editorShell :global(.sceditor-container textarea),
+.editorShell :global(.sceditor-container iframe) {
+  background: transparent;
+}
+
+.editorShell :global(.sceditor-container textarea),
+.editorShell :global(.sceditor-container textarea:focus) {
+  font-family: "JetBrainsMono Nerd Font Mono", "JetBrains Mono", "Fira Code", monospace;
+  font-size: 14px;
+  line-height: 1.6;
+  padding: 12px;
+  color: var(--text-main);
+  caret-color: var(--accent);
+}
+
+.editorShell :global(div.sceditor-dropdown) {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-main);
+  border-radius: 14px;
+  box-shadow: var(--shadow-soft);
+  color: var(--text-main);
+}
+
+.editorShell :global(div.sceditor-dropdown label) {
+  color: var(--text-main);
+}
+
+.editorShell :global(div.sceditor-dropdown input),
+.editorShell :global(div.sceditor-dropdown textarea) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: 10px;
+  color: var(--text-main);
+}
+
+.editorShell :global(div.sceditor-dropdown input:focus),
+.editorShell :global(div.sceditor-dropdown textarea:focus) {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 14%, transparent);
+}
+
+.editorShell :global(div.sceditor-dropdown .button) {
+  background: var(--bg-card);
+  border: 1px solid var(--border-main);
+  border-radius: 10px;
+  color: var(--text-main);
+  box-shadow: none;
+}
+
+.editorShell :global(div.sceditor-dropdown .button:hover) {
+  background: var(--bg-hover);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+}
+
+.editorShell :global(div.sceditor-dropdown a),
+.editorShell :global(div.sceditor-dropdown a:link) {
+  color: var(--text-main);
+}
+
+.editorShell :global(div.sceditor-dropdown a:hover) {
+  background: var(--bg-hover);
+  color: var(--accent);
+}
+
+.helper {
+  color: var(--text-muted);
+  font-size: 12px;
+}

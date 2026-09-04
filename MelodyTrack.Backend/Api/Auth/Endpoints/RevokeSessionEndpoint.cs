@@ -1,4 +1,6 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
@@ -9,26 +11,26 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RevokeSessionEndpoint(
-    AppDbContext db,
-    IAuditLogService auditLogService,
-    ICurrentUserAccessor currentUserAccessor,
-    RefreshSessionCookieService refreshCookieService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Delete, "/auth/sessions/{id}")]
+public sealed class RevokeSessionEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/auth/sessions/{id}");
-    }
-
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>> ExecuteAsync(
-        GetEntityRequest req,
-        CancellationToken ct)
+    [Authorize(Policy = AuthorizationPolicies.StaffOrClientPortal)]
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        ICurrentUserAccessor currentUserAccessor,
+        RefreshSessionCookieService refreshCookieService,
+        ILogger<RevokeSessionEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Session revoke attempt without a current user");
+            logger.LogWarning("Session revoke attempt without a current user");
             return TypedResults.Unauthorized();
         }
 
@@ -38,23 +40,22 @@ public class RevokeSessionEndpoint(
 
         if (revokedCount == 0)
         {
-            AddError(r => r.Id, "Сессия не найдена");
+            validationErrors.Add(nameof(req.Id), "Сессия не найдена");
             return TypedResults.NotFound(ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status404NotFound));
         }
 
         if (currentUserAccessor.SessionId == req.Id)
         {
-            refreshCookieService.Clear(HttpContext.Response);
+            refreshCookieService.Clear(httpContext.Response);
         }
 
-        Logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(user.Email), req.Id);
+        logger.LogInformation("{EmailRef} revoked session {SessionId}", UserUtils.DescribeEmailForLogs(user.Email), req.Id);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "session_revoked",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.SessionRevoked,
             EntityType = "session",
             EntityId = req.Id.ToString(),
             ActorUserId = user.Id,

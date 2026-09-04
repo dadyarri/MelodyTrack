@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Endpoints;
 using MelodyTrack.Backend.Api.Users.Responses;
@@ -21,19 +19,20 @@ namespace MelodyTrack.Backend.Tests;
 public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task UpdateUserAvailability_PersistsCompleteWeekVacationAndAudit()
+    public async Task UpdateUserAvailability_SuperuserDirectManagement_PersistsCompleteWeekVacationAndAudit()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
 
         using var response = await App.Client.PutAsJsonAsync(
             $"/users/{user.Id}/availability",
             new
             {
                 workingHours = WeekSchedule(),
-                vacations = new[] { new { startDate = "2026-08-10", endDate = "2026-08-16" } },
+                vacations = new[] { new { startDate = "2026-08-10T09:30:00Z", endDate = "2026-08-16T18:15:00Z" } },
                 expectedActivityId = (Ulid?)null
             },
             TestContext.Current.CancellationToken);
@@ -47,10 +46,166 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         monday.IsWorkingDay.ShouldBeTrue();
         monday.StartMinuteOfDay.ShouldBe(8 * 60 + 30);
         monday.EndMinuteOfDay.ShouldBe(17 * 60 + 15);
-        stored.Vacations.ShouldHaveSingleItem().StartDate.ShouldBe(new DateOnly(2026, 8, 10));
+        stored.Vacations.ShouldHaveSingleItem().StartDate.ShouldBe(new DateTime(2026, 8, 10, 9, 30, 0, DateTimeKind.Utc));
         (await db.AuditLogs.AnyAsync(
-            item => item.Action == "user_availability_updated" && item.EntityId == user.Id.ToString(),
+            item => item.Action == "user_vacations_updated_directly" && item.EntityId == user.Id.ToString(),
             TestContext.Current.CancellationToken)).ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_TeacherAddsOwnVacation_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                workingHours = WeekSchedule(),
+                vacations = new[] { new { startDate = "2026-08-10T09:30:00Z", endDate = "2026-08-16T18:15:00Z" } },
+                expectedActivityId = (Ulid?)null
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_ConflictingAppointment_RequiresExplicitCancellation()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Мария", "Соколова", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Вокал", TestContext.Current.CancellationToken);
+        var appointment = new Appointment
+        {
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = user,
+            StartDate = new DateTime(2026, 8, 12, 10, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 8, 12, 11, 0, 0, DateTimeKind.Utc),
+            Status = AppointmentStatus.Planned,
+            IsDeleted = false
+        };
+        await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
+        var input = new
+        {
+            workingHours = WeekSchedule(),
+            vacations = new[] { new { startDate = "2026-08-10T09:30:00Z", endDate = "2026-08-30T18:15:00Z" } },
+            expectedActivityId = (Ulid?)null,
+            cancelConflictingAppointments = false
+        };
+
+        using var conflictResponse = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            input,
+            TestContext.Current.CancellationToken);
+
+        conflictResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        db.ChangeTracker.Clear();
+        (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
+            .ShouldBe(AppointmentStatus.Planned);
+        (await db.UserVacations.CountAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).ShouldBe(0);
+
+        using var successResponse = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                input.workingHours,
+                input.vacations,
+                input.expectedActivityId,
+                cancelConflictingAppointments = true
+            },
+            TestContext.Current.CancellationToken);
+
+        successResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        db.ChangeTracker.Clear();
+        (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
+            .ShouldBe(AppointmentStatus.Cancelled);
+        (await db.UserVacations.SingleAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).EndDate
+            .ShouldBe(new DateTime(2026, 8, 30, 18, 15, 0, DateTimeKind.Utc));
+    }
+
+    [Fact]
+    public async Task GetVacationAppointmentConflictCount_SelectedRange_ReturnsOnlyOverlappingPlannedAppointments()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var otherUser = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Мария", "Соколова", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Вокал", TestContext.Current.CancellationToken);
+        var rangeStart = new DateTime(2026, 8, 12, 9, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2026, 8, 12, 12, 0, 0, DateTimeKind.Utc);
+
+        await db.Appointments.AddRangeAsync(
+        [
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = user,
+                StartDate = rangeStart.AddMinutes(30), EndDate = rangeStart.AddMinutes(90),
+                Status = AppointmentStatus.Planned, IsDeleted = false
+            },
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = user,
+                StartDate = rangeStart.AddMinutes(45), EndDate = rangeStart.AddMinutes(105),
+                Status = AppointmentStatus.Completed, IsDeleted = false
+            },
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = user,
+                StartDate = rangeEnd, EndDate = rangeEnd.AddHours(1),
+                Status = AppointmentStatus.Planned, IsDeleted = false
+            },
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = otherUser,
+                StartDate = rangeStart.AddMinutes(30), EndDate = rangeStart.AddMinutes(90),
+                Status = AppointmentStatus.Planned, IsDeleted = false
+            }
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
+
+        using var response = await App.Client.GetAsync(
+            $"/users/{user.Id}/vacation-appointment-conflict-count?startDate={rangeStart:O}&endDate={rangeEnd:O}",
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        (await response.Content.ReadFromJsonAsync<int>(cancellationToken: TestContext.Current.CancellationToken)).ShouldBe(1);
+    }
+
+    [Fact]
+    public async Task UpdateUserAvailability_TeacherChangesOwnWorkingDays_ReturnsForbidden()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+
+        using var response = await App.Client.PutAsJsonAsync(
+            $"/users/{user.Id}/availability",
+            new
+            {
+                workingHours = WeekSchedule(),
+                vacations = Array.Empty<object>(),
+                expectedActivityId = (Ulid?)null
+            },
+            TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        (await db.UserWorkingHoursDays.CountAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     [Fact]
@@ -209,6 +364,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
         var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var superuser = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         var activityId = Ulid.NewUlid();
 
         await db.AuditLogs.AddAsync(
@@ -225,7 +381,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
             TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(superuser));
 
         var response = await App.Client.PutAsJsonAsync(
             $"/users/{user.Id}/availability",

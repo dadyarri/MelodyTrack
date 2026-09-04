@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
@@ -8,20 +9,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class GetRecoveryCodesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/auth/recovery-codes")]
+public sealed class GetRecoveryCodesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/auth/recovery-codes");
-    }
 
-    public override async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<GetRecoveryCodesEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
-            Logger.LogWarning("Recovery codes list request without a current user");
+            logger.LogWarning("Recovery codes list request without a current user");
             return TypedResults.Unauthorized();
         }
 

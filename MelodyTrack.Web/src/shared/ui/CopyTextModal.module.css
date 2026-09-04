@@ -1,0 +1,67 @@
+.content {
+  display: grid;
+  gap: 16px;
+  max-height: min(62dvh, calc(var(--visual-viewport-height, 100dvh) - 190px));
+  min-width: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overflow-wrap: anywhere;
+  overscroll-behavior: contain;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.valueInput {
+  max-width: 100%;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: var(--ant-font-size-sm);
+  overflow-wrap: anywhere;
+  resize: none;
+}
+
+.warning {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--ant-color-warning) 35%, transparent);
+  border-radius: var(--ant-border-radius);
+  background: color-mix(in srgb, var(--ant-color-warning-bg) 75%, transparent);
+  color: var(--ant-color-text);
+}
+
+.feedback {
+  min-height: 22px;
+}
+
+.footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+@media (max-width: 576px) {
+  .modal:global(.ant-modal) {
+    top: max(12px, env(safe-area-inset-top));
+    max-width: calc(100vw - 24px);
+    margin: 0 auto;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .content {
+    max-height: calc(var(--visual-viewport-height, 100dvh) - 170px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+
+  .footer {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .copyButton,
+  .followUpButton {
+    min-height: 44px;
+    width: 100%;
+  }
+}

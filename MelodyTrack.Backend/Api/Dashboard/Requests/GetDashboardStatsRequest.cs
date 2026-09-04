@@ -1,9 +1,10 @@
-using FastEndpoints;
+
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Requests;
 
 public class GetDashboardStatsRequest
 {
-    [BindFrom("timezone")]
+    [FromQuery(Name = "timezone")]
     public required string Timezone { get; set; }
 }

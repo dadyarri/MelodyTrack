@@ -1,14 +1,17 @@
-using FastEndpoints;
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Validation;
 
 namespace MelodyTrack.Backend.Api.Users.Requests;
 
-public class UpdateUserAvailabilityRequest
+public class UpdateUserAvailabilityRequest : IValidatableRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
     public required List<UserWorkingHoursDayItem> WorkingHours { get; set; }
     public required List<UserVacationItem> Vacations { get; set; }
+    public bool CancelConflictingAppointments { get; set; }
 }
 
 public class UserWorkingHoursDayItem
@@ -21,6 +24,6 @@ public class UserWorkingHoursDayItem
 
 public class UserVacationItem
 {
-    public required DateOnly StartDate { get; set; }
-    public required DateOnly EndDate { get; set; }
+    public required DateTime StartDate { get; set; }
+    public required DateTime EndDate { get; set; }
 }

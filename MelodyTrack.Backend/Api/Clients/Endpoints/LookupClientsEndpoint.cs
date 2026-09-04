@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,14 +12,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class LookupClientsEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor) : Ep.Req<LookupClientsRequest>.Res<Results<Ok<LookupClientsResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/clients/options")]
+public sealed class LookupClientsEndpoint
 {
-    public override void Configure()
-    {
-        Get("/clients/options");
-    }
 
-    public override async Task<Results<Ok<LookupClientsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(LookupClientsRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<LookupClientsResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] LookupClientsRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        ILogger<LookupClientsEndpoint> logger,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -31,7 +36,7 @@ public class LookupClientsEndpoint(AppDbContext db, ICurrentUserAccessor current
             return TypedResults.Forbid();
         }
 
-        Logger.LogDebug("Fetching lookup list of clients with search: {Search}", req.Search ?? "not specified");
+        logger.LogDebug("Fetching lookup list of clients with search: {Search}", req.Search ?? "not specified");
         var clients = await db.Clients
             .AsNoTracking()
             .Include(e => e.Contacts)
@@ -57,7 +62,7 @@ public class LookupClientsEndpoint(AppDbContext db, ICurrentUserAccessor current
             })
             .ToListAsync(ct);
 
-        Logger.LogInformation("Retrieved {Count} clients for lookup list", clients.Count);
+        logger.LogInformation("Retrieved {Count} clients for lookup list", clients.Count);
 
         return TypedResults.Ok(new LookupClientsResponse
         {

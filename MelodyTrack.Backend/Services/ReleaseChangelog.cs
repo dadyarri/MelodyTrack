@@ -8,7 +8,6 @@ namespace MelodyTrack.Backend.Services;
 
 public sealed partial class ReleaseChangelog
 {
-    private static readonly string[] AllowedRootProperties = ["releases"];
     private static readonly string[] AllowedReleaseProperties = ["version", "codename", "date", "changes"];
     private static readonly string[] AllowedChangeProperties = ["new", "improved", "fixed", "security"];
 
@@ -22,49 +21,95 @@ public sealed partial class ReleaseChangelog
     public ReleaseEntry Current => Releases[0];
     public string Etag { get; }
 
-    public static ReleaseChangelog Load(string path)
+    public static ReleaseChangelog Load(string releasesDirectory)
     {
-        var bytes = File.ReadAllBytes(path);
-        using var document = JsonDocument.Parse(File.ReadAllText(path), new JsonDocumentOptions
+        if (!Directory.Exists(releasesDirectory))
         {
-            AllowTrailingCommas = false,
-            CommentHandling = JsonCommentHandling.Disallow
-        });
-
-        var root = RequireObject(document.RootElement, "changelog");
-        RequireExactProperties(root, AllowedRootProperties, "changelog");
-        var releasesElement = RequireProperty(root, "releases");
-        if (releasesElement.ValueKind != JsonValueKind.Array || releasesElement.GetArrayLength() == 0)
-        {
-            throw new InvalidDataException("changelog.releases must be a non-empty array.");
+            throw new DirectoryNotFoundException($"Release changelog directory was not found: {releasesDirectory}");
         }
 
+        var paths = Directory.EnumerateFiles(releasesDirectory, "*.json", SearchOption.TopDirectoryOnly)
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .ToArray();
+        if (paths.Length == 0)
+        {
+            throw new InvalidDataException("The release changelog must contain at least one JSON file.");
+        }
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         var releases = new List<ReleaseEntry>();
         var versions = new HashSet<string>(StringComparer.Ordinal);
-        DateOnly? previousDate = null;
-        foreach (var (element, index) in releasesElement.EnumerateArray().Select((value, index) => (value, index)))
+        var drafts = new List<ParsedRelease>();
+        foreach (var path in paths)
         {
-            var location = $"changelog.releases[{index}]";
-            var release = ParseRelease(element, location);
-            if (!versions.Add(release.Version))
+            var filename = Path.GetFileName(path);
+            var bytes = File.ReadAllBytes(path);
+            var jsonOffset = bytes.Length >= 3
+                && bytes[0] == 0xEF
+                && bytes[1] == 0xBB
+                && bytes[2] == 0xBF
+                    ? 3
+                    : 0;
+            using var document = JsonDocument.Parse(bytes.AsMemory(jsonOffset), new JsonDocumentOptions
             {
-                throw new InvalidDataException($"{location}.version is duplicated.");
+                AllowTrailingCommas = false,
+                CommentHandling = JsonCommentHandling.Disallow
+            });
+            var parsed = ParseRelease(document.RootElement, filename);
+            if (!versions.Add(parsed.Version))
+            {
+                throw new InvalidDataException($"{filename}.version is duplicated.");
             }
 
-            if (previousDate is not null && release.Date > previousDate)
+            if (!string.Equals(Path.GetFileNameWithoutExtension(path), parsed.Version, StringComparison.Ordinal))
             {
-                throw new InvalidDataException("changelog.releases must be ordered newest first.");
+                throw new InvalidDataException($"{filename} must match release version {parsed.Version}.");
             }
 
-            if (releases.Count > 0
-                && release.Date == previousDate
-                && CompareVersions(releases[^1].Version, release.Version) <= 0)
+            if (parsed.IsDraft)
             {
-                throw new InvalidDataException("Releases on the same date must be ordered by descending version.");
+                drafts.Add(parsed);
+                continue;
             }
 
-            previousDate = release.Date;
-            releases.Add(release);
+            hash.AppendData(Encoding.UTF8.GetBytes(filename));
+            hash.AppendData([0]);
+            hash.AppendData(bytes);
+            releases.Add(parsed.Release!);
+        }
+
+        if (drafts.Count > 1)
+        {
+            throw new InvalidDataException("The changelog may contain only one active draft.");
+        }
+        if (releases.Count == 0)
+        {
+            throw new InvalidDataException("The changelog must contain at least one released entry.");
+        }
+
+        releases.Sort((left, right) =>
+        {
+            var dateComparison = right.Date.CompareTo(left.Date);
+            if (dateComparison != 0)
+            {
+                return dateComparison;
+            }
+
+            return CompareVersions(right.Version, left.Version);
+        });
+
+        if (drafts.SingleOrDefault() is { } activeDraft)
+        {
+            var productionParent = releases[0].ParentVersion ?? releases[0].Version;
+            if (activeDraft.ParentVersion is not null && activeDraft.ParentVersion != productionParent)
+            {
+                throw new InvalidDataException($"Draft patch {activeDraft.Version} must target current production parent {productionParent}.");
+            }
+
+            if (CompareVersions(activeDraft.Version, releases[0].Version) <= 0)
+            {
+                throw new InvalidDataException($"Draft {activeDraft.Version} must be newer than current production {releases[0].Version}.");
+            }
         }
 
         var byVersion = releases.ToDictionary(release => release.Version, StringComparer.Ordinal);
@@ -77,9 +122,16 @@ public sealed partial class ReleaseChangelog
 
             release.ResolvedCodename = parent.Codename!;
         }
+        foreach (var draft in drafts.Where(draft => draft.ParentVersion is not null))
+        {
+            if (!byVersion.TryGetValue(draft.ParentVersion!, out var parent) || parent.IsPatch)
+            {
+                throw new InvalidDataException($"Draft patch {draft.Version} must reference a released actual release in the same changelog.");
+            }
+        }
 
-        var hash = Convert.ToHexString(SHA256.HashData(bytes)).ToLowerInvariant();
-        return new ReleaseChangelog(releases, $"\"{hash}\"");
+        var etag = Convert.ToHexString(hash.GetHashAndReset()).ToLowerInvariant();
+        return new ReleaseChangelog(releases, $"\"{etag}\"");
     }
 
     private static int CompareVersions(string left, string right)
@@ -99,7 +151,7 @@ public sealed partial class ReleaseChangelog
         return 0;
     }
 
-    private static ReleaseEntry ParseRelease(JsonElement element, string location)
+    private static ParsedRelease ParseRelease(JsonElement element, string location)
     {
         var releaseObject = RequireObject(element, location);
         RequireExactProperties(releaseObject, AllowedReleaseProperties, location, allowMissingCodename: true);
@@ -110,14 +162,21 @@ public sealed partial class ReleaseChangelog
             throw new InvalidDataException($"{location}.version must use yyyy.mm.release or yyyy.mm.release.patch format.");
         }
 
-        if (!DateOnly.TryParseExact(
-                RequireNonEmptyString(releaseObject, "date", location),
+        var dateElement = RequireProperty(releaseObject, "date");
+        DateOnly? date = null;
+        if (dateElement.ValueKind == JsonValueKind.String
+            && DateOnly.TryParseExact(
+                dateElement.GetString(),
                 "yyyy-MM-dd",
                 CultureInfo.InvariantCulture,
                 DateTimeStyles.None,
-                out var date))
+                out var parsedDate))
         {
-            throw new InvalidDataException($"{location}.date must use yyyy-MM-dd format.");
+            date = parsedDate;
+        }
+        else if (dateElement.ValueKind != JsonValueKind.Null)
+        {
+            throw new InvalidDataException($"{location}.date must use yyyy-MM-dd format or be null for the active draft.");
         }
 
         var isPatch = versionMatch.Groups["patch"].Success;
@@ -139,13 +198,19 @@ public sealed partial class ReleaseChangelog
         }
 
         var changes = ParseChanges(RequireProperty(releaseObject, "changes"), $"{location}.changes");
-        if (changes.New.Count + changes.Improved.Count + changes.Fixed.Count + changes.Security.Count == 0)
+        if (date is not null && changes.New.Count + changes.Improved.Count + changes.Fixed.Count + changes.Security.Count == 0)
         {
             throw new InvalidDataException($"{location}.changes must contain at least one item.");
         }
 
         var parentVersion = isPatch ? version[..version.LastIndexOf('.')] : null;
-        return new ReleaseEntry(version, codename, date, changes, parentVersion) { ResolvedCodename = codename ?? string.Empty };
+        return date is null
+            ? new ParsedRelease(version, parentVersion, IsDraft: true, Release: null)
+            : new ParsedRelease(
+                version,
+                parentVersion,
+                IsDraft: false,
+                new ReleaseEntry(version, codename, date.Value, changes, parentVersion) { ResolvedCodename = codename ?? string.Empty });
     }
 
     private static ReleaseChanges ParseChanges(JsonElement element, string location)
@@ -234,6 +299,8 @@ public sealed partial class ReleaseChangelog
 
     [GeneratedRegex(@"^(?<year>\d{4})\.(?<month>0[1-9]|1[0-2])\.(?<release>[1-9]\d*)(?:\.(?<patch>[1-9]\d*))?$")]
     private static partial Regex VersionPattern();
+
+    private sealed record ParsedRelease(string Version, string? ParentVersion, bool IsDraft, ReleaseEntry? Release);
 }
 
 public sealed class ReleaseEntry(

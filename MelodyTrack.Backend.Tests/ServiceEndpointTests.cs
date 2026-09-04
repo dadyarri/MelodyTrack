@@ -36,6 +36,63 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
     }
 
     [Fact]
+    public async Task GetServices_ManyServices_UsesBoundedDatabaseCommands()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var effectiveDate = new DateTime(2026, 8, 1, 0, 0, 0, DateTimeKind.Utc);
+        var expectedPrices = new Dictionary<Ulid, decimal>();
+
+        for (var index = 0; index < 12; index++)
+        {
+            var service = new Service
+            {
+                Id = Ulid.NewUlid(),
+                Name = $"Service {index:D2}"
+            };
+            var currentPrice = 2000m + index;
+            expectedPrices.Add(service.Id, currentPrice);
+            await db.Services.AddAsync(service, TestContext.Current.CancellationToken);
+            await db.ServicePriceHistory.AddRangeAsync(
+            [
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = currentPrice - 500m,
+                    EffectiveDate = effectiveDate.AddMonths(-1)
+                },
+                new ServicePrice
+                {
+                    Id = Ulid.NewUlid(),
+                    Service = service,
+                    Price = currentPrice,
+                    EffectiveDate = effectiveDate
+                }
+            ], TestContext.Current.CancellationToken);
+        }
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        App.DatabaseCommands.Reset();
+
+        var response = await App.Client.GetAsync("/services?page=1&page_size=50", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var payload = await response.Content.ReadFromJsonAsync<PaginatedResponse<ServiceWithCurrentPriceDto>>(
+            cancellationToken: TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull();
+        payload.Items.Count.ShouldBe(expectedPrices.Count);
+        foreach (var service in payload.Items)
+        {
+            service.Price.ShouldBe(expectedPrices[service.Id]);
+        }
+
+        App.DatabaseCommands.Count.ShouldBeLessThanOrEqualTo(8);
+    }
+
+    [Fact]
     public async Task LookupServices_ReturnsCurrentPriceFromPriceHistory()
     {
         await using var scope = App.Services.CreateAsyncScope();
@@ -294,8 +351,8 @@ public class ServiceEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         var body = await response.Content.ReadFromJsonAsync<GetAuditLogsResponse>(cancellationToken: TestContext.Current.CancellationToken);
         body.ShouldNotBeNull();
-        body.Data.ShouldNotBeEmpty();
-        body.Data[0].Details.ShouldBe("Клиент: Иванова Анна; Начало: воскресенье, 24.05.2026 15:00 → воскресенье, 24.05.2026 16:30");
+        body.Items.ShouldNotBeEmpty();
+        body.Items[0].Details.ShouldBe("Клиент: Иванова Анна; Начало: воскресенье, 24.05.2026 15:00 → воскресенье, 24.05.2026 16:30");
     }
 
     [Fact]

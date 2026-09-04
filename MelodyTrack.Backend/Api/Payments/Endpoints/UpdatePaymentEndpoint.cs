@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Payments.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,18 +12,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Payments.Endpoints;
 
-public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdatePaymentRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/payments/{id}")]
+public sealed class UpdatePaymentEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/payments/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         UpdatePaymentRequest req,
-        CancellationToken ct)
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -41,15 +48,15 @@ public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor current
 
         if (payment is null)
         {
-            AddError(e => e.Id, "Платеж не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Платеж не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         var client = await db.Clients.FirstOrDefaultAsync(e => e.Id == req.ClientId, ct);
         if (client is null)
         {
-            AddError(e => e.ClientId, "Клиент не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.ClientId), "Клиент не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         Service? service = null;
@@ -58,8 +65,8 @@ public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor current
             service = await db.Services.FirstOrDefaultAsync(e => e.Id == req.ServiceId.Value, ct);
             if (service is null)
             {
-                AddError(e => e.ServiceId, "Сервис не найден");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.ServiceId), "Сервис не найден");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -90,8 +97,7 @@ public class UpdatePaymentEndpoint(AppDbContext db, ICurrentUserAccessor current
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "payments",
-            Action = "payment_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.PaymentUpdated,
             EntityType = "payment",
             EntityId = payment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

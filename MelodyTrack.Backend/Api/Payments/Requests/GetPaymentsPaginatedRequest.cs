@@ -1,4 +1,4 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Attributes;
 using MelodyTrack.Backend.Data.Models;
@@ -7,7 +7,7 @@ namespace MelodyTrack.Backend.Api.Payments.Requests;
 
 public class GetPaymentsPaginatedRequest : PaginatedRequest
 {
-    [BindFrom("search")]
+    [FromQuery(Name = "search")]
     public string? Search { get; set; }
 
     [FuzzyPath(typeof(Payment), "Client.FirstName")]
@@ -16,15 +16,15 @@ public class GetPaymentsPaginatedRequest : PaginatedRequest
     [FuzzyPath(typeof(Payment), "Client.LastName")]
     public string? LastName { get; set; }
 
-    [BindFrom("clientId")]
+    [FromQuery(Name = "clientId")]
     public Ulid? ClientId { get; set; }
 
-    [BindFrom("serviceId")]
+    [FromQuery(Name = "serviceId")]
     public Ulid? ServiceId { get; set; }
 
-    [BindFrom("start")]
+    [FromQuery(Name = "start")]
     public DateTime? Start { get; set; }
 
-    [BindFrom("end")]
+    [FromQuery(Name = "end")]
     public DateTime? End { get; set; }
 }

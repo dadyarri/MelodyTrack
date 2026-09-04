@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
@@ -10,18 +11,23 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 
-public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IEntityFreshnessService entityFreshnessService)
-    : Ep.Req<UpdateExpenseRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>>
+[ApiEndpoint(ApiMethod.Patch, "/expenses/{id}")]
+public sealed class UpdateExpenseEndpoint
 {
-    public override void Configure()
-    {
-        Patch("/expenses/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> ExecuteAsync(
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<StaleEntityConflictResponse>>> HandleAsync(
         UpdateExpenseRequest req,
-        CancellationToken ct)
+        Ulid id,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IEntityFreshnessService entityFreshnessService,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
+        req.Id = id;
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
         {
@@ -39,8 +45,8 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
 
         if (expense is null)
         {
-            AddError(item => item.Id, "Расход не найден");
-            return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+            validationErrors.Add(nameof(req.Id), "Расход не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
         }
 
         string? categoryName = null;
@@ -53,8 +59,8 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
 
             if (categoryName is null)
             {
-                AddError(item => item.CategoryId, "Категория расхода не найдена");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.CategoryId), "Категория расхода не найдена");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 
@@ -84,8 +90,7 @@ public class UpdateExpenseEndpoint(AppDbContext db, ICurrentUserAccessor current
         await db.SaveChangesAsync(ct);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "expenses",
-            Action = "expense_updated",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ExpenseUpdated,
             EntityType = "expense",
             EntityId = expense.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

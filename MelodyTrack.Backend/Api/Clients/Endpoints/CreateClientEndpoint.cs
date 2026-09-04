@@ -1,5 +1,5 @@
-using FastEndpoints;
-using FluentValidation.Results;
+using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -12,19 +12,24 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 
-public class
-    CreateClientEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService, IRequestReplayService requestReplayService, TimeProvider timeProvider)
-    : Ep.Req<CreateClientRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>>
+[ApiEndpoint(ApiMethod.Post, "/clients")]
+public sealed class CreateClientEndpoint
 {
     private const string ReplayEndpoint = "clients:create";
 
-    public override void Configure()
-    {
-        Post("/clients");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> ExecuteAsync(
-        CreateClientRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>, Conflict<ApiProblemDetails>>> HandleAsync(
+        CreateClientRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        TimeProvider timeProvider,
+        ILogger<CreateClientEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -37,7 +42,7 @@ public class
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -60,16 +65,16 @@ public class
             source = await db.ClientSources.FirstOrDefaultAsync(e => e.Id == req.SourceId.Value, ct);
             if (source is null)
             {
-                AddError(e => e.SourceId, "Источник не найден");
-                return TypedResults.NotFound(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status404NotFound));
+                validationErrors.Add(nameof(req.SourceId), "Источник не найден");
+                return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
             }
         }
 
-        var duplicateContactField = await FindDuplicateContactFieldAsync(req, ct);
+        var duplicateContactField = await FindDuplicateContactFieldAsync(db, req, ct);
         if (duplicateContactField is not null)
         {
-            ValidationFailures.Add(new ValidationFailure(duplicateContactField, "Этот контакт уже указан у другого клиента."));
-            return TypedResults.Conflict(new ApiProblemDetails(ValidationFailures, HttpContext, StatusCodes.Status409Conflict));
+            validationErrors.Add(duplicateContactField, "Этот контакт уже указан у другого клиента.");
+            return TypedResults.Conflict(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict));
         }
 
         var client = new Client
@@ -94,7 +99,7 @@ public class
         await db.Clients.AddAsync(client, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "Created new client: {FirstName} {LastName} (ID: {ClientId}); contact presence email={HasEmail} phone={HasPhone} telegram={HasTelegram} vk={HasVk}",
             client.FirstName,
             client.LastName,
@@ -106,8 +111,7 @@ public class
         );
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientCreated,
             EntityType = "client",
             EntityId = client.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(
@@ -138,7 +142,7 @@ public class
         });
     }
 
-    private async Task<string?> FindDuplicateContactFieldAsync(CreateClientRequest request, CancellationToken ct)
+    private static async Task<string?> FindDuplicateContactFieldAsync(AppDbContext db, CreateClientRequest request, CancellationToken ct)
     {
         if (new[] { request.Email, request.Phone, request.Telegram, request.Vk }.All(string.IsNullOrWhiteSpace))
         {

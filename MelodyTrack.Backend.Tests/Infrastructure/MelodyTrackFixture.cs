@@ -1,54 +1,76 @@
 using System.Data;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Data;
+using MelodyTrack.Data.Configuration;
+using MelodyTrack.Data.Initialization;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Testcontainers.PostgreSql;
 
 namespace MelodyTrack.Backend.Tests.Infrastructure;
 
-public sealed class MelodyTrackFixture : AppFixture<Program>
+public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncLifetime
 {
     private const string PostgreSqlImage = "postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50";
     private const string ThrottleBypassHeaderName = "X-Forwarded-For";
     private static readonly SemaphoreSlim ResetLock = new(1, 1);
     private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
 
-    private string _connectionString = null!;
     private PostgreSqlContainer? _dbContainer;
+    public HttpClient Client { get; private set; } = null!;
+    public DatabaseCommandCounter DatabaseCommands { get; } = new();
 
-    protected override async ValueTask PreSetupAsync()
+    public async ValueTask InitializeAsync()
     {
         Environment.SetEnvironmentVariable("ASPNETCORE_ENVIRONMENT", "Test");
 
         var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
-        var quartzScriptPath = new FileInfo(Path.Combine(projectDir, "MelodyTrack.Backend", "quartz.sql")).FullName;
 
         _dbContainer = new PostgreSqlBuilder(PostgreSqlImage)
             .WithDatabase("testdb")
-            .WithResourceMapping(quartzScriptPath, "/docker-entrypoint-initdb.d")
             .Build();
 
         await _dbContainer.StartAsync();
 
-        _connectionString = _dbContainer.GetConnectionString();
-        Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", _connectionString);
-        Environment.SetEnvironmentVariable("MELODY_TRACK_JWT_SIGNING_KEY", "super-secret-jwt-key-for-testing-only-1234567890abcdef");
+        var connectionString = _dbContainer.GetConnectionString();
+        Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", connectionString);
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__JwtSigningPrivateKey", TestJwtPrivateKey);
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__PasswordPepper", "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__PortalPinPepper", "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__RefreshTokenHashKey", "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=");
+        Environment.SetEnvironmentVariable("AuthenticationSecrets__CsrfSigningKey", "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=");
         Environment.SetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY", "super-secret-pii-key-for-testing-only-1234567890abcdef");
         Environment.SetEnvironmentVariable("MELODY_TRACK_APP_DOMAIN", "http://localhost:5000");
-        Environment.SetEnvironmentVariable("MELODY_TRACK_PUBLIC_API_BASE_URL", "http://localhost:5000");
+        await RunInitializationAsync(InitializationMode.Test, projectDir, connectionString, TestContext.Current.CancellationToken);
+        Client = CreateClient();
+        SetThrottleIdentity();
     }
 
-    protected override ValueTask SetupAsync()
+    protected override void ConfigureWebHost(IWebHostBuilder app)
     {
-        Client = CreateClient(new ClientOptions
+        app.UseEnvironment("Test");
+        app.ConfigureServices(services => services.AddSingleton<IInterceptor>(DatabaseCommands));
+        app.ConfigureAppConfiguration((_, configuration) =>
         {
-            ThrottleBypassHeaderName = ThrottleBypassHeaderName
+            configuration.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Http:PathBase"] = string.Empty,
+                ["GodMode:StateDirectory"] = Path.Combine(Path.GetTempPath(), "melodytrack-god-mode-tests"),
+                ["GodMode:PublicBaseUrl"] = "https://god-mode.test",
+                ["GodMode:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ=",
+                ["WebPush:Enabled"] = "true",
+                ["WebPush:Subject"] = "mailto:tests@melodytrack.invalid",
+                ["WebPush:PublicKey"] = "test-public-vapid-key",
+                ["WebPush:PrivateKey"] = "test-private-vapid-key"
+            });
         });
-
-        return ValueTask.CompletedTask;
     }
 
     public async Task ResetStateAsync(CancellationToken cancellationToken)
@@ -62,7 +84,9 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
 
             await ResetDatabaseAsync(db, cancellationToken);
             await SeedBaselineAsync(db, cancellationToken);
-            Client.DefaultRequestHeaders.Clear();
+            Client.Dispose();
+            Client = CreateClient();
+            SetThrottleIdentity();
         }
         finally
         {
@@ -70,9 +94,23 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
         }
     }
 
-    protected override async ValueTask TearDownAsync()
+    private void SetThrottleIdentity()
     {
-        await base.TearDownAsync();
+        Client.DefaultRequestHeaders.TryAddWithoutValidation(ThrottleBypassHeaderName, $"test-{Ulid.NewUlid()}");
+    }
+
+    public async Task RunInitializationAsync(InitializationMode mode, CancellationToken cancellationToken)
+    {
+        var projectDir = new DirectoryInfo(AppContext.BaseDirectory).Parent!.Parent!.Parent!.Parent!.FullName;
+        var connectionString = _dbContainer?.GetConnectionString()
+            ?? throw new InvalidOperationException("The test database connection string is unavailable.");
+        await RunInitializationAsync(mode, projectDir, connectionString, cancellationToken);
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        Client?.Dispose();
+        await base.DisposeAsync();
 
         if (_dbContainer is not null)
         {
@@ -154,4 +192,45 @@ public sealed class MelodyTrackFixture : AppFixture<Program>
 
         await db.SaveChangesAsync(cancellationToken);
     }
+
+    private async Task RunInitializationAsync(
+        InitializationMode mode,
+        string projectDir,
+        string connectionString,
+        CancellationToken cancellationToken)
+    {
+        var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
+        {
+            ApplicationName = "MelodyTrack.Init.Tests",
+            ContentRootPath = Path.Combine(projectDir, "MelodyTrack.Init"),
+            EnvironmentName = "Test"
+        });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            [$"{DatabaseOptions.SectionName}:ConnectionString"] = connectionString,
+            ["AuthenticationSecrets:JwtSigningPrivateKey"] = TestJwtPrivateKey,
+            ["AuthenticationSecrets:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+            ["AuthenticationSecrets:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+            ["AuthenticationSecrets:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+            ["AuthenticationSecrets:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+            ["Jwt:Issuer"] = "MelodyTrack",
+            ["Jwt:Audience"] = "MelodyTrack.Web",
+            ["PersonalData:CurrentKeyVersion"] = "v1",
+            ["PersonalData:CurrentKey"] = "super-secret-pii-key-for-testing-only-1234567890abcdef",
+            ["PublicUrl:BaseUrl"] = "http://localhost:5000",
+            ["Initialization:QuartzSqlPath"] = Path.Combine(projectDir, "MelodyTrack.Init", "quartz.sql")
+        });
+        builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
+        builder.Services.AddPublicUrlOptions(builder.Configuration);
+        builder.Services.AddMelodyTrackData(builder.Configuration);
+        builder.Services.AddMelodyTrackInitialization(builder.Configuration);
+
+        using var host = builder.Build();
+        await using var scope = host.Services.CreateAsyncScope();
+        var initializer = scope.ServiceProvider.GetRequiredService<DatabaseInitializationService>();
+        await initializer.RunAsync(mode, cancellationToken);
+    }
+
+    private const string TestJwtPrivateKey = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA";
 }

@@ -1,24 +1,30 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 
-public class SkipOnboardingEndpoint(OnboardingStateService stateService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.NoReq.Res<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/onboarding/skip")]
+public sealed class SkipOnboardingEndpoint
 {
-    public override void Configure()
-    {
-        Post("/onboarding/skip");
-    }
 
-    public override async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult>> ExecuteAsync(CancellationToken ct)
+    public static async Task<Results<Ok<OnboardingStateResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        OnboardingStateService stateService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var user = await currentUserAccessor.GetAsync(ct);
         if (user is null)
         {
             return TypedResults.Unauthorized();
+        }
+
+        if (user.Role.RoleName.IsClient())
+        {
+            return TypedResults.Forbid();
         }
 
         var state = await stateService.SkipAsync(user, ct);

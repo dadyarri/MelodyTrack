@@ -1,0 +1,4 @@
+interface:
+  display_name: "MelodyTrack Integration Tests"
+  short_description: "Work with the project integration test harness"
+  default_prompt: "Use $melodytrack-integration-tests to add or troubleshoot focused MelodyTrack backend integration tests."

@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.ExpenseCategories.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,15 +11,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ExpenseCategories.Endpoints;
 
-public class GetExpenseCategoriesEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IRecordActivityService recordActivityService)
-    : Ep.NoReq.Res<Results<Ok<GetExpenseCategoriesResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/expense-categories")]
+public sealed class GetExpenseCategoriesEndpoint
 {
-    public override void Configure()
-    {
-        Get("/expense-categories");
-    }
 
-    public override async Task<Results<Ok<GetExpenseCategoriesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Ok<GetExpenseCategoriesResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IRecordActivityService recordActivityService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)

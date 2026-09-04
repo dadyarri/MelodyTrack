@@ -1,4 +1,4 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.ClientSources.Requests;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Data;
@@ -11,22 +11,21 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.ClientSources.Endpoints;
 
-public class CreateClientSourceEndpoint(
-    AppDbContext db, ICurrentUserAccessor currentUserAccessor,
-    IAuditLogService auditLogService,
-    IRequestReplayService requestReplayService)
-    : Ep.Req<CreateClientSourceRequest>.Res<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Post, "/client-sources")]
+public sealed class CreateClientSourceEndpoint
 {
     private const string ReplayEndpoint = "client-sources:create";
 
-    public override void Configure()
-    {
-        Post("/client-sources");
-    }
-
-    public override async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<Created<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
         CreateClientSourceRequest req,
-        CancellationToken ct)
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        IRequestReplayService requestReplayService,
+        HttpContext httpContext,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -39,7 +38,7 @@ public class CreateClientSourceEndpoint(
             return TypedResults.Forbid();
         }
 
-        var replayKey = requestReplayService.GetReplayKey(HttpContext.Request.Headers);
+        var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
         await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
@@ -67,8 +66,7 @@ public class CreateClientSourceEndpoint(
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "clients",
-            Action = "client_source_created",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.ClientSourceCreated,
             EntityType = "client_source",
             EntityId = source.Id.ToString(),
             Details = AuditDetailsFormatter.DescribeContext("Источник клиента", source.Name)

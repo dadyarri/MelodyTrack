@@ -1,5 +1,7 @@
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using System.Text;
-using FastEndpoints;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
@@ -9,40 +11,42 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
+using MelodyTrack.Backend.ErrorHandling;
 using Microsoft.EntityFrameworkCore;
 using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;
 
-public class GetCalendarSubscriptionEndpoint(
-    AppDbContext db,
-    IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
-    IRecurringTaskService recurringTaskService,
-    TimeProvider timeProvider)
-    : Ep.Req<CalendarSubscriptionRequest>.Res<Results<FileContentHttpResult, NotFound>>
+[ApiEndpoint(ApiMethod.Get, "/calendar-subscriptions/{token}.ics")]
+public sealed class GetCalendarSubscriptionEndpoint
 {
-    private const int ClientMaterializationHorizonDays = 14;
-    private const int UserMaterializationHorizonDays = 31;
+    // The upper boundary is inclusive. Past non-cancelled appointments remain
+    // in the feed; only future events are limited to this rolling window.
+    private const int SubscriptionWindowDays = 14;
 
-    public override void Configure()
-    {
-        Get("/calendar-subscriptions/{token}.ics");
-        AllowAnonymous();
-        Description(builder => builder.Produces(StatusCodes.Status200OK, contentType: "text/calendar"));
-    }
-
-    public override async Task<Results<FileContentHttpResult, NotFound>> ExecuteAsync(CalendarSubscriptionRequest req, CancellationToken ct)
+    [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.CalendarSubscription)]
+    public static async Task<Results<FileContentHttpResult, NotFound>> HandleAsync(
+        [AsParameters] CalendarSubscriptionRequest req,
+        AppDbContext db,
+        IRecurringAppointmentMaterializer recurringAppointmentMaterializer,
+        IRecurringTaskService recurringTaskService,
+        TimeProvider timeProvider,
+        CancellationToken ct
+    )
     {
         var subscription = await db.CalendarSubscriptions.AsNoTracking().FirstOrDefaultAsync(e => e.Token == req.Token && e.RevokedAtUtc == null, ct);
         if (subscription is null) return TypedResults.NotFound();
 
         var now = timeProvider.GetUtcNow().UtcDateTime;
+        var windowEndUtc = now.AddDays(SubscriptionWindowDays);
         if (subscription.UserId is { } subscribedUserId)
         {
             await recurringAppointmentMaterializer.EnsureProviderAppointmentsGeneratedAsync(
                 subscribedUserId,
                 now,
-                now.AddDays(UserMaterializationHorizonDays),
+                windowEndUtc,
                 ct);
         }
         else
@@ -50,21 +54,29 @@ public class GetCalendarSubscriptionEndpoint(
             await recurringAppointmentMaterializer.EnsureClientAppointmentsGeneratedAsync(
                 subscription.ClientId!.Value,
                 now,
-                now.AddDays(ClientMaterializationHorizonDays),
+                windowEndUtc,
                 ct);
         }
 
         var events = subscription.UserId is { } userId
-            ? await GetUserEventsAsync(userId, ct)
-            : await GetClientEventsAsync(subscription.ClientId!.Value, ct);
+            ? await GetUserEventsAsync(db, recurringTaskService, userId, now, windowEndUtc, ct)
+            : await GetClientEventsAsync(db, subscription.ClientId!.Value, windowEndUtc, ct);
         var calendar = BuildCalendar(events, now);
         return TypedResults.File(Encoding.UTF8.GetBytes(calendar), "text/calendar; charset=utf-8", "melodytrack.ics");
     }
 
-    private async Task<List<CalendarEvent>> GetUserEventsAsync(Ulid userId, CancellationToken ct)
+    private static async Task<List<CalendarEvent>> GetUserEventsAsync(
+        AppDbContext db,
+        IRecurringTaskService recurringTaskService,
+        Ulid userId,
+        DateTime windowStartUtc,
+        DateTime windowEndUtc,
+        CancellationToken ct)
     {
+        var taskWindowStartUtc = windowStartUtc.Date;
         var appointments = await db.Appointments.AsNoTracking()
-            .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
+            .Where(e => e.Provider != null && e.Provider.Id == userId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled
+                && e.StartDate <= windowEndUtc)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, $"{e.Service.Name} ({e.Client.LastName} {e.Client.FirstName})", null))
             .ToListAsync(ct);
         var tasks = await recurringTaskService.GetTasksAsync("UTC", null, RecurringTaskListStatus.Open, ct);
@@ -79,14 +91,20 @@ public class GetCalendarSubscriptionEndpoint(
                     startAtUtc.AddMinutes(15),
                     $"{task.Title}: {task.RelatedPersonDisplayName}",
                     null);
-            }));
+            })
+            .Where(task => task.StartAtUtc >= taskWindowStartUtc && task.StartAtUtc <= windowEndUtc));
         return appointments;
     }
 
-    private async Task<List<CalendarEvent>> GetClientEventsAsync(Ulid clientId, CancellationToken ct)
+    private static async Task<List<CalendarEvent>> GetClientEventsAsync(
+        AppDbContext db,
+        Ulid clientId,
+        DateTime windowEndUtc,
+        CancellationToken ct)
     {
         return await db.Appointments.AsNoTracking()
-            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled)
+            .Where(e => e.Client.Id == clientId && !e.IsDeleted && e.Status != AppointmentStatus.Cancelled
+                && e.StartDate <= windowEndUtc)
             .OrderBy(e => e.StartDate)
             .Select(e => new CalendarEvent(e.Id.ToString(), e.StartDate, e.EndDate, e.Service.PublicName ?? e.Service.Name, null))
             .ToListAsync(ct);
@@ -125,5 +143,6 @@ public class GetCalendarSubscriptionEndpoint(
 
 public class CalendarSubscriptionRequest
 {
+    [FromRoute]
     public required string Token { get; set; }
 }

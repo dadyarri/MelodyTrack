@@ -1,44 +1,80 @@
 using System.IO.Compression;
-using FastEndpoints;
-using FastEndpoints.Security;
-using FastEndpoints.Swagger;
+using System.Reflection;
 using MelodyTrack.Backend;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
-using MelodyTrack.Backend.Api.Auth.PreProcessors;
+using MelodyTrack.Backend.Api.ClientPortal;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Onboarding;
 using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Schedule;
 using MelodyTrack.Backend.Api.Services.Responses;
-using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Enums;
-using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.ErrorHandling;
+using MelodyTrack.Backend.Hosting;
+using MelodyTrack.Backend.GodMode;
 using MelodyTrack.Backend.Jobs;
+using MelodyTrack.Backend.Notifications;
+using MelodyTrack.Backend.OpenApi;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Backend.Validation;
+using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data;
+using MelodyTrack.Data.Configuration;
 using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.ResponseCompression;
-using Microsoft.EntityFrameworkCore;
-using NJsonSchema;
-using NSwag;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging.Console;
+using Microsoft.Extensions.Options;
+using Microsoft.IdentityModel.Tokens;
 using Quartz;
 using Quartz.AspNetCore;
 using Serilog;
 using Serilog.Core;
 using Serilog.Events;
-using Serilog.Templates.Themes;
-using SerilogTracing;
-using SerilogTracing.Expressions;
+using Serilog.Extensions.Logging;
+using Serilog.Sinks.SystemConsole.Themes;
+using Scalar.AspNetCore;
 using UaDetector;
+using HttpOptions = MelodyTrack.Backend.Configuration.HttpOptions;
 
 var logLevelSwitch = new LoggingLevelSwitch();
+var loggerProviders = new LoggerProviderCollection();
 
-var startupConfiguration = StartupConfigurationValidator.LoadAndValidate(Directory.GetCurrentDirectory());
-var releaseChangelog = ReleaseChangelog.Load(Path.Combine(Directory.GetCurrentDirectory(), "changelog.json"));
-var environment = startupConfiguration.Environment;
+var builder = WebApplication.CreateBuilder(args);
+builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
+var isOpenApiGeneration = string.Equals(
+    Assembly.GetEntryAssembly()?.GetName().Name,
+    "GetDocument.Insider",
+    StringComparison.Ordinal);
+if (isOpenApiGeneration)
+{
+    builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+    {
+        [$"{AuthenticationSecretsOptions.SectionName}:JwtSigningPrivateKey"] = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA",
+        [$"{AuthenticationSecretsOptions.SectionName}:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
+        [$"{AuthenticationSecretsOptions.SectionName}:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
+        [$"{AuthenticationSecretsOptions.SectionName}:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
+        [$"{AuthenticationSecretsOptions.SectionName}:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
+        [$"{JwtOptions.SectionName}:Issuer"] = "MelodyTrack",
+        [$"{JwtOptions.SectionName}:Audience"] = "MelodyTrack.Web",
+        [$"{PersonalDataOptions.SectionName}:CurrentKey"] = "openapi-generation-key-not-used-at-runtime-1234567890",
+        [$"{DatabaseOptions.SectionName}:ConnectionString"] = "Host=localhost;Database=openapi;Username=openapi;Password=openapi",
+        [$"{PublicUrlOptions.SectionName}:BaseUrl"] = "https://localhost",
+        [$"{GodModeOptions.SectionName}:PublicBaseUrl"] = "https://localhost:8081",
+        [$"{GodModeOptions.SectionName}:SessionSigningKey"] = "base64:VotRvCQQSz26pgRuUrZEknXSxlUpkTASdZSpNAi+aBQ="
+    });
+}
+builder.AddServiceDefaults("melodytrack-backend");
+// Serilog owns console rendering; the remaining Microsoft providers receive structured events for export.
+builder.Services.RemoveAll<ConsoleLoggerProvider>();
+var releaseChangelog = ReleaseChangelog.Load(FindReleaseDirectory());
+var environment = builder.Environment.EnvironmentName;
 logLevelSwitch.MinimumLevel = environment == "Development"
     ? LogEventLevel.Debug
     : LogEventLevel.Information;
@@ -47,12 +83,11 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
     .MinimumLevel.ControlledBy(logLevelSwitch)
-    .WriteTo.Console(Formatters.CreateConsoleTextFormatter(TemplateTheme.Code))
+    .WriteTo.Providers(loggerProviders)
+    .WriteTo.Console(
+        outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {Message:lj}{NewLine}{Exception}",
+        theme: AnsiConsoleTheme.Code)
     .CreateLogger();
-
-using var listener = new ActivityListenerConfiguration()
-    .Instrument.AspNetCoreRequests()
-    .TraceToSharedLogger();
 
 Log.Information(
     "{StartupBanner:l}",
@@ -60,29 +95,104 @@ Log.Information(
 
 try
 {
-    var builder = WebApplication.CreateBuilder(args);
-    var appDomain = startupConfiguration.AppDomain;
+    var authenticationSecrets = builder.Configuration
+        .GetRequiredSection(AuthenticationSecretsOptions.SectionName)
+        .Get<AuthenticationSecretsOptions>()
+        ?? throw new InvalidOperationException("Authentication secrets are not configured.");
+    var jwtOptions = builder.Configuration
+        .GetRequiredSection(JwtOptions.SectionName)
+        .Get<JwtOptions>()
+        ?? throw new InvalidOperationException("JWT options are not configured.");
+    var personalDataKey = builder.Configuration[$"{PersonalDataOptions.SectionName}:CurrentKey"] ?? string.Empty;
+    UserUtils.ConfigureAuthentication(authenticationSecrets, jwtOptions, personalDataKey);
 
-    builder.Services.AddAuthenticationJwtBearer(opts =>
-    {
-        opts.SigningKey = startupConfiguration.JwtSigningKey;
-    });
+    builder.Services
+        .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+        .AddJwtBearer(options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
+            {
+                ValidateIssuer = true,
+                ValidIssuer = jwtOptions.Issuer,
+                ValidateAudience = true,
+                ValidAudience = jwtOptions.Audience,
+                ValidateIssuerSigningKey = true,
+                IssuerSigningKey = JwtKeyMaterial.CreateValidationKey(authenticationSecrets.JwtSigningPrivateKey),
+                ValidateLifetime = true,
+                RequireExpirationTime = true,
+                RequireSignedTokens = true,
+                ValidAlgorithms = [SecurityAlgorithms.EcdsaSha256],
+                ClockSkew = TimeSpan.FromSeconds(30)
+            };
+        });
 
-    builder.Services.AddAuthorization();
+    builder.Services.AddDatabaseAuthorization();
     builder.Services.AddHttpContextAccessor();
     builder.Services.AddApiRateLimiting();
-    builder.Services.AddSingleton(startupConfiguration);
     builder.Services.AddSingleton(releaseChangelog);
     builder.Services.AddSingleton(TimeProvider.System);
-    builder.Services.AddFastEndpoints(x => { x.SourceGeneratorDiscoveredTypes = DiscoveredTypes.All; });
-    builder.Services.AddSerilog();
+    builder.Services.AddAuthenticationSecretsOptions(builder.Configuration);
+    builder.Services.AddPublicUrlOptions(builder.Configuration);
+    builder.Services.AddTrustedReverseProxy(builder.Configuration);
+    builder.Services.AddOptions<HttpOptions>()
+        .Bind(builder.Configuration.GetSection(HttpOptions.SectionName))
+        .Validate(
+            options => string.IsNullOrEmpty(options.PathBase)
+                       || options.PathBase.StartsWith('/') && !options.PathBase.EndsWith('/'),
+            "Http:PathBase must be empty or start with '/' and must not end with '/'.")
+        .ValidateOnStart();
+    builder.Services.AddOptions<GodModeOptions>()
+        .Bind(builder.Configuration.GetSection(GodModeOptions.SectionName))
+        .ValidateDataAnnotations()
+        .Validate(
+            options => Uri.TryCreate(options.PublicBaseUrl, UriKind.Absolute, out var uri) && uri.Scheme == Uri.UriSchemeHttps,
+            "GodMode:PublicBaseUrl must be an absolute HTTPS URL.")
+        .ValidateOnStart();
+    builder.Services.AddOptions<WebPushOptions>()
+        .Bind(builder.Configuration.GetSection(WebPushOptions.SectionName))
+        .Validate(options =>
+                !options.Enabled ||
+                Uri.TryCreate(options.Subject, UriKind.Absolute, out _) &&
+                !string.IsNullOrWhiteSpace(options.PublicKey) &&
+                !string.IsNullOrWhiteSpace(options.PrivateKey),
+            "WebPush requires an absolute subject and a separate VAPID public/private key pair when enabled.")
+        .ValidateOnStart();
+    builder.Services.AddMelodyTrackData(builder.Configuration);
+    builder.Services.AddValidation();
+    builder.Services.AddProblemDetails(options =>
+    {
+        options.CustomizeProblemDetails = context =>
+        {
+            var statusCode = context.ProblemDetails.Status ?? context.HttpContext.Response.StatusCode;
+            context.ProblemDetails.Status = statusCode;
+            context.ProblemDetails.Type = ApiProblemTypes.ForStatus(statusCode);
+            context.ProblemDetails.Title = ApiErrorResponseFactory.GetTitle(statusCode);
+            context.ProblemDetails.Detail ??= ApiErrorResponseFactory.GetDefaultDetail(statusCode);
+            context.ProblemDetails.Instance = context.HttpContext.Request.Path;
+            context.ProblemDetails.Extensions["code"] = ApiProblemCodes.ForStatus(statusCode);
+            context.ProblemDetails.Extensions["traceId"] = ApiTraceContext.GetTraceId(context.HttpContext);
+            context.ProblemDetails.Extensions["errors"] = Array.Empty<ApiValidationError>();
+        };
+    });
+    builder.Services.AddOpenApi("v1", options =>
+    {
+        options.OpenApiVersion = Microsoft.OpenApi.OpenApiSpecVersion.OpenApi3_1;
+        options.CreateSchemaReferenceId = typeInfo =>
+            (Nullable.GetUnderlyingType(typeInfo.Type) ?? typeInfo.Type) == typeof(Ulid)
+            ? null
+            : Microsoft.AspNetCore.OpenApi.OpenApiOptions.CreateDefaultSchemaReferenceId(typeInfo);
+        options.AddDocumentTransformer<MelodyTrackOpenApiTransformer>();
+        options.AddOperationTransformer<MelodyTrackOpenApiTransformer>();
+        options.AddSchemaTransformer<MelodyTrackOpenApiTransformer>();
+    });
+    builder.Services.AddSerilog(Log.Logger, dispose: false, providers: loggerProviders);
     builder.Services.AddResponseCompression(options =>
     {
         options.EnableForHttps = true;
         options.Providers.Add<BrotliCompressionProvider>();
         options.Providers.Add<GzipCompressionProvider>();
         options.MimeTypes = ResponseCompressionDefaults.MimeTypes.Concat(
-            ["application/problem+json"]);
+            ["application/manifest+json", "application/problem+json", "application/wasm"]);
     });
     builder.Services.Configure<BrotliCompressionProviderOptions>(options =>
     {
@@ -92,67 +202,30 @@ try
     {
         options.Level = CompressionLevel.Fastest;
     });
-    builder.Services.SwaggerDocument(o =>
-    {
-        o.DocumentSettings = s =>
-        {
-            s.Title = "Melody Track API";
-            s.Version = "v2";
-            s.DocumentName = "v2";
-            s.PostProcess = document =>
-            {
-                ConfigureOpenApiContract(document);
-                foreach (var op in document.Operations)
-                {
-                    if (op.Operation.Security is not null && op.Operation.Security.Count > 0)
-                    {
-                        op.Operation.Parameters.Add(new OpenApiHeader
-                        {
-                            Name = "Authorization",
-                            Description = "Bearer token",
-                            IsRequired = true,
-                            Kind = OpenApiParameterKind.Header
-                        });
-                    }
-                }
-            };
-        };
-        o.ShortSchemaNames = true;
-    });
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("AllowFrontend", policy =>
-        {
-            policy.WithOrigins(appDomain)
-                .AllowAnyHeader()
-                .AllowAnyMethod()
-                .AllowCredentials();
-        });
-    });
-
     // Database configuration
 
-    var connectionString = startupConfiguration.DatabaseUrl;
-    builder.Services.AddSingleton<IPersonalDataProtector>(_ =>
-        new PersonalDataProtector(startupConfiguration.PiiMasterKeyVersion, startupConfiguration.PiiMasterKeys));
-    builder.Services.AddDbContext<AppDbContext>(opts => opts.UseNpgsql(connectionString)
-    );
+    var connectionString = builder.Configuration[$"{DatabaseOptions.SectionName}:ConnectionString"] ?? string.Empty;
     Log.Information("Using PostgreSQL database");
 
     // Custom services
     builder.Services.AddUaDetector();
-    builder.Services.AddScoped<ClientToClientWithBalanceDtoMapConfig>();
+    builder.Services.AddScoped<ActiveSessionValidator>();
+    builder.Services.AddScoped<ApiValidationErrorCollection>();
+    builder.Services.AddSingleton<ICommonPasswordService, CommonPasswordService>();
+    builder.Services.AddScoped<ClientWithBalanceDtoMapper>();
     builder.Services.AddScoped<ICurrentUserAccessor, CurrentUserAccessor>();
-    builder.Services.AddScoped<ServiceToServiceWithCurrentPriceDtoMapConfig>();
+    builder.Services.AddScoped<ServiceWithCurrentPriceDtoMapper>();
     builder.Services.AddScoped<IAppointmentDeletionService, AppointmentDeletionService>();
     builder.Services.AddScoped<IAuditLogService, AuditLogService>();
+    builder.Services.AddSingleton<GodModeAccessService>();
     builder.Services.AddScoped<RefreshSessionCookieService>();
+    builder.Services.AddSingleton<JwtTokenService>();
     builder.Services.AddScoped<SessionSecurityMonitor>();
     builder.Services.AddScoped<AppointmentUpdatePreparationService>();
     builder.Services.AddScoped<CourseProgressService>();
+    builder.Services.AddScoped<ClientPortalSessionService>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
     builder.Services.AddScoped<OnboardingStateService>();
-    builder.Services.AddScoped<IPersonalDataBackfillService, PersonalDataBackfillService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();
     builder.Services.AddScoped<IRequestReplayService, RequestReplayService>();
     builder.Services.AddScoped<IPersonalDashboardQueryService, PersonalDashboardQueryService>();
@@ -172,6 +245,18 @@ try
     builder.Services.AddSingleton<IRecurringTaskTemplateRenderer, RecurringTaskTemplateRenderer>();
     builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
+    builder.Services.AddScoped<IVacationRequestWorkflowService, VacationRequestWorkflowService>();
+    builder.Services.AddScoped<IVacationRequestQueryService, VacationRequestQueryService>();
+    builder.Services.AddScoped<IVacationRequestSubjectLock, VacationRequestSubjectLock>();
+    builder.Services.AddScoped<IWorkingHoursRequestWorkflowService, WorkingHoursRequestWorkflowService>();
+    builder.Services.AddScoped<IWorkingHoursRequestQueryService, WorkingHoursRequestQueryService>();
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddSingleton<NotificationTelemetry>();
+    builder.Services.AddSingleton<WebPush.WebPushClient>();
+    if (environment != "Test" && !isOpenApiGeneration)
+    {
+        builder.Services.AddHostedService<PushDeliveryWorker>();
+    }
 
     builder.Services.Configure<QuartzOptions>(opts =>
     {
@@ -198,7 +283,7 @@ try
             opts.WithCronSchedule("0 0 12 ? * 1");
         });
     });
-    if (environment != "Test")
+    if (environment != "Test" && !isOpenApiGeneration)
     {
         builder.Services.AddQuartzServer(q =>
         {
@@ -207,64 +292,18 @@ try
     }
 
     var app = builder.Build();
+    var httpOptions = app.Services.GetRequiredService<IOptions<HttpOptions>>().Value;
+    var godModeOptions = app.Services.GetRequiredService<IOptions<GodModeOptions>>().Value;
+    _ = MelodyTrack.Data.Security.AuthenticationSecretMaterial.DecodeSymmetricKey(
+        godModeOptions.SessionSigningKey,
+        "GodMode:SessionSigningKey");
 
-    app.UseFastEndpoints(x =>
-    {
-        x.Errors.UseProblemDetails(pdc =>
-            {
-                pdc.AllowDuplicateErrors = false;
-                pdc.IndicateErrorCode = true;
-                pdc.IndicateErrorSeverity = false;
-                pdc.TypeValue = ApiProblemTypes.Validation;
-                pdc.TitleValue = ApiErrorResponseFactory.GetTitle(StatusCodes.Status400BadRequest);
-                pdc.TitleTransformer = pd => ApiErrorResponseFactory.GetTitle(pd.Status);
-                pdc.ResponseBuilder = ApiErrorResponseFactory.CreateValidationProblemDetails;
-            }
-        );
-        x.Errors.ContentType = ApiMediaTypes.ProblemJson;
-        x.Errors.ProducesMetadataType = typeof(ApiProblemDetails);
-        x.Endpoints.ShortNames = true;
-        x.Endpoints.Configurator = ep =>
-        {
-            if (ep.AnonymousVerbs is null)
-            {
-                ep.PreProcessor<ActiveSessionPreProcessor>(Order.Before);
-            }
-        };
-    });
+    app.UseTrustedReverseProxy();
+    app.UseGodModeListenerIsolation(godModeOptions);
 
     app.UseSerilogRequestLogging();
     app.UseResponseCompression();
-    app.UseCors("AllowFrontend");
-    app.Use(async (context, next) =>
-    {
-        context.Response.OnStarting(() =>
-        {
-            var headers = context.Response.Headers;
-            headers.TryAdd("X-Content-Type-Options", "nosniff");
-            headers.TryAdd("X-Frame-Options", "DENY");
-            headers.TryAdd("Referrer-Policy", "no-referrer");
-            headers.TryAdd("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-            headers.TryAdd("X-Trace-Id", context.TraceIdentifier);
-
-            if (context.Response.StatusCode >= StatusCodes.Status400BadRequest
-                && context.Response.ContentType?.StartsWith("application/json", StringComparison.OrdinalIgnoreCase) == true)
-            {
-                context.Response.ContentType = ApiMediaTypes.ProblemJson;
-            }
-
-            if (ShouldDisableCaching(context.Request.Path) || headers.ContainsKey("Content-Disposition"))
-            {
-                headers["Cache-Control"] = "no-store, no-cache, max-age=0";
-                headers["Pragma"] = "no-cache";
-                headers["Expires"] = "0";
-            }
-
-            return Task.CompletedTask;
-        });
-
-        await next();
-    });
+    app.UseUnifiedRuntimeHeaders(httpOptions.PathBase);
     app.UseExceptionHandler(exceptionHandlerApp =>
     {
         exceptionHandlerApp.Run(async context =>
@@ -285,24 +324,16 @@ try
                 return;
             }
 
-            if (exception is not null)
+            if (exception is not null and not BadHttpRequestException)
             {
                 Log.Error(exception, "Unhandled exception while processing {Method} {Path}", context.Request.Method, context.Request.Path);
             }
 
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-            context.Response.ContentType = "application/problem+json";
-
-            var detail = environment is "Development" or "Test"
-                ? exception?.Message
-                : null;
-
-            var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
-                context,
-                StatusCodes.Status500InternalServerError,
-                detail);
-
-            await problemDetails.ExecuteAsync(context);
+            context.Response.StatusCode = exception is BadHttpRequestException badRequest
+                ? badRequest.StatusCode
+                : StatusCodes.Status500InternalServerError;
+            await context.RequestServices.GetRequiredService<IProblemDetailsService>().WriteAsync(
+                new ProblemDetailsContext { HttpContext = context });
         });
     });
     app.Use(async (context, next) =>
@@ -322,98 +353,26 @@ try
             response.Headers.WWWAuthenticate = "Bearer";
         }
 
-        var problemDetails = ApiErrorResponseFactory.CreateProblemDetails(
-            context,
-            response.StatusCode);
-
-        await problemDetails.ExecuteAsync(context);
+        await context.RequestServices.GetRequiredService<IProblemDetailsService>().WriteAsync(
+            new ProblemDetailsContext { HttpContext = context });
     });
+    app.UseSpaStaticFiles();
     app.UseRouting();
     app.UseAuthentication();
     app.UseAuthorization();
     app.UseRateLimiter();
-    app.UseSwaggerGen();
-
+    app.MapDefaultEndpoints();
+    if (app.Environment.IsDevelopment())
     {
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var publicUrlBuilder = scope.ServiceProvider.GetRequiredService<IPublicUrlBuilder>();
-        var nowUtc = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
-
-        await db.Database.MigrateAsync();
-        var personalDataBackfillService = scope.ServiceProvider.GetRequiredService<IPersonalDataBackfillService>();
-        await personalDataBackfillService.BackfillAsync(CancellationToken.None);
-
-        if (environment != "Test")
-        {
-            var sql = await File.ReadAllTextAsync(startupConfiguration.QuartzSqlPath);
-            await db.Database.ExecuteSqlRawAsync(sql);
-        }
-
-        await StartupSeedDataValidator.ValidateAsync(db);
-
-        var superuserRole = await db.Roles.FirstOrDefaultAsync(e => e.RoleName == UserRoles.Superuser);
-
-        var hasSuperuser = await db.Users
-            .AsNoTracking()
-            .Include(e => e.Role)
-            .AnyAsync(e => e.Role == superuserRole!);
-
-        var inviteCode = await db.InviteCodes
-            .AsNoTracking()
-            .Include(e => e.Role)
-            .FirstOrDefaultAsync(e => e.Role == superuserRole && !e.WasUsed && e.ValidUntil >= nowUtc);
-
-        if (!hasSuperuser)
-        {
-            InviteCode bootstrapInvite;
-            if (inviteCode is null)
-            {
-                bootstrapInvite = new InviteCode
-                {
-                    Id = Ulid.NewUlid(),
-                    Code = Ulid.NewUlid(),
-                    Role = superuserRole!,
-                    ValidUntil = nowUtc.AddDays(2)
-                };
-                await db.InviteCodes.AddAsync(bootstrapInvite);
-                await db.SaveChangesAsync();
-            }
-            else
-            {
-                bootstrapInvite = inviteCode;
-            }
-
-            await db.AuditLogs.AddAsync(new AuditLog
-            {
-                Id = Ulid.NewUlid(),
-                CreatedAtUtc = nowUtc,
-                Category = "security",
-                Action = "superuser_bootstrap_invite_available",
-                EntityType = "invite",
-                EntityId = bootstrapInvite.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Приглашение", UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code)),
-                    AuditDetailsFormatter.DescribeContext("Действует до", bootstrapInvite.ValidUntil))
-            });
-            await db.SaveChangesAsync();
-
-            var inviteRef = UserUtils.DescribeInviteCodeForLogs(bootstrapInvite.Code);
-            if (startupConfiguration.LogBootstrapSecrets)
-            {
-                var url = publicUrlBuilder.GetInviteUrl(bootstrapInvite.Code);
-                Log.Warning("Superuser was not created yet. Bootstrap invite {InviteRef} can be used at {Link}", inviteRef, url);
-            }
-            else
-            {
-                Log.Warning(
-                    "Superuser was not created yet. Bootstrap invite {InviteRef} exists until {ValidUntilUtc:O}. Full link logging is disabled; enable {EnvironmentVariable}=true only for controlled recovery.",
-                    inviteRef,
-                    bootstrapInvite.ValidUntil,
-                    "MELODY_TRACK_LOG_BOOTSTRAP_SECRETS");
-            }
-        }
+        app.MapOpenApi("/openapi/{documentName}.json").AllowAnonymous();
+        app.MapScalarApiReference().AllowAnonymous();
     }
+    var apiEndpoints = app.MapGroup(httpOptions.PathBase);
+    apiEndpoints.RequireAuthorization(AuthorizationPolicies.ApiAccess);
+    apiEndpoints.AddEndpointFilter<NativeValidationEndpointFilter>();
+    apiEndpoints.MapGeneratedApiEndpoints();
+    app.MapGodModeEndpoints();
+    app.MapSpaFallback();
 
     app.Run();
     return 0;
@@ -433,196 +392,12 @@ finally
     await Log.CloseAndFlushAsync();
 }
 
-static bool ShouldDisableCaching(PathString path)
+static string FindReleaseDirectory()
 {
-    if (path.StartsWithSegments("/auth"))
-    {
-        return true;
-    }
-
-    return path.StartsWithSegments("/users", out var remainingPath)
-           && remainingPath.Value?.EndsWith("/password-reset-links", StringComparison.OrdinalIgnoreCase) == true;
+    var workingDirectoryPath = Path.Combine(Directory.GetCurrentDirectory(), "changelog", "releases");
+    return Directory.Exists(workingDirectoryPath)
+        ? workingDirectoryPath
+        : Path.Combine(AppContext.BaseDirectory, "changelog", "releases");
 }
-
-static void ConfigureOpenApiContract(OpenApiDocument document)
-{
-    if (!document.Components.Schemas.TryGetValue(nameof(ApiProblemDetails), out var problemSchema))
-    {
-        throw new InvalidOperationException($"OpenAPI generation did not register {nameof(ApiProblemDetails)}.");
-    }
-
-    foreach (var description in document.Operations)
-    {
-        var operation = description.Operation;
-        if (string.IsNullOrWhiteSpace(operation.OperationId))
-        {
-            operation.OperationId = CreateOperationId(description.Method, description.Path);
-        }
-
-        EnsureProblemResponse(operation, problemSchema, StatusCodes.Status405MethodNotAllowed);
-        if (operation.Security is { Count: > 0 })
-        {
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status401Unauthorized);
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status403Forbidden);
-        }
-        if (operation.RequestBody is not null)
-        {
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status400BadRequest);
-            EnsureProblemResponse(operation, problemSchema, StatusCodes.Status415UnsupportedMediaType);
-        }
-
-        foreach (var responseEntry in operation.Responses.ToArray())
-        {
-            if (!int.TryParse(responseEntry.Key, out var statusCode) || statusCode < StatusCodes.Status400BadRequest)
-            {
-                AddTraceHeader(responseEntry.Value);
-                continue;
-            }
-
-            ConfigureProblemResponse(responseEntry.Value, problemSchema, statusCode);
-        }
-
-        if (operation.Responses.TryGetValue(StatusCodes.Status201Created.ToString(), out var createdResponse))
-        {
-            createdResponse.Headers["Location"] = new OpenApiHeader
-            {
-                Description = "URI of the created resource"
-            };
-
-            if (description.Method.Equals("post", StringComparison.OrdinalIgnoreCase)
-                && SupportsIdempotency(description.Path)
-                && operation.Parameters.All(parameter => !parameter.Name.Equals("Idempotency-Key", StringComparison.OrdinalIgnoreCase)))
-            {
-                operation.Parameters.Add(new OpenApiHeader
-                {
-                    Name = "Idempotency-Key",
-                    Description = "Optional caller-chosen key. Reusing it with the same payload replays the completed creation; a different payload returns 409.",
-                    IsRequired = false,
-                    Kind = OpenApiParameterKind.Header
-                });
-            }
-        }
-
-        if (GetDownloadMediaType(description.Path) is { } downloadMediaType)
-        {
-            if (!operation.Responses.TryGetValue(StatusCodes.Status200OK.ToString(), out var downloadResponse))
-            {
-                downloadResponse = new OpenApiResponse { Description = "Download" };
-                operation.Responses[StatusCodes.Status200OK.ToString()] = downloadResponse;
-            }
-            downloadResponse.Content.Clear();
-            downloadResponse.Content[downloadMediaType] = new OpenApiMediaType
-            {
-                Schema = new JsonSchema
-                {
-                    Type = JsonObjectType.String,
-                    Format = "binary"
-                }
-            };
-            AddTraceHeader(downloadResponse);
-        }
-
-        foreach (var successResponseEntry in operation.Responses.Where(entry => int.TryParse(entry.Key, out var code) && code is >= 200 and < 300))
-        {
-            var response = successResponseEntry.Value;
-            if (response.Content.Keys.Any(mediaType => mediaType is not "application/json" and not ApiMediaTypes.ProblemJson))
-            {
-                response.Headers["Content-Disposition"] = new OpenApiHeader
-                {
-                    Description = "Attachment filename using standard filename encoding"
-                };
-                response.Headers["Cache-Control"] = new OpenApiHeader
-                {
-                    Description = "Download caching policy; generated and private downloads use no-store"
-                };
-            }
-        }
-
-        if (!operation.Responses.TryGetValue(StatusCodes.Status500InternalServerError.ToString(), out var serverErrorResponse))
-        {
-            serverErrorResponse = new OpenApiResponse
-            {
-                Description = ApiErrorResponseFactory.GetTitle(StatusCodes.Status500InternalServerError)
-            };
-            operation.Responses[StatusCodes.Status500InternalServerError.ToString()] = serverErrorResponse;
-        }
-        ConfigureProblemResponse(serverErrorResponse, problemSchema, StatusCodes.Status500InternalServerError);
-    }
-}
-
-static void EnsureProblemResponse(OpenApiOperation operation, JsonSchema problemSchema, int statusCode)
-{
-    var responseKey = statusCode.ToString();
-    if (!operation.Responses.TryGetValue(responseKey, out var response))
-    {
-        response = new OpenApiResponse();
-        operation.Responses[responseKey] = response;
-    }
-    ConfigureProblemResponse(response, problemSchema, statusCode);
-}
-
-static void ConfigureProblemResponse(OpenApiResponse response, JsonSchema problemSchema, int statusCode)
-{
-    response.Description = ApiErrorResponseFactory.GetTitle(statusCode);
-    response.Content.Clear();
-    response.Content[ApiMediaTypes.ProblemJson] = new OpenApiMediaType
-    {
-        Schema = new JsonSchema { Reference = problemSchema }
-    };
-    AddTraceHeader(response);
-
-    if (statusCode == StatusCodes.Status401Unauthorized)
-    {
-        response.Headers["WWW-Authenticate"] = new OpenApiHeader
-        {
-            Description = "Bearer authentication challenge"
-        };
-    }
-
-    if (statusCode is StatusCodes.Status429TooManyRequests or StatusCodes.Status503ServiceUnavailable)
-    {
-        response.Headers["Retry-After"] = new OpenApiHeader
-        {
-            Description = "Delay in seconds or an HTTP date when retry timing is known"
-        };
-    }
-}
-
-static void AddTraceHeader(OpenApiResponse response)
-{
-    response.Headers["X-Trace-Id"] = new OpenApiHeader
-    {
-        Description = "Request trace identifier also returned in Problem Details"
-    };
-}
-
-static string CreateOperationId(string method, string path)
-{
-    var normalizedPath = string.Join(
-        '_',
-        path.Split('/', StringSplitOptions.RemoveEmptyEntries)
-            .Select(segment => segment.Trim('{', '}').Replace('-', '_')));
-    return $"{method.ToLowerInvariant()}_{normalizedPath}";
-}
-
-static bool SupportsIdempotency(string path) => path is
-    "/appointments"
-    or "/clients"
-    or "/payments"
-    or "/expenses"
-    or "/course-enrollments"
-    or "/courses"
-    or "/services"
-    or "/expense-categories"
-    or "/client-sources";
-
-static string? GetDownloadMediaType(string path) => path switch
-{
-    "/exports/client-debts" or "/exports/expenses" or "/exports/payments" =>
-        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-    "/exports/teacher-schedule" => "image/png",
-    "/calendar-subscriptions/{token}.ics" => "text/calendar",
-    _ => null
-};
 
 public partial class Program;

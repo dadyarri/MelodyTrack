@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,16 +10,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Endpoints;
 
-public class DeleteCourseEnrollmentEndpoint(AppDbContext db, ICurrentUserAccessor currentUserAccessor, IAuditLogService auditLogService)
-    : Ep.Req<GetEntityRequest>.Res<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>>
+[ApiEndpoint(ApiMethod.Delete, "/course-enrollments/{id}")]
+public sealed class DeleteCourseEnrollmentEndpoint
 {
-    public override void Configure()
-    {
-        Delete("/course-enrollments/{id}");
-    }
 
-    public override async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> ExecuteAsync(
-        GetEntityRequest req, CancellationToken ct)
+    [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
+    public static async Task<Results<NoContent, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
+        [AsParameters] GetEntityRequest req,
+        AppDbContext db,
+        ICurrentUserAccessor currentUserAccessor,
+        IAuditLogService auditLogService,
+        CancellationToken ct
+    )
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)
@@ -55,8 +58,7 @@ public class DeleteCourseEnrollmentEndpoint(AppDbContext db, ICurrentUserAccesso
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "course_enrollments",
-            Action = "course_enrollment_deleted",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.CourseEnrollmentDeleted,
             EntityType = "course_enrollment",
             EntityId = enrollment.Id.ToString(),
             Details = AuditDetailsFormatter.JoinChanges(

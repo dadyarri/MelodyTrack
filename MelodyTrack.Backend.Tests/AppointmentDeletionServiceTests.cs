@@ -32,8 +32,8 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             Id = Ulid.NewUlid(),
             ClientId = rule.Client.Id,
             Client = rule.Client,
-            StartDate = new DateOnly(2025, 11, 15),
-            EndDate = new DateOnly(2025, 11, 15)
+            StartDate = new DateTime(2025, 11, 15, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2025, 11, 16, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "MelodyTrack API Contract"
+  short_description: "Evolve the native API and generated client"
+  default_prompt: "Use $melodytrack-api-contract to update a MelodyTrack endpoint contract and regenerate the frontend client safely."

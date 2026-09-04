@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Schedule.Endpoints;
 using MelodyTrack.Backend.Api.Schedule.Requests;
@@ -261,5 +259,46 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
         linkedAppointment.CourseTheme.ShouldNotBeNull();
         linkedAppointment.CourseTheme.Title.ShouldBe("Finger warmup");
         linkedAppointment.LessonNotes.ShouldBe("Разобрали разминку и посадку.");
+    }
+
+    [Fact]
+    public async Task GetAppointments_TeacherAndAdministrator_EnforcesScheduleVisibility()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var teacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var otherTeacher = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var administrator = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var client = await TestDataFactory.CreateClientAsync(db, "Видимый", "Клиент", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Скрипка", TestContext.Current.CancellationToken);
+        var startUtc = new DateTime(2032, 2, 2, 10, 0, 0, DateTimeKind.Utc);
+        await db.Appointments.AddRangeAsync(
+        [
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = teacher,
+                StartDate = startUtc, EndDate = startUtc.AddHours(1), Status = AppointmentStatus.Planned, IsDeleted = false
+            },
+            new Appointment
+            {
+                Id = Ulid.NewUlid(), Client = client, Service = service, Provider = otherTeacher,
+                StartDate = startUtc.AddHours(2), EndDate = startUtc.AddHours(3), Status = AppointmentStatus.Planned, IsDeleted = false
+            }
+        ], TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(teacher));
+        var teacherResponse = await App.Client.GetFromJsonAsync<GetAppointmentsResponse>(
+            $"/appointments?timezone=UTC&startDate={startUtc.AddDays(-1):O}&endDate={startUtc.AddDays(1):O}",
+            TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(administrator));
+        var administratorResponse = await App.Client.GetFromJsonAsync<GetAppointmentsResponse>(
+            $"/appointments?timezone=UTC&startDate={startUtc.AddDays(-1):O}&endDate={startUtc.AddDays(1):O}",
+            TestContext.Current.CancellationToken);
+
+        teacherResponse.ShouldNotBeNull();
+        teacherResponse.Appointments.ShouldHaveSingleItem().Provider!.Id.ShouldBe(teacher.Id);
+        administratorResponse.ShouldNotBeNull();
+        administratorResponse.Appointments.Select(item => item.Provider!.Id).ShouldBe([teacher.Id, otherTeacher.Id], ignoreOrder: true);
     }
 }

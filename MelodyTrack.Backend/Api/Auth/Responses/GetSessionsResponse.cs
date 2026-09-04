@@ -10,5 +10,5 @@ public class SessionDto
     public Ulid Id { get; set; }
     public required string DeviceInfo { get; set; }
     public bool IsCurrent { get; set; }
-    public DateTime LastSeenAtUtc { get; set; }
+    public DateTime CreatedAtUtc { get; set; }
 }

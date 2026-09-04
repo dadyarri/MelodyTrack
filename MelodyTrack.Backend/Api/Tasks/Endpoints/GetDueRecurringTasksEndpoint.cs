@@ -1,4 +1,5 @@
-using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Tasks.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,17 +10,16 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
-public class GetDueRecurringTasksEndpoint(IRecurringTaskService recurringTaskService, ICurrentUserAccessor currentUserAccessor)
-    : Ep.Req<GetDueRecurringTasksRequest>.Res<Results<Ok<GetDueRecurringTasksResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>>
+[ApiEndpoint(ApiMethod.Get, "/tasks")]
+public sealed class GetDueRecurringTasksEndpoint
 {
-    public override void Configure()
-    {
-        Get("/tasks");
-    }
 
-    public override async Task<Results<Ok<GetDueRecurringTasksResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> ExecuteAsync(
-        GetDueRecurringTasksRequest req,
-        CancellationToken ct)
+    public static async Task<Results<Ok<GetDueRecurringTasksResponse>, UnauthorizedHttpResult, ForbidHttpResult, ProblemHttpResult>> HandleAsync(
+        [AsParameters] GetDueRecurringTasksRequest req,
+        IRecurringTaskService recurringTaskService,
+        ICurrentUserAccessor currentUserAccessor,
+        CancellationToken ct
+    )
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)

@@ -18,7 +18,7 @@ public class ClientUpdateComparerTests
         { "telegram", request => request.Telegram = "@changed" },
         { "vk", request => request.Vk = "https://vk.com/changed" },
         { "source", request => request.SourceId = Ulid.NewUlid() },
-        { "vacations", request => request.Vacations = [new ClientVacationRequest { StartDate = new DateOnly(2026, 9, 1), EndDate = new DateOnly(2026, 9, 2) }] }
+        { "vacations", request => request.Vacations = [new ClientVacationRequest { StartDate = Utc(2026, 9, 1), EndDate = Utc(2026, 9, 3) }] }
     };
 
     [Fact]
@@ -27,15 +27,15 @@ public class ClientUpdateComparerTests
         var client = CreateClient();
         client.Vacations =
         [
-            CreateVacation(client, new DateOnly(2026, 8, 10), new DateOnly(2026, 8, 12)),
-            CreateVacation(client, new DateOnly(2026, 7, 1), new DateOnly(2026, 7, 3))
+            CreateVacation(client, Utc(2026, 8, 10), Utc(2026, 8, 13)),
+            CreateVacation(client, Utc(2026, 7, 1), Utc(2026, 7, 4))
         ];
         var request = CreateMatchingRequest(client);
         request.Email = "  CLIENT@EXAMPLE.COM ";
         request.Vacations =
         [
-            new ClientVacationRequest { StartDate = new DateOnly(2026, 7, 1), EndDate = new DateOnly(2026, 7, 3) },
-            new ClientVacationRequest { StartDate = new DateOnly(2026, 8, 10), EndDate = new DateOnly(2026, 8, 12) }
+            new ClientVacationRequest { StartDate = Utc(2026, 7, 1), EndDate = Utc(2026, 7, 4) },
+            new ClientVacationRequest { StartDate = Utc(2026, 8, 10), EndDate = Utc(2026, 8, 13) }
         ];
 
         ClientUpdateComparer.IsNoOp(client, request).ShouldBeTrue();
@@ -82,8 +82,11 @@ public class ClientUpdateComparerTests
         Telegram = client.Contacts.Telegram, Vk = client.Contacts.Vk, SourceId = client.SourceId
     };
 
-    private static ClientVacation CreateVacation(Client client, DateOnly start, DateOnly end) => new()
+    private static ClientVacation CreateVacation(Client client, DateTime start, DateTime end) => new()
     {
         Id = Ulid.NewUlid(), Client = client, ClientId = client.Id, StartDate = start, EndDate = end
     };
+
+    private static DateTime Utc(int year, int month, int day) =>
+        new(year, month, day, 0, 0, 0, DateTimeKind.Utc);
 }

@@ -1,10 +1,12 @@
-using FastEndpoints;
+
+using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Schedule.Requests;
 
 public class UpdateAppointmentRequest
 {
-    [BindFrom("id")]
+    [JsonIgnore]
     public Ulid Id { get; set; }
     public Ulid? ClientId { get; set; }
     public Ulid? ServiceId { get; set; }

@@ -1,0 +1,18 @@
+export const STATS_CHART_COLORS = [
+  "#3b5f8a",
+  "#7f4d4d",
+  "#4f7a5f",
+  "#8a6a3f",
+  "#6f5a8f",
+  "#3f7a86",
+  "#8a5a3f",
+  "#6f7f3f",
+  "#5b6f91",
+  "#8f5f73",
+  "#5f8a7a",
+  "#8a7a5f",
+  "#735f8f",
+  "#5f7f8f",
+  "#8f6f5f",
+  "#708f5f",
+] as const;

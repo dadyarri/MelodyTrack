@@ -1,12 +1,13 @@
-using FastEndpoints;
+
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 
 public class GetCourseEnrollmentsRequest
 {
-    [BindFrom("clientId")]
+    [FromQuery(Name = "clientId")]
     public Ulid? ClientId { get; set; }
 
-    [BindFrom("courseId")]
+    [FromQuery(Name = "courseId")]
     public Ulid? CourseId { get; set; }
 }

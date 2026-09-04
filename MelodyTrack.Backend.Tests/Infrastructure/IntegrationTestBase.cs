@@ -1,8 +1,6 @@
-using FastEndpoints.Testing;
-
 namespace MelodyTrack.Backend.Tests.Infrastructure;
 
-public abstract class IntegrationTestBase(MelodyTrackFixture app) : TestBase<MelodyTrackFixture>, IAsyncLifetime
+public abstract class IntegrationTestBase(MelodyTrackFixture app) : IAsyncLifetime
 {
     protected MelodyTrackFixture App { get; } = app;
 

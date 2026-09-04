@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using ClosedXML.Excel;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Clients.Endpoints;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Data;
@@ -146,5 +144,54 @@ public class ClientBalanceTests(MelodyTrackFixture app) : IntegrationTestBase(ap
         res.ShouldNotBeNull();
         res.Debtors.Count.ShouldBe(1);
         res.Debtors[0].Balance.ShouldBe(-80m);
+    }
+
+    [Fact]
+    public async Task GetClientsWithNegativeBalance_ManyClients_UsesBoundedDatabaseCommands()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var user = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Batched debt lesson", TestContext.Current.CancellationToken);
+        var appointmentDate = new DateTime(2026, 7, 10, 10, 0, 0, DateTimeKind.Utc);
+        await db.ServicePriceHistory.AddAsync(new ServicePrice
+        {
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = appointmentDate.AddDays(-1)
+        }, TestContext.Current.CancellationToken);
+
+        for (var index = 0; index < 12; index++)
+        {
+            var client = await TestDataFactory.CreateClientAsync(
+                db,
+                $"Client {index}",
+                "Debtor",
+                TestContext.Current.CancellationToken);
+            await db.Appointments.AddAsync(new Appointment
+            {
+                Id = Ulid.NewUlid(),
+                Client = client,
+                Service = service,
+                Provider = user,
+                StartDate = appointmentDate.AddDays(index),
+                EndDate = appointmentDate.AddDays(index).AddHours(1),
+                Status = AppointmentStatus.Completed,
+                IsDeleted = false
+            }, TestContext.Current.CancellationToken);
+        }
+
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
+        App.DatabaseCommands.Reset();
+
+        var (response, result) = await App.Client.GETAsync<GetClientsWithNegativeBalanceEndpoint, EmptyRequest, GetClientsWithNegativeBalanceResponse>(
+            EmptyRequest.Instance);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        result.ShouldNotBeNull();
+        result.Debtors.Count.ShouldBe(12);
+        App.DatabaseCommands.Count.ShouldBeLessThanOrEqualTo(8);
     }
 }

@@ -1,9 +1,10 @@
-using FastEndpoints;
+using Microsoft.AspNetCore.Mvc;
+using MelodyTrack.Backend.Validation;
 
 namespace MelodyTrack.Backend.Api.ClientPortal.Requests;
 
-public class GetClientPortalLinkStatusRequest
+public class GetClientPortalLinkStatusRequest : IValidatableRequest
 {
-    [BindFrom("token")]
+    [FromQuery(Name = "token")]
     public required string Token { get; set; }
 }

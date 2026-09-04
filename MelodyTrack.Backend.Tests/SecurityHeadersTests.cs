@@ -130,6 +130,7 @@ public class SecurityHeadersTests(MelodyTrackFixture app) : IntegrationTestBase(
 
     private static void AssertSecurityHeaders(HttpResponseMessage response)
     {
+        response.Headers.GetValues("Content-Security-Policy").Single().ShouldContain("script-src 'self'");
         response.Headers.GetValues("X-Content-Type-Options").Single().ShouldBe("nosniff");
         response.Headers.GetValues("X-Frame-Options").Single().ShouldBe("DENY");
         response.Headers.GetValues("Referrer-Policy").Single().ShouldBe("no-referrer");

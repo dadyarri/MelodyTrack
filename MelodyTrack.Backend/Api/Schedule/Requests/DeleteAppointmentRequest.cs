@@ -1,15 +1,16 @@
-using FastEndpoints;
+
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Schedule.Requests;
 
 public class DeleteAppointmentRequest
 {
-    [BindFrom("id")]
+    [FromRoute]
     public Ulid Id { get; set; }
 
-    [BindFrom("scope")]
+    [FromQuery(Name = "scope")]
     public string? Scope { get; set; }
 
-    [BindFrom("expectedActivityId")]
+    [FromQuery(Name = "expectedActivityId")]
     public Ulid? ExpectedActivityId { get; set; }
 }

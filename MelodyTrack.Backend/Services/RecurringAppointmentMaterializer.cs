@@ -51,6 +51,7 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
             .Include(rule => rule.Client)
             .ThenInclude(client => client.Vacations)
             .Include(rule => rule.Provider)
+            .ThenInclude(provider => provider!.Vacations)
             .Include(rule => rule.RecurrenceType)
             .Where(rule => rule.StartDate <= endUtc && (rule.EndDate == null || rule.EndDate >= startUtc));
 
@@ -96,8 +97,10 @@ public class RecurringAppointmentMaterializer(AppDbContext db, IRecurringAppoint
         {
             foreach (var appointment in recurringAppointmentService.GetAppointmentsForRule(recurrenceRule, startUtc, endUtc))
             {
-                var appointmentDate = DateOnly.FromDateTime(appointment.StartDate);
-                if (recurrenceRule.Client.Vacations.Any(vacation => vacation.StartDate <= appointmentDate && vacation.EndDate >= appointmentDate))
+                if (recurrenceRule.Client.Vacations.Any(vacation =>
+                        appointment.StartDate < vacation.EndDate && appointment.EndDate > vacation.StartDate) ||
+                    recurrenceRule.Provider?.Vacations.Any(vacation =>
+                        appointment.StartDate < vacation.EndDate && appointment.EndDate > vacation.StartDate) == true)
                 {
                     continue;
                 }

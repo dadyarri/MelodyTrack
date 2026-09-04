@@ -1,6 +1,8 @@
-﻿namespace MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Backend.Validation;
 
-public class Setup2FaRequest
+namespace MelodyTrack.Backend.Api.Auth.Requests;
+
+public class Setup2FaRequest : IValidatableRequest
 {
     public required string Password { get; set; }
 }

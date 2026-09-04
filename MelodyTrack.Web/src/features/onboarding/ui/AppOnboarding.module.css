@@ -1,0 +1,52 @@
+.tour :global(.ant-tour-content) {
+  max-width: min(380px, calc(100vw - 24px));
+}
+
+.footer {
+  display: grid;
+  gap: 10px;
+  width: 100%;
+}
+
+.footerRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.progress {
+  white-space: nowrap;
+}
+
+.actions,
+.error {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.actions {
+  justify-content: flex-end;
+}
+
+.error {
+  justify-content: space-between;
+}
+
+@media (max-width: 480px) {
+  .footerRow {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .actions > :global(.ant-btn) {
+    min-height: 44px;
+    padding-inline: 8px;
+  }
+}

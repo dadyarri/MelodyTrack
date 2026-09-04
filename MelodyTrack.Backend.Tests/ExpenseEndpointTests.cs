@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using FastEndpoints;
-using FastEndpoints.Testing;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Expenses.Endpoints;
 using MelodyTrack.Backend.Api.Expenses.Requests;
@@ -160,8 +158,8 @@ public class ExpenseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
 
         response.StatusCode.ShouldBe(HttpStatusCode.OK);
         payload.ShouldNotBeNull();
-        payload.Data.Count.ShouldBe(1);
-        var lastActivity = payload.Data[0].LastActivity;
+        payload.Items.Count.ShouldBe(1);
+        var lastActivity = payload.Items[0].LastActivity;
         lastActivity.ShouldNotBeNull();
         lastActivity.Id.ShouldBe(activityId);
     }

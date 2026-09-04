@@ -116,6 +116,38 @@ public class OnboardingEndpointTests(MelodyTrackFixture app) : IntegrationTestBa
         completed.ShouldLaunch.ShouldBeFalse();
     }
 
+    [Theory]
+    [InlineData("GET", "/onboarding")]
+    [InlineData("PATCH", "/onboarding")]
+    [InlineData("POST", "/onboarding/skip")]
+    [InlineData("POST", "/onboarding/completion")]
+    [InlineData("DELETE", "/onboarding")]
+    public async Task ClientPortalUser_IsIneligibleAndDoesNotCreateState(string method, string path)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Portal", "Student", TestContext.Current.CancellationToken);
+        var clientRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Client, TestContext.Current.CancellationToken);
+        var user = new User
+        {
+            Id = Ulid.NewUlid(),
+            FirstName = client.FirstName,
+            LastName = client.LastName,
+            Email = $"client-{client.Id}@portal.test",
+            Password = "hash",
+            Role = clientRole,
+            ClientId = client.Id
+        };
+        await db.Users.AddAsync(user, TestContext.Current.CancellationToken);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        var body = method == "PATCH" ? new { currentStep = "portal-step", currentPath = "/portal" } : null;
+        using var response = await SendAuthenticatedAsync(user, new HttpMethod(method), path, body);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+        db.UserOnboardingStates.AsNoTracking().Any(state => state.UserId == user.Id).ShouldBeFalse();
+    }
+
     private async Task<HttpResponseMessage> SendAuthenticatedAsync(
         User user,
         HttpMethod method,

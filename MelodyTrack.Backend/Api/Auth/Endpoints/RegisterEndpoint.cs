@@ -1,4 +1,6 @@
-﻿using FastEndpoints;
+using MelodyTrack.Backend.Api;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,32 +12,35 @@ using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
-public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService, TimeProvider timeProvider)
-    : Ep.Req<RegisterRequest>.Res<Results<Created<RegisterResponse>, ApiProblemDetails>>
+[ApiEndpoint(ApiMethod.Post, "/auth/register")]
+public sealed class RegisterEndpoint
 {
-    public override void Configure()
-    {
-        Post("/auth/register");
-        AllowAnonymous();
-        Options(builder => builder.RequireRateLimiting(ApiRateLimitPolicies.Register));
-        Description(builder => builder.Produces<ApiProblemDetails>(StatusCodes.Status429TooManyRequests, ApiMediaTypes.ProblemJson));
-    }
 
-    public override async Task<Results<Created<RegisterResponse>, ApiProblemDetails>> ExecuteAsync(RegisterRequest req,
-        CancellationToken ct)
+        [AllowAnonymous]
+    [EnableRateLimiting(ApiRateLimitPolicies.Register)]
+    public static async Task<Results<Created<RegisterResponse>, ApiProblemDetails>> HandleAsync(
+        RegisterRequest req,
+        AppDbContext db,
+        IAuditLogService auditLogService,
+        CredentialHasher credentialHasher,
+        TimeProvider timeProvider,
+        ILogger<RegisterEndpoint> logger,
+        HttpContext httpContext,
+        ApiValidationErrorCollection validationErrors,
+        CancellationToken ct
+    )
     {
-        Logger.LogDebug("Validating invite code {InviteCode}", req.InviteCode);
-
         if (!Ulid.TryParse(req.InviteCode, out var code))
         {
-            Logger.LogWarning("Invalid invite code {InviteCode}", req.InviteCode);
-            AddError(r => r.InviteCode, "Ссылка приглашения недействительна. Используйте новую ссылку от администратора.");
+            logger.LogWarning("Invalid invite code format");
+            validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения недействительна. Используйте новую ссылку от администратора.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -47,11 +52,11 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService,
 
         if (inviteCode == null)
         {
-            Logger.LogWarning("Invalid, used or expired invite code {InviteCode} provided", req.InviteCode);
-            AddError(r => r.InviteCode, "Ссылка приглашения уже использована или просрочена. Попросите администратора создать новую.");
+            logger.LogWarning("Invalid, used or expired invite code {InviteReference} provided", UserUtils.DescribeInviteCodeForLogs(code));
+            validationErrors.Add(nameof(req.InviteCode), "Ссылка приглашения уже использована или просрочена. Попросите администратора создать новую.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
 
@@ -61,15 +66,13 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService,
 
         if (hasUser)
         {
-            Logger.LogWarning("Attempt to register with existing {EmailRef}", UserUtils.DescribeEmailForLogs(email));
-            AddError(r => r.Email, "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт или попросите новую ссылку.");
+            logger.LogWarning("Attempt to register with existing {EmailRef}", UserUtils.DescribeEmailForLogs(email));
+            validationErrors.Add(nameof(req.Email), "Пользователь с таким email уже зарегистрирован. Войдите в существующий аккаунт или попросите новую ссылку.");
             return ApiErrorResponseFactory.CreateValidationProblemDetails(
-                ValidationFailures,
-                HttpContext,
+                validationErrors,
+                httpContext,
                 StatusCodes.Status403Forbidden);
         }
-
-        UserUtils.HashPassword(req.Password, out var hash);
 
         var user = new User
         {
@@ -78,7 +81,7 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService,
             FirstName = req.FirstName,
             LastName = req.LastName,
             Role = inviteCode.Role,
-            Password = hash
+            Password = credentialHasher.HashPassword(req.Password)
         };
 
         inviteCode.WasUsed = true;
@@ -109,15 +112,14 @@ public class RegisterEndpoint(AppDbContext db, IAuditLogService auditLogService,
         await db.Users.AddAsync(user, ct);
         await db.SaveChangesAsync(ct);
 
-        Logger.LogInformation(
+        logger.LogInformation(
             "auth.invite_accepted {EmailRef} role {Role} twoFactorRequired {TwoFactorRequired}",
             UserUtils.DescribeEmailForLogs(email),
             inviteCode.Role.RoleName,
             isTotpRequired);
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {
-            Category = "auth",
-            Action = "user_registered",
+            Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.UserRegistered,
             EntityType = "user",
             EntityId = user.Id.ToString(),
             ActorUserId = user.Id,
