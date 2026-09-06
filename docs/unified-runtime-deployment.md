@@ -19,7 +19,6 @@ Database__ConnectionString=<shared PostgreSQL connection>
 PublicUrl__BaseUrl=https://melodytrack.example
 AuthenticationSecrets__JwtSigningPrivateKey=base64:<P-256-PKCS8-private-key>
 AuthenticationSecrets__PasswordPepper=base64:<32-random-bytes>
-AuthenticationSecrets__PortalPinPepper=base64:<32-independent-random-bytes>
 AuthenticationSecrets__RefreshTokenHashKey=base64:<32-independent-random-bytes>
 AuthenticationSecrets__CsrfSigningKey=base64:<32-independent-random-bytes>
 PersonalData__CurrentKey=<secret>

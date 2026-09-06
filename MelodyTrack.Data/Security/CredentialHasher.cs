@@ -17,17 +17,10 @@ public sealed class CredentialHasher(IOptions<AuthenticationSecretsOptions> opti
     private readonly byte[] _passwordPepper = AuthenticationSecretMaterial.DecodeSymmetricKey(
         options.Value.PasswordPepper,
         "AuthenticationSecrets:PasswordPepper");
-    private readonly byte[] _portalPinPepper = AuthenticationSecretMaterial.DecodeSymmetricKey(
-        options.Value.PortalPinPepper,
-        "AuthenticationSecrets:PortalPinPepper");
 
     public string HashPassword(string password) => Hash(password, _passwordPepper);
 
     public bool VerifyPassword(string encodedHash, string password) => Verify(encodedHash, password, _passwordPepper);
-
-    public string HashPortalPin(string pin) => Hash(pin, _portalPinPepper);
-
-    public bool VerifyPortalPin(string encodedHash, string pin) => Verify(encodedHash, pin, _portalPinPepper);
 
     public static bool NeedsRehash(string encodedHash) => !encodedHash.StartsWith(FormatPrefix, StringComparison.Ordinal);
 

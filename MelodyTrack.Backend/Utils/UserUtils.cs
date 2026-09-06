@@ -45,10 +45,6 @@ public static class UserUtils
 
     public static bool IsValidPassword(string hash, string password) => GetCredentialHasher().VerifyPassword(hash, password);
 
-    public static string HashPortalPin(string pin) => GetCredentialHasher().HashPortalPin(pin);
-
-    public static bool IsValidPortalPin(string hash, string pin) => GetCredentialHasher().VerifyPortalPin(hash, pin);
-
     public static string GenerateRandomString(int length)
     {
         const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";

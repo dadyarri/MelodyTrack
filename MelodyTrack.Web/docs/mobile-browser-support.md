@@ -97,13 +97,13 @@ families:
 
 | Family | Routes and workflows |
 | --- | --- |
-| Authentication | `/login`, `/restore`, `/portal/access`, `/portal/access/:token`, and the `/invite/:inviteCode` redirect |
+| Authentication | `/login`, `/restore`, `/portal/error`, and the `/invite/:inviteCode` redirect |
 | Lists and management | `/clients`, `/audit`, `/services`, `/payments`, `/expenses`, `/expense-categories`, `/client-sources`, `/tasks`, and `/users` |
 | Dashboard and analytics | `/`, `/revenue`, `/price-changes`, `/appointments-stats`, `/clients-stats`, `/payments-stats`, and `/expenses-dashboard` |
 | Schedule | `/schedule` and `/portal/schedule` |
 | Course workspace | `/courses` |
 | Profile | `/profile` |
-| Client portal shell | `/portal` |
+| Client portal shell | `/portal`, `/portal/schedule`, `/portal/vacations`; `/p/{token}` enters through a server redirect |
 
 The responsive browser suite exercises every family at 320, 375, 390, and 430
 CSS pixels in portrait and at 568 by 320 in landscape. The 320px case asserts

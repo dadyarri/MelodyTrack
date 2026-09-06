@@ -13,9 +13,6 @@ public sealed class AuthenticationSecretsOptions
     public required string PasswordPepper { get; init; }
 
     [Required]
-    public required string PortalPinPepper { get; init; }
-
-    [Required]
     public required string RefreshTokenHashKey { get; init; }
 
     [Required]

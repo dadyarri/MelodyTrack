@@ -24,8 +24,6 @@ type ClientHistoryDrawerProps = {
   isRevokingPortalLink?: boolean;
   onCreateCalendarSubscription?: () => void;
   isCreatingCalendarSubscription?: boolean;
-  onResetPortalPin?: () => void;
-  isResettingPortalPin?: boolean;
   onDeleteCourseEnrollment?: (enrollmentId: string) => void;
   onOpenCourseProgress?: (enrollmentId?: string) => void;
   onUpdateThemeProgress?: (themeId: string, action: CourseEnrollmentThemeProgressAction) => void;
@@ -51,8 +49,6 @@ export function ClientHistoryDrawer({
   isRevokingPortalLink,
   onCreateCalendarSubscription,
   isCreatingCalendarSubscription,
-  onResetPortalPin,
-  isResettingPortalPin,
   onDeleteCourseEnrollment,
   onOpenCourseProgress,
   onUpdateThemeProgress,
@@ -82,8 +78,6 @@ export function ClientHistoryDrawer({
           isRevokingPortalLink={isRevokingPortalLink}
           onCreateCalendarSubscription={onCreateCalendarSubscription}
           isCreatingCalendarSubscription={isCreatingCalendarSubscription}
-          onResetPortalPin={onResetPortalPin}
-          isResettingPortalPin={isResettingPortalPin}
           onDeleteCourseEnrollment={onDeleteCourseEnrollment}
           onOpenCourseProgress={onOpenCourseProgress}
           onUpdateThemeProgress={onUpdateThemeProgress}

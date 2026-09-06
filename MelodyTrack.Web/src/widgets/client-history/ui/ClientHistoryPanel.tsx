@@ -20,7 +20,6 @@ import {
   DisconnectOutlined,
   LinkOutlined,
   PlusOutlined,
-  ReloadOutlined,
 } from "@/shared/ui/icons";
 
 import styles from "./ClientHistoryPanel.module.css";
@@ -39,8 +38,6 @@ type ClientHistoryPanelProps = {
   isRevokingPortalLink?: boolean;
   onCreateCalendarSubscription?: () => void;
   isCreatingCalendarSubscription?: boolean;
-  onResetPortalPin?: () => void;
-  isResettingPortalPin?: boolean;
   onDeleteCourseEnrollment?: (enrollmentId: string) => void;
   onOpenCourseProgress?: (enrollmentId?: string) => void;
   onUpdateThemeProgress?: (themeId: string, action: CourseEnrollmentThemeProgressAction) => void;
@@ -62,8 +59,6 @@ export function ClientHistoryPanel({
   isRevokingPortalLink = false,
   onCreateCalendarSubscription,
   isCreatingCalendarSubscription = false,
-  onResetPortalPin,
-  isResettingPortalPin = false,
   onDeleteCourseEnrollment,
   onOpenCourseProgress,
   onUpdateThemeProgress,
@@ -78,7 +73,6 @@ export function ClientHistoryPanel({
       onCreatePortalLink ||
       onRevokePortalLink ||
       onCreateCalendarSubscription ||
-      onResetPortalPin ||
       onEditVacations ? (
         <div className={styles.actionToolbar}>
           {onCreateAppointment || onCreatePayment || onCreateCourseEnrollment || onEditVacations ? (
@@ -126,7 +120,7 @@ export function ClientHistoryPanel({
               </Space>
             </div>
           ) : null}
-          {onCreatePortalLink || onRevokePortalLink || onCreateCalendarSubscription || onResetPortalPin ? (
+          {onCreatePortalLink || onRevokePortalLink || onCreateCalendarSubscription ? (
             <div className={`${styles.actionGroup} ${styles.portalActionGroup}`}>
               <Typography.Text type="secondary" className={styles.actionGroupLabel}>
                 Клиентский портал
@@ -145,11 +139,6 @@ export function ClientHistoryPanel({
                 {onCreateCalendarSubscription ? (
                   <Button icon={<CalendarCheckOutlined />} loading={isCreatingCalendarSubscription} onClick={onCreateCalendarSubscription}>
                     Создать ссылку календаря
-                  </Button>
-                ) : null}
-                {onResetPortalPin ? (
-                  <Button icon={<ReloadOutlined />} loading={isResettingPortalPin} onClick={onResetPortalPin}>
-                    Сбросить PIN
                   </Button>
                 ) : null}
               </Space>

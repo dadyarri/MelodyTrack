@@ -86,15 +86,7 @@ export const authExpiredEventName = "melodytrack:auth-expired";
 const refreshChannelName = "melodytrack:session-refresh";
 const csrfCookieName = "MelodyTrack.Csrf";
 const csrfHeaderName = "X-CSRF-Token";
-const publicAuthPaths = [
-  "/client-portal/auth/link",
-  "/auth/login",
-  "/auth/register",
-  "/auth/invites",
-  "/auth/2fa/verify",
-  "/auth/2fa/recover",
-  "/auth/password-reset",
-];
+const publicAuthPaths = ["/auth/login", "/auth/register", "/auth/invites", "/auth/2fa/verify", "/auth/2fa/recover", "/auth/password-reset"];
 
 let refreshRequest: Promise<string | null> | null = null;
 let httpSession: HttpSession | null = null;

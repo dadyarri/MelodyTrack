@@ -2165,6 +2165,8 @@ Stages 20–38 form the main redesign sequence. Stage 39 is an optional follow-u
 
 ## Stage 20: Portal URL, PIN Removal, and Shell Foundation
 
+Verified on 2026-09-06 with the Release solution build and deterministic Kiota regeneration, 446 .NET tests, the complete frontend verification pipeline (203 unit, 75 Chromium, and 75 WebKit tests), and the unified production-image HTTP/failed-Init verifier.
+
 Simplify client portal entry and establish the structural foundation for the redesigned portal without replacing the working per-user session model. The current PIN-based access flow should become direct passwordless access through the existing permanent portal link, and the portal should begin moving into a shell that is independent from the administrative UI.
 
 ### Remaining scope
@@ -2174,6 +2176,7 @@ Simplify client portal entry and establish the structural foundation for the red
 - Keep the shell structural at this stage: final RPG components and visuals are introduced in Stage 22, and the redesigned home and completed shell presentation are delivered in Stage 23.
 - Replace `/portal/access/{token}` and the current PIN flow with direct access through `GET /p/{token}`.
 - Preserve the existing permanent opaque portal-token model, including random URL-safe tokens with approximately 128 bits of entropy, hash-only database storage, and uniqueness of stored token hashes.
+- At cutover, delete all existing portal links and revoke all client sessions through the database migration; administrators issue new links after upgrade. Preserve client user accounts and staff sessions.
 - Resolve `GET /p/{token}` by hashing the supplied token, finding the corresponding user, creating a normal portal session through the existing per-user session model, and redirecting to the normal portal home route.
 - Preserve the existing short-lived access token, rotating refresh cookie, server-side active-session validation, portal sliding lifetime, and support for the same client using multiple devices.
 - Keep one renewable MelodyTrack identity per browser profile. Opening another client's valid portal link in the same browser replaces the currently renewable identity rather than adding a multi-profile session model.

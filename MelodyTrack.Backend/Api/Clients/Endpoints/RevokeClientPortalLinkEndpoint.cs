@@ -29,7 +29,9 @@ public sealed class RevokeClientPortalLinkEndpoint
         var currentUser = await currentUserAccessor.GetAsync(ct)
             ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var loginLink = await db.ClientPortalLoginLinks
+            .FromSqlInterpolated($"SELECT l.* FROM \"ClientPortalLoginLinks\" l JOIN \"Users\" u ON u.\"Id\" = l.\"UserId\" WHERE u.\"ClientId\" = {req.Id.ToByteArray()} FOR UPDATE OF l")
             .Include(item => item.User)
             .FirstOrDefaultAsync(item => item.User.ClientId == req.Id, ct);
 
@@ -43,17 +45,12 @@ public sealed class RevokeClientPortalLinkEndpoint
         }
 
         loginLink.RevokedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
-        loginLink.FailedPinAttempts = 0;
-        loginLink.LastFailedPinAttemptAtUtc = null;
-
-        await db.ClientPortalSavedIdentityReferences
-            .Where(item => item.LoginLinkId == loginLink.Id)
-            .ExecuteDeleteAsync(ct);
 
         await db.Sessions
             .Where(item => item.User.Id == loginLink.User.Id && !item.WasRevoked)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {

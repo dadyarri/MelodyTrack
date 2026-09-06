@@ -33,7 +33,7 @@ export function ClientPortalShell() {
           </Space>
         </header>
 
-        <nav className={styles.nav}>
+        <nav className={styles.nav} aria-label="Клиентский кабинет">
           <NavItem to="/portal/schedule" icon={<CalendarOutlined />} label="Расписание" />
           <NavItem to="/portal/vacations" icon={<CalendarRangeOutlined />} label="Отпуска" />
         </nav>

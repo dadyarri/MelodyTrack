@@ -79,9 +79,6 @@ export const clientsApi = {
   regenerateCalendarSubscription(id: Ulid) {
     return http.post<ClientCalendarSubscription>(`/clients/${id}/calendar-subscriptions`, {}).then((response) => response.data);
   },
-  resetPortalPin(id: Ulid) {
-    return http.post<unknown>(`/clients/${id}/portal-pin-resets`, {}).then(() => undefined);
-  },
 };
 
 function buildIdempotencyConfig(idempotencyKey?: string) {

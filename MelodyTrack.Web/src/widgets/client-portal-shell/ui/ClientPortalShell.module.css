@@ -1,7 +1,6 @@
 .shell {
   min-height: var(--visual-viewport-height);
-  background:
-    radial-gradient(circle at top left, rgba(244, 194, 124, 0.24), transparent 32%), linear-gradient(180deg, #fffaf2 0%, #f4efe5 100%);
+  background: #fffaf2;
   color: #2b2118;
 }
 
@@ -48,7 +47,6 @@
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.7);
   border: 1px solid rgba(152, 105, 43, 0.16);
-  box-shadow: 0 12px 32px rgba(79, 54, 25, 0.08);
   margin-bottom: 20px;
 }
 

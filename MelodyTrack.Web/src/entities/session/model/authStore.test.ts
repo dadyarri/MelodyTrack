@@ -1,11 +1,31 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { authStore } from "./authStore";
+import { setTestCookie } from "@/test/cookie";
+
+import { authStore, initializeBrowserSession } from "./authStore";
 
 describe("authStore", () => {
   beforeEach(() => {
     authStore.clear();
     localStorage.clear();
+  });
+
+  afterEach(() => {
+    setTestCookie("MelodyTrack.Csrf=; Max-Age=0; Path=/");
+    authStore.clear();
+    localStorage.clear();
+  });
+
+  it("restores a fresh browser from the session cookie without persisting credentials", () => {
+    setTestCookie("MelodyTrack.Csrf=csrf-secret; Path=/");
+    localStorage.setItem("melodytrack.savedClientIdentities", '{"version":1,"identities":[]}');
+
+    initializeBrowserSession();
+
+    expect(authStore.hasSession()).toBe(true);
+    expect(authStore.getAccessToken()).toBeNull();
+    expect(localStorage.getItem("melodytrack.savedClientIdentities")).toBeNull();
+    expect(Object.values(localStorage)).not.toContain("csrf-secret");
   });
 
   it("keeps the access token in memory and persists only a non-sensitive session marker", () => {
@@ -24,15 +44,6 @@ describe("authStore", () => {
     expect(authStore.getAccessToken()).toBeNull();
     expect(authStore.getUserId()).toBeNull();
     expect(authStore.hasSession()).toBe(false);
-  });
-
-  it("retains approved saved-client chooser metadata when the active session is cleared", () => {
-    localStorage.setItem("melodytrack.savedClientIdentities", '{"version":1,"identities":[]}');
-    authStore.setSession("access");
-
-    authStore.clear();
-
-    expect(localStorage.getItem("melodytrack.savedClientIdentities")).toBe('{"version":1,"identities":[]}');
   });
 
   it("observes logout performed by another tab", () => {

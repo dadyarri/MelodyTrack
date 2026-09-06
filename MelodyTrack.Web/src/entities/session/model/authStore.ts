@@ -9,6 +9,7 @@ type SessionChange = {
 const listeners = new Set<(change: SessionChange) => void>();
 
 if (typeof window !== "undefined") {
+  initializeBrowserSession();
   window.addEventListener("storage", (event) => {
     if (event.key === sessionMarkerKey || event.key === null) {
       accessToken = null;
@@ -62,5 +63,16 @@ function notifyListeners(source: SessionChange["source"]) {
   const change = { hasSession: authStore.hasSession(), source };
   for (const listener of listeners) {
     listener(change);
+  }
+}
+
+export function initializeBrowserSession() {
+  try {
+    localStorage.removeItem("melodytrack.savedClientIdentities");
+    if (document.cookie.split(";").some((cookie) => cookie.trim().startsWith("MelodyTrack.Csrf="))) {
+      localStorage.setItem(sessionMarkerKey, "1");
+    }
+  } catch {
+    // Storage cleanup must not prevent the application from loading.
   }
 }

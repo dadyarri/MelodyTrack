@@ -77,7 +77,6 @@ public static class MelodyTrackOptionsExtensions
             var keys = new[]
             {
                 AuthenticationSecretMaterial.DecodeSymmetricKey(options.PasswordPepper, "AuthenticationSecrets:PasswordPepper"),
-                AuthenticationSecretMaterial.DecodeSymmetricKey(options.PortalPinPepper, "AuthenticationSecrets:PortalPinPepper"),
                 AuthenticationSecretMaterial.DecodeSymmetricKey(options.RefreshTokenHashKey, "AuthenticationSecrets:RefreshTokenHashKey"),
                 AuthenticationSecretMaterial.DecodeSymmetricKey(options.CsrfSigningKey, "AuthenticationSecrets:CsrfSigningKey")
             };

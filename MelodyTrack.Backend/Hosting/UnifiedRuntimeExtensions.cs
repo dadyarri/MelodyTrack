@@ -13,7 +13,7 @@ public static class UnifiedRuntimeExtensions
         "connect-src 'self' https:; manifest-src 'self'";
     private const string ImmutableCacheControl = "public, max-age=31536000, immutable";
     private const string EntryPointCacheControl = "no-cache";
-    private static readonly PathString[] SpaFallbackExclusions = ["/api", "/health", "/alive", "/openapi", "/otel"];
+    private static readonly PathString[] SpaFallbackExclusions = ["/p", "/api", "/health", "/alive", "/openapi", "/otel"];
 
     public static WebApplication UseUnifiedRuntimeHeaders(this WebApplication app, PathString apiPathBase = default)
     {
@@ -131,7 +131,9 @@ public static class UnifiedRuntimeExtensions
             path = pathWithoutPrefix;
         }
 
-        if (path.StartsWithSegments("/auth"))
+        if (path.StartsWithSegments("/auth") || path.StartsWithSegments("/p")
+            || path.StartsWithSegments("/portal/access")
+            || path.Value?.EndsWith("/portal-links", StringComparison.OrdinalIgnoreCase) == true)
         {
             return true;
         }

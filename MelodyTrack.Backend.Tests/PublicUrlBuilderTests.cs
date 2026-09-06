@@ -16,7 +16,7 @@ public sealed class PublicUrlBuilderTests
 
         builder.GetInviteUrl(code).ShouldBe($"https://mt.dadyarri.dev/invite/{code}");
         builder.GetResetPasswordUrl("token with spaces").ShouldBe("https://mt.dadyarri.dev/restore?code=token%20with%20spaces");
-        builder.GetClientPortalAccessUrl("portal-token").ShouldBe("https://mt.dadyarri.dev/portal/access/portal-token");
+        builder.GetClientPortalAccessUrl("portal-token").ShouldBe("https://mt.dadyarri.dev/p/portal-token");
         builder.GetCalendarSubscriptionUrl("calendar-token").ShouldBe("https://mt.dadyarri.dev/calendar-subscriptions/calendar-token.ics");
     }
 

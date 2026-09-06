@@ -58,7 +58,6 @@ if (isOpenApiGeneration)
     {
         [$"{AuthenticationSecretsOptions.SectionName}:JwtSigningPrivateKey"] = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA",
         [$"{AuthenticationSecretsOptions.SectionName}:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
-        [$"{AuthenticationSecretsOptions.SectionName}:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
         [$"{AuthenticationSecretsOptions.SectionName}:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
         [$"{AuthenticationSecretsOptions.SectionName}:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
         [$"{JwtOptions.SectionName}:Issuer"] = "MelodyTrack",
@@ -83,6 +82,9 @@ Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Override("Microsoft.AspNetCore.Hosting", LogEventLevel.Warning)
     .MinimumLevel.Override("Microsoft.AspNetCore.Routing", LogEventLevel.Warning)
     .MinimumLevel.ControlledBy(logLevelSwitch)
+    .Filter.ByExcluding(logEvent => logEvent.Properties.TryGetValue("RequestPath", out var requestPath)
+        && requestPath is ScalarValue { Value: string path }
+        && (new PathString(path).StartsWithSegments("/p") || new PathString(path).StartsWithSegments("/portal/access")))
     .WriteTo.Providers(loggerProviders)
     .WriteTo.Console(
         outputTemplate: "[{Timestamp:HH:mm:ss} {Level:u3}] [{TraceId}] {Message:lj}{NewLine}{Exception}",
@@ -301,7 +303,8 @@ try
     app.UseTrustedReverseProxy();
     app.UseGodModeListenerIsolation(godModeOptions);
 
-    app.UseSerilogRequestLogging();
+    app.UseWhen(context => !context.Request.Path.StartsWithSegments("/p")
+        && !context.Request.Path.StartsWithSegments("/portal/access"), branch => branch.UseSerilogRequestLogging());
     app.UseResponseCompression();
     app.UseUnifiedRuntimeHeaders(httpOptions.PathBase);
     app.UseExceptionHandler(exceptionHandlerApp =>
@@ -309,6 +312,12 @@ try
         exceptionHandlerApp.Run(async context =>
         {
             var exception = context.Features.Get<IExceptionHandlerFeature>()?.Error;
+
+            if (context.Request.Path.StartsWithSegments("/p"))
+            {
+                context.Response.Redirect("/portal/error");
+                return;
+            }
 
             if (exception is RequestReplayConflictException replayConflict)
             {
@@ -371,6 +380,11 @@ try
     apiEndpoints.RequireAuthorization(AuthorizationPolicies.ApiAccess);
     apiEndpoints.AddEndpointFilter<NativeValidationEndpointFilter>();
     apiEndpoints.MapGeneratedApiEndpoints();
+    app.MapGet("/p/{**token}", PortalEntryEndpoint.HandleAsync)
+        .AllowAnonymous()
+        .RequireRateLimiting(ApiRateLimitPolicies.PortalAuthentication)
+        .ExcludeFromDescription();
+    app.MapGet("/portal/access/{**rest}", () => Results.Redirect("/portal/error")).AllowAnonymous().ExcludeFromDescription();
     app.MapGodModeEndpoints();
     app.MapSpaFallback();
 

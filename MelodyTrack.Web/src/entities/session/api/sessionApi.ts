@@ -1,15 +1,10 @@
 import { http, type RecordActivity, type RequiredApiContract } from "@/shared/api";
 import type {
-  AuthenticateClientPortalLinkRequest,
-  AuthenticateSavedClientPortalIdentityRequest,
   ChangePasswordRequest,
-  ClientPortalAuthenticationResponse as GeneratedClientPortalAuthenticationResponse,
   CreateInviteRequest,
   CreateInviteResponse as GeneratedCreateInviteResponse,
   CreatePasswordResetLinkResponse as GeneratedCreatePasswordResetLinkResponse,
-  GetClientPortalLinkStatusResponse,
   GetInviteCodeInformationResponse,
-  GetSavedClientPortalIdentityStatusResponse,
   GetSessionsResponse,
   LoginAttemptResponse,
   LoginRequest,
@@ -22,7 +17,6 @@ import type {
   RegisterRequest,
   RegisterResponse as GeneratedRegisterResponse,
   ResetPasswordRequest,
-  SavedClientPortalIdentityResponse,
   SessionDto as GeneratedSessionDto,
   Setup2FaRequest,
   Setup2FaResponse as GeneratedSetup2FaResponse,
@@ -43,18 +37,6 @@ export type Recover2FaResponse = Omit<
   "allCodes"
 > & { allCodes: RecoveryCodeItem[] };
 export type LoginResponse = RequiredApiContract<GeneratedLoginResponse, "accessToken" | "firstName" | "lastName">;
-export type ClientPortalLinkStatusResponse = RequiredApiContract<GetClientPortalLinkStatusResponse, "firstName" | "hasPin">;
-export type ClientPortalPinAuthInput = RequiredApiContract<AuthenticateClientPortalLinkRequest, "token" | "pin">;
-type SavedClientPortalPinAuthInput = RequiredApiContract<AuthenticateSavedClientPortalIdentityRequest, "reference" | "pin">;
-export type SavedClientIdentityDto = RequiredApiContract<
-  SavedClientPortalIdentityResponse,
-  "identityId" | "reference" | "displayLabel" | "lastUsedAtUtc"
->;
-export type ClientPortalAuthenticationResponse = Omit<
-  RequiredApiContract<GeneratedClientPortalAuthenticationResponse, "accessToken" | "firstName" | "lastName" | "savedIdentity">,
-  "savedIdentity"
-> & { savedIdentity: SavedClientIdentityDto };
-export type SavedClientPortalStatusResponse = RequiredApiContract<GetSavedClientPortalIdentityStatusResponse, "displayLabel">;
 export type LoginChallengeResponse = RequiredApiContract<LoginAttemptResponse, "requiresTwoFactor" | "canUseOtp" | "canUseRecoveryCode">;
 
 export type LoginAttemptResult = ({ kind: "success" } & LoginResponse) | ({ kind: "challenge" } & LoginChallengeResponse);
@@ -119,20 +101,6 @@ export const authApi = {
           ...(response.data as LoginResponse),
         };
       });
-  },
-  getClientPortalLinkStatus(token: string) {
-    return http.get<ClientPortalLinkStatusResponse>("/client-portal/auth/link", { params: { token } }).then((response) => response.data);
-  },
-  authenticateClientPortalLink(input: ClientPortalPinAuthInput) {
-    return http.post<ClientPortalAuthenticationResponse>("/client-portal/auth/link", input).then((response) => response.data);
-  },
-  getSavedClientPortalStatus(reference: string) {
-    return http
-      .get<SavedClientPortalStatusResponse>("/client-portal/auth/saved", { params: { reference } })
-      .then((response) => response.data);
-  },
-  authenticateSavedClientPortalIdentity(input: SavedClientPortalPinAuthInput) {
-    return http.post<ClientPortalAuthenticationResponse>("/client-portal/auth/saved", input).then((response) => response.data);
   },
   verify2Fa(input: Verify2FaInput) {
     return http.post<RecoveryCodesResponse>("/auth/2fa/verify", input).then((response) => response.data);

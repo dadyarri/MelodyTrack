@@ -33,6 +33,14 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       strictPort: true,
       proxy: {
+        "^/p(?:/|$)": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
+        "/portal/access": {
+          target: apiProxyTarget,
+          changeOrigin: true,
+        },
         "/api": {
           target: apiProxyTarget,
           changeOrigin: true,

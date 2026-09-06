@@ -26,7 +26,7 @@ query invalidation remain in the owning feature, page, or widget.
 Explicit exclusions:
 
 - login, registration, password recovery/change, 2FA setup/verification,
-  recovery codes, portal PIN, and generated invite/reset/calendar URLs are
+  recovery codes and generated invite/reset/calendar URLs are
   security-sensitive;
 - destructive confirmations and task-delay input are short-lived confirmation
   actions;

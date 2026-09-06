@@ -13,7 +13,6 @@ public static class ApiRateLimitPolicies
     public const string RecoverTwoFactor = "auth-recover-2fa";
     public const string ResetPassword = "auth-reset-password";
     public const string InviteInformation = "auth-invite-information";
-    public const string PortalLinkStatus = "portal-link-status";
     public const string PortalAuthentication = "portal-authentication";
     public const string CalendarSubscription = "calendar-subscription";
     public const string Releases = "public-releases";
@@ -27,6 +26,12 @@ public static class ApiRateLimitPolicies
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = async (context, cancellationToken) =>
             {
+                if (context.HttpContext.Request.Path.StartsWithSegments("/p"))
+                {
+                    context.HttpContext.Response.Redirect("/portal/error?reason=rate-limit");
+                    return;
+                }
+
                 var logger = context.HttpContext.RequestServices
                     .GetRequiredService<ILoggerFactory>()
                     .CreateLogger("MelodyTrack.RateLimiting");
@@ -55,7 +60,6 @@ public static class ApiRateLimitPolicies
             AddPolicy(options, RecoverTwoFactor, 10, TimeSpan.FromMinutes(5));
             AddPolicy(options, ResetPassword, 10, TimeSpan.FromMinutes(10));
             AddPolicy(options, InviteInformation, 30, TimeSpan.FromMinutes(1));
-            AddPolicy(options, PortalLinkStatus, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, PortalAuthentication, 20, TimeSpan.FromMinutes(1));
             AddPolicy(options, CalendarSubscription, 60, TimeSpan.FromMinutes(1));
             AddPolicy(options, Releases, 120, TimeSpan.FromMinutes(1));
@@ -78,7 +82,8 @@ public static class ApiRateLimitPolicies
 
     private static RateLimitPartition<string> GetFixedWindowPartition(HttpContext context, int permitLimit, TimeSpan window)
     {
-        var partitionKey = $"{context.Request.Method}:{context.Request.Path}:{GetPartitionKey(context)}";
+        var path = context.Request.Path.StartsWithSegments("/p") ? "/p/{token}" : context.Request.Path.Value;
+        var partitionKey = $"{context.Request.Method}:{path}:{GetPartitionKey(context)}";
         return RateLimitPartition.GetFixedWindowLimiter(
             partitionKey,
             _ => new FixedWindowRateLimiterOptions

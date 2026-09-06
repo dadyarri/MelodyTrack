@@ -33,7 +33,9 @@ public sealed class CreateClientPortalLinkEndpoint
         var currentUser = await currentUserAccessor.GetAsync(ct)
             ?? throw new InvalidOperationException("The administrator policy succeeded without a current user.");
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var client = await db.Clients
+            .FromSqlInterpolated($"SELECT * FROM \"Clients\" WHERE \"Id\" = {req.Id.ToByteArray()} FOR UPDATE")
             .Include(item => item.Contacts)
             .FirstOrDefaultAsync(item => item.Id == req.Id, ct);
 
@@ -48,7 +50,7 @@ public sealed class CreateClientPortalLinkEndpoint
 
         var desiredEmail = BuildClientPortalEmail(client);
         var hasRealEmail = !string.IsNullOrWhiteSpace(client.Contacts.Email);
-        var portalToken = UserUtils.GenerateRandomString(48);
+        var portalToken = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
 
         var clientRole = await db.Roles.FirstAsync(role => role.RoleName == UserRoles.Client, ct);
 
@@ -106,7 +108,8 @@ public sealed class CreateClientPortalLinkEndpoint
         }
 
         var loginLink = await db.ClientPortalLoginLinks
-            .FirstOrDefaultAsync(item => item.UserId == existingUser.Id, ct);
+            .FromSqlInterpolated($"SELECT * FROM \"ClientPortalLoginLinks\" WHERE \"UserId\" = {existingUser.Id.ToByteArray()} FOR UPDATE")
+            .SingleOrDefaultAsync(ct);
         var isRotation = loginLink is not null;
 
         if (loginLink is null)
@@ -123,13 +126,8 @@ public sealed class CreateClientPortalLinkEndpoint
         }
         else
         {
-            await db.ClientPortalSavedIdentityReferences
-                .Where(item => item.LoginLinkId == loginLink.Id)
-                .ExecuteDeleteAsync(ct);
             loginLink.TokenHash = UserUtils.HashOpaqueToken(portalToken);
             loginLink.RevokedAtUtc = null;
-            loginLink.FailedPinAttempts = 0;
-            loginLink.LastFailedPinAttemptAtUtc = null;
 
             await db.Sessions
                 .Where(item => item.User.Id == existingUser.Id && !item.WasRevoked)
@@ -137,6 +135,7 @@ public sealed class CreateClientPortalLinkEndpoint
         }
 
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
 
         await auditLogService.WriteAsync(new AuditLogWriteRequest
         {

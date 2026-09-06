@@ -8,10 +8,10 @@ represent a completed operation or trigger automatic submission.
 
 | Data | Location | Policy |
 | --- | --- | --- |
+| Session presence | `localStorage`, `melodytrack.hasSession` | Non-sensitive hint; a readable CSRF cookie reestablishes the hint after direct portal entry, and the server validates every restored session |
 | Access token | Memory | Recreated through refresh after reload |
 | Refresh token | Secure, HttpOnly cookie | Rotated by the backend; never exposed to application JavaScript or browser storage |
 | Theme | `localStorage`, `melodytrack.theme` | Non-sensitive device preference |
-| Saved client identities | `localStorage`, `melodytrack.savedClientIdentities` | Versioned, validated display metadata plus an opaque server-issued reference; never the invitation URL, PIN, access token, or refresh token |
 | Durable form drafts | IndexedDB `drafts` | User-partitioned, versioned, runtime-validated, and expired 30 days after the last write |
 | React Query data and reference labels | Memory | Server data is never presented as an offline working set |
 | Chunk retry/navigation intent | `sessionStorage` | Small, non-sensitive, one-tab recovery markers |
@@ -21,6 +21,9 @@ IndexedDB version 2 deletes the former `offlineCommands` and
 `offlineIdMappings` stores. Existing commands and mappings are deliberately
 discarded and cannot be replayed. Valid version-1 form drafts are upgraded;
 queue data is not migrated.
+
+Legacy `melodytrack.savedClientIdentities` chooser metadata is deleted on startup.
+Portal links are consumed by Backend before loading the SPA.
 
 ## Mandatory rules
 

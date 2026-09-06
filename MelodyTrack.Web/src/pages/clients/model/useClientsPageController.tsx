@@ -350,13 +350,6 @@ export function useClientsPageController() {
     },
   });
 
-  const resetPortalPinMutation = useMutation({
-    mutationFn: (clientId: Ulid) => clientsApi.resetPortalPin(clientId),
-    onSuccess: () => {
-      message.success("PIN клиентского кабинета сброшен");
-    },
-  });
-
   const openEditor = (client?: Client) => {
     if (client) {
       setEditing(client);
@@ -537,7 +530,6 @@ export function useClientsPageController() {
     createPortalLinkMutation,
     revokePortalLinkMutation,
     createCalendarSubscriptionMutation,
-    resetPortalPinMutation,
     urlModalProps: urlModal.urlModalProps,
     openEditor,
     closeEditor,
@@ -640,21 +632,6 @@ export function useClientsPageController() {
       if (historyClient) {
         createCalendarSubscriptionMutation.mutate(historyClient.id);
       }
-    },
-    onResetPortalPin: () => {
-      if (!historyClient) {
-        return;
-      }
-
-      modal.confirm({
-        title: "Сбросить PIN клиентского кабинета?",
-        content: "Текущий PIN перестанет работать, а активные сессии клиента будут завершены.",
-        okText: "Сбросить PIN",
-        okButtonProps: { danger: true },
-        onOk: () => {
-          resetPortalPinMutation.mutate(historyClient.id);
-        },
-      });
     },
     onDeleteEnrollment: (enrollmentId: Ulid) => {
       modal.confirm({

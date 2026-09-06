@@ -20,7 +20,7 @@ public sealed class PublicUrlBuilder(
 
     public string GetResetPasswordUrl(string token) => $"{BuildAppUrl("restore")}?code={Uri.EscapeDataString(token)}";
 
-    public string GetClientPortalAccessUrl(string token) => BuildAppUrl($"portal/access/{token}");
+    public string GetClientPortalAccessUrl(string token) => BuildAppUrl($"p/{token}");
 
     public string GetCalendarSubscriptionUrl(string token) => BuildApiUrl($"calendar-subscriptions/{token}.ics");
 

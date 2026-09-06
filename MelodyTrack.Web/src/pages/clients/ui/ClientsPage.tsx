@@ -243,8 +243,6 @@ export function ClientsPage() {
         isRevokingPortalLink={controller.revokePortalLinkMutation.isPending}
         onCreateCalendarSubscription={controller.canCreateClients ? controller.onCreateCalendarSubscription : undefined}
         isCreatingCalendarSubscription={controller.createCalendarSubscriptionMutation.isPending}
-        onResetPortalPin={controller.canCreateClients ? controller.onResetPortalPin : undefined}
-        isResettingPortalPin={controller.resetPortalPinMutation.isPending}
         onDeleteCourseEnrollment={controller.canCreateClients ? controller.onDeleteEnrollment : undefined}
         onOpenCourseProgress={controller.openCourseProgress}
         onUpdateThemeProgress={controller.canCreateClients ? controller.onUpdateThemeProgress : undefined}

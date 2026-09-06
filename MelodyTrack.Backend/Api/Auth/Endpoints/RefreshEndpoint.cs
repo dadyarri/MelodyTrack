@@ -49,6 +49,7 @@ public sealed class RefreshEndpoint
 
         var refreshTokenHash = tokenHasher.HashRefreshToken(presentedRefreshToken);
 
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
         var session = await db.Sessions
             .Where(e => e.RefreshToken == refreshTokenHash)
             .Include(e => e.User)
@@ -62,6 +63,15 @@ public sealed class RefreshEndpoint
             return TypedResults.Unauthorized();
         }
 
+        if (session.User.Role.RoleName.IsClient())
+        {
+            // Serialize portal refresh with link entry, rotation, and revocation.
+            await db.ClientPortalLoginLinks
+                .FromSqlInterpolated($"SELECT * FROM \"ClientPortalLoginLinks\" WHERE \"UserId\" = {session.User.Id.ToByteArray()} FOR UPDATE")
+                .ToListAsync(ct);
+            await db.Entry(session).ReloadAsync(ct);
+        }
+
         if (session.WasRevoked)
         {
             logger.LogWarning(
@@ -70,6 +80,7 @@ public sealed class RefreshEndpoint
             await db.Sessions
                 .Where(e => e.User.Id == session.User.Id && !e.WasRevoked)
                 .ExecuteUpdateAsync(s => s.SetProperty(e => e.WasRevoked, true), ct);
+            await transaction.CommitAsync(ct);
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
                 Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.RefreshReplayDetected,
@@ -89,6 +100,7 @@ public sealed class RefreshEndpoint
             logger.LogWarning("Expired refresh token used in refresh attempt for {EmailRef}", UserUtils.DescribeEmailForLogs(session.User.Email));
             session.WasRevoked = true;
             await db.SaveChangesAsync(ct);
+            await transaction.CommitAsync(ct);
 
             return TypedResults.Unauthorized();
         }
@@ -110,6 +122,7 @@ public sealed class RefreshEndpoint
 
         await db.Sessions.AddAsync(newSession, ct);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         refreshCookieService.Issue(httpContext.Response, refreshToken, newSession.ValidUntil);
         await sessionSecurityMonitor.AuditFanOutIfUnusualAsync(session.User, ct);
 

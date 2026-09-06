@@ -321,30 +321,6 @@ export interface AppointmentServiceDto extends AdditionalDataHolder, Parsable {
      */
     name?: string | null;
 }
-export interface AuthenticateClientPortalLinkRequest extends AdditionalDataHolder, Parsable {
-    /**
-     * The pin property
-     */
-    pin?: string | null;
-    /**
-     * The pinConfirmation property
-     */
-    pinConfirmation?: string | null;
-    /**
-     * The token property
-     */
-    token?: string | null;
-}
-export interface AuthenticateSavedClientPortalIdentityRequest extends AdditionalDataHolder, Parsable {
-    /**
-     * The pin property
-     */
-    pin?: string | null;
-    /**
-     * The reference property
-     */
-    reference?: string | null;
-}
 export interface CalendarSubscriptionResponse extends AdditionalDataHolder, Parsable {
     /**
      * The feedType property
@@ -630,24 +606,6 @@ export interface ClientPortalAppointmentDto extends AdditionalDataHolder, Parsab
 }
 export type ClientPortalAppointmentDto_courseTheme = ClientPortalAppointmentDto_courseThemeMember1 | ClientPortalCourseThemeDto;
 export interface ClientPortalAppointmentDto_courseThemeMember1 extends AdditionalDataHolder, Parsable {
-}
-export interface ClientPortalAuthenticationResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The accessToken property
-     */
-    accessToken?: string | null;
-    /**
-     * The firstName property
-     */
-    firstName?: string | null;
-    /**
-     * The lastName property
-     */
-    lastName?: string | null;
-    /**
-     * The savedIdentity property
-     */
-    savedIdentity?: SavedClientPortalIdentityResponse | null;
 }
 export interface ClientPortalCourseThemeDto extends AdditionalDataHolder, Parsable {
     /**
@@ -1720,24 +1678,6 @@ export function createAppointmentServiceDtoFromDiscriminatorValue(parseNode: Par
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {AuthenticateClientPortalLinkRequest}
- */
-// @ts-ignore
-export function createAuthenticateClientPortalLinkRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAuthenticateClientPortalLinkRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {AuthenticateSavedClientPortalIdentityRequest}
- */
-// @ts-ignore
-export function createAuthenticateSavedClientPortalIdentityRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoAuthenticateSavedClientPortalIdentityRequest;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CalendarSubscriptionResponse}
  */
 // @ts-ignore
@@ -1878,15 +1818,6 @@ export function createClientPortalAppointmentDto_courseThemeMember1FromDiscrimin
 // @ts-ignore
 export function createClientPortalAppointmentDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClientPortalAppointmentDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientPortalAuthenticationResponse}
- */
-// @ts-ignore
-export function createClientPortalAuthenticationResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientPortalAuthenticationResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2783,15 +2714,6 @@ export function createGetAuditLogsResponseFromDiscriminatorValue(parseNode: Pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {GetClientPortalLinkStatusResponse}
- */
-// @ts-ignore
-export function createGetClientPortalLinkStatusResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoGetClientPortalLinkStatusResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ClientPortalAppointmentDto | GetClientPortalScheduleResponse_nextAppointmentMember1}
  */
 // @ts-ignore
@@ -3013,15 +2935,6 @@ export function createGetPaymentsServiceDtoFromDiscriminatorValue(parseNode: Par
 // @ts-ignore
 export function createGetRecurringTaskRulesResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoGetRecurringTaskRulesResponse;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {GetSavedClientPortalIdentityStatusResponse}
- */
-// @ts-ignore
-export function createGetSavedClientPortalIdentityStatusResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoGetSavedClientPortalIdentityStatusResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3588,15 +3501,6 @@ export function createRevokePushSubscriptionRequestFromDiscriminatorValue(parseN
 // @ts-ignore
 export function createRoleFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoRole;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {SavedClientPortalIdentityResponse}
- */
-// @ts-ignore
-export function createSavedClientPortalIdentityResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoSavedClientPortalIdentityResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4605,31 +4509,6 @@ export function deserializeIntoAppointmentServiceDto(appointmentServiceDto: Part
 }
 /**
  * The deserialization information for the current model
- * @param AuthenticateClientPortalLinkRequest The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAuthenticateClientPortalLinkRequest(authenticateClientPortalLinkRequest: Partial<AuthenticateClientPortalLinkRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "pin": n => { authenticateClientPortalLinkRequest.pin = n.getStringValue(); },
-        "pinConfirmation": n => { authenticateClientPortalLinkRequest.pinConfirmation = n.getStringValue(); },
-        "token": n => { authenticateClientPortalLinkRequest.token = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param AuthenticateSavedClientPortalIdentityRequest The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoAuthenticateSavedClientPortalIdentityRequest(authenticateSavedClientPortalIdentityRequest: Partial<AuthenticateSavedClientPortalIdentityRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "pin": n => { authenticateSavedClientPortalIdentityRequest.pin = n.getStringValue(); },
-        "reference": n => { authenticateSavedClientPortalIdentityRequest.reference = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
  * @param CalendarSubscriptionResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4854,20 +4733,6 @@ export function deserializeIntoClientPortalAppointmentDto_courseTheme(clientPort
 // @ts-ignore
 export function deserializeIntoClientPortalAppointmentDto_courseThemeMember1(clientPortalAppointmentDto_courseThemeMember1: Partial<ClientPortalAppointmentDto_courseThemeMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
-    }
-}
-/**
- * The deserialization information for the current model
- * @param ClientPortalAuthenticationResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientPortalAuthenticationResponse(clientPortalAuthenticationResponse: Partial<ClientPortalAuthenticationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "accessToken": n => { clientPortalAuthenticationResponse.accessToken = n.getStringValue(); },
-        "firstName": n => { clientPortalAuthenticationResponse.firstName = n.getStringValue(); },
-        "lastName": n => { clientPortalAuthenticationResponse.lastName = n.getStringValue(); },
-        "savedIdentity": n => { clientPortalAuthenticationResponse.savedIdentity = n.getObjectValue<SavedClientPortalIdentityResponse>(createSavedClientPortalIdentityResponseFromDiscriminatorValue); },
     }
 }
 /**
@@ -5959,18 +5824,6 @@ export function deserializeIntoGetAuditLogsResponse(getAuditLogsResponse: Partia
 }
 /**
  * The deserialization information for the current model
- * @param GetClientPortalLinkStatusResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoGetClientPortalLinkStatusResponse(getClientPortalLinkStatusResponse: Partial<GetClientPortalLinkStatusResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "firstName": n => { getClientPortalLinkStatusResponse.firstName = n.getStringValue(); },
-        "hasPin": n => { getClientPortalLinkStatusResponse.hasPin = n.getBooleanValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
  * @param GetClientPortalScheduleResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -6261,17 +6114,6 @@ export function deserializeIntoGetPaymentsServiceDto(getPaymentsServiceDto: Part
 export function deserializeIntoGetRecurringTaskRulesResponse(getRecurringTaskRulesResponse: Partial<GetRecurringTaskRulesResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "rules": n => { getRecurringTaskRulesResponse.rules = n.getCollectionOfObjectValues<RecurringTaskRuleDto>(createRecurringTaskRuleDtoFromDiscriminatorValue); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param GetSavedClientPortalIdentityStatusResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoGetSavedClientPortalIdentityStatusResponse(getSavedClientPortalIdentityStatusResponse: Partial<GetSavedClientPortalIdentityStatusResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "displayLabel": n => { getSavedClientPortalIdentityStatusResponse.displayLabel = n.getStringValue(); },
     }
 }
 /**
@@ -7058,20 +6900,6 @@ export function deserializeIntoRole(role: Partial<Role> | undefined = {}) : Reco
         "displayName": n => { role.displayName = n.getStringValue(); },
         "id": n => { role.id = n.getStringValue(); },
         "roleName": n => { role.roleName = n.getNumberValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
- * @param SavedClientPortalIdentityResponse The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoSavedClientPortalIdentityResponse(savedClientPortalIdentityResponse: Partial<SavedClientPortalIdentityResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "displayLabel": n => { savedClientPortalIdentityResponse.displayLabel = n.getStringValue(); },
-        "identityId": n => { savedClientPortalIdentityResponse.identityId = n.getStringValue(); },
-        "lastUsedAtUtc": n => { savedClientPortalIdentityResponse.lastUsedAtUtc = n.getDateValue(); },
-        "reference": n => { savedClientPortalIdentityResponse.reference = n.getStringValue(); },
     }
 }
 /**
@@ -8087,16 +7915,6 @@ export interface GetAuditLogsResponse extends AdditionalDataHolder, Parsable {
      */
     page?: PageMetadata | null;
 }
-export interface GetClientPortalLinkStatusResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The firstName property
-     */
-    firstName?: string | null;
-    /**
-     * The hasPin property
-     */
-    hasPin?: boolean | null;
-}
 export interface GetClientPortalScheduleResponse extends AdditionalDataHolder, Parsable {
     /**
      * The nextAppointment property
@@ -8286,12 +8104,6 @@ export interface GetRecurringTaskRulesResponse extends AdditionalDataHolder, Par
      * The rules property
      */
     rules?: RecurringTaskRuleDto[] | null;
-}
-export interface GetSavedClientPortalIdentityStatusResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The displayLabel property
-     */
-    displayLabel?: string | null;
 }
 export interface GetSessionsResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9188,24 +9000,6 @@ export interface Role extends AdditionalDataHolder, Parsable {
      */
     roleName?: number | null;
 }
-export interface SavedClientPortalIdentityResponse extends AdditionalDataHolder, Parsable {
-    /**
-     * The displayLabel property
-     */
-    displayLabel?: string | null;
-    /**
-     * The identityId property
-     */
-    identityId?: string | null;
-    /**
-     * The lastUsedAtUtc property
-     */
-    lastUsedAtUtc?: Date | null;
-    /**
-     * The reference property
-     */
-    reference?: string | null;
-}
 /**
  * Serializes information the current object
  * @param ApiProblemDetails The instance to serialize from.
@@ -9594,33 +9388,6 @@ export function serializeAppointmentServiceDto(writer: SerializationWriter, appo
 }
 /**
  * Serializes information the current object
- * @param AuthenticateClientPortalLinkRequest The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAuthenticateClientPortalLinkRequest(writer: SerializationWriter, authenticateClientPortalLinkRequest: Partial<AuthenticateClientPortalLinkRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!authenticateClientPortalLinkRequest || isSerializingDerivedType) { return; }
-    writer.writeStringValue("pin", authenticateClientPortalLinkRequest.pin);
-    writer.writeStringValue("pinConfirmation", authenticateClientPortalLinkRequest.pinConfirmation);
-    writer.writeStringValue("token", authenticateClientPortalLinkRequest.token);
-    writer.writeAdditionalData(authenticateClientPortalLinkRequest.additionalData);
-}
-/**
- * Serializes information the current object
- * @param AuthenticateSavedClientPortalIdentityRequest The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeAuthenticateSavedClientPortalIdentityRequest(writer: SerializationWriter, authenticateSavedClientPortalIdentityRequest: Partial<AuthenticateSavedClientPortalIdentityRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!authenticateSavedClientPortalIdentityRequest || isSerializingDerivedType) { return; }
-    writer.writeStringValue("pin", authenticateSavedClientPortalIdentityRequest.pin);
-    writer.writeStringValue("reference", authenticateSavedClientPortalIdentityRequest.reference);
-    writer.writeAdditionalData(authenticateSavedClientPortalIdentityRequest.additionalData);
-}
-/**
- * Serializes information the current object
  * @param CalendarSubscriptionResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -9858,21 +9625,6 @@ export function serializeClientPortalAppointmentDto_courseTheme(writer: Serializ
 export function serializeClientPortalAppointmentDto_courseThemeMember1(writer: SerializationWriter, clientPortalAppointmentDto_courseThemeMember1: Partial<ClientPortalAppointmentDto_courseThemeMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientPortalAppointmentDto_courseThemeMember1 || isSerializingDerivedType) { return; }
     writer.writeAdditionalData(clientPortalAppointmentDto_courseThemeMember1.additionalData);
-}
-/**
- * Serializes information the current object
- * @param ClientPortalAuthenticationResponse The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientPortalAuthenticationResponse(writer: SerializationWriter, clientPortalAuthenticationResponse: Partial<ClientPortalAuthenticationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!clientPortalAuthenticationResponse || isSerializingDerivedType) { return; }
-    writer.writeStringValue("accessToken", clientPortalAuthenticationResponse.accessToken);
-    writer.writeStringValue("firstName", clientPortalAuthenticationResponse.firstName);
-    writer.writeStringValue("lastName", clientPortalAuthenticationResponse.lastName);
-    writer.writeObjectValue<SavedClientPortalIdentityResponse>("savedIdentity", clientPortalAuthenticationResponse.savedIdentity, serializeSavedClientPortalIdentityResponse);
-    writer.writeAdditionalData(clientPortalAuthenticationResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11027,19 +10779,6 @@ export function serializeGetAuditLogsResponse(writer: SerializationWriter, getAu
 }
 /**
  * Serializes information the current object
- * @param GetClientPortalLinkStatusResponse The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeGetClientPortalLinkStatusResponse(writer: SerializationWriter, getClientPortalLinkStatusResponse: Partial<GetClientPortalLinkStatusResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!getClientPortalLinkStatusResponse || isSerializingDerivedType) { return; }
-    writer.writeStringValue("firstName", getClientPortalLinkStatusResponse.firstName);
-    writer.writeBooleanValue("hasPin", getClientPortalLinkStatusResponse.hasPin);
-    writer.writeAdditionalData(getClientPortalLinkStatusResponse.additionalData);
-}
-/**
- * Serializes information the current object
  * @param GetClientPortalScheduleResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -11348,18 +11087,6 @@ export function serializeGetRecurringTaskRulesResponse(writer: SerializationWrit
     if (!getRecurringTaskRulesResponse || isSerializingDerivedType) { return; }
     writer.writeCollectionOfObjectValues<RecurringTaskRuleDto>("rules", getRecurringTaskRulesResponse.rules, serializeRecurringTaskRuleDto);
     writer.writeAdditionalData(getRecurringTaskRulesResponse.additionalData);
-}
-/**
- * Serializes information the current object
- * @param GetSavedClientPortalIdentityStatusResponse The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeGetSavedClientPortalIdentityStatusResponse(writer: SerializationWriter, getSavedClientPortalIdentityStatusResponse: Partial<GetSavedClientPortalIdentityStatusResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!getSavedClientPortalIdentityStatusResponse || isSerializingDerivedType) { return; }
-    writer.writeStringValue("displayLabel", getSavedClientPortalIdentityStatusResponse.displayLabel);
-    writer.writeAdditionalData(getSavedClientPortalIdentityStatusResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12194,21 +11921,6 @@ export function serializeRole(writer: SerializationWriter, role: Partial<Role> |
     writer.writeStringValue("id", role.id);
     writer.writeNumberValue("roleName", role.roleName);
     writer.writeAdditionalData(role.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param SavedClientPortalIdentityResponse The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeSavedClientPortalIdentityResponse(writer: SerializationWriter, savedClientPortalIdentityResponse: Partial<SavedClientPortalIdentityResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!savedClientPortalIdentityResponse || isSerializingDerivedType) { return; }
-    writer.writeStringValue("displayLabel", savedClientPortalIdentityResponse.displayLabel);
-    writer.writeStringValue("identityId", savedClientPortalIdentityResponse.identityId);
-    writer.writeDateValue("lastUsedAtUtc", savedClientPortalIdentityResponse.lastUsedAtUtc);
-    writer.writeStringValue("reference", savedClientPortalIdentityResponse.reference);
-    writer.writeAdditionalData(savedClientPortalIdentityResponse.additionalData);
 }
 /**
  * Serializes information the current object

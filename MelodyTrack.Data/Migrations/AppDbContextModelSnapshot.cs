@@ -274,18 +274,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
 
-                    b.Property<int>("FailedPinAttempts")
-                        .HasColumnType("integer");
-
-                    b.Property<DateTime?>("LastFailedPinAttemptAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<string>("PinHash")
-                        .HasColumnType("text");
-
-                    b.Property<DateTime?>("PinSetAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
                     b.Property<DateTime?>("RevokedAtUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -304,35 +292,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("ClientPortalLoginLinks");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientPortalSavedIdentityReference", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("CreatedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("LastUsedAtUtc")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("LoginLinkId")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<string>("ReferenceHash")
-                        .IsRequired()
-                        .HasColumnType("text");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("LoginLinkId");
-
-                    b.HasIndex("ReferenceHash")
-                        .IsUnique();
-
-                    b.ToTable("ClientPortalSavedIdentityReferences");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientSource", b =>
@@ -1935,17 +1894,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientPortalSavedIdentityReference", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.ClientPortalLoginLink", "LoginLink")
-                        .WithMany("SavedIdentityReferences")
-                        .HasForeignKey("LoginLinkId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("LoginLink");
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
@@ -2373,11 +2321,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Appointments");
 
                     b.Navigation("Vacations");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientPortalLoginLink", b =>
-                {
-                    b.Navigation("SavedIdentityReferences");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>

@@ -63,7 +63,6 @@ public static class GodModeEndpointExtensions
         api.MapDelete("/users/{id}/password-reset-links", RevokePasswordResetLinksAsync);
         api.MapDelete("/sessions/{id}", RevokeSessionAsync);
         api.MapDelete("/users/{id}/sessions", RevokeAllSessionsAsync);
-        api.MapPost("/clients/{id}/portal-pin-resets", ResetPortalPinAsync);
         api.MapPost("/clients/{id}/portal-links", RotatePortalLinkAsync);
         api.MapDelete("/clients/{id}/portal-links", RevokePortalLinkAsync);
         api.MapPost("/notices", CreateNoticeAsync);
@@ -365,31 +364,6 @@ public static class GodModeEndpointExtensions
         return Results.NoContent();
     }
 
-    private static async Task<IResult> ResetPortalPinAsync(
-        Ulid id,
-        AppDbContext db,
-        IAuditLogService auditLogService,
-        HttpContext httpContext,
-        CancellationToken ct)
-    {
-        var link = await db.ClientPortalLoginLinks.Include(item => item.User)
-            .FirstOrDefaultAsync(item => item.User.ClientId == id, ct);
-        if (link is null)
-        {
-            await WriteGodModeAuditAsync(auditLogService, AuditCatalog.Events.GodModePortalPinReset, GetGodModeSession(httpContext), "client", id.ToString(), "not_found", httpContext, ct);
-            return Results.NotFound();
-        }
-
-        link.PinHash = null;
-        link.PinSetAtUtc = null;
-        link.FailedPinAttempts = 0;
-        link.LastFailedPinAttemptAtUtc = null;
-        await RevokePortalSessionsAsync(db, link, ct);
-        await db.SaveChangesAsync(ct);
-        await WriteGodModeAuditAsync(auditLogService, AuditCatalog.Events.GodModePortalPinReset, GetGodModeSession(httpContext), "client", id.ToString(), "success", httpContext, ct);
-        return Results.NoContent();
-    }
-
     private static async Task<IResult> RotatePortalLinkAsync(
         Ulid id,
         AppDbContext db,
@@ -398,7 +372,10 @@ public static class GodModeEndpointExtensions
         HttpContext httpContext,
         CancellationToken ct)
     {
-        var link = await db.ClientPortalLoginLinks.Include(item => item.User)
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var link = await db.ClientPortalLoginLinks
+            .FromSqlInterpolated($"SELECT l.* FROM \"ClientPortalLoginLinks\" l JOIN \"Users\" u ON u.\"Id\" = l.\"UserId\" WHERE u.\"ClientId\" = {id.ToByteArray()} FOR UPDATE OF l")
+            .Include(item => item.User)
             .FirstOrDefaultAsync(item => item.User.ClientId == id, ct);
         if (link is null)
         {
@@ -406,13 +383,12 @@ public static class GodModeEndpointExtensions
             return Results.NotFound();
         }
 
-        var token = UserUtils.GenerateRandomString(48);
+        var token = Microsoft.AspNetCore.WebUtilities.WebEncoders.Base64UrlEncode(System.Security.Cryptography.RandomNumberGenerator.GetBytes(16));
         link.TokenHash = UserUtils.HashOpaqueToken(token);
         link.RevokedAtUtc = null;
-        link.FailedPinAttempts = 0;
-        link.LastFailedPinAttemptAtUtc = null;
         await RevokePortalSessionsAsync(db, link, ct);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         await WriteGodModeAuditAsync(auditLogService, AuditCatalog.Events.GodModePortalLinkRotated, GetGodModeSession(httpContext), "client", id.ToString(), "success", httpContext, ct);
         return Results.Ok(new SecretUrlResponse(publicUrlBuilder.GetClientPortalAccessUrl(token)));
     }
@@ -425,7 +401,10 @@ public static class GodModeEndpointExtensions
         HttpContext httpContext,
         CancellationToken ct)
     {
-        var link = await db.ClientPortalLoginLinks.Include(item => item.User)
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        var link = await db.ClientPortalLoginLinks
+            .FromSqlInterpolated($"SELECT l.* FROM \"ClientPortalLoginLinks\" l JOIN \"Users\" u ON u.\"Id\" = l.\"UserId\" WHERE u.\"ClientId\" = {id.ToByteArray()} FOR UPDATE OF l")
+            .Include(item => item.User)
             .FirstOrDefaultAsync(item => item.User.ClientId == id, ct);
         if (link is null)
         {
@@ -434,17 +413,15 @@ public static class GodModeEndpointExtensions
         }
 
         link.RevokedAtUtc = timeProvider.GetUtcNow().UtcDateTime;
-        link.FailedPinAttempts = 0;
-        link.LastFailedPinAttemptAtUtc = null;
         await RevokePortalSessionsAsync(db, link, ct);
         await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
         await WriteGodModeAuditAsync(auditLogService, AuditCatalog.Events.GodModePortalLinkRevoked, GetGodModeSession(httpContext), "client", id.ToString(), "success", httpContext, ct);
         return Results.NoContent();
     }
 
     private static async Task RevokePortalSessionsAsync(AppDbContext db, ClientPortalLoginLink link, CancellationToken ct)
     {
-        await db.ClientPortalSavedIdentityReferences.Where(item => item.LoginLinkId == link.Id).ExecuteDeleteAsync(ct);
         await db.Sessions.Where(item => item.User.Id == link.User.Id && !item.WasRevoked)
             .ExecuteUpdateAsync(setters => setters.SetProperty(item => item.WasRevoked, true), ct);
     }
@@ -800,7 +777,7 @@ function recipientNames(notice){if(notice.audienceType!=='specificRecipients')re
 function renderRecipientPicker(){const visible=noticeForm.audience.value==='specificRecipients';noticeForm.recipients.hidden=!visible;noticeForm.preAuth.disabled=noticeForm.audience.value!=='everyone';if(noticeForm.preAuth.disabled)noticeForm.preAuth.checked=false;if(!visible)return;const query=noticeForm.recipientSearch.value.trim().toLocaleLowerCase('ru');const matches=(currentState?.noticeRecipients??[]).filter(recipient=>`${recipient.displayName} ${recipient.email??''} ${recipient.detail}`.toLocaleLowerCase('ru').includes(query));noticeForm.recipientList.innerHTML=matches.length?matches.map(recipient=>{const checked=recipient.type==='user'?selectedNoticeUserIds.has(recipient.id):selectedNoticeClientIds.has(recipient.id);return`<label class="recipient"><input type="checkbox" data-recipient-type="${recipient.type}" data-recipient-id="${recipient.id}" ${checked?'checked':''}><span class="recipient-copy"><strong>${esc(recipient.displayName)}</strong>${recipient.email?`<span>${esc(recipient.email)}</span>`:''}<span class="muted">${esc(recipient.detail)}</span></span></label>`}).join(''):'<p class="muted">Получатели не найдены.</p>';const count=selectedNoticeUserIds.size+selectedNoticeClientIds.size;noticeForm.recipientSummary.textContent=count?`Выбрано: ${count}`:'Никто не выбран'}
 function resetNoticeForm(){editingNoticeId=null;selectedNoticeUserIds.clear();selectedNoticeClientIds.clear();noticeForm.title.value='';noticeForm.body.value='';noticeForm.severity.value='information';noticeForm.audience.value='everyone';noticeForm.expires.value='';noticeForm.dismissible.checked=true;noticeForm.preAuth.checked=false;noticeForm.recipientSearch.value='';noticeForm.submit.textContent='Создать';noticeForm.cancel.hidden=true;noticeForm.status.textContent='';renderRecipientPicker()}
 function toLocalDateTime(value){if(!value)return'';const date=new Date(value);const local=new Date(date.getTime()-date.getTimezoneOffset()*60000);return local.toISOString().slice(0,16)}
-async function loadState(){status.textContent='Загрузка…';const state=await api('/state');currentState=state;users.innerHTML='<table><tr><th>Пользователь</th><th>Состояние</th><th>Действия</th></tr>'+state.users.map(u=>`<tr><td>${esc(u.displayName)}<br><span class="muted">${esc(u.email)} · ${esc(u.role)}<br>user: ${esc(u.id)}${u.clientId?'<br>client: '+esc(u.clientId):''}</span></td><td>2FA: ${u.twoFactorEnabled?'да':'нет'}<br>Сброс обязателен: ${u.passwordResetRequired?'да':'нет'}<br>Сессий: ${u.activeSessionCount}; ссылок сброса: ${u.activePasswordResetLinkCount}</td><td><div class="row"><button data-command="act" data-method="POST" data-path="/users/${u.id}/password-reset-requirements">Обязать сбросить пароль</button><button data-command="secret" data-path="/users/${u.id}/password-reset-links">Создать ссылку сброса</button><button data-command="act" data-method="DELETE" data-path="/users/${u.id}/password-reset-links">Отозвать ссылки</button><button data-command="act" data-method="DELETE" data-path="/users/${u.id}/sessions">Завершить все сессии</button>${u.clientId?`<button data-command="act" data-method="POST" data-path="/clients/${u.clientId}/portal-pin-resets">Сбросить PIN</button><button data-command="secret" data-path="/clients/${u.clientId}/portal-links">Обновить ссылку кабинета</button><button data-command="act" data-method="DELETE" data-path="/clients/${u.clientId}/portal-links">Отозвать кабинет</button>`:''}</div></td></tr>`).join('')+'</table>';
+async function loadState(){status.textContent='Загрузка…';const state=await api('/state');currentState=state;users.innerHTML='<table><tr><th>Пользователь</th><th>Состояние</th><th>Действия</th></tr>'+state.users.map(u=>`<tr><td>${esc(u.displayName)}<br><span class="muted">${esc(u.email)} · ${esc(u.role)}<br>user: ${esc(u.id)}${u.clientId?'<br>client: '+esc(u.clientId):''}</span></td><td>2FA: ${u.twoFactorEnabled?'да':'нет'}<br>Сброс обязателен: ${u.passwordResetRequired?'да':'нет'}<br>Сессий: ${u.activeSessionCount}; ссылок сброса: ${u.activePasswordResetLinkCount}</td><td><div class="row"><button data-command="act" data-method="POST" data-path="/users/${u.id}/password-reset-requirements">Обязать сбросить пароль</button><button data-command="secret" data-path="/users/${u.id}/password-reset-links">Создать ссылку сброса</button><button data-command="act" data-method="DELETE" data-path="/users/${u.id}/password-reset-links">Отозвать ссылки</button><button data-command="act" data-method="DELETE" data-path="/users/${u.id}/sessions">Завершить все сессии</button>${u.clientId?`<button data-command="secret" data-path="/clients/${u.clientId}/portal-links">Обновить ссылку кабинета</button><button data-command="act" data-method="DELETE" data-path="/clients/${u.clientId}/portal-links">Отозвать кабинет</button>`:''}</div></td></tr>`).join('')+'</table>';
 sessions.innerHTML='<table><tr><th>Пользователь</th><th>Устройство / срок</th><th></th></tr>'+state.sessions.map(s=>`<tr><td>${esc(s.email)}</td><td>${esc(s.deviceInfo)}<br>${esc(s.validUntilUtc)}</td><td><button data-command="act" data-method="DELETE" data-path="/sessions/${s.id}">Завершить</button></td></tr>`).join('')+'</table>';
 invites.innerHTML='<table><tr><th>Получатель</th><th>Роль / срок</th><th>Ссылка</th></tr>'+state.invites.map(i=>`<tr><td>${esc(i.email||'без привязки')}</td><td>${esc(i.role)}<br>${esc(i.validUntilUtc)}${i.wasUsed?' · использовано':''}</td><td class="secret">${i.url?esc(i.url):'—'}</td></tr>`).join('')+'</table>';
 notices.innerHTML='<table><tr><th>Уведомление</th><th>Параметры</th><th></th></tr>'+state.notices.map(n=>`<tr class="${n.severity==='critical'?'critical':''}"><td><strong>${esc(n.title)}</strong>${n.body?'<br>'+esc(n.body):''}</td><td>${esc(severityLabels[n.severity]||n.severity)} · ${esc(audienceLabels[n.audienceType]||n.audienceType)}${n.audienceType==='specificRecipients'?'<br>'+esc(recipientNames(n)):''}<br>${n.expiresAtUtc?'до '+esc(n.expiresAtUtc):'без срока'}</td><td><button data-command="edit-notice" data-id="${n.id}">Изменить</button><button data-command="act" data-method="POST" data-path="/notices/${n.id}/expiration">Завершить</button><button data-command="act" data-method="DELETE" data-path="/notices/${n.id}">Удалить</button></td></tr>`).join('')+'</table>';renderRecipientPicker();status.textContent='Обновлено'}

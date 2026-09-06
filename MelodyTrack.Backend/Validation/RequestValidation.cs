@@ -81,21 +81,6 @@ internal static partial class RequestValidation
                 Required(errors, value.OtpSecret, nameof(value.OtpSecret), "Секрет 2FA обязателен");
                 Max(errors, value.OtpSecret, 256, nameof(value.OtpSecret), "Секрет 2FA слишком длинный");
                 break;
-            case AuthenticateClientPortalLinkRequest value:
-                Required(errors, value.Token, nameof(value.Token), "Ссылка входа недействительна");
-                Pattern(errors, value.Pin, FourDigitPin(), nameof(value.Pin), "PIN-код должен состоять из 4 цифр");
-                Pattern(errors, value.PinConfirmation, FourDigitPin(), nameof(value.PinConfirmation), "Подтверждение PIN-кода должно состоять из 4 цифр");
-                break;
-            case AuthenticateSavedClientPortalIdentityRequest value:
-                Required(errors, value.Reference, nameof(value.Reference), "Сохраненный профиль недействителен");
-                Pattern(errors, value.Pin, FourDigitPin(), nameof(value.Pin), "PIN-код должен состоять из 4 цифр");
-                break;
-            case GetClientPortalLinkStatusRequest value:
-                Required(errors, value.Token, nameof(value.Token), "Ссылка входа недействительна");
-                break;
-            case GetSavedClientPortalIdentityStatusRequest value:
-                Required(errors, value.Reference, nameof(value.Reference), "Сохраненный профиль недействителен");
-                break;
             case CreateClientSourceRequest value:
                 Required(errors, value.Name, nameof(value.Name), "Название источника обязательно");
                 Max(errors, value.Name, 200, nameof(value.Name), "Название источника должно быть не длиннее 200 символов");
@@ -523,9 +508,6 @@ internal static partial class RequestValidation
 
     [GeneratedRegex("^\\d{6}$", RegexOptions.CultureInvariant)]
     private static partial Regex SixDigitCode();
-
-    [GeneratedRegex("^\\d{4}$", RegexOptions.CultureInvariant)]
-    private static partial Regex FourDigitPin();
 
     [GeneratedRegex("^(?=.*?[A-Z])(?=.*?[a-z])(?=.*?[0-9])(?=.*?[#?!@$%^&*-]).{8,}$", RegexOptions.CultureInvariant)]
     private static partial Regex StrongPassword();

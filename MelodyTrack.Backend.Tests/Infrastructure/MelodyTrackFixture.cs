@@ -43,7 +43,6 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
         Environment.SetEnvironmentVariable("MELODY_TRACK_DATABASE_URL", connectionString);
         Environment.SetEnvironmentVariable("AuthenticationSecrets__JwtSigningPrivateKey", TestJwtPrivateKey);
         Environment.SetEnvironmentVariable("AuthenticationSecrets__PasswordPepper", "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=");
-        Environment.SetEnvironmentVariable("AuthenticationSecrets__PortalPinPepper", "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=");
         Environment.SetEnvironmentVariable("AuthenticationSecrets__RefreshTokenHashKey", "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=");
         Environment.SetEnvironmentVariable("AuthenticationSecrets__CsrfSigningKey", "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=");
         Environment.SetEnvironmentVariable("MELODY_TRACK_PII_MASTER_KEY", "super-secret-pii-key-for-testing-only-1234567890abcdef");
@@ -210,7 +209,6 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
             [$"{DatabaseOptions.SectionName}:ConnectionString"] = connectionString,
             ["AuthenticationSecrets:JwtSigningPrivateKey"] = TestJwtPrivateKey,
             ["AuthenticationSecrets:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
-            ["AuthenticationSecrets:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
             ["AuthenticationSecrets:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
             ["AuthenticationSecrets:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
             ["Jwt:Issuer"] = "MelodyTrack",

@@ -21,324 +21,200 @@ namespace MelodyTrack.Backend.Tests;
 public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
     [Fact]
-    public async Task ClientPortalLinkFlow_CreatesClientUser_AndAllowsReadOnlyScheduleAccess()
+    public async Task OpenLink_ValidToken_CreatesHashOnlySessionAndRedirectsWithoutToken()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id);
+        using var device = CreatePortalDeviceClient();
 
-        var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
-        var client = new Client
+        using var response = await device.GetAsync($"/p/{token}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location?.OriginalString.ShouldBe("/portal");
+        response.Headers.CacheControl?.NoStore.ShouldBeTrue();
+        response.Headers.GetValues("Referrer-Policy").ShouldContain("no-referrer");
+        var cookies = response.Headers.GetValues("Set-Cookie").ToArray();
+        cookies.ShouldContain(cookie => cookie.StartsWith("MelodyTrack.Refresh=") && cookie.Contains("httponly", StringComparison.OrdinalIgnoreCase));
+        cookies.ShouldAllBe(cookie => cookie.Contains("samesite=strict", StringComparison.OrdinalIgnoreCase));
+        (await response.Content.ReadAsStringAsync(TestContext.Current.CancellationToken)).ShouldNotContain(token);
+        var storedLink = await db.ClientPortalLoginLinks.AsNoTracking().SingleAsync(item => item.User.ClientId == client.Id, TestContext.Current.CancellationToken);
+        storedLink.TokenHash.ShouldBe(UserUtils.HashOpaqueToken(token));
+        storedLink.TokenHash.ShouldNotBe(token);
+        var session = await db.Sessions.AsNoTracking().SingleAsync(item => item.User.ClientId == client.Id, TestContext.Current.CancellationToken);
+        var rawRefresh = ReadCookie(response, "MelodyTrack.Refresh");
+        session.RefreshToken.ShouldNotBe(rawRefresh);
+
+        var login = await RefreshAsync(device, ReadCookie(response, "MelodyTrack.Csrf"));
+        device.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        using var meResponse = await device.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        var me = await meResponse.Content.ReadFromJsonAsync<MeResponse>(TestContext.Current.CancellationToken);
+        me.ShouldNotBeNull().LinkedClientId.ShouldBe(client.Id);
+        me.IsClientPortal.ShouldBeTrue();
+        using var schedule = await device.GetAsync("/client-portal/schedule?timezone=UTC", TestContext.Current.CancellationToken);
+        schedule.StatusCode.ShouldBe(HttpStatusCode.OK);
+        using var staff = await device.GetAsync("/clients", TestContext.Current.CancellationToken);
+        staff.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task OpenLink_TwoDevicesAndRepeatedEntry_PreservesIndependentSessions()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id);
+        using var firstDevice = CreatePortalDeviceClient();
+        using var secondDevice = CreatePortalDeviceClient();
+
+        var first = await OpenAndRefreshAsync(firstDevice, token);
+        var second = await OpenAndRefreshAsync(secondDevice, token);
+        var repeated = await OpenAndRefreshAsync(firstDevice, token);
+
+        first.AccessToken.ShouldNotBe(second.AccessToken);
+        repeated.AccessToken.ShouldNotBe(first.AccessToken);
+        secondDevice.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", second.AccessToken);
+        using var me = await secondDevice.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        me.StatusCode.ShouldBe(HttpStatusCode.OK);
+    }
+
+    [Fact]
+    public async Task OpenLink_AnotherClient_ReplacesBrowserRefreshIdentity()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var firstClient = await TestDataFactory.CreateClientAsync(db, "Анна", "Первая", TestContext.Current.CancellationToken);
+        var secondClient = await TestDataFactory.CreateClientAsync(db, "Мария", "Вторая", TestContext.Current.CancellationToken);
+        var firstToken = await CreatePortalTokenAsync(firstClient.Id);
+        var secondToken = await CreatePortalTokenAsync(secondClient.Id);
+        using var device = CreatePortalDeviceClient();
+        await OpenAndRefreshAsync(device, firstToken);
+
+        var login = await OpenAndRefreshAsync(device, secondToken);
+
+        device.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        using var meResponse = await device.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        var me = await meResponse.Content.ReadFromJsonAsync<MeResponse>(TestContext.Current.CancellationToken);
+        me.ShouldNotBeNull().LinkedClientId.ShouldBe(secondClient.Id);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ChangeLink_ActiveSessions_InvalidatesOldLinkAndAllClientSessions(bool revoke)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id);
+        using var first = CreatePortalDeviceClient();
+        using var second = CreatePortalDeviceClient();
+        var firstLogin = await OpenAndRefreshAsync(first, token);
+        var secondLogin = await OpenAndRefreshAsync(second, token);
+
+        using var mutation = revoke
+            ? await App.Client.DeleteAsync($"/clients/{client.Id}/portal-links", TestContext.Current.CancellationToken)
+            : await App.Client.PostAsJsonAsync($"/clients/{client.Id}/portal-links", new { }, TestContext.Current.CancellationToken);
+
+        mutation.StatusCode.ShouldBe(revoke ? HttpStatusCode.NoContent : HttpStatusCode.Created);
+        first.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstLogin.AccessToken);
+        second.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondLogin.AccessToken);
+        using var firstMe = await first.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        using var secondMe = await second.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        firstMe.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        secondMe.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
+        using var oldLink = await first.GetAsync($"/p/{token}", TestContext.Current.CancellationToken);
+        oldLink.Headers.Location?.OriginalString.ShouldBe("/portal/error");
+        oldLink.Headers.Contains("Set-Cookie").ShouldBeFalse();
+        if (!revoke)
         {
-            Id = Ulid.NewUlid(),
-            FirstName = "Mila",
-            LastName = "Student",
-            CreatedAtUtc = DateTime.UtcNow,
-            Contacts = new ClientContacts
-            {
-                Id = Ulid.NewUlid()
-            }
-        };
-        var service = await TestDataFactory.CreateServiceAsync(db, "Piano lesson", TestContext.Current.CancellationToken);
-        var startDate = DateTime.UtcNow.AddDays(2);
-        var endDate = startDate.AddHours(1);
+            var newLink = await mutation.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(TestContext.Current.CancellationToken);
+            var newToken = new Uri(newLink.ShouldNotBeNull().Url).Segments.Last();
+            newToken.ShouldNotBe(token);
+            await OpenAndRefreshAsync(first, newToken);
+        }
+    }
 
-        await db.Clients.AddAsync(client, TestContext.Current.CancellationToken);
+    [Theory]
+    [InlineData("invalid")]
+    [InlineData("unknown-token-with-enough-entropy")]
+    public async Task OpenLink_InvalidToken_RedirectsToTokenFreeErrorWithoutCreatingSession(string token)
+    {
+        using var device = CreatePortalDeviceClient();
+
+        using var response = await device.GetAsync($"/p/{token}", TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location?.OriginalString.ShouldBe("/portal/error");
+        response.Headers.Contains("Set-Cookie").ShouldBeFalse();
+        response.Headers.CacheControl?.NoStore.ShouldBeTrue();
+    }
+
+    [Fact]
+    public async Task OpenLink_DifferentInvalidTokens_SharesAddressRateLimit()
+    {
+        using var device = CreatePortalDeviceClient();
+        for (var attempt = 0; attempt < 20; attempt++)
+        {
+            using var response = await device.GetAsync($"/p/unknown-portal-token-{attempt}", TestContext.Current.CancellationToken);
+            response.Headers.Location?.OriginalString.ShouldBe("/portal/error");
+        }
+
+        using var throttled = await device.GetAsync("/p/another-unknown-portal-token", TestContext.Current.CancellationToken);
+
+        throttled.Headers.Location?.OriginalString.ShouldBe("/portal/error?reason=rate-limit");
+    }
+
+    [Theory]
+    [InlineData("POST")]
+    [InlineData("DELETE")]
+    public async Task ManageLink_ClientCaller_ReturnsForbidden(string method)
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id);
+        using var device = CreatePortalDeviceClient();
+        var login = await OpenAndRefreshAsync(device, token);
+        device.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
+        using var request = new HttpRequestMessage(new HttpMethod(method), $"/clients/{client.Id}/portal-links");
+
+        using var response = await device.SendAsync(request, TestContext.Current.CancellationToken);
+
+        response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task GetSchedule_PlannedAppointment_ReturnsClientNextAppointment()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var service = await TestDataFactory.CreateServiceAsync(db, "Урок", TestContext.Current.CancellationToken);
+        var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
         var appointment = new Appointment
         {
             Id = Ulid.NewUlid(),
             Client = client,
             Service = service,
-            StartDate = startDate,
-            EndDate = endDate,
+            StartDate = now.AddDays(2),
+            EndDate = now.AddDays(2).AddHours(1),
             Status = AppointmentStatus.Planned,
             IsDeleted = false
         };
         await db.Appointments.AddAsync(appointment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-
-        using var createLinkResponse = await App.Client.PostAsJsonAsync(
-            $"/clients/{client.Id}/portal-links",
-            new { },
-            TestContext.Current.CancellationToken);
-        createLinkResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var createLinkPayload =
-            await createLinkResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        createLinkPayload.ShouldNotBeNull();
-        var token = createLinkPayload.Url.Split("/portal/access/").LastOrDefault();
-        token.ShouldNotBeNullOrWhiteSpace();
-
-        var clientUser = db.Users
-            .Where(user => user.ClientId == client.Id)
-            .Select(user => new { user.ClientId, user.Email, RoleName = user.Role.RoleName })
-            .Single();
-        clientUser.RoleName.ShouldBe(UserRoles.Client);
-        clientUser.Email.ShouldBe($"client-{client.Id}".ToLowerInvariant() + "@portal.melodytrack.local");
-
-        App.Client.DefaultRequestHeaders.Authorization = null;
-        App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Tests/1.0");
-
-        using var statusResponse = await App.Client.GetAsync(
-            $"/client-portal/auth/link?token={Uri.EscapeDataString(token)}",
-            TestContext.Current.CancellationToken);
-        statusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var statusPayload =
-            await statusResponse.Content.ReadFromJsonAsync<GetClientPortalLinkStatusResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        statusPayload.ShouldNotBeNull();
-        statusPayload.FirstName.ShouldBe(client.FirstName);
-        statusPayload.HasPin.ShouldBeFalse();
-
-        using var consumeResponse = await App.Client.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new
-            {
-                token,
-                pin = "1234",
-                pinConfirmation = "1234"
-            },
-            TestContext.Current.CancellationToken);
-        consumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        consumePayload.ShouldNotBeNull();
-        consumePayload.SavedIdentity.Reference.ShouldNotBeNullOrWhiteSpace();
-        consumePayload.SavedIdentity.DisplayLabel.ShouldBe("Mila S.");
-
-        var storedCredentials = db.ClientPortalLoginLinks
-            .AsNoTracking()
-            .Single(item => item.User.ClientId == client.Id);
-        storedCredentials.TokenHash.ShouldBe(UserUtils.HashOpaqueToken(token));
-        storedCredentials.TokenHash.ShouldNotBe(token);
-        storedCredentials.PinHash.ShouldNotBe("1234");
-        UserUtils.IsValidPortalPin(storedCredentials.PinHash.ShouldNotBeNull(), "1234").ShouldBeTrue();
-        db.ClientPortalSavedIdentityReferences.AsNoTracking()
-            .Single(item => item.LoginLinkId == storedCredentials.Id)
-            .ReferenceHash.ShouldBe(UserUtils.HashOpaqueToken(consumePayload.SavedIdentity.Reference));
-
-        using var savedStatusResponse = await App.Client.GetAsync(
-            $"/client-portal/auth/saved?reference={Uri.EscapeDataString(consumePayload.SavedIdentity.Reference)}",
-            TestContext.Current.CancellationToken);
-        savedStatusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-
-        using var savedLoginResponse = await App.Client.PostAsJsonAsync(
-            "/client-portal/auth/saved",
-            new { reference = consumePayload.SavedIdentity.Reference, pin = "1234" },
-            TestContext.Current.CancellationToken);
-        savedLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var savedLoginPayload = await savedLoginResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(TestContext.Current.CancellationToken);
-        savedLoginPayload.ShouldNotBeNull();
-        savedLoginPayload.SavedIdentity.Reference.ShouldBe(consumePayload.SavedIdentity.Reference);
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", savedLoginPayload.AccessToken);
-
-        using var meResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
-        meResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var mePayload = await meResponse.Content.ReadFromJsonAsync<MeResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        mePayload.ShouldNotBeNull();
-        mePayload.IsClientPortal.ShouldBeTrue();
-        mePayload.LinkedClientId.ShouldBe(client.Id);
-
-        var scheduleUrl = "/client-portal/schedule?timezone=UTC";
-        using var scheduleResponse = await App.Client.GetAsync(scheduleUrl, TestContext.Current.CancellationToken);
-        scheduleResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var schedulePayload = await scheduleResponse.Content.ReadFromJsonAsync<GetClientPortalScheduleResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        schedulePayload.ShouldNotBeNull();
-        schedulePayload.NextAppointment.ShouldNotBeNull();
-        schedulePayload.NextAppointment.Id.ShouldBe(appointment.Id);
-        schedulePayload.NextAppointment.CourseTheme.ShouldBeNull();
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-
-        using var resetPinResponse = await App.Client.PostAsJsonAsync(
-            $"/clients/{client.Id}/portal-pin-resets",
-            new { },
-            TestContext.Current.CancellationToken);
-        resetPinResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", savedLoginPayload.AccessToken);
-        using var revokedMeResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
-        revokedMeResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-
-        App.Client.DefaultRequestHeaders.Authorization = null;
-
-        using var secondStatusResponse = await App.Client.GetAsync(
-            $"/client-portal/auth/link?token={Uri.EscapeDataString(token)}",
-            TestContext.Current.CancellationToken);
-        secondStatusResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var secondStatusPayload =
-            await secondStatusResponse.Content.ReadFromJsonAsync<GetClientPortalLinkStatusResponse>(cancellationToken: TestContext.Current.CancellationToken);
-
-        secondStatusPayload.ShouldNotBeNull();
-        secondStatusPayload.HasPin.ShouldBeFalse();
-
-        using var secondConsumeResponse = await App.Client.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new
-            {
-                token,
-                pin = "4321",
-                pinConfirmation = "4321"
-            },
-            TestContext.Current.CancellationToken);
-        secondConsumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var secondConsumePayload = await secondConsumeResponse.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken);
-        secondConsumePayload.ShouldNotBeNull();
-
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            using var failedPinResponse = await App.Client.PostAsJsonAsync(
-                "/client-portal/auth/link",
-                new { token, pin = "9999" },
-                TestContext.Current.CancellationToken);
-            failedPinResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        }
-
-        var failedLink = db.ClientPortalLoginLinks.AsNoTracking().Single(item => item.User.ClientId == client.Id);
-        failedLink.FailedPinAttempts.ShouldBe(3);
-        db.AuditLogs.AsNoTracking()
-            .Any(item => item.EntityId == failedLink.Id.ToString() && item.Action == "portal_pin_repeated_failures")
-            .ShouldBeTrue();
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-        using var rotateResponse = await App.Client.PostAsJsonAsync(
-            $"/clients/{client.Id}/portal-links",
-            new { },
-            TestContext.Current.CancellationToken);
-        rotateResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var rotatePayload = await rotateResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(TestContext.Current.CancellationToken);
-        rotatePayload.ShouldNotBeNull();
-        var rotatedToken = rotatePayload.Url.Split("/portal/access/").Last();
-        rotatedToken.ShouldNotBe(token);
-
-        App.Client.DefaultRequestHeaders.Authorization = null;
-        using var oldLinkStatus = await App.Client.GetAsync(
-            $"/client-portal/auth/link?token={Uri.EscapeDataString(token)}",
-            TestContext.Current.CancellationToken);
-        oldLinkStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-
-        using var staleSavedIdentityStatus = await App.Client.GetAsync(
-            $"/client-portal/auth/saved?reference={Uri.EscapeDataString(consumePayload.SavedIdentity.Reference)}",
-            TestContext.Current.CancellationToken);
-        staleSavedIdentityStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-
-        using var rotatedLinkStatus = await App.Client.GetAsync(
-            $"/client-portal/auth/link?token={Uri.EscapeDataString(rotatedToken)}",
-            TestContext.Current.CancellationToken);
-        rotatedLinkStatus.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var rotatedStatusPayload = await rotatedLinkStatus.Content.ReadFromJsonAsync<GetClientPortalLinkStatusResponse>(TestContext.Current.CancellationToken);
-        rotatedStatusPayload.ShouldNotBeNull();
-        rotatedStatusPayload.HasPin.ShouldBeTrue();
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondConsumePayload.AccessToken);
-        using var rotatedSessionResponse = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
-        rotatedSessionResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-        using var revokeResponse = await App.Client.DeleteAsync($"/clients/{client.Id}/portal-links", TestContext.Current.CancellationToken);
-        revokeResponse.StatusCode.ShouldBe(HttpStatusCode.NoContent);
-
-        App.Client.DefaultRequestHeaders.Authorization = null;
-        using var revokedLinkStatus = await App.Client.GetAsync(
-            $"/client-portal/auth/link?token={Uri.EscapeDataString(rotatedToken)}",
-            TestContext.Current.CancellationToken);
-        revokedLinkStatus.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-    }
-
-    [Fact]
-    public async Task PortalAuthentication_TwoDevices_CreatesIndependentActiveSessions()
-    {
-        await using var scope = App.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var client = await TestDataFactory.CreateClientAsync(
-            db,
-            "Анна",
-            "Многодевайсная",
-            TestContext.Current.CancellationToken);
         var token = await CreatePortalTokenAsync(client.Id);
-        using var firstDevice = CreatePortalDeviceClient("portal-device-one");
-        using var secondDevice = CreatePortalDeviceClient("portal-device-two");
+        await AuthenticatePortalAsync(token);
 
-        using var firstLoginResponse = await firstDevice.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new { token, pin = "1234", pinConfirmation = "1234" },
-            TestContext.Current.CancellationToken);
-        using var secondLoginResponse = await secondDevice.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new { token, pin = "1234" },
-            TestContext.Current.CancellationToken);
+        using var response = await App.Client.GetAsync("/client-portal/schedule?timezone=UTC", TestContext.Current.CancellationToken);
 
-        firstLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        secondLoginResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var firstLogin = await firstLoginResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(
-            TestContext.Current.CancellationToken);
-        var secondLogin = await secondLoginResponse.Content.ReadFromJsonAsync<ClientPortalAuthenticationResponse>(
-            TestContext.Current.CancellationToken);
-        firstLogin.ShouldNotBeNull();
-        secondLogin.ShouldNotBeNull();
-        firstLogin.AccessToken.ShouldNotBe(secondLogin.AccessToken);
-
-        db.ChangeTracker.Clear();
-        var activeSessions = await db.Sessions
-            .AsNoTracking()
-            .CountAsync(
-                session => session.User.ClientId == client.Id && !session.WasRevoked,
-                TestContext.Current.CancellationToken);
-        activeSessions.ShouldBe(2);
-
-        firstDevice.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstLogin.AccessToken);
-        secondDevice.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondLogin.AccessToken);
-        using var firstMeResponse = await firstDevice.GetAsync("/auth/me", TestContext.Current.CancellationToken);
-        using var secondMeResponse = await secondDevice.GetAsync("/auth/me", TestContext.Current.CancellationToken);
-        firstMeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        secondMeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-    }
-
-    [Fact]
-    public async Task PortalAuthentication_ThirdFailedPinAttempt_BlocksImmediateRetry()
-    {
-        await using var scope = App.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var client = await TestDataFactory.CreateClientAsync(
-            db,
-            "Павел",
-            "Заблокированный",
-            TestContext.Current.CancellationToken);
-        var token = await CreatePortalTokenAsync(client.Id);
-        using var setupDevice = CreatePortalDeviceClient("portal-setup-device");
-        using var setupResponse = await setupDevice.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new { token, pin = "1234", pinConfirmation = "1234" },
-            TestContext.Current.CancellationToken);
-        setupResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        using var retryDevice = CreatePortalDeviceClient("portal-retry-device");
-
-        for (var attempt = 0; attempt < 3; attempt++)
-        {
-            using var failedResponse = await retryDevice.PostAsJsonAsync(
-                "/client-portal/auth/link",
-                new { token, pin = "9999" },
-                TestContext.Current.CancellationToken);
-            failedResponse.StatusCode.ShouldBe(HttpStatusCode.Unauthorized);
-        }
-
-        using var blockedResponse = await retryDevice.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new { token, pin = "1234" },
-            TestContext.Current.CancellationToken);
-
-        blockedResponse.StatusCode.ShouldBe(HttpStatusCode.TooManyRequests);
-        blockedResponse.Headers.RetryAfter.ShouldNotBeNull();
-        blockedResponse.Headers.RetryAfter.Delta.ShouldNotBeNull();
-        blockedResponse.Headers.RetryAfter.Delta.Value.ShouldBeGreaterThan(TimeSpan.Zero);
-        db.ChangeTracker.Clear();
-        var link = await db.ClientPortalLoginLinks
-            .AsNoTracking()
-            .SingleAsync(item => item.User.ClientId == client.Id, TestContext.Current.CancellationToken);
-        link.FailedPinAttempts.ShouldBe(3);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        var schedule = await response.Content.ReadFromJsonAsync<GetClientPortalScheduleResponse>(TestContext.Current.CancellationToken);
+        var next = schedule.ShouldNotBeNull().NextAppointment.ShouldNotBeNull();
+        next.Id.ShouldBe(appointment.Id);
+        next.CourseTheme.ShouldBeNull();
     }
 
     [Fact]
@@ -445,44 +321,51 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
 
     private async Task<string> CreatePortalTokenAsync(Ulid clientId)
     {
-        App.Client.DefaultRequestHeaders.Authorization = null;
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var admin = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
-
-        using var createLinkResponse = await App.Client.PostAsJsonAsync($"/clients/{clientId}/portal-links", new { }, TestContext.Current.CancellationToken);
-        createLinkResponse.StatusCode.ShouldBe(HttpStatusCode.Created);
-        var payload = await createLinkResponse.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(cancellationToken: TestContext.Current.CancellationToken);
-        payload.ShouldNotBeNull();
-        return payload.Url.Split("/portal/access/").Last();
+        using var response = await App.Client.PostAsJsonAsync($"/clients/{clientId}/portal-links", new { }, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Created);
+        var payload = await response.Content.ReadFromJsonAsync<CreateClientPortalLinkResponse>(TestContext.Current.CancellationToken);
+        payload.ShouldNotBeNull().Url.ShouldContain("/p/");
+        var token = new Uri(payload.Url).Segments.Last();
+        token.Length.ShouldBe(22);
+        return token;
     }
 
     private async Task AuthenticatePortalAsync(string token)
     {
-        App.Client.DefaultRequestHeaders.Authorization = null;
-        App.Client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Tests/1.0");
-
-        using var consumeResponse = await App.Client.PostAsJsonAsync(
-            "/client-portal/auth/link",
-            new
-            {
-                token,
-                pin = "1234",
-                pinConfirmation = "1234"
-            },
-            TestContext.Current.CancellationToken);
-        consumeResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
-        var consumePayload = await consumeResponse.Content.ReadFromJsonAsync<LoginResponse>(cancellationToken: TestContext.Current.CancellationToken);
-        consumePayload.ShouldNotBeNull();
-        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", consumePayload.AccessToken);
+        using var device = CreatePortalDeviceClient();
+        var login = await OpenAndRefreshAsync(device, token);
+        App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", login.AccessToken);
     }
 
-    private HttpClient CreatePortalDeviceClient(string identity)
+    private HttpClient CreatePortalDeviceClient()
     {
-        var client = App.CreateClient();
-        client.DefaultRequestHeaders.TryAddWithoutValidation("X-Forwarded-For", identity);
+        var client = App.CreateClient(new Microsoft.AspNetCore.Mvc.Testing.WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        client.DefaultRequestHeaders.TryAddWithoutValidation("X-Forwarded-For", Ulid.NewUlid().ToString());
         client.DefaultRequestHeaders.UserAgent.ParseAdd("MelodyTrack.Tests/1.0");
         return client;
     }
+
+    private static async Task<LoginResponse> OpenAndRefreshAsync(HttpClient device, string token)
+    {
+        using var response = await device.GetAsync($"/p/{token}", TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.Redirect);
+        response.Headers.Location?.OriginalString.ShouldBe("/portal");
+        return await RefreshAsync(device, ReadCookie(response, "MelodyTrack.Csrf"));
+    }
+
+    private static async Task<LoginResponse> RefreshAsync(HttpClient device, string csrf)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/auth/refresh");
+        request.Headers.Add("X-CSRF-Token", csrf);
+        using var response = await device.SendAsync(request, TestContext.Current.CancellationToken);
+        response.StatusCode.ShouldBe(HttpStatusCode.OK);
+        return (await response.Content.ReadFromJsonAsync<LoginResponse>(TestContext.Current.CancellationToken)).ShouldNotBeNull();
+    }
+
+    private static string ReadCookie(HttpResponseMessage response, string name) => response.Headers.GetValues("Set-Cookie")
+        .Single(value => value.StartsWith(name + "=", StringComparison.Ordinal)).Split(';')[0][(name.Length + 1)..];
 }

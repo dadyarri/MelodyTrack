@@ -1,14 +1,13 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { createBrowserRouter, Navigate, Outlet } from "react-router";
 
-import { ClientPortalThemeProvider } from "@/shared/config";
 import { recoverableImport } from "@/shared/lib";
 
 import { AdminRoute } from "./guards/AdminRoute";
-import { ClientPortalRoute } from "./guards/ClientPortalRoute";
 import { ProtectedRoute } from "./guards/ProtectedRoute";
 import { StatsRoute } from "./guards/StatsRoute";
 import { SuperuserRoute } from "./guards/SuperuserRoute";
+import { portalRoutes } from "./portalRoutes";
 import { RouteErrorBoundary } from "./RouteErrorBoundary";
 import { createRoutePrefetcher } from "./routePrefetch";
 
@@ -56,36 +55,6 @@ export const router = createBrowserRouter([
     },
   },
   {
-    path: "/portal/access",
-    errorElement: <RouteErrorBoundary />,
-    lazy: async () => {
-      const { PortalAccessPage } = await recoverableImport(() => import("@/pages/portal-access"));
-
-      return {
-        Component: () => (
-          <ClientPortalThemeProvider>
-            <PortalAccessPage />
-          </ClientPortalThemeProvider>
-        ),
-      };
-    },
-  },
-  {
-    path: "/portal/access/:token",
-    errorElement: <RouteErrorBoundary />,
-    lazy: async () => {
-      const { PortalAccessPage } = await recoverableImport(() => import("@/pages/portal-access"));
-
-      return {
-        Component: () => (
-          <ClientPortalThemeProvider>
-            <PortalAccessPage />
-          </ClientPortalThemeProvider>
-        ),
-      };
-    },
-  },
-  {
     path: "/login",
     errorElement: <RouteErrorBoundary />,
     lazy: async () => {
@@ -107,49 +76,7 @@ export const router = createBrowserRouter([
       };
     },
   },
-  {
-    path: "/portal",
-    errorElement: <RouteErrorBoundary />,
-    lazy: async () => {
-      const { ClientPortalShell } = await recoverableImport(() => import("@/widgets/client-portal-shell"));
-
-      return {
-        Component: () => (
-          <ClientPortalThemeProvider>
-            <ClientPortalRoute>
-              <ClientPortalShell />
-            </ClientPortalRoute>
-          </ClientPortalThemeProvider>
-        ),
-      };
-    },
-    children: [
-      {
-        index: true,
-        element: <Navigate to="/portal/schedule" replace />,
-      },
-      {
-        path: "schedule",
-        lazy: async () => {
-          const { ClientPortalSchedulePage } = await recoverableImport(() => import("@/pages/client-portal-schedule"));
-
-          return {
-            Component: ClientPortalSchedulePage,
-          };
-        },
-      },
-      {
-        path: "vacations",
-        lazy: async () => {
-          const { ClientPortalVacationsPage } = await recoverableImport(() => import("@/pages/client-portal-vacations"));
-
-          return {
-            Component: ClientPortalVacationsPage,
-          };
-        },
-      },
-    ],
-  },
+  ...portalRoutes,
   {
     path: "/",
     errorElement: <RouteErrorBoundary />,

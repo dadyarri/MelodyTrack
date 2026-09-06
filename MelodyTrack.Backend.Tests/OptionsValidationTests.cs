@@ -31,7 +31,6 @@ public sealed class OptionsValidationTests
         {
             ["AuthenticationSecrets:JwtSigningPrivateKey"] = "too-short",
             ["AuthenticationSecrets:PasswordPepper"] = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
-            ["AuthenticationSecrets:PortalPinPepper"] = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
             ["AuthenticationSecrets:RefreshTokenHashKey"] = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
             ["AuthenticationSecrets:CsrfSigningKey"] = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0=",
             ["Jwt:Issuer"] = "MelodyTrack",

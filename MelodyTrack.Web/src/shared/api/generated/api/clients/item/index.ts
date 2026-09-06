@@ -12,8 +12,6 @@ import { LeadStatusRequestBuilderRequestsMetadata, type LeadStatusRequestBuilder
 // @ts-ignore
 import { PortalLinksRequestBuilderRequestsMetadata, type PortalLinksRequestBuilder } from './portalLinks/index.js';
 // @ts-ignore
-import { PortalPinResetsRequestBuilderRequestsMetadata, type PortalPinResetsRequestBuilder } from './portalPinResets/index.js';
-// @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata, type Parsable, type ParsableFactory, type RequestConfiguration, type RequestInformation, type RequestsMetadata } from '@microsoft/kiota-abstractions';
 
 /**
@@ -36,10 +34,6 @@ export interface ClientsItemRequestBuilder extends BaseRequestBuilder<ClientsIte
      * The portalLinks property
      */
     get portalLinks(): PortalLinksRequestBuilder;
-    /**
-     * The portalPinResets property
-     */
-    get portalPinResets(): PortalPinResetsRequestBuilder;
     /**
      * @param requestConfiguration Configuration for the request such as headers, query parameters, and middleware options.
      * @throws {ApiProblemDetails} error when the service returns a 401 status code
@@ -116,9 +110,6 @@ export const ClientsItemRequestBuilderNavigationMetadata: Record<Exclude<keyof C
     },
     portalLinks: {
         requestsMetadata: PortalLinksRequestBuilderRequestsMetadata,
-    },
-    portalPinResets: {
-        requestsMetadata: PortalPinResetsRequestBuilderRequestsMetadata,
     },
 };
 /**

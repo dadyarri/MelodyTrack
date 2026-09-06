@@ -16,19 +16,15 @@ public sealed class AuthenticationCryptoTests
     private const string JwtPrivateKey = "base64:MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQg1a+XfTTbRx+lAZXtBVgkgxPy4juOyvu9VuwfrFCy9BihRANCAATHVVdEpzPvwGWCKZ7kcmGIqi6JGlxlaa6/mELjK19tAuNSLWWbhxeWb0LaVYdquLVhzFnyWL1XsTRPxSen4PvA";
 
     [Fact]
-    public void HashCredentials_PasswordAndPortalPin_UsesVersionedPurposeSeparatedArgon2id()
+    public void HashPassword_ValidPassword_UsesVersionedArgon2id()
     {
         var hasher = new CredentialHasher(Options.Create(CreateSecrets()));
 
         var passwordHash = hasher.HashPassword("correct horse battery staple");
-        var pinHash = hasher.HashPortalPin("1234");
 
         passwordHash.ShouldStartWith("mt-argon2id-v1$");
-        pinHash.ShouldStartWith("mt-argon2id-v1$");
         hasher.VerifyPassword(passwordHash, "correct horse battery staple").ShouldBeTrue();
-        hasher.VerifyPortalPin(pinHash, "1234").ShouldBeTrue();
-        hasher.VerifyPassword(pinHash, "1234").ShouldBeFalse();
-        hasher.VerifyPortalPin(passwordHash, "correct horse battery staple").ShouldBeFalse();
+        hasher.VerifyPassword(passwordHash, "wrong password").ShouldBeFalse();
     }
 
     [Fact]
@@ -74,7 +70,6 @@ public sealed class AuthenticationCryptoTests
     {
         JwtSigningPrivateKey = JwtPrivateKey,
         PasswordPepper = "base64:G2UfJdjsXXVuK72YyyE+thhGeWP+luj3S6ifPMqjZtA=",
-        PortalPinPepper = "base64:VFWWTyDfkCqiB2TC7OrIQpT8FyXZRCuALw2YJbQDcPw=",
         RefreshTokenHashKey = "base64:5sXZ/oCgEMjrXA1KzQGzAkN88oDl4GZS6gefagjMjW4=",
         CsrfSigningKey = "base64:NWgzsvzLSMFqAg08Nh5+7TE7dbd/paept2GeaGandu0="
     };
