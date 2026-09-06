@@ -29,6 +29,7 @@ The root `MelodyTrack.slnx` is the .NET solution/build entry point. Backend-spec
 - `dotnet run --project MelodyTrack.AppHost`: start PostgreSQL, Init, Backend, Vite, and the Aspire Dashboard for local development.
 - Run `npm install` and `npm run dev` from `MelodyTrack.Web/` to start Vite.
 - Run `npm run verify` from `MelodyTrack.Web/` for the existing frontend verification baseline.
+- Non-interactive shells may not initialize the fnm-managed Node.js path. Before treating Node.js or npm as unavailable, locate `fnm` (commonly `~/.local/share/fnm/fnm`) and run Node.js commands through `fnm exec --using 26 <command>`.
 - Run `dotnet run scripts/ReleaseTool.cs -- <command>` from the repository root for release metadata and release workflow operations.
 
 ## Workflow
