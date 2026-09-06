@@ -23,6 +23,288 @@ namespace MelodyTrack.Backend.Data.Migrations
             NpgsqlModelBuilderExtensions.HasPostgresExtension(modelBuilder, "fuzzystrmatch");
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.AliasBardicTerm", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value")
+                        .IsUnique();
+
+                    b.ToTable("AliasBardicTerms");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 1 },
+                            IsEnabled = true,
+                            Value = "Бард"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 2 },
+                            IsEnabled = true,
+                            Value = "Менестрель"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 3 },
+                            IsEnabled = true,
+                            Value = "Скальд"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 4 },
+                            IsEnabled = true,
+                            Value = "Виртуоз"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 5 },
+                            IsEnabled = true,
+                            Value = "Маэстро"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 6 },
+                            IsEnabled = true,
+                            Value = "Певец"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 7 },
+                            IsEnabled = true,
+                            Value = "Сказитель"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 8 },
+                            IsEnabled = true,
+                            Value = "Трубадур"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 9 },
+                            IsEnabled = true,
+                            Value = "Музыкант"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 32 },
+                            IsEnabled = true,
+                            Value = "Импровизатор"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 33 },
+                            IsEnabled = true,
+                            Value = "Композитор"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 44, 34 },
+                            IsEnabled = true,
+                            Value = "Орфей"
+                        });
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.AliasCreature", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value")
+                        .IsUnique();
+
+                    b.ToTable("AliasCreatures");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 1 },
+                            IsEnabled = true,
+                            Value = "Грифон"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 2 },
+                            IsEnabled = true,
+                            Value = "Дракон"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 3 },
+                            IsEnabled = true,
+                            Value = "Феникс"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 4 },
+                            IsEnabled = true,
+                            Value = "Единорог"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 5 },
+                            IsEnabled = true,
+                            Value = "Василиск"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 6 },
+                            IsEnabled = true,
+                            Value = "Пегас"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 7 },
+                            IsEnabled = true,
+                            Value = "Кентавр"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 8 },
+                            IsEnabled = true,
+                            Value = "Сфинкс"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 9 },
+                            IsEnabled = true,
+                            Value = "Голем"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 32 },
+                            IsEnabled = true,
+                            Value = "Гиппогриф"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 33 },
+                            IsEnabled = true,
+                            Value = "Левиафан"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 48, 34 },
+                            IsEnabled = true,
+                            Value = "Дух"
+                        });
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.AliasEpithet", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<bool>("IsEnabled")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Value")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Value")
+                        .IsUnique();
+
+                    b.ToTable("AliasEpithets");
+
+                    b.HasData(
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 1 },
+                            IsEnabled = true,
+                            Value = "Сияющий"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 2 },
+                            IsEnabled = true,
+                            Value = "Доблестный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 3 },
+                            IsEnabled = true,
+                            Value = "Мудрый"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 4 },
+                            IsEnabled = true,
+                            Value = "Чародейный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 5 },
+                            IsEnabled = true,
+                            Value = "Звёздный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 6 },
+                            IsEnabled = true,
+                            Value = "Лунный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 7 },
+                            IsEnabled = true,
+                            Value = "Солнечный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 8 },
+                            IsEnabled = true,
+                            Value = "Отважный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 9 },
+                            IsEnabled = true,
+                            Value = "Благородный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 32 },
+                            IsEnabled = true,
+                            Value = "Таинственный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 33 },
+                            IsEnabled = true,
+                            Value = "Изумрудный"
+                        },
+                        new
+                        {
+                            Id = new byte[] { 1, 152, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 56, 34 },
+                            IsEnabled = true,
+                            Value = "Серебряный"
+                        });
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Appointment", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -1508,6 +1790,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<string>("Phone")
                         .HasColumnType("text");
 
+                    b.Property<string>("PortalAlias")
+                        .HasColumnType("text");
+
                     b.Property<byte[]>("RoleId")
                         .IsRequired()
                         .HasColumnType("bytea");
@@ -1529,6 +1814,10 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.HasIndex("EmailBlindIndex")
                         .IsUnique();
+
+                    b.HasIndex("PortalAlias")
+                        .IsUnique()
+                        .HasFilter("\"PortalAlias\" IS NOT NULL");
 
                     b.HasIndex("RoleId");
 

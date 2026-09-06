@@ -147,6 +147,14 @@ export const appNavItems: AppNavItem[] = [
     group: "reference-books",
   },
   {
+    key: "/alias-dictionaries",
+    icon: <BookOutlined />,
+    label: "Словари игровых имён",
+    shortcut: "D",
+    visibility: "admin",
+    group: "reference-books",
+  },
+  {
     key: "/client-sources",
     icon: <FunnelTargetOutlined />,
     label: "Источники клиентов",

@@ -2217,7 +2217,9 @@ Simplify client portal entry and establish the structural foundation for the red
 
 ---
 
-## Stage 21: Player Identity and Alias Dictionaries
+## Stage 21: Player Identity and Alias Dictionaries ✅
+
+Verified on 2026-09-06 with the solution build and deterministic Kiota regeneration, 452 .NET tests, and the complete frontend verification pipeline (203 unit, 75 Chromium, and 75 WebKit tests).
 
 Each portal client should have a stable public fantasy identity used in the portal header and competitive features. Alias generation should be server-controlled and backed by administrator-managed Russian dictionaries.
 
@@ -2225,11 +2227,13 @@ Each portal client should have a stable public fantasy identity used in the port
 
 - Add nullable `PortalAlias` to the existing user entity.
 - Enforce database-level uniqueness for non-null aliases.
+- Identify generated combinations by the epithet entry ID, the noun dictionary, and the noun entry ID. Entry IDs identify combinations; database uniqueness of the final `PortalAlias` string prevents different combinations from producing identical assigned public names.
 - Keep the client's real or administrative name unchanged outside the public portal identity.
 - Support exactly two alias patterns:
 
   - positive fantasy/magical epithet + fantasy creature;
   - positive fantasy/magical epithet + musical/bardic term.
+- Restrict dictionary vocabulary to grammatically compatible masculine singular forms, such as «Сияющий Грифон» and «Сияющий Бард». Grammatical-gender metadata and automatic agreement are outside this stage.
 - Add three database-backed dictionaries:
 
   - `AliasEpithets`;
@@ -2262,12 +2266,15 @@ Each portal client should have a stable public fantasy identity used in the port
   - delete.
 - Dictionary changes must affect newly generated candidates without requiring application deployment.
 - If `PortalAlias == null`, require alias selection on first portal entry.
+- Apply this requirement to existing clients on their next portal visit, including clients with already active sessions. Enforce the gate in both portal navigation and ordinary portal APIs, while keeping session and alias-selection operations available.
 - Return one generated candidate from the server.
 - Provide `Another name` and `Choose this name` actions.
 - Each `Another name` request should return exactly one new candidate.
+- Exclude the immediately previous candidate from `Another name`; older candidates may reappear. If no alternative is available, show an explicit error instead of repeating the current candidate. If no candidate is available at all, show an explicit error and keep the client on the selection screen.
 - Do not send the complete dictionaries to the frontend.
 - Generate candidates randomly from enabled dictionary values.
 - Store the selected alias as a final string on the user.
+- Selection is permanent: neither clients nor administrators can rename or reset an assigned alias.
 - Existing aliases must not change when dictionary values are later edited or deleted.
 - Avoid returning already assigned aliases where possible.
 - Keep the database unique constraint as the final protection against concurrent alias collisions.
@@ -2295,9 +2302,12 @@ Each portal client should have a stable public fantasy identity used in the port
 ### Done looks like
 
 - A new portal client must choose a unique fantasy alias before normal portal use.
+- Existing clients without an alias must also complete selection before normal portal navigation or API use, even with an already active session.
 - Initial Russian dictionaries are available immediately after migration.
 - Administrators can manage all three dictionaries without deployment.
 - Existing aliases survive later dictionary edits and deletions.
+- Assigned aliases cannot be renamed or reset.
+- `Another name` never immediately repeats a candidate, and unavailable candidates produce an explicit error.
 - Alias uniqueness is enforced even under concurrent selection.
 - A client who loses an alias-selection race sees an explicit conflict and remains in control of generating the next candidate.
 

@@ -19,14 +19,11 @@ export function ClientPortalShell() {
           <div>
             <Typography.Text className={styles.eyebrow}>MelodyTrack Portal</Typography.Text>
             <Typography.Title level={2} className={styles.title}>
-              {auth.user?.firstName}, добро пожаловать!
+              {auth.user?.portalAlias}, добро пожаловать!
             </Typography.Title>
           </div>
           <Space className={styles.actions}>
             <NotificationBell footer={<PushNotificationControl />} />
-            <Typography.Text type="secondary">
-              {auth.user?.firstName} {auth.user?.lastName}
-            </Typography.Text>
             <Button icon={<LogoutOutlined />} onClick={() => void auth.logout()}>
               Выйти
             </Button>

@@ -1,6 +1,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
 using MelodyTrack.Backend.Api.Auth.Requests;
+using MelodyTrack.Backend.Api.AliasDictionaries.Requests;
+using MelodyTrack.Backend.Api.ClientPortal.Aliases.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.ClientSources.Requests;
 using MelodyTrack.Backend.Api.Clients.Requests;
@@ -29,6 +31,18 @@ internal static partial class RequestValidation
         var errors = new List<ValidationResult>();
         switch (request)
         {
+            case CreateAliasDictionaryEntryRequest value:
+                Required(errors, value.Value, nameof(value.Value), "Укажите значение.");
+                Max(errors, value.Value, 60, nameof(value.Value), "Значение не должно быть длиннее 60 символов.");
+                break;
+            case ChoosePortalAliasRequest value:
+                NotEmpty(errors, value.EpithetId, nameof(value.EpithetId), "Выберите вариант имени.");
+                NotEmpty(errors, value.NounId, nameof(value.NounId), "Выберите вариант имени.");
+                Required(errors, value.Value, nameof(value.Value), "Выберите вариант имени.");
+                Max(errors, value.Value, 121, nameof(value.Value), "Игровое имя слишком длинное.");
+                Required(errors, value.CandidateToken, nameof(value.CandidateToken), "Выберите вариант имени.");
+                Max(errors, value.CandidateToken, 4096, nameof(value.CandidateToken), "Вариант имени некорректен.");
+                break;
             case ChangePasswordRequest value:
                 Required(errors, value.CurrentPassword, nameof(value.CurrentPassword), "Текущий пароль обязателен");
                 Max(errors, value.CurrentPassword, 256, nameof(value.CurrentPassword), "Пароль слишком длинный");

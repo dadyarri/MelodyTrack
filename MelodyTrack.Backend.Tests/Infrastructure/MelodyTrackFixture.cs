@@ -21,7 +21,10 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
     private const string PostgreSqlImage = "postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50";
     private const string ThrottleBypassHeaderName = "X-Forwarded-For";
     private static readonly SemaphoreSlim ResetLock = new(1, 1);
-    private static readonly string[] PreservedTables = ["__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"];
+    private static readonly string[] PreservedTables =
+    [
+        "__EFMigrationsHistory", "Roles", "RecurrenceTypes", "RecurringTaskRules"
+    ];
 
     private PostgreSqlContainer? _dbContainer;
     public HttpClient Client { get; private set; } = null!;
@@ -188,6 +191,16 @@ public sealed class MelodyTrackFixture : WebApplicationFactory<Program>, IAsyncL
             Role = superuserRole,
             ValidUntil = DateTime.UtcNow.AddDays(2)
         }, cancellationToken);
+
+        db.AliasEpithets.AddRange(
+            new AliasEpithet { Id = Ulid.NewUlid(), Value = "Сияющий", IsEnabled = true },
+            new AliasEpithet { Id = Ulid.NewUlid(), Value = "Мудрый", IsEnabled = true });
+        db.AliasCreatures.AddRange(
+            new AliasCreature { Id = Ulid.NewUlid(), Value = "Грифон", IsEnabled = true },
+            new AliasCreature { Id = Ulid.NewUlid(), Value = "Дракон", IsEnabled = true });
+        db.AliasBardicTerms.AddRange(
+            new AliasBardicTerm { Id = Ulid.NewUlid(), Value = "Бард", IsEnabled = true },
+            new AliasBardicTerm { Id = Ulid.NewUlid(), Value = "Менестрель", IsEnabled = true });
 
         await db.SaveChangesAsync(cancellationToken);
     }

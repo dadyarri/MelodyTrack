@@ -3,6 +3,9 @@ using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.ClientPortal.Responses;
+using MelodyTrack.Backend.Api.ClientPortal.Aliases;
+using MelodyTrack.Backend.Api.ClientPortal.Aliases.Requests;
+using MelodyTrack.Backend.Api.ClientPortal.Aliases.Responses;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.CourseEnrollments.Responses;
@@ -20,6 +23,124 @@ namespace MelodyTrack.Backend.Tests;
 [Collection(IntegrationTestCollection.Name)]
 public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app)
 {
+    [Fact]
+    public async Task PortalApis_WithoutAlias_RequireSelectionWhileSessionAndCandidatesRemainAvailable()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id, assignAlias: false);
+        await AuthenticatePortalAsync(token);
+
+        using var me = await App.Client.GetAsync("/auth/me", TestContext.Current.CancellationToken);
+        using var candidate = await App.Client.GetAsync("/client-portal/alias-candidates/next", TestContext.Current.CancellationToken);
+        using var schedule = await App.Client.GetAsync("/client-portal/schedule?timezone=UTC", TestContext.Current.CancellationToken);
+
+        me.StatusCode.ShouldBe(HttpStatusCode.OK);
+        candidate.StatusCode.ShouldBe(HttpStatusCode.OK);
+        schedule.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
+    public async Task ChooseAlias_ValidCandidate_PersistsPermanentlyAndUnlocksPortal()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id, assignAlias: false);
+        await AuthenticatePortalAsync(token);
+        var candidate = await App.Client.GetFromJsonAsync<PortalAliasCandidateResponse>(
+            "/client-portal/alias-candidates/next", TestContext.Current.CancellationToken);
+
+        using var selection = await App.Client.PostAsJsonAsync(
+            "/client-portal/alias",
+            new ChoosePortalAliasRequest
+            {
+                EpithetId = candidate.ShouldNotBeNull().EpithetId,
+                NounKind = candidate.NounKind,
+                NounId = candidate.NounId,
+                Value = candidate.Value,
+                CandidateToken = candidate.CandidateToken
+            },
+            TestContext.Current.CancellationToken);
+        using var repeated = await App.Client.PostAsJsonAsync(
+            "/client-portal/alias",
+            new ChoosePortalAliasRequest
+            {
+                EpithetId = candidate.EpithetId,
+                NounKind = candidate.NounKind,
+                NounId = candidate.NounId,
+                Value = candidate.Value,
+                CandidateToken = candidate.CandidateToken
+            },
+            TestContext.Current.CancellationToken);
+        using var schedule = await App.Client.GetAsync("/client-portal/schedule?timezone=UTC", TestContext.Current.CancellationToken);
+
+        selection.StatusCode.ShouldBe(HttpStatusCode.NoContent);
+        repeated.StatusCode.ShouldBe(HttpStatusCode.Conflict);
+        schedule.StatusCode.ShouldBe(HttpStatusCode.OK);
+        db.ChangeTracker.Clear();
+        var alias = await db.Users.Where(user => user.ClientId == client.Id)
+            .Select(user => user.PortalAlias).SingleAsync(TestContext.Current.CancellationToken);
+        alias.ShouldBe(candidate.Value);
+    }
+
+    [Fact]
+    public async Task GetNextAlias_WithPreviousCandidate_DoesNotRepeatImmediately()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Клиент", TestContext.Current.CancellationToken);
+        var token = await CreatePortalTokenAsync(client.Id, assignAlias: false);
+        await AuthenticatePortalAsync(token);
+        var first = (await App.Client.GetFromJsonAsync<PortalAliasCandidateResponse>(
+            "/client-portal/alias-candidates/next", TestContext.Current.CancellationToken)).ShouldNotBeNull();
+        var query = $"?previousEpithetId={first.EpithetId}&previousNounKind={first.NounKind}&previousNounId={first.NounId}";
+
+        var second = await App.Client.GetFromJsonAsync<PortalAliasCandidateResponse>(
+            "/client-portal/alias-candidates/next" + query, TestContext.Current.CancellationToken);
+
+        second.ShouldNotBeNull().Value.ShouldNotBe(first.Value);
+    }
+
+    [Fact]
+    public async Task ChooseAlias_ConcurrentSelectionOfSameAlias_ReturnsOneConflict()
+    {
+        await using var scope = App.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+        var firstClient = await TestDataFactory.CreateClientAsync(db, "Анна", "Первая", TestContext.Current.CancellationToken);
+        var secondClient = await TestDataFactory.CreateClientAsync(db, "Мария", "Вторая", TestContext.Current.CancellationToken);
+        var firstToken = await CreatePortalTokenAsync(firstClient.Id, assignAlias: false);
+        var secondToken = await CreatePortalTokenAsync(secondClient.Id, assignAlias: false);
+        await db.AliasEpithets.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+        await db.AliasCreatures.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+        await db.AliasBardicTerms.ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+        db.AliasEpithets.Add(new AliasEpithet { Id = Ulid.NewUlid(), Value = "Единственный", IsEnabled = true });
+        db.AliasCreatures.Add(new AliasCreature { Id = Ulid.NewUlid(), Value = "Грифон", IsEnabled = true });
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        using var firstDevice = CreatePortalDeviceClient();
+        using var secondDevice = CreatePortalDeviceClient();
+        var firstLogin = await OpenAndRefreshAsync(firstDevice, firstToken);
+        var secondLogin = await OpenAndRefreshAsync(secondDevice, secondToken);
+        firstDevice.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", firstLogin.AccessToken);
+        secondDevice.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", secondLogin.AccessToken);
+        var firstCandidate = await firstDevice.GetFromJsonAsync<PortalAliasCandidateResponse>(
+            "/client-portal/alias-candidates/next", TestContext.Current.CancellationToken);
+        var secondCandidate = await secondDevice.GetFromJsonAsync<PortalAliasCandidateResponse>(
+            "/client-portal/alias-candidates/next", TestContext.Current.CancellationToken);
+
+        var responses = await Task.WhenAll(
+            firstDevice.PostAsJsonAsync("/client-portal/alias", firstCandidate, TestContext.Current.CancellationToken),
+            secondDevice.PostAsJsonAsync("/client-portal/alias", secondCandidate, TestContext.Current.CancellationToken));
+
+        responses.Select(response => response.StatusCode).Order()
+            .ShouldBe(new[] { HttpStatusCode.NoContent, HttpStatusCode.Conflict }.Order());
+        foreach (var response in responses)
+        {
+            response.Dispose();
+        }
+    }
+
     [Fact]
     public async Task OpenLink_ValidToken_CreatesHashOnlySessionAndRedirectsWithoutToken()
     {
@@ -319,7 +440,7 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         enrollment.Themes.Count.ShouldBe(3);
     }
 
-    private async Task<string> CreatePortalTokenAsync(Ulid clientId)
+    private async Task<string> CreatePortalTokenAsync(Ulid clientId, bool assignAlias = true)
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -331,6 +452,12 @@ public class ClientPortalTests(MelodyTrackFixture app) : IntegrationTestBase(app
         payload.ShouldNotBeNull().Url.ShouldContain("/p/");
         var token = new Uri(payload.Url).Segments.Last();
         token.Length.ShouldBe(22);
+        if (assignAlias)
+        {
+            var portalUser = await db.Users.SingleAsync(user => user.ClientId == clientId, TestContext.Current.CancellationToken);
+            portalUser.PortalAlias ??= $"Игрок {clientId}";
+            await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        }
         return token;
     }
 

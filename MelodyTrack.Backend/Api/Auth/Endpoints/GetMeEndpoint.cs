@@ -97,6 +97,7 @@ public sealed class GetMeEndpoint
             IsAdmin = user.Role.RoleName.IsAnyAdmin(),
             IsSuperuser = user.Role.RoleName.IsSuperuser(),
             IsClientPortal = user.Role.RoleName.IsClient(),
+            PortalAlias = user.PortalAlias,
             LinkedClientId = user.ClientId,
             Balance = balance,
             IsTwoFactorEnabled = user.TotpSecret is not null,

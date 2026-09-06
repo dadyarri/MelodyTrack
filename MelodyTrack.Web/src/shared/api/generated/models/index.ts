@@ -4,6 +4,20 @@
 // @ts-ignore
 import { type AdditionalDataHolder, type ApiError, type DateOnly, type Parsable, type ParseNode, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
+export interface AliasDictionaryEntryDto extends AdditionalDataHolder, Parsable {
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The isEnabled property
+     */
+    isEnabled?: boolean | null;
+    /**
+     * The value property
+     */
+    value?: string | null;
+}
 export interface ApiProblemDetails extends AdditionalDataHolder, ApiError, Parsable {
     /**
      * The code property
@@ -380,6 +394,28 @@ export interface ChangePasswordRequest extends AdditionalDataHolder, Parsable {
      * The newPassword property
      */
     newPassword?: string | null;
+}
+export interface ChoosePortalAliasRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The candidateToken property
+     */
+    candidateToken?: string | null;
+    /**
+     * The epithetId property
+     */
+    epithetId?: string | null;
+    /**
+     * The nounId property
+     */
+    nounId?: string | null;
+    /**
+     * The nounKind property
+     */
+    nounKind?: number | null;
+    /**
+     * The value property
+     */
+    value?: string | null;
 }
 export interface Client extends AdditionalDataHolder, Parsable {
     /**
@@ -1375,6 +1411,21 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {AliasDictionaryEntryDto}
+ */
+// @ts-ignore
+export function createAliasDictionaryEntryDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoAliasDictionaryEntryDto;
+}
+export interface CreateAliasDictionaryEntryRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The value property
+     */
+    value?: string | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ApiProblemDetails}
  */
 // @ts-ignore
@@ -1710,6 +1761,15 @@ export function createCancelVacationRequestFromDiscriminatorValue(parseNode: Par
 // @ts-ignore
 export function createChangePasswordRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoChangePasswordRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ChoosePortalAliasRequest}
+ */
+// @ts-ignore
+export function createChoosePortalAliasRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoChoosePortalAliasRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2272,6 +2332,15 @@ export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateAliasDictionaryEntryRequest}
+ */
+// @ts-ignore
+export function createCreateAliasDictionaryEntryRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateAliasDictionaryEntryRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {CreateAppointmentRequest}
  */
 // @ts-ignore
@@ -2683,6 +2752,15 @@ export function createFinanceServiceDtoFromDiscriminatorValue(parseNode: ParseNo
 // @ts-ignore
 export function createFinanceTrendDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoFinanceTrendDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetAliasDictionaryResponse}
+ */
+// @ts-ignore
+export function createGetAliasDictionaryResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetAliasDictionaryResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3280,6 +3358,15 @@ export interface CreatePaymentRequest extends AdditionalDataHolder, Parsable {
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {PortalAliasCandidateResponse}
+ */
+// @ts-ignore
+export function createPortalAliasCandidateResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoPortalAliasCandidateResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {PushSubscriptionRequest}
  */
 // @ts-ignore
@@ -3604,6 +3691,15 @@ export function createSetup2FaResponseFromDiscriminatorValue(parseNode: ParseNod
 // @ts-ignore
 export function createSystemNoticeResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoSystemNoticeResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {UpdateAliasDictionaryEntryRequest}
+ */
+// @ts-ignore
+export function createUpdateAliasDictionaryEntryRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoUpdateAliasDictionaryEntryRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4134,6 +4230,19 @@ export interface DelayRecurringTaskRequest extends AdditionalDataHolder, Parsabl
 }
 /**
  * The deserialization information for the current model
+ * @param AliasDictionaryEntryDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoAliasDictionaryEntryDto(aliasDictionaryEntryDto: Partial<AliasDictionaryEntryDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "id": n => { aliasDictionaryEntryDto.id = n.getStringValue(); },
+        "isEnabled": n => { aliasDictionaryEntryDto.isEnabled = n.getBooleanValue(); },
+        "value": n => { aliasDictionaryEntryDto.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ApiProblemDetails The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4558,6 +4667,21 @@ export function deserializeIntoChangePasswordRequest(changePasswordRequest: Part
     return {
         "currentPassword": n => { changePasswordRequest.currentPassword = n.getStringValue(); },
         "newPassword": n => { changePasswordRequest.newPassword = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ChoosePortalAliasRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoChoosePortalAliasRequest(choosePortalAliasRequest: Partial<ChoosePortalAliasRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "candidateToken": n => { choosePortalAliasRequest.candidateToken = n.getStringValue(); },
+        "epithetId": n => { choosePortalAliasRequest.epithetId = n.getStringValue(); },
+        "nounId": n => { choosePortalAliasRequest.nounId = n.getStringValue(); },
+        "nounKind": n => { choosePortalAliasRequest.nounKind = n.getNumberValue(); },
+        "value": n => { choosePortalAliasRequest.value = n.getStringValue(); },
     }
 }
 /**
@@ -5239,6 +5363,17 @@ export function deserializeIntoCourseThemeDto(courseThemeDto: Partial<CourseThem
 }
 /**
  * The deserialization information for the current model
+ * @param CreateAliasDictionaryEntryRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateAliasDictionaryEntryRequest(createAliasDictionaryEntryRequest: Partial<CreateAliasDictionaryEntryRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "value": n => { createAliasDictionaryEntryRequest.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CreateAppointmentRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5775,6 +5910,17 @@ export function deserializeIntoFinanceTrendDto(financeTrendDto: Partial<FinanceT
         "payments": n => { financeTrendDto.payments = n.getNumberValue(); },
         "revenue": n => { financeTrendDto.revenue = n.getNumberValue(); },
         "startDate": n => { financeTrendDto.startDate = n.getDateValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param GetAliasDictionaryResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetAliasDictionaryResponse(getAliasDictionaryResponse: Partial<GetAliasDictionaryResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getAliasDictionaryResponse.items = n.getCollectionOfObjectValues<AliasDictionaryEntryDto>(createAliasDictionaryEntryDtoFromDiscriminatorValue); },
     }
 }
 /**
@@ -6407,6 +6553,7 @@ export function deserializeIntoMeResponse(meResponse: Partial<MeResponse> | unde
         "lastName": n => { meResponse.lastName = n.getStringValue(); },
         "linkedClientId": n => { meResponse.linkedClientId = n.getStringValue(); },
         "phone": n => { meResponse.phone = n.getStringValue(); },
+        "portalAlias": n => { meResponse.portalAlias = n.getStringValue(); },
         "roleDisplayName": n => { meResponse.roleDisplayName = n.getStringValue(); },
         "telegram": n => { meResponse.telegram = n.getStringValue(); },
         "vk": n => { meResponse.vk = n.getStringValue(); },
@@ -6553,6 +6700,21 @@ export function deserializeIntoPaginatedResponseOfServiceWithCurrentPriceDto(pag
     return {
         "items": n => { paginatedResponseOfServiceWithCurrentPriceDto.items = n.getCollectionOfObjectValues<ServiceWithCurrentPriceDto>(createServiceWithCurrentPriceDtoFromDiscriminatorValue); },
         "page": n => { paginatedResponseOfServiceWithCurrentPriceDto.page = n.getObjectValue<PageMetadata>(createPageMetadataFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param PortalAliasCandidateResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoPortalAliasCandidateResponse(portalAliasCandidateResponse: Partial<PortalAliasCandidateResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "candidateToken": n => { portalAliasCandidateResponse.candidateToken = n.getStringValue(); },
+        "epithetId": n => { portalAliasCandidateResponse.epithetId = n.getStringValue(); },
+        "nounId": n => { portalAliasCandidateResponse.nounId = n.getStringValue(); },
+        "nounKind": n => { portalAliasCandidateResponse.nounKind = n.getNumberValue(); },
+        "value": n => { portalAliasCandidateResponse.value = n.getStringValue(); },
     }
 }
 /**
@@ -7025,6 +7187,18 @@ export function deserializeIntoSystemNoticeResponse(systemNoticeResponse: Partia
 }
 /**
  * The deserialization information for the current model
+ * @param UpdateAliasDictionaryEntryRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoUpdateAliasDictionaryEntryRequest(updateAliasDictionaryEntryRequest: Partial<UpdateAliasDictionaryEntryRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "isEnabled": n => { updateAliasDictionaryEntryRequest.isEnabled = n.getBooleanValue(); },
+        "value": n => { updateAliasDictionaryEntryRequest.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param UpdateAppointmentRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7228,6 +7402,7 @@ export function deserializeIntoUser(user: Partial<User> | undefined = {}) : Reco
         "password": n => { user.password = n.getStringValue(); },
         "passwordResetRequired": n => { user.passwordResetRequired = n.getBooleanValue(); },
         "phone": n => { user.phone = n.getStringValue(); },
+        "portalAlias": n => { user.portalAlias = n.getStringValue(); },
         "role": n => { user.role = n.getObjectValue<Role>(createRoleFromDiscriminatorValue); },
         "telegram": n => { user.telegram = n.getStringValue(); },
         "totpSecret": n => { user.totpSecret = n.getStringValue(); },
@@ -7849,6 +8024,12 @@ export interface FinanceTrendDto extends AdditionalDataHolder, Parsable {
      */
     startDate?: Date | null;
 }
+export interface GetAliasDictionaryResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: AliasDictionaryEntryDto[] | null;
+}
 export interface GetAppointmentsResponse extends AdditionalDataHolder, Parsable {
     /**
      * The appointments property
@@ -8385,6 +8566,10 @@ export interface MeResponse extends AdditionalDataHolder, Parsable {
      */
     phone?: string | null;
     /**
+     * The portalAlias property
+     */
+    portalAlias?: string | null;
+    /**
      * The roleDisplayName property
      */
     roleDisplayName?: string | null;
@@ -8579,6 +8764,28 @@ export interface PaginatedResponseOfServiceWithCurrentPriceDto extends Additiona
      * The page property
      */
     page?: PageMetadata | null;
+}
+export interface PortalAliasCandidateResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The candidateToken property
+     */
+    candidateToken?: string | null;
+    /**
+     * The epithetId property
+     */
+    epithetId?: string | null;
+    /**
+     * The nounId property
+     */
+    nounId?: string | null;
+    /**
+     * The nounKind property
+     */
+    nounKind?: number | null;
+    /**
+     * The value property
+     */
+    value?: string | null;
 }
 export interface PushSubscriptionRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -8999,6 +9206,20 @@ export interface Role extends AdditionalDataHolder, Parsable {
      * The roleName property
      */
     roleName?: number | null;
+}
+/**
+ * Serializes information the current object
+ * @param AliasDictionaryEntryDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeAliasDictionaryEntryDto(writer: SerializationWriter, aliasDictionaryEntryDto: Partial<AliasDictionaryEntryDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!aliasDictionaryEntryDto || isSerializingDerivedType) { return; }
+    writer.writeStringValue("id", aliasDictionaryEntryDto.id);
+    writer.writeBooleanValue("isEnabled", aliasDictionaryEntryDto.isEnabled);
+    writer.writeStringValue("value", aliasDictionaryEntryDto.value);
+    writer.writeAdditionalData(aliasDictionaryEntryDto.additionalData);
 }
 /**
  * Serializes information the current object
@@ -9442,6 +9663,22 @@ export function serializeChangePasswordRequest(writer: SerializationWriter, chan
     writer.writeStringValue("currentPassword", changePasswordRequest.currentPassword);
     writer.writeStringValue("newPassword", changePasswordRequest.newPassword);
     writer.writeAdditionalData(changePasswordRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ChoosePortalAliasRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeChoosePortalAliasRequest(writer: SerializationWriter, choosePortalAliasRequest: Partial<ChoosePortalAliasRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!choosePortalAliasRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("candidateToken", choosePortalAliasRequest.candidateToken);
+    writer.writeStringValue("epithetId", choosePortalAliasRequest.epithetId);
+    writer.writeStringValue("nounId", choosePortalAliasRequest.nounId);
+    writer.writeNumberValue("nounKind", choosePortalAliasRequest.nounKind);
+    writer.writeStringValue("value", choosePortalAliasRequest.value);
+    writer.writeAdditionalData(choosePortalAliasRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -10156,6 +10393,18 @@ export function serializeCourseThemeDto(writer: SerializationWriter, courseTheme
 }
 /**
  * Serializes information the current object
+ * @param CreateAliasDictionaryEntryRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateAliasDictionaryEntryRequest(writer: SerializationWriter, createAliasDictionaryEntryRequest: Partial<CreateAliasDictionaryEntryRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createAliasDictionaryEntryRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("value", createAliasDictionaryEntryRequest.value);
+    writer.writeAdditionalData(createAliasDictionaryEntryRequest.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CreateAppointmentRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10728,6 +10977,18 @@ export function serializeFinanceTrendDto(writer: SerializationWriter, financeTre
     writer.writeNumberValue("revenue", financeTrendDto.revenue);
     writer.writeDateValue("startDate", financeTrendDto.startDate);
     writer.writeAdditionalData(financeTrendDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GetAliasDictionaryResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetAliasDictionaryResponse(writer: SerializationWriter, getAliasDictionaryResponse: Partial<GetAliasDictionaryResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getAliasDictionaryResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<AliasDictionaryEntryDto>("items", getAliasDictionaryResponse.items, serializeAliasDictionaryEntryDto);
+    writer.writeAdditionalData(getAliasDictionaryResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -11398,6 +11659,7 @@ export function serializeMeResponse(writer: SerializationWriter, meResponse: Par
     writer.writeStringValue("lastName", meResponse.lastName);
     writer.writeStringValue("linkedClientId", meResponse.linkedClientId);
     writer.writeStringValue("phone", meResponse.phone);
+    writer.writeStringValue("portalAlias", meResponse.portalAlias);
     writer.writeStringValue("roleDisplayName", meResponse.roleDisplayName);
     writer.writeStringValue("telegram", meResponse.telegram);
     writer.writeStringValue("vk", meResponse.vk);
@@ -11553,6 +11815,22 @@ export function serializePaginatedResponseOfServiceWithCurrentPriceDto(writer: S
     writer.writeCollectionOfObjectValues<ServiceWithCurrentPriceDto>("items", paginatedResponseOfServiceWithCurrentPriceDto.items, serializeServiceWithCurrentPriceDto);
     writer.writeObjectValue<PageMetadata>("page", paginatedResponseOfServiceWithCurrentPriceDto.page, serializePageMetadata);
     writer.writeAdditionalData(paginatedResponseOfServiceWithCurrentPriceDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param PortalAliasCandidateResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializePortalAliasCandidateResponse(writer: SerializationWriter, portalAliasCandidateResponse: Partial<PortalAliasCandidateResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!portalAliasCandidateResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("candidateToken", portalAliasCandidateResponse.candidateToken);
+    writer.writeStringValue("epithetId", portalAliasCandidateResponse.epithetId);
+    writer.writeStringValue("nounId", portalAliasCandidateResponse.nounId);
+    writer.writeNumberValue("nounKind", portalAliasCandidateResponse.nounKind);
+    writer.writeStringValue("value", portalAliasCandidateResponse.value);
+    writer.writeAdditionalData(portalAliasCandidateResponse.additionalData);
 }
 /**
  * Serializes information the current object
@@ -12053,6 +12331,19 @@ export function serializeSystemNoticeResponse(writer: SerializationWriter, syste
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param UpdateAliasDictionaryEntryRequest The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeUpdateAliasDictionaryEntryRequest(writer: SerializationWriter, updateAliasDictionaryEntryRequest: Partial<UpdateAliasDictionaryEntryRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!updateAliasDictionaryEntryRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("isEnabled", updateAliasDictionaryEntryRequest.isEnabled);
+    writer.writeStringValue("value", updateAliasDictionaryEntryRequest.value);
+    writer.writeAdditionalData(updateAliasDictionaryEntryRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UpdateAppointmentRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12268,6 +12559,7 @@ export function serializeUser(writer: SerializationWriter, user: Partial<User> |
     writer.writeStringValue("password", user.password);
     writer.writeBooleanValue("passwordResetRequired", user.passwordResetRequired);
     writer.writeStringValue("phone", user.phone);
+    writer.writeStringValue("portalAlias", user.portalAlias);
     writer.writeObjectValue<Role>("role", user.role, serializeRole);
     writer.writeStringValue("telegram", user.telegram);
     writer.writeStringValue("totpSecret", user.totpSecret);
@@ -12868,6 +13160,16 @@ export interface SystemNoticeResponse extends AdditionalDataHolder, Parsable {
      */
     title?: string | null;
 }
+export interface UpdateAliasDictionaryEntryRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The isEnabled property
+     */
+    isEnabled?: boolean | null;
+    /**
+     * The value property
+     */
+    value?: string | null;
+}
 export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable {
     /**
      * The clientId property
@@ -13201,6 +13503,10 @@ export interface User extends AdditionalDataHolder, Parsable {
      * The phone property
      */
     phone?: string | null;
+    /**
+     * The portalAlias property
+     */
+    portalAlias?: string | null;
     /**
      * The role property
      */

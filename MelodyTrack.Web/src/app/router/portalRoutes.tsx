@@ -3,10 +3,26 @@ import { Navigate, type RouteObject } from "react-router";
 import { ClientPortalThemeProvider } from "@/shared/config";
 import { recoverableImport } from "@/shared/lib";
 
-import { ClientPortalRoute } from "./guards/ClientPortalRoute";
+import { ClientPortalAliasRoute, ClientPortalRoute } from "./guards/ClientPortalRoute";
 import { RouteErrorBoundary } from "./RouteErrorBoundary";
 
 export const portalRoutes: RouteObject[] = [
+  {
+    path: "/portal/alias",
+    errorElement: <RouteErrorBoundary />,
+    lazy: async () => {
+      const { ClientPortalAliasPage } = await recoverableImport(() => import("@/pages/client-portal-alias"));
+      return {
+        Component: () => (
+          <ClientPortalThemeProvider>
+            <ClientPortalAliasRoute>
+              <ClientPortalAliasPage />
+            </ClientPortalAliasRoute>
+          </ClientPortalThemeProvider>
+        ),
+      };
+    },
+  },
   {
     path: "/portal/error",
     errorElement: <RouteErrorBoundary />,

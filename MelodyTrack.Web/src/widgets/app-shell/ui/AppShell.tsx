@@ -376,6 +376,10 @@ function isShellShortcutReserved(pathname: string, key: string) {
     return normalizedKey === "a";
   }
 
+  if (pathname.startsWith("/alias-dictionaries")) {
+    return normalizedKey === "a";
+  }
+
   if (pathname === "/") {
     return normalizedKey === "x";
   }

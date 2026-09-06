@@ -58,6 +58,9 @@ public class AppDbContext : DbContext
     public DbSet<VacationRequest> VacationRequests { get; set; }
     public DbSet<WorkingHoursRequest> WorkingHoursRequests { get; set; }
     public DbSet<WorkingHoursRequestDay> WorkingHoursRequestDays { get; set; }
+    public DbSet<AliasEpithet> AliasEpithets { get; set; }
+    public DbSet<AliasCreature> AliasCreatures { get; set; }
+    public DbSet<AliasBardicTerm> AliasBardicTerms { get; set; }
 
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
@@ -99,6 +102,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<User>()
             .HasIndex(e => e.EmailBlindIndex)
             .IsUnique();
+
+        modelBuilder.Entity<User>()
+            .HasIndex(e => e.PortalAlias)
+            .IsUnique()
+            .HasFilter("\"PortalAlias\" IS NOT NULL");
+
+        ConfigureAliasDictionaries(modelBuilder);
 
         modelBuilder.Entity<CalendarSubscription>().HasIndex(e => e.Token).IsUnique();
         modelBuilder.Entity<CalendarSubscription>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
@@ -652,6 +662,53 @@ public class AppDbContext : DbContext
             .Property(e => e.DefinitionVersion)
             .HasDefaultValue(1);
     }
+
+    private static void ConfigureAliasDictionaries(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AliasEpithet>().HasIndex(entry => entry.Value).IsUnique();
+        modelBuilder.Entity<AliasCreature>().HasIndex(entry => entry.Value).IsUnique();
+        modelBuilder.Entity<AliasBardicTerm>().HasIndex(entry => entry.Value).IsUnique();
+
+        modelBuilder.Entity<AliasEpithet>().HasData(
+            AliasEpithetSeed.Select((value, index) => new AliasEpithet
+            {
+                Id = Ulid.Parse($"01K00000000000000000000E{index + 1:D2}"),
+                Value = value,
+                IsEnabled = true
+            }));
+        modelBuilder.Entity<AliasCreature>().HasData(
+            AliasCreatureSeed.Select((value, index) => new AliasCreature
+            {
+                Id = Ulid.Parse($"01K00000000000000000000C{index + 1:D2}"),
+                Value = value,
+                IsEnabled = true
+            }));
+        modelBuilder.Entity<AliasBardicTerm>().HasData(
+            AliasBardicTermSeed.Select((value, index) => new AliasBardicTerm
+            {
+                Id = Ulid.Parse($"01K00000000000000000000B{index + 1:D2}"),
+                Value = value,
+                IsEnabled = true
+            }));
+    }
+
+    private static readonly string[] AliasEpithetSeed =
+    [
+        "Сияющий", "Доблестный", "Мудрый", "Чародейный", "Звёздный", "Лунный",
+        "Солнечный", "Отважный", "Благородный", "Таинственный", "Изумрудный", "Серебряный"
+    ];
+
+    private static readonly string[] AliasCreatureSeed =
+    [
+        "Грифон", "Дракон", "Феникс", "Единорог", "Василиск", "Пегас",
+        "Кентавр", "Сфинкс", "Голем", "Гиппогриф", "Левиафан", "Дух"
+    ];
+
+    private static readonly string[] AliasBardicTermSeed =
+    [
+        "Бард", "Менестрель", "Скальд", "Виртуоз", "Маэстро", "Певец",
+        "Сказитель", "Трубадур", "Музыкант", "Импровизатор", "Композитор", "Орфей"
+    ];
 
     private void UpdateEmailBlindIndexes()
     {

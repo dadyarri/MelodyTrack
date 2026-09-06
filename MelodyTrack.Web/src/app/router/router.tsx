@@ -15,6 +15,7 @@ const prefetchStaffRoute = createRoutePrefetcher<QueryClient>(
   {
     "/": () => import("@/pages/dashboard"),
     "/audit": () => import("@/pages/audit"),
+    "/alias-dictionaries": () => import("@/pages/alias-dictionaries"),
     "/client-sources": () => import("@/pages/client-sources"),
     "/clients": () => import("@/pages/clients"),
     "/courses": () => import("@/pages/courses"),
@@ -243,6 +244,20 @@ export const router = createBrowserRouter([
             Component: () => (
               <AdminRoute>
                 <ExpenseCategoriesPage />
+              </AdminRoute>
+            ),
+          };
+        },
+      },
+      {
+        path: "alias-dictionaries",
+        lazy: async () => {
+          const { AliasDictionariesPage } = await recoverableImport(() => import("@/pages/alias-dictionaries"));
+
+          return {
+            Component: () => (
+              <AdminRoute>
+                <AliasDictionariesPage />
               </AdminRoute>
             ),
           };

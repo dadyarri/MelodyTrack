@@ -55,6 +55,8 @@ public class User : BaseModel
     public Ulid? ClientId { get; set; }
     public Client? Client { get; set; }
 
+    public string? PortalAlias { get; set; }
+
     public UserOnboardingState? OnboardingState { get; set; }
     public List<UserWorkingHoursDay> WorkingHours { get; set; } = [];
     public List<UserVacation> Vacations { get; set; } = [];

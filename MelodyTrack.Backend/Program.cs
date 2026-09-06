@@ -4,6 +4,7 @@ using MelodyTrack.Backend;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
 using MelodyTrack.Backend.Api.ClientPortal;
+using MelodyTrack.Backend.Api.ClientPortal.Aliases;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Dashboard;
 using MelodyTrack.Backend.Api.Onboarding;
@@ -47,6 +48,7 @@ var logLevelSwitch = new LoggingLevelSwitch();
 var loggerProviders = new LoggerProviderCollection();
 
 var builder = WebApplication.CreateBuilder(args);
+builder.Services.AddDataProtection();
 builder.Configuration.AddInMemoryCollection(LegacyConfiguration.ReadEnvironmentAliases());
 var isOpenApiGeneration = string.Equals(
     Assembly.GetEntryAssembly()?.GetName().Name,
@@ -226,6 +228,7 @@ try
     builder.Services.AddScoped<AppointmentUpdatePreparationService>();
     builder.Services.AddScoped<CourseProgressService>();
     builder.Services.AddScoped<ClientPortalSessionService>();
+    builder.Services.AddScoped<PortalAliasGenerator>();
     builder.Services.AddScoped<IEntityFreshnessService, EntityFreshnessService>();
     builder.Services.AddScoped<OnboardingStateService>();
     builder.Services.AddScoped<IRecordActivityService, RecordActivityService>();

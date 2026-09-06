@@ -3,6 +3,8 @@ using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
+using MelodyTrack.Backend.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace MelodyTrack.Backend.Api.Auth;
 
@@ -102,7 +104,9 @@ public sealed class DatabaseRoleAuthorizationHandler(ICurrentUserAccessor curren
         resource is HttpContext httpContext ? httpContext.RequestAborted : CancellationToken.None;
 }
 
-public sealed class ApiAccessAuthorizationHandler(ICurrentUserAccessor currentUserAccessor)
+public sealed class ApiAccessAuthorizationHandler(
+    ICurrentUserAccessor currentUserAccessor,
+    IOptions<HttpOptions> httpOptions)
     : AuthorizationHandler<ApiAccessRequirement>
 {
     protected override async Task HandleRequirementAsync(
@@ -119,6 +123,19 @@ public sealed class ApiAccessAuthorizationHandler(ICurrentUserAccessor currentUs
         if (!user.Role.RoleName.IsClient())
         {
             context.Succeed(requirement);
+            return;
+        }
+
+        if (user.PortalAlias is null)
+        {
+            var authPath = new PathString($"{httpOptions.Value.PathBase}/auth");
+            if (httpContext?.Request.Path.StartsWithSegments(authPath) == true
+                || httpContext?.Request.Path.StartsWithSegments($"{httpOptions.Value.PathBase}/client-portal/alias") == true
+                || httpContext?.Request.Path.StartsWithSegments($"{httpOptions.Value.PathBase}/client-portal/alias-candidates") == true)
+            {
+                context.Succeed(requirement);
+            }
+
             return;
         }
 

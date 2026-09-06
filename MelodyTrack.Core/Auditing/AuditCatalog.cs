@@ -84,6 +84,10 @@ public static class AuditCatalog
         public static readonly AuditEventDefinition LeadReopened = Define(Categories.Clients, "lead_reopened", "Лид возвращён в работу");
         public static readonly AuditEventDefinition ClientSourceCreated = Define(Categories.Clients, "client_source_created", "Источник клиента создан");
         public static readonly AuditEventDefinition ClientSourceDeleted = Define(Categories.Clients, "client_source_deleted", "Источник клиента удалён");
+        public static readonly AuditEventDefinition PortalAliasSelected = Define(Categories.Clients, "portal_alias_selected", "Игровой псевдоним выбран");
+        public static readonly AuditEventDefinition AliasDictionaryEntryCreated = Define(Categories.Clients, "alias_dictionary_entry_created", "Элемент словаря псевдонимов создан");
+        public static readonly AuditEventDefinition AliasDictionaryEntryUpdated = Define(Categories.Clients, "alias_dictionary_entry_updated", "Элемент словаря псевдонимов изменён");
+        public static readonly AuditEventDefinition AliasDictionaryEntryDeleted = Define(Categories.Clients, "alias_dictionary_entry_deleted", "Элемент словаря псевдонимов удалён");
 
         public static readonly AuditEventDefinition ServiceCreated = Define(Categories.Services, "service_created", "Услуга создана");
         public static readonly AuditEventDefinition ServiceUpdated = Define(Categories.Services, "service_updated", "Услуга обновлена");

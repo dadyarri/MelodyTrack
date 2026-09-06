@@ -78,7 +78,8 @@ public sealed class NotificationEndpointTests(MelodyTrackFixture app) : Integrat
             Email = $"{Ulid.NewUlid()}@portal.invalid",
             Password = "hash",
             Role = clientRole,
-            ClientId = client.Id
+            ClientId = client.Id,
+            PortalAlias = $"Певец {client.Id}"
         };
         var staffUser = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         await db.Users.AddAsync(portalUser, TestContext.Current.CancellationToken);

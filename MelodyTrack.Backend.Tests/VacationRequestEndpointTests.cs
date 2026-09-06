@@ -318,7 +318,8 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
             Email = $"{Ulid.NewUlid()}@portal.invalid",
             Password = "hash",
             Role = role,
-            ClientId = client.Id
+            ClientId = client.Id,
+            PortalAlias = $"Певец {client.Id}"
         };
         await db.Users.AddAsync(user, ct);
         await db.SaveChangesAsync(ct);
