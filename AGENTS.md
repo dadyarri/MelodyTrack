@@ -36,6 +36,7 @@ The root `MelodyTrack.slnx` is the .NET solution/build entry point. Backend-spec
 
 - Preserve behavior unless `roadmap.md` explicitly changes it.
 - Keep migration changes bisectable and do not leave two permanent implementations.
+- Name new EF migrations after the key schema or data change in PascalCase, for example `AddPlayerAliases`. Never include roadmap stage or phase numbers or labels in migration names. Do not rename existing migrations solely to apply this convention.
 - Do not introduce speculative architecture or compatibility layers.
 - Propagate cancellation through endpoint, EF, and outbound I/O operations.
 - Never expose secrets or personal data in logs, traces, metrics, error metadata, or generated artifacts.
