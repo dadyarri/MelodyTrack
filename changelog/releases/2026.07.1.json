@@ -1,6 +1,7 @@
 {
   "version": "2026.07.1",
   "codename": "Accordatura",
+  "codenameMeaning": "Настройка музыкального инструмента.",
   "date": "2026-07-29",
   "changes": {
     "new": [

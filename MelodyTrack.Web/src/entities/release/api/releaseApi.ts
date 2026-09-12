@@ -18,6 +18,7 @@ const releaseHistorySchema = v.strictObject({
     v.strictObject({
       version: v.string(),
       codename: v.string(),
+      codenameMeaning: v.nullable(v.string()),
       date: v.string(),
       changes: changesSchema,
       parentVersion: v.nullable(v.string()),

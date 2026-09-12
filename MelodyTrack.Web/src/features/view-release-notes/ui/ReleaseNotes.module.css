@@ -13,3 +13,13 @@
 .modalContent {
   padding-inline-end: 16px;
 }
+
+.releaseTitle:global(.ant-typography) {
+  margin-bottom: 4px;
+}
+
+.codenameMeaning:global(.ant-typography) {
+  margin: 0 0 8px;
+  color: var(--ant-color-text-secondary);
+  font-style: italic;
+}

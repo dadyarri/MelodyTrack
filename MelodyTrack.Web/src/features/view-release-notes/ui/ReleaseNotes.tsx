@@ -98,11 +98,13 @@ function ReleaseNotesContent({
 function ReleaseSection({ release }: { release: ReleaseEntry }) {
   return (
     <section>
-      <Typography.Title level={4}>
+      <Typography.Title level={4} className={styles.releaseTitle}>
         {release.parentVersion ? "Исправление " : ""}
         {release.version} — {release.codename}
       </Typography.Title>
-      <br />
+      {release.codenameMeaning ? (
+        <Typography.Paragraph className={styles.codenameMeaning}>{release.codenameMeaning}</Typography.Paragraph>
+      ) : null}
       <Typography.Text type="secondary">
         {new Intl.DateTimeFormat("ru-RU", { dateStyle: "long" }).format(new Date(`${release.date}T00:00:00`))}
       </Typography.Text>

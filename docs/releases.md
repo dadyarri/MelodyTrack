@@ -1,6 +1,6 @@
 # Releases
 
-`changelog/releases/` is the application-level source of public release metadata. Each release or hotfix has one file named after its version, such as `2026.08.1.json`; `changelog/release.schema.json` documents the file shape. Release files contain human-written `new`, `improved`, `fixed`, and `security` entries.
+`changelog/releases/` is the application-level source of public release metadata. Each release or hotfix has one file named after its version, such as `2026.08.1.json`; `changelog/release.schema.json` documents the file shape. Regular release files include `codenameMeaning`, a concise Russian explanation displayed below the codename. Hotfixes inherit both fields from their parent release. Release files contain human-written `new`, `improved`, `fixed`, and `security` entries.
 
 A regular release uses `yyyy.mm.releaseNumber` and has a manually chosen `codename`. A hotfix adds `.hotfixNumber`, omits `codename`, and inherits it from the matching regular release. Released entries have a `yyyy-MM-dd` date. The one active draft has `date: null`; Backend validates but does not expose it through release-history endpoints. The release tool validates filenames, version uniqueness, parent releases, required categories, and non-empty released change text.
 
@@ -9,16 +9,16 @@ A regular release uses `yyyy.mm.releaseNumber` and has a manually chosen `codena
 Run from a clean local `develop` branch:
 
 ```text
-dotnet run scripts/ReleaseTool.cs -- start-next-release <codename> [YYYY.MM.N]
+dotnet run scripts/ReleaseTool.cs -- start-next-release <codename> <codename-meaning> [YYYY.MM.N]
 ```
 
-Without an override, the tool uses the current UTC year/month and allocates the next unused regular sequence. An override must be a valid unused regular version newer than production. The command writes and commits the new `date: null` draft; codenames and release-note text remain human-authored.
+Without an override, the tool uses the current UTC year/month and allocates the next unused regular sequence. An override must be a valid unused regular version newer than production. The command writes and commits the new `date: null` draft with the codename and its meaning; codenames, meanings, and release-note text remain human-authored.
 
 ## Preparing a release
 
 1. Add and review entries in the active draft on local `develop`.
 2. Keep the monorepo worktree clean and ensure it merges into current `origin/master` without conflicts.
-3. Run `dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> [next-version]`. It dates the current draft, creates and verifies `release/<version>`, pushes it, and opens one pull request. After that succeeds it dates the same entry on local `develop`, automatically allocates and commits the next regular draft using the supplied codename (or validated explicit next version).
+3. Run `dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> <next-codename-meaning> [next-version]`. It dates the current draft, creates and verifies `release/<version>`, pushes it, and opens one pull request. After that succeeds it dates the same entry on local `develop`, automatically allocates and commits the next regular draft using the supplied codename and meaning (or validated explicit next version).
 4. Review and merge the pull request normally. Its title must be the exact version and its body must remain the generated changelog entry.
 5. After the pull request is merged, check out local `develop` and run `dotnet run scripts/ReleaseTool.cs -- finalize`. It fetches the release refs, fast-forwards local `master`, merges `master` into local `develop`, and deletes merged local release/hotfix branches.
 

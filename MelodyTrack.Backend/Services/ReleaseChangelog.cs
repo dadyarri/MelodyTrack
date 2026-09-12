@@ -8,7 +8,7 @@ namespace MelodyTrack.Backend.Services;
 
 public sealed partial class ReleaseChangelog
 {
-    private static readonly string[] AllowedReleaseProperties = ["version", "codename", "date", "changes"];
+    private static readonly string[] AllowedReleaseProperties = ["version", "codename", "codenameMeaning", "date", "changes"];
     private static readonly string[] AllowedChangeProperties = ["new", "improved", "fixed", "security"];
 
     private ReleaseChangelog(IReadOnlyList<ReleaseEntry> releases, string etag)
@@ -121,6 +121,7 @@ public sealed partial class ReleaseChangelog
             }
 
             release.ResolvedCodename = parent.Codename!;
+            release.ResolvedCodenameMeaning = parent.CodenameMeaning;
         }
         foreach (var draft in drafts.Where(draft => draft.ParentVersion is not null))
         {
@@ -186,15 +187,34 @@ public sealed partial class ReleaseChangelog
         {
             codename = codenameElement.ValueKind == JsonValueKind.String ? codenameElement.GetString()?.Trim() : null;
         }
+        var hasCodenameMeaning = releaseObject.TryGetProperty("codenameMeaning", out var codenameMeaningElement);
+        var codenameMeaning = hasCodenameMeaning && codenameMeaningElement.ValueKind == JsonValueKind.String
+            ? codenameMeaningElement.GetString()?.Trim()
+            : null;
 
         if (isPatch && hasCodename)
         {
             throw new InvalidDataException($"{location}.codename must be omitted for patches.");
         }
 
+        if (isPatch && hasCodenameMeaning)
+        {
+            throw new InvalidDataException($"{location}.codenameMeaning must be omitted for patches.");
+        }
+
+        if (hasCodenameMeaning && string.IsNullOrWhiteSpace(codenameMeaning))
+        {
+            throw new InvalidDataException($"{location}.codenameMeaning must be a non-empty string when provided.");
+        }
+
         if (!isPatch && string.IsNullOrWhiteSpace(codename))
         {
             throw new InvalidDataException($"{location}.codename is required for actual releases.");
+        }
+
+        if (!isPatch && string.IsNullOrWhiteSpace(codenameMeaning))
+        {
+            throw new InvalidDataException($"{location}.codenameMeaning is required for actual releases.");
         }
 
         var changes = ParseChanges(RequireProperty(releaseObject, "changes"), $"{location}.changes");
@@ -210,7 +230,11 @@ public sealed partial class ReleaseChangelog
                 version,
                 parentVersion,
                 IsDraft: false,
-                new ReleaseEntry(version, codename, date.Value, changes, parentVersion) { ResolvedCodename = codename ?? string.Empty });
+                new ReleaseEntry(version, codename, codenameMeaning, date.Value, changes, parentVersion)
+                {
+                    ResolvedCodename = codename ?? string.Empty,
+                    ResolvedCodenameMeaning = codenameMeaning
+                });
     }
 
     private static ReleaseChanges ParseChanges(JsonElement element, string location)
@@ -288,7 +312,7 @@ public sealed partial class ReleaseChangelog
             throw new InvalidDataException($"Unknown property {location}.{unknown}.");
         }
 
-        foreach (var required in allowed.Where(name => !allowMissingCodename || name != "codename"))
+        foreach (var required in allowed.Where(name => !allowMissingCodename || name is not ("codename" or "codenameMeaning")))
         {
             if (!properties.Contains(required, StringComparer.Ordinal))
             {
@@ -306,17 +330,20 @@ public sealed partial class ReleaseChangelog
 public sealed class ReleaseEntry(
     string version,
     string? codename,
+    string? codenameMeaning,
     DateOnly date,
     ReleaseChanges changes,
     string? parentVersion)
 {
     public string Version { get; } = version;
     public string? Codename { get; } = codename;
+    public string? CodenameMeaning { get; } = codenameMeaning;
     public DateOnly Date { get; } = date;
     public ReleaseChanges Changes { get; } = changes;
     public string? ParentVersion { get; } = parentVersion;
     public bool IsPatch => ParentVersion is not null;
     public string ResolvedCodename { get; internal set; } = null!;
+    public string? ResolvedCodenameMeaning { get; internal set; }
 }
 
 public sealed record ReleaseChanges(

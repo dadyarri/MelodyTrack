@@ -27,6 +27,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.07.1",
               "codename": "Accordatura",
+              "codenameMeaning": "Настройка инструмента.",
               "date": "2026-07-29",
               "changes": { "new": ["Релиз"], "improved": [], "fixed": [], "security": [] }
             }
@@ -35,6 +36,7 @@ public class ReleaseChangelogTests
         changelog.Current.Version.ShouldBe("2026.07.1.1");
         changelog.Current.Codename.ShouldBeNull();
         changelog.Current.ResolvedCodename.ShouldBe("Accordatura");
+        changelog.Current.ResolvedCodenameMeaning.ShouldBe("Настройка инструмента.");
         changelog.Current.ParentVersion.ShouldBe("2026.07.1");
     }
 
@@ -46,6 +48,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.08.2",
               "codename": "Dolce",
+              "codenameMeaning": "Нежное, мягкое исполнение.",
               "date": null,
               "changes": { "new": [], "improved": ["Draft change"], "fixed": [], "security": [] }
             }
@@ -54,6 +57,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.08.1",
               "codename": "Cantabile",
+              "codenameMeaning": "Певучее, напевное исполнение.",
               "date": "2026-08-02",
               "changes": { "new": ["Released"], "improved": [], "fixed": [], "security": [] }
             }
@@ -71,6 +75,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.07.2",
               "codename": "Old draft",
+              "codenameMeaning": "Устаревший черновик.",
               "date": null,
               "changes": { "new": [], "improved": [], "fixed": [], "security": [] }
             }
@@ -79,6 +84,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.08.1",
               "codename": "Cantabile",
+              "codenameMeaning": "Певучее, напевное исполнение.",
               "date": "2026-08-02",
               "changes": { "new": ["Released"], "improved": [], "fixed": [], "security": [] }
             }
@@ -100,6 +106,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.08.1",
               "codename": "Cantabile",
+              "codenameMeaning": "Певучее, напевное исполнение.",
               "date": "2026-08-01",
               "changes": { "new": ["First release"], "improved": [], "fixed": [], "security": [] }
             }
@@ -108,6 +115,7 @@ public class ReleaseChangelogTests
             {
               "version": "2026.08.2",
               "codename": "Dolce",
+              "codenameMeaning": "Нежное, мягкое исполнение.",
               "date": "2026-08-02",
               "changes": { "new": ["Current release"], "improved": [], "fixed": [], "security": [] }
             }
@@ -120,7 +128,9 @@ public class ReleaseChangelogTests
     [InlineData("{\"version\":\"2026.07.1\",\"codename\":\"Accordatura\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]},\"schemaVersion\":1}")]
     [InlineData("{}")]
     [InlineData("{\"version\":\"2026.07.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
+    [InlineData("{\"version\":\"2026.07.1\",\"codename\":\"Accordatura\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     [InlineData("{\"version\":\"2026.07.1.1\",\"codename\":\"Wrong\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
+    [InlineData("{\"version\":\"2026.07.1.1\",\"codenameMeaning\":\"Wrong\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     [InlineData("{\"version\":\"2026.07.1.1\",\"date\":\"2026-07-29\",\"changes\":{\"new\":[\"x\"],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     [InlineData("{\"version\":\"2026.07.2\",\"codename\":\"Draft\",\"date\":null,\"changes\":{\"new\":[],\"improved\":[],\"fixed\":[],\"security\":[]}}")]
     public void Load_RejectsInvalidChangelog(string json)
@@ -168,6 +178,7 @@ public class ReleaseEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(
         release.ShouldNotBeNull();
         release.Version.ShouldBe(configuredRelease.Version);
         release.Codename.ShouldBe(configuredRelease.ResolvedCodename);
+        release.CodenameMeaning.ShouldBe(configuredRelease.ResolvedCodenameMeaning);
 
         using var conditionalRequest = new HttpRequestMessage(HttpMethod.Get, "/releases/current");
         conditionalRequest.Headers.IfNoneMatch.Add(response.Headers.ETag);

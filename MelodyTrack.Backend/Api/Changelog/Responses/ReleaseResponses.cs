@@ -2,11 +2,12 @@ using MelodyTrack.Backend.Services;
 
 namespace MelodyTrack.Backend.Api.Releases.Responses;
 
-public sealed record CurrentReleaseResponse(string Version, string Codename);
+public sealed record CurrentReleaseResponse(string Version, string Codename, string? CodenameMeaning);
 
 public sealed record ReleaseResponse(
     string Version,
     string Codename,
+    string? CodenameMeaning,
     DateOnly Date,
     ReleaseChanges Changes,
     string? ParentVersion);

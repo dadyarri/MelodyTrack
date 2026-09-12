@@ -46,6 +46,7 @@ function createRelease(version: string): ReleaseEntry {
   return {
     version,
     codename: "Accordatura",
+    codenameMeaning: "Настройка инструмента.",
     date: "2026-07-29",
     parentVersion: version.split(".").length === 4 ? "2026.07.1" : null,
     changes: { new: [version], improved: [], fixed: [], security: [] },

@@ -13,8 +13,9 @@ export type ReleaseChanges = Omit<GeneratedChanges, "newEscaped"> & {
 
 type GeneratedEntry = RequiredApiContract<GeneratedReleaseResponse, "version" | "codename" | "date" | "changes">;
 
-export type ReleaseEntry = Omit<GeneratedEntry, "changes" | "parentVersion"> & {
+export type ReleaseEntry = Omit<GeneratedEntry, "changes" | "codenameMeaning" | "parentVersion"> & {
   changes: ReleaseChanges;
+  codenameMeaning: Exclude<ApiJsonContract<GeneratedReleaseResponse>["codenameMeaning"], undefined>;
   parentVersion: Exclude<ApiJsonContract<GeneratedReleaseResponse>["parentVersion"], undefined>;
 };
 

@@ -27,7 +27,10 @@ public sealed class GetCurrentReleaseEndpoint
             return TypedResults.StatusCode(StatusCodes.Status304NotModified);
         }
 
-        return TypedResults.Ok(new CurrentReleaseResponse(changelog.Current.Version, changelog.Current.ResolvedCodename));
+        return TypedResults.Ok(new CurrentReleaseResponse(
+            changelog.Current.Version,
+            changelog.Current.ResolvedCodename,
+            changelog.Current.ResolvedCodenameMeaning));
     }
 
     internal static bool ApplyCaching(HttpContext context, string etag)

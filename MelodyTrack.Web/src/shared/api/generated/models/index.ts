@@ -4109,6 +4109,10 @@ export interface CurrentReleaseResponse extends AdditionalDataHolder, Parsable {
      */
     codename?: string | null;
     /**
+     * The codenameMeaning property
+     */
+    codenameMeaning?: string | null;
+    /**
      * The version property
      */
     version?: string | null;
@@ -5670,6 +5674,7 @@ export function deserializeIntoCreateWorkingHoursRequest(createWorkingHoursReque
 export function deserializeIntoCurrentReleaseResponse(currentReleaseResponse: Partial<CurrentReleaseResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "codename": n => { currentReleaseResponse.codename = n.getStringValue(); },
+        "codenameMeaning": n => { currentReleaseResponse.codenameMeaning = n.getStringValue(); },
         "version": n => { currentReleaseResponse.version = n.getStringValue(); },
     }
 }
@@ -6975,6 +6980,7 @@ export function deserializeIntoReleaseResponse(releaseResponse: Partial<ReleaseR
     return {
         "changes": n => { releaseResponse.changes = n.getObjectValue<ReleaseChanges>(createReleaseChangesFromDiscriminatorValue); },
         "codename": n => { releaseResponse.codename = n.getStringValue(); },
+        "codenameMeaning": n => { releaseResponse.codenameMeaning = n.getStringValue(); },
         "date": n => { releaseResponse.date = n.getDateOnlyValue(); },
         "parentVersion": n => { releaseResponse.parentVersion = n.getStringValue(); },
         "version": n => { releaseResponse.version = n.getStringValue(); },
@@ -9087,6 +9093,10 @@ export interface ReleaseResponse extends AdditionalDataHolder, Parsable {
      */
     codename?: string | null;
     /**
+     * The codenameMeaning property
+     */
+    codenameMeaning?: string | null;
+    /**
      * The date property
      */
     date?: DateOnly | null;
@@ -10723,6 +10733,7 @@ export function serializeCreateWorkingHoursRequest(writer: SerializationWriter, 
 export function serializeCurrentReleaseResponse(writer: SerializationWriter, currentReleaseResponse: Partial<CurrentReleaseResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!currentReleaseResponse || isSerializingDerivedType) { return; }
     writer.writeStringValue("codename", currentReleaseResponse.codename);
+    writer.writeStringValue("codenameMeaning", currentReleaseResponse.codenameMeaning);
     writer.writeStringValue("version", currentReleaseResponse.version);
     writer.writeAdditionalData(currentReleaseResponse.additionalData);
 }
@@ -12105,6 +12116,7 @@ export function serializeReleaseResponse(writer: SerializationWriter, releaseRes
     if (!releaseResponse || isSerializingDerivedType) { return; }
     writer.writeObjectValue<ReleaseChanges>("changes", releaseResponse.changes, serializeReleaseChanges);
     writer.writeStringValue("codename", releaseResponse.codename);
+    writer.writeStringValue("codenameMeaning", releaseResponse.codenameMeaning);
     writer.writeDateOnlyValue("date", releaseResponse.date);
     writer.writeStringValue("parentVersion", releaseResponse.parentVersion);
     writer.writeStringValue("version", releaseResponse.version);

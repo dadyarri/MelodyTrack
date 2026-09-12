@@ -19,6 +19,7 @@ const history: ReleaseHistory = {
     {
       version: "2026.07.1.1",
       codename: "Accordatura",
+      codenameMeaning: "Настройка инструмента.",
       date: "2026-07-29",
       parentVersion: "2026.07.1",
       changes: {

@@ -48,15 +48,15 @@ switch (command)
         RunSelfTests();
         break;
     default:
-        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|release-kind|start-next-release <codename> [version]|start-hotfix|prepare [next-codename] [next-version]|finalize|publish|self-test");
+        Console.WriteLine("Usage: dotnet run scripts/ReleaseTool.cs -- validate|current-version|release-kind|start-next-release <codename> <codename-meaning> [version]|start-hotfix|prepare [<next-codename> <next-codename-meaning> [next-version]]|finalize|publish|self-test");
         break;
 }
 
 static void StartNextRelease(string repositoryRoot, Changelog changelog, string[] options)
 {
-    if (options.Length is < 1 or > 2)
+    if (options.Length is < 2 or > 3)
     {
-        throw new InvalidOperationException("start-next-release requires a codename and accepts an optional explicit version.");
+        throw new InvalidOperationException("start-next-release requires a codename and its meaning, and accepts an optional explicit version.");
     }
 
     EnsureCleanBranch(repositoryRoot, "develop");
@@ -64,7 +64,7 @@ static void StartNextRelease(string repositoryRoot, Changelog changelog, string[
     FetchReleaseRefs(repository);
     Run("git", ["merge", "--ff-only", "origin/develop"], repositoryRoot);
     changelog = Changelog.Load(Path.Combine(repositoryRoot, "changelog", "releases"));
-    CreateDraftFile(repositoryRoot, changelog, options[0], options.ElementAtOrDefault(1));
+    CreateDraftFile(repositoryRoot, changelog, options[0], options[1], options.ElementAtOrDefault(2));
     var draft = Changelog.Load(Path.Combine(repositoryRoot, "changelog", "releases")).Draft!;
     CommitReleaseMetadata(repositoryRoot, $"start {draft.Version} release draft");
     Console.WriteLine($"Created regular release draft {draft.Version} ({draft.Codename}).");
@@ -90,16 +90,25 @@ static void StartHotfix(string repositoryRoot, Changelog changelog)
     }
 
     Run("git", ["switch", "--create", branch], repositoryRoot);
-    WriteDraft(repositoryRoot, version, codename: null);
+    WriteDraft(repositoryRoot, version, codename: null, codenameMeaning: null);
     CommitReleaseMetadata(repositoryRoot, $"start {version} hotfix draft");
     Console.WriteLine($"Created {branch} from current master.");
 }
 
-static void CreateDraftFile(string repositoryRoot, Changelog changelog, string codename, string? explicitVersion)
+static void CreateDraftFile(
+    string repositoryRoot,
+    Changelog changelog,
+    string codename,
+    string codenameMeaning,
+    string? explicitVersion)
 {
     if (string.IsNullOrWhiteSpace(codename))
     {
         throw new InvalidOperationException("The release codename must be non-empty.");
+    }
+    if (string.IsNullOrWhiteSpace(codenameMeaning))
+    {
+        throw new InvalidOperationException("The release codename meaning must be non-empty.");
     }
     if (changelog.Draft is not null)
     {
@@ -107,10 +116,10 @@ static void CreateDraftFile(string repositoryRoot, Changelog changelog, string c
     }
 
     var version = AllocateRegularVersion(changelog, DateOnly.FromDateTime(DateTime.UtcNow), explicitVersion);
-    WriteDraft(repositoryRoot, version, codename.Trim());
+    WriteDraft(repositoryRoot, version, codename.Trim(), codenameMeaning.Trim());
 }
 
-static void WriteDraft(string repositoryRoot, string version, string? codename)
+static void WriteDraft(string repositoryRoot, string version, string? codename, string? codenameMeaning)
 {
     var root = new JsonObject
     {
@@ -127,6 +136,7 @@ static void WriteDraft(string repositoryRoot, string version, string? codename)
     if (codename is not null)
     {
         root["codename"] = codename;
+        root["codenameMeaning"] = codenameMeaning;
     }
 
     var path = Path.Combine(repositoryRoot, "changelog", "releases", $"{version}.json");
@@ -207,7 +217,7 @@ static void RunSelfTests()
         File.WriteAllText(
             Path.Combine(directory, "2026.08.1.json"),
             """
-            {"version":"2026.08.1","codename":"Cantabile","date":"2026-08-01","changes":{"new":["Release"],"improved":[],"fixed":[],"security":[]}}
+            {"version":"2026.08.1","codename":"Cantabile","codenameMeaning":"Певучее, напевное исполнение.","date":"2026-08-01","changes":{"new":["Release"],"improved":[],"fixed":[],"security":[]}}
             """);
         File.WriteAllText(
             Path.Combine(directory, "2026.08.1.1.json"),
@@ -226,7 +236,7 @@ static void RunSelfTests()
         File.WriteAllText(
             Path.Combine(directory, "2026.08.2.json"),
             """
-            {"version":"2026.08.2","codename":"Dolce","date":null,"changes":{"new":[],"improved":[],"fixed":[],"security":[]}}
+            {"version":"2026.08.2","codename":"Dolce","codenameMeaning":"Нежное, мягкое исполнение.","date":null,"changes":{"new":[],"improved":[],"fixed":[],"security":[]}}
             """);
         AssertEqual("2026.08.2", Changelog.Load(directory).Draft?.Version, "draft parsing");
     }
@@ -297,9 +307,9 @@ static void PrepareRelease(string repositoryRoot, Changelog changelog, string[] 
     var branchPrefix = draft.IsPatch ? "hotfix" : "release";
     var branch = $"{branchPrefix}/{draft.Version}";
     var expectedBody = Changelog.Render(finalized).Trim();
-    if (!draft.IsPatch && options.Length is < 1 or > 2)
+    if (!draft.IsPatch && options.Length is < 2 or > 3)
     {
-        throw new InvalidOperationException("Regular release preparation requires the next release codename and accepts an optional explicit version.");
+        throw new InvalidOperationException("Regular release preparation requires the next release codename and its meaning, and accepts an optional explicit version.");
     }
     if (draft.IsPatch && options.Length != 0)
     {
@@ -420,7 +430,7 @@ static void PrepareRelease(string repositoryRoot, Changelog changelog, string[] 
     {
         FinalizeDraftFile(repositoryRoot, finalized);
         var refreshed = Changelog.Load(Path.Combine(repositoryRoot, "changelog", "releases"));
-        CreateDraftFile(repositoryRoot, refreshed, options[0], options.ElementAtOrDefault(1));
+        CreateDraftFile(repositoryRoot, refreshed, options[0], options[1], options.ElementAtOrDefault(2));
         CommitReleaseMetadata(repositoryRoot, $"start {Changelog.Load(Path.Combine(repositoryRoot, "changelog", "releases")).Draft!.Version} release draft");
     }
 }
@@ -835,6 +845,7 @@ sealed class Changelog
         {
             if (!byVersion.TryGetValue(patch.ParentVersion!, out var parent) || parent.ParentVersion is not null) throw new InvalidDataException($"Patch {patch.Version} has no actual parent.");
             patch.ResolvedCodename = parent.Codename!;
+            patch.ResolvedCodenameMeaning = parent.CodenameMeaning;
         }
 
         return new Changelog(releases);
@@ -843,7 +854,12 @@ sealed class Changelog
     public static string Render(ReleaseEntry entry)
     {
         if (entry.IsDraft) throw new InvalidOperationException($"Draft {entry.Version} cannot be rendered as release notes.");
-        var builder = new StringBuilder().Append("# ").Append(entry.Version).Append(" — ").AppendLine(entry.ResolvedCodename).AppendLine().Append("Дата: ").AppendLine(entry.Date!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
+        var builder = new StringBuilder().Append("# ").Append(entry.Version).Append(" — ").AppendLine(entry.ResolvedCodename);
+        if (!string.IsNullOrWhiteSpace(entry.ResolvedCodenameMeaning))
+        {
+            builder.AppendLine().Append("Значение кодового имени: ").AppendLine(entry.ResolvedCodenameMeaning);
+        }
+        builder.AppendLine().Append("Дата: ").AppendLine(entry.Date!.Value.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         foreach (var category in Categories.Where(category => entry.Changes[category].Count > 0))
         {
             builder.AppendLine().Append("## ").AppendLine(Headings[category]).AppendLine();
@@ -856,14 +872,18 @@ sealed class Changelog
     private static ReleaseEntry Parse(JsonObject? value, string location)
     {
         var entry = value ?? throw new InvalidDataException($"{location} must be an object.");
-        RequireKeys(entry, ["version", "codename", "date", "changes"], location, optionalCodename: true);
+        RequireKeys(entry, ["version", "codename", "codenameMeaning", "date", "changes"], location, optionalCodename: true);
         var version = RequiredString(entry, "version");
         if (!VersionPattern.IsMatch(version)) throw new InvalidDataException($"{location}.version is invalid.");
         var isPatch = version.Count(character => character == '.') == 3;
         var hasCodename = entry.ContainsKey("codename");
         var codename = hasCodename ? RequiredString(entry, "codename") : null;
+        var hasCodenameMeaning = entry.ContainsKey("codenameMeaning");
+        var codenameMeaning = hasCodenameMeaning ? RequiredString(entry, "codenameMeaning") : null;
         if (isPatch && hasCodename) throw new InvalidDataException("Patches must omit codename.");
+        if (isPatch && hasCodenameMeaning) throw new InvalidDataException("Patches must omit codenameMeaning.");
         if (!isPatch && codename is null) throw new InvalidDataException("Actual releases require codename.");
+        if (!isPatch && codenameMeaning is null) throw new InvalidDataException("Actual releases require codenameMeaning.");
         DateOnly? date = null;
         if (entry["date"] is JsonValue dateValue)
         {
@@ -883,14 +903,18 @@ sealed class Changelog
         var changeCount = changes.Values.Sum(items => items.Count);
         if (changes.Values.SelectMany(items => items).Any(string.IsNullOrWhiteSpace)) throw new InvalidDataException("Changes must contain non-empty text.");
         if (date is not null && changeCount == 0) throw new InvalidDataException("Released changes must contain at least one item.");
-        return new ReleaseEntry(version, codename, date, changes, isPatch ? version[..version.LastIndexOf('.')] : null) { ResolvedCodename = codename ?? string.Empty };
+        return new ReleaseEntry(version, codename, codenameMeaning, date, changes, isPatch ? version[..version.LastIndexOf('.')] : null)
+        {
+            ResolvedCodename = codename ?? string.Empty,
+            ResolvedCodenameMeaning = codenameMeaning
+        };
     }
 
     private static void RequireKeys(JsonObject value, IReadOnlyCollection<string> allowed, string location, bool optionalCodename = false)
     {
         var unknown = value.Select(property => property.Key).Except(allowed, StringComparer.Ordinal).FirstOrDefault();
         if (unknown is not null) throw new InvalidDataException($"{location}.{unknown} is not allowed.");
-        var missing = allowed.FirstOrDefault(key => !(optionalCodename && key == "codename") && !value.ContainsKey(key));
+        var missing = allowed.FirstOrDefault(key => !(optionalCodename && key is "codename" or "codenameMeaning") && !value.ContainsKey(key));
         if (missing is not null) throw new InvalidDataException($"{location}.{missing} is required.");
     }
 
@@ -929,19 +953,31 @@ sealed class Changelog
     }
 }
 
-sealed class ReleaseEntry(string version, string? codename, DateOnly? date, IReadOnlyDictionary<string, IReadOnlyList<string>> changes, string? parentVersion)
+sealed class ReleaseEntry(
+    string version,
+    string? codename,
+    string? codenameMeaning,
+    DateOnly? date,
+    IReadOnlyDictionary<string, IReadOnlyList<string>> changes,
+    string? parentVersion)
 {
     public string Version { get; } = version;
     public string? Codename { get; } = codename;
+    public string? CodenameMeaning { get; } = codenameMeaning;
     public DateOnly? Date { get; } = date;
     public IReadOnlyDictionary<string, IReadOnlyList<string>> Changes { get; } = changes;
     public string? ParentVersion { get; } = parentVersion;
     public bool IsPatch => ParentVersion is not null;
     public bool IsDraft => Date is null;
     public string ResolvedCodename { get; set; } = string.Empty;
+    public string? ResolvedCodenameMeaning { get; set; }
 
     public ReleaseEntry WithDate(DateOnly value) =>
-        new(Version, Codename, value, Changes, ParentVersion) { ResolvedCodename = this.ResolvedCodename };
+        new(Version, Codename, CodenameMeaning, value, Changes, ParentVersion)
+        {
+            ResolvedCodename = this.ResolvedCodename,
+            ResolvedCodenameMeaning = this.ResolvedCodenameMeaning
+        };
 }
 
 readonly record struct VersionParts(int Year, int Month, int Release, int? Patch);

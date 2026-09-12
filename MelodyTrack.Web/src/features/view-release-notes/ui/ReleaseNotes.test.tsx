@@ -18,6 +18,7 @@ vi.mock("@/entities/release", () => ({
 const currentRelease: ReleaseEntry = {
   version: "2026.07.1.1",
   codename: "Accordatura",
+  codenameMeaning: "Настройка инструмента.",
   date: "2026-07-29",
   parentVersion: "2026.07.1",
   changes: { new: ["Автоматическая история обновлений"], improved: [], fixed: ["Продление сеанса"], security: [] },
@@ -25,6 +26,7 @@ const currentRelease: ReleaseEntry = {
 const previousRelease: ReleaseEntry = {
   version: "2026.07.1",
   codename: "Accordatura",
+  codenameMeaning: "Настройка инструмента.",
   date: "2026-07-29",
   parentVersion: null,
   changes: { new: ["История обновлений"], improved: [], fixed: [], security: [] },
@@ -45,6 +47,7 @@ describe("ReleaseNotes", () => {
     renderReleaseNotes(<ReleaseNotesExperience userId="user-1" automaticEnabled />);
 
     expect(await screen.findByText("Исправление 2026.07.1.1 — Accordatura")).toBeInTheDocument();
+    expect(screen.getByText("Настройка инструмента.")).toBeInTheDocument();
     expect(screen.getByText("Автоматическая история обновлений")).toBeInTheDocument();
     expect(screen.queryByText("История обновлений")).not.toBeInTheDocument();
     expect(localStorage.getItem(getReleaseNotesSeenKey("user-1"))).toBe("2026.07.1");
@@ -125,6 +128,7 @@ describe("ReleaseNotes", () => {
     const olderRelease: ReleaseEntry = {
       version: "2026.06.1",
       codename: "Aria",
+      codenameMeaning: "Ария.",
       date: "2026-06-20",
       parentVersion: null,
       changes: { new: ["Старое обновление"], improved: [], fixed: [], security: [] },
@@ -151,6 +155,7 @@ describe("ReleaseNotes", () => {
     const newerRelease: ReleaseEntry = {
       version: "2026.08.1",
       codename: "Ballata",
+      codenameMeaning: "Баллада.",
       date: "2026-08-03",
       parentVersion: null,
       changes: { new: ["Новая версия"], improved: [], fixed: [], security: [] },

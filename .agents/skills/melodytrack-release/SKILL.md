@@ -14,14 +14,15 @@ Do not recreate its versioning or branch logic with ad hoc Git commands. The one
 Customer-facing changelog text must be manually verified by the user before it is committed.
 
 - Draft or revise the active `changelog/releases/<version>.json` without staging or committing it.
-- Validate it, then show the user the exact version, codename when applicable, and every `new`, `improved`, `fixed`, and `security` entry. Also show or summarize the complete file diff.
-- Ask for explicit approval of that exact content. End the turn without committing, running `prepare`, pushing, or opening a pull request.
+- Validate it, then show the user the exact version, codename and its meaning when applicable, and every `new`, `improved`, `fixed`, and `security` entry. Also show or summarize the complete file diff.
+- When the agent drafted or revised the text, ask for explicit approval of that exact content. End the turn without committing, running `prepare`, pushing, or opening a pull request.
 - Earlier general authorization, silence, or approval given before the final content was shown does not satisfy this gate.
-- Any edit after approval invalidates the approval. Show the new exact content and ask again.
-- After explicit approval, re-read the file and diff to prove it is unchanged, stage only that draft file, inspect the complete staged diff, and commit it with a focused subject such as `document 2026.09.1 release notes`.
+- A direct user edit to the changelog counts as approval of the exact text the user wrote. Re-read the file and diff to confirm its content and include it in the workflow without asking the user to approve their own edit again.
+- An agent edit after approval invalidates the approval. Show the new exact content and ask again. If edit provenance is unclear, ask rather than assuming approval.
+- After approval through either route, re-read the file and diff to prove it is unchanged, stage only that draft file, inspect the complete staged diff, and commit it with a focused subject such as `document 2026.09.1 release notes`.
 - Do not stage unrelated code or metadata with the changelog. `prepare` requires every other intended product change to be committed separately and the worktree to be clean.
 
-`start-next-release` and `start-hotfix` create and commit an empty `date: null` draft scaffold. This contains no customer-facing notes and is permitted after telling the user that the tool will create that bootstrap commit. The hard review gate applies before any non-empty release-note content is committed and before `prepare` dates or republishes it.
+`start-next-release` and `start-hotfix` create and commit a `date: null` draft scaffold. A regular scaffold contains the approved codename and meaning; a hotfix scaffold contains no customer-facing text. Tell the user that the tool will create the bootstrap commit. The hard review gate applies before any non-empty release-note content is committed and before `prepare` dates or republishes it.
 
 ## Inspect state first
 
@@ -39,9 +40,9 @@ Request an elevated shell before every `dotnet` command, as required by the repo
 dotnet run scripts/ReleaseTool.cs -- validate
 dotnet run scripts/ReleaseTool.cs -- current-version
 dotnet run scripts/ReleaseTool.cs -- release-kind
-dotnet run scripts/ReleaseTool.cs -- start-next-release <codename> [YYYY.MM.N]
+dotnet run scripts/ReleaseTool.cs -- start-next-release <codename> <codename-meaning> [YYYY.MM.N]
 dotnet run scripts/ReleaseTool.cs -- start-hotfix
-dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> [next-version]
+dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> <next-codename-meaning> [next-version]
 dotnet run scripts/ReleaseTool.cs -- prepare
 dotnet run scripts/ReleaseTool.cs -- finalize
 dotnet run scripts/ReleaseTool.cs -- publish
@@ -54,7 +55,7 @@ Do not guess around a dirty worktree, wrong branch, conflicting draft, existing 
 
 Use this when the user wants to begin the next regular release and no active draft exists.
 
-1. Require a clean local `develop` branch. An explicitly supplied codename counts as approval of that codename; otherwise ask for one before invoking the tool. Let the tool allocate the version unless the user explicitly requests an override.
+1. Require a clean local `develop` branch. Every codename is an Italian term connected to music. For the selected codename, write a concise Russian explanation of what it means in `codenameMeaning`. State the meaning directly, without prefixes such as «Итальянский музыкальный термин» or «Музыкальное указание». Show the exact codename and meaning and obtain the user's approval before invoking the tool, because the command commits both values. Let the tool allocate the version unless the user explicitly requests an override.
 2. Tell the user that `start-next-release` will fast-forward from `origin/develop` and commit an empty draft scaffold.
 3. Run `start-next-release` and report the allocated version and bootstrap commit.
 4. If the user also asked to prepare release notes, continue by drafting them under the review gate. Otherwise stop with the empty draft ready for later work.
@@ -81,20 +82,22 @@ Write notes in Russian, matching the existing changelog style:
 - avoid duplicates across categories and avoid claims not supported by the diff;
 - do not expose secrets, exploit detail, personal data, or sensitive operational information.
 
+For a regular release, preserve its approved `codenameMeaning`. It should describe the term itself in one concise Russian sentence without repeating that the term is Italian or musical; that context applies to every codename.
+
 Edit only the active draft file. Keep `date: null`; regular releases retain their codename and hotfixes omit it. Run `validate`, inspect the resulting diff, and then apply the hard review gate.
 
 ## Prepare after approval
 
 Only proceed after the user has approved the exact final changelog and its dedicated notes commit exists.
 
-For a regular release, obtain the next draft codename before preparation; use an explicit next version only when the user requests it. For a hotfix, pass no next-release arguments.
+For a regular release, obtain the next draft codename, write its concise Russian meaning, and get approval of the exact pair before preparation; use an explicit next version only when the user requests it. For a hotfix, pass no next-release arguments.
 
 Before invoking `prepare`, state its material effects: it runs backend and frontend verification, creates or reuses the release/hotfix branch, dates and commits the approved changelog, pushes the branch, opens the pull request, and—for a regular release—commits the next empty draft on local `develop`. The user's post-review instruction to proceed must authorize these effects.
 
 Run exactly one appropriate command:
 
 ```text
-dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> [next-version]
+dotnet run scripts/ReleaseTool.cs -- prepare <next-codename> <next-codename-meaning> [next-version]
 dotnet run scripts/ReleaseTool.cs -- prepare
 ```
 

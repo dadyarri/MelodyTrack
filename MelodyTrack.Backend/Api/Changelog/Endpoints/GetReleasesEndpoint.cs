@@ -35,6 +35,7 @@ public sealed class GetReleasesEndpoint
             .Select(release => new ReleaseResponse(
                 release.Version,
                 release.ResolvedCodename,
+                release.ResolvedCodenameMeaning,
                 release.Date,
                 release.Changes,
                 release.ParentVersion))
