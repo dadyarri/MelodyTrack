@@ -2163,7 +2163,7 @@ The portal redesign is a dedicated product workstream starting at Stage 20. Stag
 
 Stages 20–38 form the main redesign sequence. Stage 39 is an optional follow-up optimization and is not required to complete the redesign.
 
-## Stage 20: Portal URL, PIN Removal, and Shell Foundation
+## Stage 20: Portal URL, PIN Removal, and Shell Foundation ✅
 
 Verified on 2026-09-06 with the Release solution build and deterministic Kiota regeneration, 446 .NET tests, the complete frontend verification pipeline (203 unit, 75 Chromium, and 75 WebKit tests), and the unified production-image HTTP/failed-Init verifier.
 
