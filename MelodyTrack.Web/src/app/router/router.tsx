@@ -44,6 +44,18 @@ function isPrefetchableRouteModule(module: unknown): module is { prefetchRouteDa
 }
 
 export const router = createBrowserRouter([
+  ...(import.meta.env.DEV
+    ? [
+        {
+          path: "/dev/portal-design",
+          errorElement: <RouteErrorBoundary />,
+          lazy: async () => {
+            const { PortalDesignGallery } = await import("../devtools/PortalDesignGallery");
+            return { Component: PortalDesignGallery };
+          },
+        },
+      ]
+    : []),
   {
     path: "/invite/:inviteCode",
     errorElement: <RouteErrorBoundary />,

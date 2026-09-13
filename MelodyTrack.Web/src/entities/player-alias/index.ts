@@ -4,3 +4,4 @@ export {
   type AliasDictionaryEntry,
   type AliasDictionaryKind,
 } from "./api/playerAliasApi";
+export { PortalPlayerIdentity } from "./ui/PortalPlayerIdentity";

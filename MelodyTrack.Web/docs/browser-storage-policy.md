@@ -12,6 +12,7 @@ represent a completed operation or trigger automatic submission.
 | Access token | Memory | Recreated through refresh after reload |
 | Refresh token | Secure, HttpOnly cookie | Rotated by the backend; never exposed to application JavaScript or browser storage |
 | Theme | `localStorage`, `melodytrack.theme` | Non-sensitive device preference |
+| Portal appearance | `localStorage`, `melodytrack.portalAppearance` | Non-sensitive device preference: `rpg` or `minimal`; defaults to `rpg`, independent of the administrative theme |
 | Durable form drafts | IndexedDB `drafts` | User-partitioned, versioned, runtime-validated, and expired 30 days after the last write |
 | React Query data and reference labels | Memory | Server data is never presented as an offline working set |
 | Chunk retry/navigation intent | `sessionStorage` | Small, non-sensitive, one-tab recovery markers |

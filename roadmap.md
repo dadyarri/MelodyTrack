@@ -2315,7 +2315,19 @@ Each portal client should have a stable public fantasy identity used in the port
 
 ## Stage 22: RPG Design System
 
+Implementation is present in the development-only `/dev/portal-design` gallery. Automated verification and browser visual review are pending; see `MelodyTrack.Web/docs/portal-design-system.md` for component ownership and integration guidance.
+
 The redesigned client portal should look and feel like an RPG interface rather than a conventional SaaS application. The visual system should be established before the remaining portal pages are rebuilt.
+
+### Agreed direction and delivery boundary
+
+- Use Potion Craft for warmth and crafted detail, with the customer-provided RPG panel reference guiding richer framing and colour density. Following customer feedback, use dark textured walnut backgrounds, leather-brown panels, bronze ornamental frames, cream text, sage/copper/plum accents, and gradient progress fills. Keep the result soft, warm, and cosy; avoid a large lyre/harp motif. Use readable Russian sans-serif body text and manuscript-inspired headings.
+- Provide a custom appearance switch between the fixed RPG palette and a muted graphite minimalist presentation, styled for the selected appearance. Persist `rpg`/`minimal` in `localStorage` under `melodytrack.portalAppearance`, independently of the administrative theme. Restore it on load; keep all data and actions available in either appearance, including dialogs and experience progress.
+- Keep the MelodyTrack name; the tower crest and “Гитарная гильдия” wording in the later reference are illustrative only. Establish restrained recurring musical accents: the current gallery proposal uses a sourced guitar-pick outline with MT initials, matching dividers and completion seals, opt-in plaque/ribbon buttons, and occasional parchment notes. These are presentation treatments, not new gamification mechanics or an approved exclusive logo.
+- Additional customer references reinforce desktop RPG styling: coloured inventory-style icons, strongly separated dark textured surroundings and active panels, contrasting textured heading bands, ornamental panel trim, and flourishes at all four page corners. Preserve responsive usability with the same visual language.
+- Deliver the component system and a reviewable component gallery in this stage. Integrate the new shell and home in Stage 23; migrate individual pages in their owning later stages.
+- Source suitable existing SVG assets rather than inventing, drawing, or generating new artwork. Keep source URLs, author credits, licence information, and any modifications alongside adopted assets.
+- Use sourced SVGs with recorded credits: Lorc's [guitar](https://game-icons.net/1x1/lorc/guitar.html), [flower twirl](https://game-icons.net/1x1/lorc/flower-twirl.html), [unfurled scroll](https://game-icons.net/1x1/lorc/scroll-unfurled.html), [quill and ink](https://game-icons.net/1x1/lorc/quill-ink.html), and [laurel crown](https://game-icons.net/1x1/lorc/laurel-crown.html) under CC BY 3.0, plus Steve Schoger's Texture from [Hero Patterns](https://heropatterns.com/) under CC BY 4.0. Review their visual fit together in the gallery.
 
 ### Remaining scope
 
@@ -2339,10 +2351,14 @@ The redesigned client portal should look and feel like an RPG interface rather t
 - Keep animations consistent across components instead of implementing unrelated effects page by page.
 - Support reduced-motion behavior.
 - Keep the client portal visually independent from the administrative Ant Design language.
+- Define shared colour, typography, spacing, surface, focus, and motion tokens.
+- Include loading, empty, error, disabled, and pending states, preserving normalized API error and trace-ID presentation where relevant.
+- Demonstrate the components in a gallery with representative Russian content, long aliases, compact and desktop layouts, keyboard interaction, and reduced motion. Future course, trainer, and leaderboard examples use presentation fixtures without introducing backend contracts or gamification mechanics.
 
 ### Deferred product work
 
 - Individual portal pages are implemented in later stages.
+- Live portal restyling is deferred to Stage 23 and the later page stages; existing portal screens may retain their current presentation during Stage 22.
 - Final animation polish is deferred to Stage 37.
 - No additional gamification mechanics are introduced here.
 
@@ -2352,11 +2368,12 @@ The redesigned client portal should look and feel like an RPG interface rather t
 - The client portal should use a dedicated component layer and theme.
 - Shared low-level utilities may still be reused where they do not leak administrative styling into the portal.
 - Portal components should be reusable across home, courses, homework, trainers, and leaderboards.
+- Keep generic primitives in shared UI, domain representations in their owning entity slices, and composed header/navigation sections in widgets, following existing FSD import rules.
 
 ### Done looks like
 
 - Later portal features can be implemented against a coherent RPG-style component system.
-- The portal no longer visually reads as Ant Design with fantasy decoration.
+- The component gallery demonstrates the RPG design and its calm minimalist alternative. Appearance selection survives reloads. Both belong to the dedicated portal component system; live portal integration starts in Stage 23.
 - Reduced-motion users retain a usable interface.
 
 ---

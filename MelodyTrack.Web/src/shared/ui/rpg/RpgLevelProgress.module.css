@@ -1,0 +1,123 @@
+.experience {
+  display: flex;
+  align-items: flex-start;
+  width: 100%;
+  min-width: 0;
+  gap: 0;
+}
+
+.shield {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  flex: 0 0 58px;
+  height: 64px;
+  margin-top: -10px;
+  color: var(--rpg-gold);
+  font: 1.4rem / 1 var(--rpg-heading);
+  filter: drop-shadow(0 3px 2px #100b0980);
+}
+
+.shield::before,
+.shield::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.shield::before {
+  background: linear-gradient(135deg, #4e3d2c, #211914 65%);
+  mask: url("./assets/guitar-pick-filled.svg") center / contain no-repeat;
+}
+
+.shield::after {
+  background: linear-gradient(135deg, #f2d4a0, #b88b52 60%, #8f693d);
+  mask: url("./assets/guitar-pick.svg") center / contain no-repeat;
+}
+
+.shield > span { position: relative; z-index: 1; padding-bottom: 7px; }
+.body { flex: 1; min-width: 0; margin-left: -10px; }
+
+.track {
+  position: relative;
+  height: 34px;
+  padding: 4px 12px 4px 8px;
+  background: linear-gradient(#d2aa70, #765133);
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%);
+}
+
+.track::before {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: linear-gradient(#3b3027, #201b17);
+  clip-path: polygon(0 0, calc(100% - 11px) 0, 100% 50%, calc(100% - 11px) 100%, 0 100%);
+}
+
+.progress {
+  --experience-fill: repeating-linear-gradient(90deg, transparent 0, transparent 23px, #69482044 23px, #69482044 24px), linear-gradient(#e6c89b, #b99161);
+  position: relative;
+  appearance: none;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  accent-color: #d5b27e;
+}
+
+.progress::-webkit-progress-bar { background: transparent; }
+.progress::-webkit-progress-value {
+  background: var(--experience-fill);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #fff0cf77;
+  transition: width var(--rpg-motion-reveal) var(--rpg-ease);
+}
+.progress::-moz-progress-bar {
+  background: var(--experience-fill);
+  border-radius: 3px;
+  box-shadow: inset 0 1px 0 #fff0cf77;
+}
+
+.levelLabel {
+  position: absolute;
+  top: 5px;
+  right: 15px;
+  max-width: calc(100% - 24px);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 1px 6px;
+  background: #292019e6;
+  border-radius: 2px;
+  color: #eed0a0;
+  font: 0.75rem / 1.7 var(--rpg-heading);
+  text-transform: uppercase;
+}
+
+.caption {
+  display: block;
+  padding: 6px 0 0 10px;
+  color: var(--rpg-muted);
+  font: 0.75rem / 1.5 var(--rpg-font-label);
+}
+
+@media (forced-colors: active) {
+  .track { clip-path: none; border: 1px solid CanvasText; }
+  .track::before, .shield::before, .shield::after { display: none; }
+  .shield { filter: none; color: CanvasText; }
+  .progress { appearance: auto; }
+}
+
+:global([data-portal-appearance="minimal"]) .shield { display: none; }
+:global([data-portal-appearance="minimal"]) .body { margin-left: 0; }
+:global([data-portal-appearance="minimal"]) .track { height: 10px; padding: 0; clip-path: none; border-radius: 4px; background: var(--rpg-paper-shaded); }
+:global([data-portal-appearance="minimal"]) .track::before,
+:global([data-portal-appearance="minimal"]) .levelLabel { display: none; }
+:global([data-portal-appearance="minimal"]) .progress { --experience-fill: #537864; }
+:global([data-portal-appearance="minimal"]) .progress::-webkit-progress-value { box-shadow: none; }
+:global([data-portal-appearance="minimal"]) .progress::-moz-progress-bar { box-shadow: none; }
+:global([data-portal-appearance="minimal"]) .caption { padding-left: 0; }

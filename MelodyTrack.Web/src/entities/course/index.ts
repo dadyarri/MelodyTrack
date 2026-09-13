@@ -1,5 +1,6 @@
 export { courseEnrollmentsApi, coursesApi } from "./api/courseApi";
 export { courseQueryKeys } from "./api/queryKeys";
+export { PortalCourseCard } from "./ui/PortalCourseCard";
 export type {
   Course,
   CourseBlock,
