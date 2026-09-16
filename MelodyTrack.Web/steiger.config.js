@@ -22,6 +22,12 @@ export default defineConfig([
       "fsd/excessive-slicing": "off",
     },
   },
+  {
+    files: ["./src/entities/homework/**"],
+    rules: {
+      "fsd/inconsistent-naming": "off",
+    },
+  },
   ...intentionalFocusedSlices.map((slice) => ({
     files: [`./src/${slice}/**`],
     rules: {

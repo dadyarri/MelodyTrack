@@ -1,6 +1,35 @@
-.identity { display: flex; gap: var(--rpg-space-2); align-items: center; min-width: 0; padding: 10px 14px; border: 1px solid #a4866070; border-radius: 12px 3px 12px 3px; background: linear-gradient(120deg, #70536266, #342c2644); }
-.identity > div { min-width: 0; }
-.label { font: 0.75rem / 1.5 var(--rpg-font-label); color: var(--rpg-muted); letter-spacing: 0.1em; text-transform: uppercase; }
-.identity .alias { margin-top: 4px; font-size: clamp(1.1rem, 2vw, 1.4rem); line-height: 1.25; overflow-wrap: anywhere; }
-:global([data-portal-appearance="minimal"]) .identity { padding: 0; border: 0; background: none; border-radius: 0; }
-:global([data-portal-appearance="minimal"]) .label { letter-spacing: 0; text-transform: none; }
+.identity {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  min-width: 0;
+  padding: 6px 10px;
+  border: 1px solid #a4866070;
+  border-radius: 12px 3px 12px 3px;
+  background: linear-gradient(120deg, #70536266, #342c2644);
+}
+.identity > div {
+  min-width: 0;
+}
+.label {
+  font: 0.75rem / 1.5 var(--rpg-font-label);
+  color: var(--rpg-muted);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+.identity .alias {
+  margin-top: 4px;
+  font-size: 1rem;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+:global([data-portal-appearance="minimal"]) .identity {
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 0;
+}
+:global([data-portal-appearance="minimal"]) .label {
+  letter-spacing: 0;
+  text-transform: none;
+}

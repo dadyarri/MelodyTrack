@@ -1,12 +1,13 @@
 import { Button, Result } from "antd";
 import { Link, useSearchParams } from "react-router";
 
-export function PortalAccessPage() {
+export function PortalAccessPage({ signedOut = false }: { signedOut?: boolean }) {
   const [searchParams] = useSearchParams();
   const reason = searchParams.get("reason");
-  const title = reason === "session" ? "Войдите по личной ссылке" : "Не удалось открыть кабинет";
-  const description =
-    reason === "rate-limit"
+  const title = signedOut ? "Вы вышли из кабинета" : reason === "session" ? "Войдите по личной ссылке" : "Не удалось открыть кабинет";
+  const description = signedOut
+    ? "Спасибо за визит. Чтобы вернуться, снова откройте личную ссылку, которую прислал преподаватель."
+    : reason === "rate-limit"
       ? "Слишком много попыток входа. Подождите минуту и снова откройте личную ссылку."
       : reason === "session"
         ? "Откройте личную ссылку, которую вам прислал администратор. Если ссылка потерялась, попросите администратора создать новую."
@@ -19,9 +20,11 @@ export function PortalAccessPage() {
         title={title}
         subTitle={description}
         extra={
-          <Link to="/login">
-            <Button>Вход для сотрудников</Button>
-          </Link>
+          signedOut ? undefined : (
+            <Link to="/login">
+              <Button>Вход для сотрудников</Button>
+            </Link>
+          )
         }
       />
     </main>

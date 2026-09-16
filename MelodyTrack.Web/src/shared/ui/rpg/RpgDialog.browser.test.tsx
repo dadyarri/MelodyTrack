@@ -6,17 +6,39 @@ import { render } from "vitest-browser-react";
 import { RpgDialog } from "./RpgDialog";
 import { RpgButton, RpgTheme } from "./RpgPrimitives";
 
-afterEach(async () => { await page.viewport(1280, 800); });
+afterEach(async () => {
+  await page.viewport(1280, 800);
+});
 
 function DialogHarness({ busy = false }: { busy?: boolean }) {
   const [open, setOpen] = useState(false);
   const [pending, setPending] = useState(busy);
   return (
     <RpgTheme>
-      <RpgButton onClick={() => { setOpen(true); }}>Открыть свиток</RpgButton>
-      <RpgDialog open={open} title="Свиток практики" pending={pending} onRequestClose={() => { setOpen(false); }} footer={
-        <RpgButton onClick={() => { setPending(false); }}>Завершить ожидание</RpgButton>
-      }>
+      <RpgButton
+        onClick={() => {
+          setOpen(true);
+        }}
+      >
+        Открыть свиток
+      </RpgButton>
+      <RpgDialog
+        open={open}
+        title="Свиток практики"
+        pending={pending}
+        onRequestClose={() => {
+          setOpen(false);
+        }}
+        footer={
+          <RpgButton
+            onClick={() => {
+              setPending(false);
+            }}
+          >
+            Завершить ожидание
+          </RpgButton>
+        }
+      >
         <p>Содержание свитка</p>
       </RpgDialog>
     </RpgTheme>
@@ -35,7 +57,7 @@ describe("RpgDialog in supported browsers", () => {
     await expect.poll(() => document.activeElement?.textContent).toBe("Завершить ожидание");
     await userEvent.keyboard("{Escape}");
 
-    await expect.element(screen.getByRole("dialog")).not.toBeVisible();
+    await expect.poll(() => document.querySelector("dialog")?.open).toBe(false);
     await expect.poll(() => document.activeElement?.textContent).toBe("Открыть свиток");
   });
 
@@ -51,7 +73,7 @@ describe("RpgDialog in supported browsers", () => {
     await screen.getByRole("button", { name: "Завершить ожидание" }).click();
     await screen.getByRole("button", { name: "Закрыть", exact: true }).click();
 
-    await expect.element(screen.getByRole("dialog")).not.toBeVisible();
+    await expect.poll(() => document.querySelector("dialog")?.open).toBe(false);
     await expect.poll(() => document.activeElement?.textContent).toBe("Открыть свиток");
   });
 

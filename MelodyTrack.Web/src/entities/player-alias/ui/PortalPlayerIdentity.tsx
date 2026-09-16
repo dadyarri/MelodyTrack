@@ -6,7 +6,10 @@ export function PortalPlayerIdentity({ alias }: { alias: string }) {
   return (
     <div className={styles.identity}>
       <RpgIcon name="flower" />
-      <div><p className={styles.label}>Добро пожаловать,</p><p className={styles.alias}>{alias}</p></div>
+      <div>
+        <p className={styles.label}>Добро пожаловать,</p>
+        <p className={styles.alias}>{alias}</p>
+      </div>
     </div>
   );
 }

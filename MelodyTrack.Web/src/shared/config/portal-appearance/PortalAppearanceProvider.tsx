@@ -1,7 +1,13 @@
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import { PortalAppearanceContext } from "./PortalAppearanceContext";
-import { parsePortalAppearance, type PortalAppearance, portalAppearanceStorageKey, readPortalAppearance, savePortalAppearance } from "./storage";
+import {
+  parsePortalAppearance,
+  type PortalAppearance,
+  portalAppearanceStorageKey,
+  readPortalAppearance,
+  savePortalAppearance,
+} from "./storage";
 
 export function PortalAppearanceProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState(readPortalAppearance);
@@ -17,7 +23,9 @@ export function PortalAppearanceProvider({ children }: { children: ReactNode }) 
       }
     };
     window.addEventListener("storage", synchronize);
-    return () => { window.removeEventListener("storage", synchronize); };
+    return () => {
+      window.removeEventListener("storage", synchronize);
+    };
   }, []);
 
   const value = useMemo(() => ({ ...state, setAppearance }), [state, setAppearance]);

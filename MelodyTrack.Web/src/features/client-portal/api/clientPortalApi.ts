@@ -24,14 +24,14 @@ type ClientPortalCourseEnrollmentsResponse = Omit<RequiredApiContract<GetCourseE
 };
 
 export const clientPortalApi = {
-  schedule(params: { timezone: string }) {
+  schedule(params: { timezone: string }, signal?: AbortSignal) {
     return http
-      .get<ClientPortalScheduleResponse>("/client-portal/schedule", { params })
+      .get<ClientPortalScheduleResponse>("/client-portal/schedule", { params, signal })
       .then((response) => response.data.nextAppointment ?? null);
   },
-  courseEnrollments() {
+  courseEnrollments(signal?: AbortSignal) {
     return http
-      .get<ClientPortalCourseEnrollmentsResponse>("/client-portal/course-enrollments")
+      .get<ClientPortalCourseEnrollmentsResponse>("/client-portal/course-enrollments", { signal })
       .then((response) => response.data.enrollments);
   },
 };

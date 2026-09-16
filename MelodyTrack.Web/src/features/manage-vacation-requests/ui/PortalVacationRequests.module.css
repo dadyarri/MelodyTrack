@@ -1,0 +1,104 @@
+.page,
+.panel,
+.history,
+.form,
+.fields {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+  align-items: start;
+  gap: 24px;
+}
+.fields {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.fields label,
+.fieldLabel {
+  display: grid;
+  gap: 8px;
+  font-size: 0.9rem;
+}
+.fields textarea {
+  width: 100%;
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px 12px;
+  border: 1px solid var(--rpg-line);
+  border-radius: 6px;
+  color: var(--rpg-ink);
+  background: var(--rpg-paper-shaded);
+  font: 400 16px / 1.5 var(--rpg-font-body);
+  color-scheme: dark;
+}
+.periodPicker:global(.ant-picker) {
+  width: 100%;
+  min-height: 44px;
+  font-size: 16px;
+}
+.rpgPicker:global(.ant-picker),
+.rpgPickerPopup {
+  --ant-color-bg-container: #30251f;
+  --ant-color-bg-elevated: #30251f;
+  --ant-color-fill-tertiary: #a87842;
+  --ant-color-text: #f5e7cf;
+  --ant-color-text-secondary: #d0bca4;
+  --ant-color-border: #a48660;
+}
+.minimalPicker:global(.ant-picker),
+.minimalPickerPopup {
+  --ant-color-bg-container: #303634;
+  --ant-color-bg-elevated: #303634;
+  --ant-color-fill-tertiary: #3c4440;
+  --ant-color-text: #dee3df;
+  --ant-color-text-secondary: #b1bdb5;
+  --ant-color-border: #56615b;
+}
+.rpgPickerPopup :global(.ant-picker-panel-container) {
+  background: #30251f !important;
+}
+.minimalPickerPopup :global(.ant-picker-panel-container) {
+  background: #303634 !important;
+}
+.rpgPickerPopup :global(.ant-picker-panel-container),
+.minimalPickerPopup :global(.ant-picker-panel-container) {
+  color: var(--ant-color-text);
+  border-color: var(--ant-color-border);
+}
+.rpgPickerPopup :global(.ant-picker-cell-in-range)::before {
+  background: #493c34 !important;
+}
+.minimalPickerPopup :global(.ant-picker-cell-in-range)::before {
+  background: #4a5b52 !important;
+}
+.rpgPickerPopup :global(.ant-picker-cell-in-view.ant-picker-cell-range-hover:not(.ant-picker-cell-disabled))::before {
+  background: #bd8d52 !important;
+}
+.minimalPickerPopup :global(.ant-picker-cell-in-view.ant-picker-cell-range-hover:not(.ant-picker-cell-disabled))::before {
+  background: #53665b !important;
+}
+.fields textarea {
+  resize: vertical;
+}
+.muted {
+  color: var(--rpg-muted);
+  font-size: 0.8rem;
+}
+.message {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.rpgPickerPopup :global(.ant-picker-cell-in-view.ant-picker-cell-range-start:not(.ant-picker-cell-disabled))::before,
+.rpgPickerPopup :global(.ant-picker-cell-in-view.ant-picker-cell-range-end:not(.ant-picker-cell-disabled))::before {
+  background: #493c34 !important;
+}

@@ -5,18 +5,19 @@ import { bbcodeContentClassName, ensureBbcodeContentTheme } from "./bbcodeConten
 
 type BbcodeContentProps = {
   value: string;
+  className?: string;
 };
 
 type BbcodeNode = string | { attr?: string; children: BbcodeNode[]; tag: string };
 
-export function BbcodeContent({ value }: BbcodeContentProps) {
+export function BbcodeContent({ value, className = "" }: BbcodeContentProps) {
   useEffect(() => {
     ensureBbcodeContentTheme();
   }, []);
 
   const content = useMemo(() => parseBbcode(value).map((node, index) => renderBbcodeNode(node, `bbcode-${String(index)}`)), [value]);
 
-  return <div className={`${styles.root} ${bbcodeContentClassName}`}>{content}</div>;
+  return <div className={`${styles.root} ${bbcodeContentClassName} ${className}`}>{content}</div>;
 }
 
 function parseBbcode(value: string): BbcodeNode[] {

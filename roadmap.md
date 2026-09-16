@@ -2313,9 +2313,9 @@ Each portal client should have a stable public fantasy identity used in the port
 
 ---
 
-## Stage 22: RPG Design System
+## Stage 22: RPG Design System ✅
 
-Implementation is present in the development-only `/dev/portal-design` gallery. Automated verification and browser visual review are pending; see `MelodyTrack.Web/docs/portal-design-system.md` for component ownership and integration guidance.
+Implementation is present in the development-only `/dev/portal-design` gallery and has passed the frontend verification pipeline; see `MelodyTrack.Web/docs/portal-design-system.md` for component ownership and integration guidance.
 
 The redesigned client portal should look and feel like an RPG interface rather than a conventional SaaS application. The visual system should be established before the remaining portal pages are rebuilt.
 
@@ -2327,7 +2327,7 @@ The redesigned client portal should look and feel like an RPG interface rather t
 - Additional customer references reinforce desktop RPG styling: coloured inventory-style icons, strongly separated dark textured surroundings and active panels, contrasting textured heading bands, ornamental panel trim, and flourishes at all four page corners. Preserve responsive usability with the same visual language.
 - Deliver the component system and a reviewable component gallery in this stage. Integrate the new shell and home in Stage 23; migrate individual pages in their owning later stages.
 - Source suitable existing SVG assets rather than inventing, drawing, or generating new artwork. Keep source URLs, author credits, licence information, and any modifications alongside adopted assets.
-- Use sourced SVGs with recorded credits: Lorc's [guitar](https://game-icons.net/1x1/lorc/guitar.html), [flower twirl](https://game-icons.net/1x1/lorc/flower-twirl.html), [unfurled scroll](https://game-icons.net/1x1/lorc/scroll-unfurled.html), [quill and ink](https://game-icons.net/1x1/lorc/quill-ink.html), and [laurel crown](https://game-icons.net/1x1/lorc/laurel-crown.html) under CC BY 3.0, plus Steve Schoger's Texture from [Hero Patterns](https://heropatterns.com/) under CC BY 4.0. Review their visual fit together in the gallery.
+- Use sourced SVGs with recorded credits: Lorc's [guitar](https://game-icons.net/1x1/lorc/guitar.html), [flower twirl](https://game-icons.net/1x1/lorc/flower-twirl.html), [unfurled scroll](https://game-icons.net/1x1/lorc/scroll-unfurled.html), [quill and ink](https://game-icons.net/1x1/lorc/quill-ink.html), and [laurel crown](https://game-icons.net/1x1/lorc/laurel-crown.html) under CC BY 3.0. The dotted background pattern was removed following customer feedback. Review their visual fit together in the gallery.
 
 ### Remaining scope
 
@@ -2378,7 +2378,15 @@ The redesigned client portal should look and feel like an RPG interface rather t
 
 ---
 
-## Stage 23: New Portal Shell and Home
+## Stage 23: New Portal Shell and Home ✅
+
+Implementation is present in the live `/portal` routes and has passed the frontend verification pipeline.
+The home page uses the authenticated client's schedule, balance, assigned courses,
+and teacher-assigned homework from the existing portal APIs. Courses show their
+programme, homework is read-only, and trainers/leaderboards have explicit upcoming
+states. Schedule, vacations, notifications, and calendar subscription remain available.
+Progress maps, lesson-material access, structured submissions, and gamification
+remain deferred to their owning stages. See `MelodyTrack.Web/docs/portal-design-system.md`.
 
 The new portal shell should establish the redesigned user experience before the more specialized course, homework, trainer, and leaderboard features are introduced.
 

@@ -1,4 +1,4 @@
-import { Navigate, type RouteObject } from "react-router";
+import type { RouteObject } from "react-router";
 
 import { ClientPortalThemeProvider } from "@/shared/config";
 import { recoverableImport } from "@/shared/lib";
@@ -38,16 +38,30 @@ export const portalRoutes: RouteObject[] = [
     },
   },
   {
+    path: "/portal/signed-out",
+    errorElement: <RouteErrorBoundary />,
+    lazy: async () => {
+      const { PortalAccessPage } = await recoverableImport(() => import("@/pages/portal-access"));
+      return {
+        Component: () => (
+          <ClientPortalThemeProvider>
+            <PortalAccessPage signedOut />
+          </ClientPortalThemeProvider>
+        ),
+      };
+    },
+  },
+  {
     path: "/portal",
     errorElement: <RouteErrorBoundary />,
     lazy: async () => {
-      const { ClientPortalShell } = await recoverableImport(() => import("@/widgets/client-portal-shell"));
+      const { PortalLayout } = await recoverableImport(() => import("./PortalLayout"));
 
       return {
         Component: () => (
           <ClientPortalThemeProvider>
             <ClientPortalRoute>
-              <ClientPortalShell />
+              <PortalLayout />
             </ClientPortalRoute>
           </ClientPortalThemeProvider>
         ),
@@ -56,7 +70,38 @@ export const portalRoutes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Navigate to="/portal/schedule" replace />,
+        lazy: async () => {
+          const { ClientPortalHomePage } = await recoverableImport(() => import("@/pages/client-portal-home"));
+          return { Component: ClientPortalHomePage };
+        },
+      },
+      {
+        path: "courses",
+        lazy: async () => {
+          const { ClientPortalCoursesPage } = await recoverableImport(() => import("@/pages/client-portal-learning"));
+          return { Component: ClientPortalCoursesPage };
+        },
+      },
+      {
+        path: "homework",
+        lazy: async () => {
+          const { ClientPortalHomeworkPage } = await recoverableImport(() => import("@/pages/client-portal-learning"));
+          return { Component: ClientPortalHomeworkPage };
+        },
+      },
+      {
+        path: "trainers",
+        lazy: async () => {
+          const { ClientPortalTrainersPage } = await recoverableImport(() => import("@/pages/client-portal-learning"));
+          return { Component: ClientPortalTrainersPage };
+        },
+      },
+      {
+        path: "leaderboards",
+        lazy: async () => {
+          const { ClientPortalLeaderboardsPage } = await recoverableImport(() => import("@/pages/client-portal-learning"));
+          return { Component: ClientPortalLeaderboardsPage };
+        },
       },
       {
         path: "schedule",

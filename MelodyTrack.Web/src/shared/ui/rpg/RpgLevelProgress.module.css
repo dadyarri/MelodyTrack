@@ -37,8 +37,16 @@
   mask: url("./assets/guitar-pick.svg") center / contain no-repeat;
 }
 
-.shield > span { position: relative; z-index: 1; padding-bottom: 7px; }
-.body { flex: 1; min-width: 0; margin-left: -10px; }
+.shield > span {
+  position: relative;
+  z-index: 1;
+  padding-bottom: 7px;
+}
+.body {
+  flex: 1;
+  min-width: 0;
+  margin-left: -10px;
+}
 
 .track {
   position: relative;
@@ -57,7 +65,8 @@
 }
 
 .progress {
-  --experience-fill: repeating-linear-gradient(90deg, transparent 0, transparent 23px, #69482044 23px, #69482044 24px), linear-gradient(#e6c89b, #b99161);
+  --experience-fill:
+    repeating-linear-gradient(90deg, transparent 0, transparent 23px, #69482044 23px, #69482044 24px), linear-gradient(#e6c89b, #b99161);
   position: relative;
   appearance: none;
   display: block;
@@ -69,7 +78,9 @@
   accent-color: #d5b27e;
 }
 
-.progress::-webkit-progress-bar { background: transparent; }
+.progress::-webkit-progress-bar {
+  background: transparent;
+}
 .progress::-webkit-progress-value {
   background: var(--experience-fill);
   border-radius: 3px;
@@ -106,18 +117,50 @@
 }
 
 @media (forced-colors: active) {
-  .track { clip-path: none; border: 1px solid CanvasText; }
-  .track::before, .shield::before, .shield::after { display: none; }
-  .shield { filter: none; color: CanvasText; }
-  .progress { appearance: auto; }
+  .track {
+    clip-path: none;
+    border: 1px solid CanvasText;
+  }
+  .track::before,
+  .shield::before,
+  .shield::after {
+    display: none;
+  }
+  .shield {
+    filter: none;
+    color: CanvasText;
+  }
+  .progress {
+    appearance: auto;
+  }
 }
 
-:global([data-portal-appearance="minimal"]) .shield { display: none; }
-:global([data-portal-appearance="minimal"]) .body { margin-left: 0; }
-:global([data-portal-appearance="minimal"]) .track { height: 10px; padding: 0; clip-path: none; border-radius: 4px; background: var(--rpg-paper-shaded); }
+:global([data-portal-appearance="minimal"]) .shield {
+  display: none;
+}
+:global([data-portal-appearance="minimal"]) .body {
+  margin-left: 0;
+}
+:global([data-portal-appearance="minimal"]) .track {
+  height: 10px;
+  padding: 0;
+  clip-path: none;
+  border-radius: 4px;
+  background: var(--rpg-paper-shaded);
+}
 :global([data-portal-appearance="minimal"]) .track::before,
-:global([data-portal-appearance="minimal"]) .levelLabel { display: none; }
-:global([data-portal-appearance="minimal"]) .progress { --experience-fill: #537864; }
-:global([data-portal-appearance="minimal"]) .progress::-webkit-progress-value { box-shadow: none; }
-:global([data-portal-appearance="minimal"]) .progress::-moz-progress-bar { box-shadow: none; }
-:global([data-portal-appearance="minimal"]) .caption { padding-left: 0; }
+:global([data-portal-appearance="minimal"]) .levelLabel {
+  display: none;
+}
+:global([data-portal-appearance="minimal"]) .progress {
+  --experience-fill: #537864;
+}
+:global([data-portal-appearance="minimal"]) .progress::-webkit-progress-value {
+  box-shadow: none;
+}
+:global([data-portal-appearance="minimal"]) .progress::-moz-progress-bar {
+  box-shadow: none;
+}
+:global([data-portal-appearance="minimal"]) .caption {
+  padding-left: 0;
+}

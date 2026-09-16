@@ -24,14 +24,19 @@ describe("RpgApiError", () => {
       status: 503,
       problem: { type: "about:blank", title: "Сервис временно недоступен", status: 503, instance: "", code: "", errors: [], traceId },
     });
-    const screen = await render(<RpgTheme><RpgApiError error={error} onRetry={retry} /></RpgTheme>);
+    const screen = await render(
+      <RpgTheme>
+        <RpgApiError error={error} onRetry={retry} />
+      </RpgTheme>,
+    );
 
     await screen.getByRole("button", { name: "Скопировать Trace ID" }).click();
 
     expect(writeText).toHaveBeenCalledWith(traceId);
     await expect.element(screen.getByText("Не удалось скопировать. Выделите Trace ID вручную.")).toBeVisible();
     const trace = screen.getByText(traceId, { exact: true }).element();
-    expect(getComputedStyle(trace).userSelect).toBe("text");
+    const traceStyles = getComputedStyle(trace);
+    expect(traceStyles.userSelect || (traceStyles as unknown as Record<string, string>)["webkitUserSelect"]).toBe("text");
     await screen.getByRole("button", { name: "Попробовать снова" }).click();
 
     expect(retry).toHaveBeenCalledOnce();

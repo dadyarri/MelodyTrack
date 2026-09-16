@@ -45,5 +45,6 @@ export function useNotifications() {
     markRead: markReadMutation.mutate,
     markAllRead: markAllReadMutation.mutate,
     markingAllRead: markAllReadMutation.isPending,
+    error: query.error ?? markReadMutation.error ?? markAllReadMutation.error,
   };
 }

@@ -1,0 +1,42 @@
+.trigger {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+}
+.count {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 18px;
+  padding: 1px 4px;
+  border-radius: 9px;
+  background: var(--rpg-red);
+  color: var(--rpg-paper);
+  font: 700 11px / 16px var(--rpg-font-label);
+}
+.content {
+  display: grid;
+  gap: 12px;
+}
+.item {
+  display: grid;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  padding: 16px;
+  color: var(--rpg-ink);
+  background: var(--rpg-paper-raised);
+  border: 1px solid var(--rpg-line);
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  overflow-wrap: anywhere;
+}
+.item:hover {
+  background: var(--rpg-paper-shaded);
+}
+.item time {
+  color: var(--rpg-muted);
+  font-size: 0.8rem;
+}

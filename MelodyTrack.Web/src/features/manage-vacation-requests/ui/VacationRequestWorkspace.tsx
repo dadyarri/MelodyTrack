@@ -21,6 +21,7 @@ import { useState } from "react";
 
 import { vacationRequestQueryKeys, vacationRequestsApi } from "../api/vacationRequestApi";
 import type { VacationRequest, VacationRequestStatus } from "../model/types";
+import { PortalVacationRequests } from "./PortalVacationRequests";
 import styles from "./VacationRequestWorkspace.module.css";
 
 type RequestFormValues = {
@@ -65,9 +66,9 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
         portal,
       ),
     onSuccess: async () => {
-      requestForm.resetFields();
+      if (!portal) requestForm.resetFields();
       await invalidate();
-      void message.success("Заявка отправлена суперпользователю");
+      if (!portal) void message.success("Заявка отправлена суперпользователю");
     },
   });
 
@@ -75,7 +76,7 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
     mutationFn: (request: VacationRequest) => vacationRequestsApi.cancel(request.id, request.version),
     onSuccess: async () => {
       await invalidate();
-      void message.success("Заявка отозвана");
+      if (!portal) void message.success("Заявка отозвана");
     },
   });
 
@@ -99,6 +100,26 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
   });
 
   const requests = query.data ?? [];
+
+  if (portal)
+    return (
+      <PortalVacationRequests
+        requests={requests}
+        loading={query.isLoading}
+        error={query.error}
+        cancelled={cancelMutation.isSuccess}
+        mutationError={createMutation.error ?? cancelMutation.error}
+        creating={createMutation.isPending}
+        cancelling={cancelMutation.isPending}
+        onRetry={() => {
+          void query.refetch();
+        }}
+        onCreate={createMutation.mutateAsync}
+        onCancel={(request) => {
+          cancelMutation.mutate(request);
+        }}
+      />
+    );
 
   return (
     <Space orientation="vertical" size={20} className="wide">

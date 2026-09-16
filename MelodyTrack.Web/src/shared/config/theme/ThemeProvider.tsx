@@ -2,6 +2,7 @@ import { ConfigProvider, theme as antdTheme, type ThemeConfig } from "antd";
 import ruRU from "antd/locale/ru_RU";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
+import { usePortalAppearance } from "../portal-appearance/PortalAppearanceContext";
 import { ThemeContext, type ThemeContextValue, type ThemeMode } from "./ThemeContext";
 
 const storageKey = "melodytrack.theme";
@@ -76,7 +77,7 @@ const darkPalette: ThemePalette = {
   cardShadow: "0 14px 30px rgba(0, 0, 0, 0.35)",
   menuHoverBg: "#2f241a",
   menuHoverColor: "#fff0d4",
-  menuSelectedBg: "#5c4122",
+  menuSelectedBg: "#a87842",
   menuSelectedColor: "#fff0d4",
   tableRowHoverBg: "#2b2219",
   inputBg: "#261f18",
@@ -255,6 +256,44 @@ export function ClientPortalThemeProvider({ children }: { children: ReactNode })
   return (
     <ConfigProvider locale={ruRU} theme={{ ...lightTheme, inherit: false }}>
       <div data-theme="light">{children}</div>
+    </ConfigProvider>
+  );
+}
+
+/** Keeps existing notification, vacation, and calendar controls inside the portal palette. */
+export function PortalControlsThemeProvider({ children }: { children: ReactNode }) {
+  const { appearance } = usePortalAppearance();
+  const config = useMemo(
+    () =>
+      appearance === "rpg"
+        ? darkTheme
+        : createThemeConfig(
+            {
+              ...darkPalette,
+              accent: "#b5ccbb",
+              text: "#dee3df",
+              textSecondary: "#b1bdb5",
+              bgBase: "#242827",
+              bgContainer: "#303634",
+              bgElevated: "#303634",
+              fillAlter: "#3c4440",
+              border: "#56615b",
+              borderSecondary: "#56615b",
+              inputBg: "#242827",
+              cardShadow: "none",
+              menuHoverBg: "#3c4440",
+              menuHoverColor: "#dee3df",
+              menuSelectedBg: "#4a5b52",
+              menuSelectedColor: "#dee3df",
+              tableRowHoverBg: "#3c4440",
+            },
+            antdTheme.darkAlgorithm,
+          ),
+    [appearance],
+  );
+  return (
+    <ConfigProvider locale={ruRU} theme={{ ...config, inherit: false }}>
+      <div data-theme="dark">{children}</div>
     </ConfigProvider>
   );
 }

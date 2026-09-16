@@ -11,10 +11,11 @@ import {
   subscribeBrowserToPush,
   supportsPushNotifications,
 } from "@/shared/lib";
+import { RpgButton } from "@/shared/ui/rpg";
 
 type PushState = "loading" | "available" | "subscribed" | "denied" | "unsupported" | "not-configured";
 
-export function PushNotificationControl() {
+export function PushNotificationControl({ appearance = "staff" }: { appearance?: "staff" | "portal" }) {
   const { message } = AntdApp.useApp();
   const configuration = useQuery({
     queryKey: notificationQueryKeys.pushConfiguration(),
@@ -24,6 +25,11 @@ export function PushNotificationControl() {
   const [state, setState] = useState<PushState>("loading");
   const [registration, setRegistration] = useState<ServiceWorkerRegistration | null>(null);
   const [pending, setPending] = useState(false);
+  const [feedback, setFeedback] = useState("");
+  const notify = (kind: "success" | "error", text: string) => {
+    if (appearance === "portal") setFeedback(text);
+    else void message[kind](text);
+  };
   const availabilityState: PushState | null = configuration.isLoading
     ? "loading"
     : !configuration.data?.enabled || !configuration.data.publicKey
@@ -89,10 +95,10 @@ export function PushNotificationControl() {
         await notificationApi.subscribe(subscription);
         setRegistration(currentRegistration);
         setState("subscribed");
-        void message.success("Push-уведомления включены.");
+        notify("success", "Push-уведомления включены.");
       })
       .catch(() => {
-        void message.error("Не удалось включить push-уведомления. Уведомления в приложении продолжат работать.");
+        notify("error", "Не удалось включить push-уведомления. Уведомления в приложении продолжат работать.");
       })
       .finally(() => {
         setPending(false);
@@ -109,15 +115,40 @@ export function PushNotificationControl() {
         await subscription.unsubscribe();
       }
       setState("available");
-      void message.success("Push-уведомления отключены.");
+      notify("success", "Push-уведомления отключены.");
     })()
       .catch(() => {
-        void message.error("Не удалось отключить push-уведомления. Попробуйте ещё раз.");
+        notify("error", "Не удалось отключить push-уведомления. Попробуйте ещё раз.");
       })
       .finally(() => {
         setPending(false);
       });
   };
+
+  if (appearance === "portal") {
+    const explanations: Partial<Record<PushState, string>> = {
+      "not-configured": "Push пока не настроен. Уведомления доступны здесь.",
+      unsupported: "Этот браузер не поддерживает push. Уведомления доступны здесь.",
+      denied: "Push запрещены в настройках браузера. Уведомления доступны здесь.",
+    };
+    const explanation = explanations[displayedState];
+    return (
+      <div>
+        {explanation ? (
+          <p>{explanation}</p>
+        ) : (
+          <RpgButton
+            variant="quiet"
+            pending={pending || displayedState === "loading"}
+            onClick={displayedState === "subscribed" ? disable : enable}
+          >
+            {displayedState === "subscribed" ? "Отключить push" : "Включить push"}
+          </RpgButton>
+        )}
+        <p role="status">{feedback}</p>
+      </div>
+    );
+  }
 
   if (displayedState === "not-configured") {
     return <Typography.Text type="secondary">Push пока не настроен. Уведомления доступны здесь.</Typography.Text>;

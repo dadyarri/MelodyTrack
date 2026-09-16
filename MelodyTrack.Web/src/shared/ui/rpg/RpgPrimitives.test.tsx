@@ -6,7 +6,11 @@ import { RpgButton, RpgProgress } from "./RpgPrimitives";
 describe("RpgButton", () => {
   it("blocks repeated actions while pending and enables them after completion", () => {
     const onClick = vi.fn();
-    const { rerender } = render(<RpgButton pending pendingLabel="Сохраняем…" onClick={onClick}>Сохранить</RpgButton>);
+    const { rerender } = render(
+      <RpgButton pending pendingLabel="Сохраняем…" onClick={onClick}>
+        Сохранить
+      </RpgButton>,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Сохраняем…" }));
 
@@ -20,8 +24,15 @@ describe("RpgButton", () => {
   });
 
   it("does not submit its surrounding form unless explicitly requested", () => {
-    const onSubmit = vi.fn((event: React.FormEvent) => { event.preventDefault(); });
-    render(<form onSubmit={onSubmit}><RpgButton>Открыть</RpgButton><RpgButton type="submit">Отправить</RpgButton></form>);
+    const onSubmit = vi.fn((event: React.SyntheticEvent<HTMLFormElement>) => {
+      event.preventDefault();
+    });
+    render(
+      <form onSubmit={onSubmit}>
+        <RpgButton>Открыть</RpgButton>
+        <RpgButton type="submit">Отправить</RpgButton>
+      </form>,
+    );
 
     fireEvent.click(screen.getByRole("button", { name: "Открыть" }));
 

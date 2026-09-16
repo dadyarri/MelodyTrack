@@ -1,0 +1,61 @@
+.page,
+.course,
+.assignment {
+  display: grid;
+  min-width: 0;
+  gap: 20px;
+}
+.page {
+  gap: 28px;
+}
+.course {
+  scroll-margin-top: 24px;
+}
+.courses {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 850px) {
+  .courses {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+.details {
+  margin-top: 16px;
+  border-top: 1px solid var(--rpg-line);
+}
+.details summary {
+  cursor: pointer;
+  padding: 14px 0;
+  min-height: 44px;
+  font-weight: 600;
+}
+.branch {
+  padding: 12px;
+}
+.branch li {
+  margin-block: 8px;
+}
+.assignment {
+  overflow-wrap: anywhere;
+}
+.assignment .homeworkContent {
+  --mt-bbcode-text: var(--rpg-ink);
+  --mt-bbcode-muted: var(--rpg-muted);
+  --mt-bbcode-border-strong: var(--rpg-line);
+  --mt-bbcode-card: var(--rpg-paper-shaded);
+  --mt-bbcode-accent: var(--rpg-green);
+  max-height: none;
+  overflow: visible;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: 1rem;
+}
+.assignment img,
+.assignment video {
+  max-width: 100%;
+  height: auto;
+}

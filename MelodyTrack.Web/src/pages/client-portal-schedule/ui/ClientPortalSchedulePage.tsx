@@ -1,15 +1,15 @@
 import { useMutation, useQuery } from "@tanstack/react-query";
-import { App as AntdApp, Button, Card, Space, Tag, Tooltip, Typography } from "antd";
+import { App as AntdApp } from "antd";
 import dayjs from "dayjs";
 import { useEffect, useMemo } from "react";
 
-import { getAppointmentStatusLabel, getAppointmentStatusTagColor } from "@/entities/appointment";
+import { getAppointmentStatusLabel } from "@/entities/appointment";
 import { clientsApi } from "@/entities/client";
 import { useAuth } from "@/entities/session";
 import { clientPortalApi, type ClientPortalAppointment, clientPortalQueryKeys } from "@/features/client-portal";
 import { formatMoney } from "@/shared/lib";
 import { UrlCopyModal, useUrlCopyModal } from "@/shared/ui";
-import { CalendarCheckOutlined } from "@/shared/ui/icons";
+import { RpgApiError, RpgBadge, RpgButton, RpgPanel, RpgState } from "@/shared/ui/rpg";
 
 import styles from "./ClientPortalSchedulePage.module.css";
 
@@ -22,7 +22,7 @@ export function ClientPortalSchedulePage() {
 
   const query = useQuery({
     queryKey: clientPortalQueryKeys.schedule(linkedClientId, timezone),
-    queryFn: () => clientPortalApi.schedule({ timezone }),
+    queryFn: ({ signal }) => clientPortalApi.schedule({ timezone }, signal),
     enabled: Boolean(linkedClientId),
     refetchInterval: (currentQuery) => getNextRefreshInterval(currentQuery.state.data),
     refetchIntervalInBackground: false,
@@ -60,73 +60,60 @@ export function ClientPortalSchedulePage() {
 
   const nextAppointment = query.data;
   const balance = auth.user?.balance ?? 0;
-  const balanceToneClassName = balance < 0 ? styles.balanceNegative : balance > 0 ? styles.balancePositive : styles.balanceNeutral;
-
   return (
     <>
-      <Space vertical size={16} className={styles.stack}>
+      <div className={styles.stack}>
+        <h1>Расписание</h1>
         <div className={styles.summaryGrid}>
-          <Card loading={query.isLoading} className={styles.heroCard} title="Ближайшее занятие">
-            <Space vertical size={10} className={styles.heroCardContent}>
-              {nextAppointment ? (
-                <>
-                  <Typography.Text strong>{formatDateRange(nextAppointment.startDate, nextAppointment.endDate)}</Typography.Text>
-                  <Space wrap>
-                    <Tag color={getAppointmentStatusTagColor(nextAppointment.status)}>
-                      {getAppointmentStatusLabel(nextAppointment.status)}
-                    </Tag>
-                    {nextAppointment.isTrial ? <Tag color="purple">Пробное занятие</Tag> : null}
-                    {nextAppointment.courseTheme ? <Tag color="blue">Тема: {nextAppointment.courseTheme.title}</Tag> : null}
-                  </Space>
-                </>
-              ) : (
-                <Typography.Text type="secondary">Пока нет запланированных занятий.</Typography.Text>
-              )}
-              {query.isError ? (
-                <Typography.Text type="warning">
-                  {nextAppointment
-                    ? "Не удалось обновить расписание. Показаны последние подтверждённые данные."
-                    : "Не удалось обновить расписание."}
-                </Typography.Text>
-              ) : null}
-            </Space>
-          </Card>
-
-          <Card className={styles.heroCard} title="Баланс">
-            <Space vertical size={10} className={styles.heroCardContent}>
-              <Typography.Title level={3} className={balanceToneClassName}>
-                {formatMoney(balance)}
-              </Typography.Title>
-              {/* <Typography.Text type="secondary">
-              {balance < 0
-                ? "Отрицательный баланс означает задолженность."
-                : balance > 0
-                  ? "Положительный баланс можно использовать для будущих занятий."
-                  : "Баланс сейчас закрыт."}
-            </Typography.Text> */}
-            </Space>
-          </Card>
-
-          <Card className={styles.heroCard} title="Подписка на календарь">
-            <Space vertical size={10} className={styles.heroCardContent}>
-              <Typography.Text type="secondary">Добавьте занятия в свой календарь и получайте привычные напоминания.</Typography.Text>
-              <Tooltip title="Вы можете добавить свои занятия в любой удобный календарь: Apple Calendar, Google Calendar и другие.">
-                <Button
-                  icon={<CalendarCheckOutlined />}
-                  loading={calendarSubscriptionMutation.isPending}
-                  onClick={() => {
-                    if (linkedClientId) {
-                      calendarSubscriptionMutation.mutate(linkedClientId);
-                    }
-                  }}
-                >
-                  Подписка на календарь
-                </Button>
-              </Tooltip>
-            </Space>
-          </Card>
+          <RpgPanel className={styles.stack}>
+            <h2>Ближайшее занятие</h2>
+            {query.isPending ? <RpgState kind="loading" title="Загружаем расписание" /> : null}
+            {query.isError ? (
+              <RpgApiError
+                error={query.error}
+                onRetry={() => {
+                  void refetch();
+                }}
+              />
+            ) : null}
+            {nextAppointment ? (
+              <>
+                {query.isError ? <p>Показаны последние подтверждённые данные.</p> : null}
+                <strong>{formatDateRange(nextAppointment.startDate, nextAppointment.endDate)}</strong>
+                <div className={styles.badges}>
+                  <RpgBadge>{getAppointmentStatusLabel(nextAppointment.status)}</RpgBadge>
+                  {nextAppointment.isTrial ? <RpgBadge>Пробное занятие</RpgBadge> : null}
+                </div>
+                {nextAppointment.courseTheme ? <p>Тема: {nextAppointment.courseTheme.title}</p> : null}
+              </>
+            ) : query.isSuccess ? (
+              <p>Пока нет запланированных занятий.</p>
+            ) : null}
+          </RpgPanel>
+          <RpgPanel className={styles.stack}>
+            <h2>Баланс</h2>
+            <p className={styles.balance} data-debt={balance < 0}>
+              {formatMoney(balance)}
+            </p>
+          </RpgPanel>
+          <RpgPanel className={styles.stack}>
+            <h2>Подписка на календарь</h2>
+            <p>Добавьте занятия в Apple Calendar, Google Calendar или другой удобный календарь.</p>
+            <div>
+              <RpgButton
+                pending={calendarSubscriptionMutation.isPending}
+                disabled={!linkedClientId}
+                onClick={() => {
+                  if (linkedClientId) calendarSubscriptionMutation.mutate(linkedClientId);
+                }}
+              >
+                Подписка на календарь
+              </RpgButton>
+            </div>
+            {calendarSubscriptionMutation.isError ? <RpgApiError error={calendarSubscriptionMutation.error} /> : null}
+          </RpgPanel>
         </div>
-      </Space>
+      </div>
       <UrlCopyModal {...urlModal.urlModalProps} />
     </>
   );

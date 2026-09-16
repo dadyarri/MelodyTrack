@@ -7,7 +7,7 @@ type CopyTraceIdButtonProps = {
   traceId: string;
 };
 
-export function CopyTraceIdButton({ traceId }: CopyTraceIdButtonProps) {
+export function useCopyTraceId(traceId: string) {
   const [feedback, setFeedback] = useState<string | null>(null);
 
   const copyTraceId = () => {
@@ -15,6 +15,12 @@ export function CopyTraceIdButton({ traceId }: CopyTraceIdButtonProps) {
       setFeedback(copied ? "Trace ID скопирован" : "Не удалось скопировать. Выделите Trace ID вручную.");
     });
   };
+
+  return { copyTraceId, feedback };
+}
+
+export function CopyTraceIdButton({ traceId }: CopyTraceIdButtonProps) {
+  const { copyTraceId, feedback } = useCopyTraceId(traceId);
 
   return (
     <span>

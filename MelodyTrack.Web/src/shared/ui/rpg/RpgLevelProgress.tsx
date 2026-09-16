@@ -11,7 +11,9 @@ export function RpgLevelProgress({ level, value, max }: { level: number; value: 
 
   return (
     <div className={styles.experience}>
-      <span className={styles.shield} aria-hidden="true"><span>{level}</span></span>
+      <span className={styles.shield} aria-hidden="true">
+        <span>{level}</span>
+      </span>
       <div className={styles.body}>
         <div className={styles.track}>
           <progress
@@ -21,7 +23,9 @@ export function RpgLevelProgress({ level, value, max }: { level: number; value: 
             value={safeValue}
             max={safeMax}
           />
-          <span className={styles.levelLabel} aria-hidden="true">{levelLabel}</span>
+          <span className={styles.levelLabel} aria-hidden="true">
+            {levelLabel}
+          </span>
         </div>
         <span id={labelId} className={styles.caption}>
           {levelLabel} · {safeValue} / {safeMax} опыта

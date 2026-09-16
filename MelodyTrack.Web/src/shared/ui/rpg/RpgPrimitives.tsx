@@ -1,6 +1,7 @@
 import { type ButtonHTMLAttributes, type CSSProperties, type HTMLAttributes, type ReactNode, useId } from "react";
 
 import { PortalAppearanceProvider, usePortalAppearance } from "@/shared/config";
+import { DashboardOutlined } from "@/shared/ui/icons";
 
 import flower from "./assets/flower-twirl.svg";
 import guitar from "./assets/guitar.svg";
@@ -14,7 +15,11 @@ const icons = { flower, guitar, laurel, pick, quill, scroll };
 export type RpgIconName = keyof typeof icons;
 
 export function RpgTheme(props: HTMLAttributes<HTMLDivElement>) {
-  return <PortalAppearanceProvider><PortalThemeSurface {...props} /></PortalAppearanceProvider>;
+  return (
+    <PortalAppearanceProvider>
+      <PortalThemeSurface {...props} />
+    </PortalAppearanceProvider>
+  );
 }
 
 function PortalThemeSurface({ children, className = "", ...props }: HTMLAttributes<HTMLDivElement>) {
@@ -35,12 +40,27 @@ export function PortalAppearanceSwitch() {
         <legend>Оформление</legend>
         {(["rpg", "minimal"] as const).map((value) => (
           <label key={value} className={styles.appearanceOption}>
-            <input type="radio" name={name} value={value} checked={appearance === value} onChange={() => { setAppearance(value); }} />
-            <span>{value === "rpg" ? "RPG" : "Минималистичное"}</span>
+            <input
+              type="radio"
+              name={name}
+              value={value}
+              aria-label={value === "rpg" ? "RPG" : "Минималистичное"}
+              checked={appearance === value}
+              onChange={() => {
+                setAppearance(value);
+              }}
+            />
+            <span title={value === "rpg" ? "RPG-оформление" : "Минималистичное оформление"}>
+              {value === "rpg" ? <RpgIcon name="guitar" /> : <DashboardOutlined aria-hidden="true" />}
+            </span>
           </label>
         ))}
       </fieldset>
-      {warning ? <span role="status" className={styles.appearanceWarning}>{warning}</span> : null}
+      {warning ? (
+        <span role="status" className={styles.appearanceWarning}>
+          {warning}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -123,7 +143,12 @@ export function RpgButton({
   );
 }
 
-export function RpgPanel({ children, className = "", surface = "leather", ...props }: HTMLAttributes<HTMLDivElement> & {
+export function RpgPanel({
+  children,
+  className = "",
+  surface = "leather",
+  ...props
+}: HTMLAttributes<HTMLDivElement> & {
   surface?: "leather" | "parchment";
 }) {
   return (
@@ -141,7 +166,15 @@ export function RpgBadge({ children, tone = "neutral" }: { children: ReactNode; 
   );
 }
 
-export function RpgCard({ title, eyebrow, description, icon, children, footer, accent = "sage" }: {
+export function RpgCard({
+  title,
+  eyebrow,
+  description,
+  icon,
+  children,
+  footer,
+  accent = "sage",
+}: {
   title: string;
   eyebrow: string;
   description?: string;
@@ -180,14 +213,19 @@ export function RpgProgress({ label, value, max = 100, detail }: { label: string
   );
 }
 
-export function RpgState({ kind, title, children, action }: {
+export function RpgState({
+  kind,
+  title,
+  children,
+  action,
+}: {
   kind: "loading" | "empty" | "error" | "success";
   title: string;
   children?: ReactNode;
   action?: ReactNode;
 }) {
   return (
-    <div className={styles.state} data-kind={kind}>
+    <RpgPanel className={styles.state} data-kind={kind}>
       <div role={kind === "error" ? "alert" : "status"} className={styles.stateHeading}>
         {kind === "loading" ? <span className={styles.spark} aria-hidden="true" /> : null}
         {kind === "success" ? <RpgSignature compact /> : null}
@@ -195,7 +233,7 @@ export function RpgState({ kind, title, children, action }: {
       </div>
       {children ? <div className={styles.stateBody}>{children}</div> : null}
       {action}
-    </div>
+    </RpgPanel>
   );
 }
 

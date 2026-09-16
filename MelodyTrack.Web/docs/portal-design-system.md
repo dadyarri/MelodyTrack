@@ -13,13 +13,13 @@ context. `shared/config/portal-appearance` owns validated reads/writes of
 `localStorage["melodytrack.portalAppearance"]` (`rpg` or `minimal`). Missing or invalid
 values default to RPG. Storage events synchronize other tabs. Read/write failures
 leave the page usable and show a warning beside the control. The preference is
-device-wide and separate from `melodytrack.theme`. It currently applies to the new
-component gallery; later live portal integration reuses this boundary.
+device-wide and separate from `melodytrack.theme`. The gallery and authenticated
+portal now share this boundary.
 
 ## RPG presentation
 
 The RPG appearance uses one fixed warm fantasy palette, revised from customer feedback:
-dark walnut backgrounds with a sourced woven SVG texture, leather-brown panels,
+dark walnut backgrounds with smooth tonal shading, leather-brown panels,
 bronze frames, cream text, and sage, muted plum, copper, and teal accents.
 The customer-provided RPG panel reference guides framing and colour density;
 Potion Craft remains a reference for warmth and crafted detail. Large lyre imagery
@@ -92,7 +92,9 @@ SVG author/source/licence credits are visible in its footer.
 
 Import primitives from `@/shared/ui/rpg` and domain components through their slice
 public APIs. Wrap new portal content in `RpgTheme`. Styles and tokens are scoped to
-that boundary; the current `ClientPortalThemeProvider` and live screens are unchanged.
+that boundary. Alias selection and access errors retain `ClientPortalThemeProvider`;
+the authenticated shell uses `PortalControlsThemeProvider` to align existing
+notifications, vacation controls, and calendar dialogs with its selected appearance.
 Pass router links into `RpgNavigation`; wrap their text and icon in `RpgNavItem`.
 Use `aria-current="page"` on the active route link. The gallery uses `location`
 because its links navigate within the page.
@@ -128,8 +130,8 @@ retaining text, state colours, and progress values. Actions never depend on
 animation completion. Controls have visible focus and at least 44px height.
 
 Source icons/ornaments are unmodified files by Lorc, licensed under CC BY 3.0.
-The background texture is by Steve Schoger under CC BY 4.0. Corner Flourish 3
-is by Arvin61r58 under CC0, obtained through FreePNGimg. Sources and licence links
+The former dotted background pattern has been removed throughout the portal and gallery.
+Corner Flourish 3 is by Arvin61r58 under CC0, obtained through FreePNGimg. Sources and licence links
 are listed in the gallery footer. Preserve those
 credits when integrating the system into the live portal in Stage 23. Asset
 imports follow Vite's fingerprinted bundle handling.
@@ -139,10 +141,39 @@ imports follow Vite's fingerprinted bundle handling.
 Focused unit and Chromium/WebKit browser scenarios accompany the components.
 They cover pending actions, form semantics, bounded progress, dialog focus and
 dismissal, reduced motion, short viewports, long aliases, and fixed-theme isolation.
-They have not yet been run. Browser visual review is also pending because no
-browser connection was available during implementation. Run the authorized
-`npm run verify:fix` pipeline and inspect its mutations before marking Stage 22
-verified; review the gallery at desktop and compact widths as part of that pass.
+The authorized `npm run verify:fix` pipeline passed, including unit, Chromium, WebKit, type, architecture, security-boundary, production-build, and bundle-budget checks. Chromium and WebKit scenarios cover the gallery at desktop and compact widths.
 
-Stage 23 consumes these components for the live shell/home. Other portal pages
-are migrated in their respective roadmap stages.
+## Live portal integration
+
+`/portal` now renders the home page instead of redirecting to the schedule.
+`app/router/PortalLayout` composes the header and shell widgets, preserving their
+FSD boundaries. The existing access and alias guards protect every nested route.
+Header navigation exposes home, courses, homework, trainers, leaderboards, schedule,
+and vacations. Logout, notifications, push controls, and system notices remain available.
+
+Home loads schedule and enrollments through the existing client-scoped query keys.
+Schedule retains its refresh and calendar-subscription behavior with RPG presentation.
+Query cancellation propagates to the HTTP boundary. API failures show retry and trace
+information; failed loads are not presented as empty course or homework lists.
+
+Courses show assigned course names, descriptions, and programme outlines. Homework
+shows nonempty BBCode assignments only for themes in WaitingForHomework (4), without
+submission or completion actions. Progress maps and lesson-material access remain
+deferred. Upcoming trainer and leaderboard pages contain no fabricated scores or XP.
+
+The implementation and its added tests have passed frontend verification. Review both appearances with a real client session as part of normal acceptance.
+
+## Compact navigation and portal controls
+
+The header menu is the single cross-section navigation. Home and learning pages
+show content without repeating section links or upcoming-section cards. The header
+uses a compact two-icon appearance selector (guitar and layout), a notification icon, and an icon-only logout
+button, all with accessible names and keyboard focus.
+
+Portal notifications reuse the existing query/mutation hook with an RPG dialog,
+request errors, unread count, and themed push controls. Staff notifications retain
+their existing presentation. Vacation requests reuse the same mutation controller
+and versioned cancel operation with a portal form and history. Native local date-time
+inputs convert through Dayjs to the existing UTC request contract; values are kept
+on failure and cleared only after successful creation. Neither theme uses the old
+dotted SVG pattern. Automated verification remains pending.

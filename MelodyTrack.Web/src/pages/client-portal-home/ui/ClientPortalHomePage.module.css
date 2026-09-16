@@ -1,0 +1,46 @@
+.page,
+.stack {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.page {
+  gap: 32px;
+}
+.intro {
+  display: grid;
+  gap: 12px;
+}
+.intro > p {
+  color: var(--rpg-muted);
+}
+.summary {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  gap: 20px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.date {
+  font-size: 1.25rem;
+}
+.balance {
+  font-size: 2rem;
+  color: var(--rpg-green);
+}
+.balance[data-debt="true"] {
+  color: var(--rpg-red);
+}
+@media (max-width: 850px) {
+  .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .summary {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

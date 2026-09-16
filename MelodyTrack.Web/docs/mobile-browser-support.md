@@ -103,7 +103,7 @@ families:
 | Schedule | `/schedule` and `/portal/schedule` |
 | Course workspace | `/courses` |
 | Profile | `/profile` |
-| Client portal shell | `/portal`, `/portal/schedule`, `/portal/vacations`; `/p/{token}` enters through a server redirect |
+| Client portal shell | `/portal`, `/portal/courses`, `/portal/homework`, `/portal/trainers`, `/portal/leaderboards`, `/portal/schedule`, `/portal/vacations`; `/p/{token}` enters through a server redirect. New home/learning routes await responsive verification. |
 
 The responsive browser suite exercises every family at 320, 375, 390, and 430
 CSS pixels in portrait and at 568 by 320 in landscape. The 320px case asserts

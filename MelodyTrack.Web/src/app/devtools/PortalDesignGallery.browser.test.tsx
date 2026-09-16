@@ -11,7 +11,9 @@ const originalTheme = document.documentElement.dataset.theme;
 const appearanceKey = "melodytrack.portalAppearance";
 const originalAppearance = localStorage.getItem(appearanceKey);
 
-beforeEach(() => { localStorage.removeItem(appearanceKey); });
+beforeEach(() => {
+  localStorage.removeItem(appearanceKey);
+});
 
 afterEach(async () => {
   if (originalTheme === undefined) delete document.documentElement.dataset.theme;
@@ -35,11 +37,15 @@ describe("Portal design gallery", () => {
     expect(getComputedStyle(dialog).backgroundImage).toBe("none");
     expect(getComputedStyle(dialog).animationName).toBe("none");
   });
-  it.each([{ width: 320, height: 568 }, { width: 390, height: 844 }, { width: 1280, height: 900 }])("keeps gallery controls usable at $width pixels", async ({ width, height }) => {
+  it.each([
+    { width: 320, height: 568 },
+    { width: 390, height: 844 },
+    { width: 1280, height: 900 },
+  ])("keeps gallery controls usable at $width pixels", async ({ width, height }) => {
     await page.viewport(width, height);
     const screen = await render(<PortalDesignGallery />);
 
-    await expect.element(screen.getByText("Минималистичное", { exact: true })).toBeVisible();
+    await expect.element(screen.getByTitle("Минималистичное оформление", { exact: true })).toBeVisible();
 
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(document.documentElement.clientWidth);
   });
@@ -47,12 +53,12 @@ describe("Portal design gallery", () => {
   it("persists the appearance selected through the custom control", async () => {
     const screen = await render(<PortalDesignGallery />);
 
-    await screen.getByText("Минималистичное", { exact: true }).click();
+    await screen.getByTitle("Минималистичное оформление", { exact: true }).click();
 
     await expect.element(screen.getByRole("radio", { name: "Минималистичное" })).toBeChecked();
     expect(localStorage.getItem(appearanceKey)).toBe("minimal");
 
-    await screen.getByText("RPG", { exact: true }).click();
+    await screen.getByTitle("RPG-оформление", { exact: true }).click();
 
     await expect.element(screen.getByRole("radio", { name: "RPG", exact: true })).toBeChecked();
     expect(localStorage.getItem(appearanceKey)).toBe("rpg");

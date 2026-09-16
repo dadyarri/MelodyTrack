@@ -2,7 +2,13 @@ import type { ReactNode } from "react";
 
 import { RpgBadge, RpgCard } from "@/shared/ui/rpg";
 
-export function PortalHomeworkCard({ title, description, status, complete = false, action }: {
+export function PortalHomeworkCard({
+  title,
+  description,
+  status,
+  complete = false,
+  action,
+}: {
   title: string;
   description: string;
   status: string;

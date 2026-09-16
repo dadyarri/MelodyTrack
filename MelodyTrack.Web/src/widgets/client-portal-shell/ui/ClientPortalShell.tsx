@@ -1,54 +1,24 @@
-import { Button, Space, Typography } from "antd";
-import { NavLink, Outlet } from "react-router";
+import type { ReactNode } from "react";
+import { Outlet } from "react-router";
 
-import { NotificationBell } from "@/entities/notification";
-import { useAuth } from "@/entities/session";
 import { SystemNoticeCenter } from "@/entities/system-notice";
-import { PushNotificationControl } from "@/features/manage-push-notifications";
-import { CalendarOutlined, CalendarRangeOutlined, LogoutOutlined } from "@/shared/ui/icons";
+import { PortalControlsThemeProvider } from "@/shared/config";
+import { RpgFrame, RpgTheme } from "@/shared/ui/rpg";
 
 import styles from "./ClientPortalShell.module.css";
 
-export function ClientPortalShell() {
-  const auth = useAuth();
-
+export function ClientPortalShell({ header }: { header: ReactNode }) {
   return (
-    <div className={styles.shell}>
-      <div className={styles.inner}>
-        <header className={styles.header}>
-          <div>
-            <Typography.Text className={styles.eyebrow}>MelodyTrack Portal</Typography.Text>
-            <Typography.Title level={2} className={styles.title}>
-              {auth.user?.portalAlias}, добро пожаловать!
-            </Typography.Title>
-          </div>
-          <Space className={styles.actions}>
-            <NotificationBell footer={<PushNotificationControl />} />
-            <Button icon={<LogoutOutlined />} onClick={() => void auth.logout()}>
-              Выйти
-            </Button>
-          </Space>
-        </header>
-
-        <nav className={styles.nav} aria-label="Клиентский кабинет">
-          <NavItem to="/portal/schedule" icon={<CalendarOutlined />} label="Расписание" />
-          <NavItem to="/portal/vacations" icon={<CalendarRangeOutlined />} label="Отпуска" />
-        </nav>
-
-        <SystemNoticeCenter />
-        <main className={styles.content}>
-          <Outlet />
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function NavItem({ to, icon, label }: { to: string; icon: React.ReactNode; label: string }) {
-  return (
-    <NavLink to={to} className={({ isActive }) => `${styles.navLink}${isActive ? ` ${styles.navLinkActive}` : ""}`}>
-      {icon}
-      <span>{label}</span>
-    </NavLink>
+    <RpgTheme className={styles.shell}>
+      <PortalControlsThemeProvider>
+        <RpgFrame className={styles.inner}>
+          {header}
+          <SystemNoticeCenter />
+          <main id="portal-content" tabIndex={-1} className={styles.content}>
+            <Outlet />
+          </main>
+        </RpgFrame>
+      </PortalControlsThemeProvider>
+    </RpgTheme>
   );
 }

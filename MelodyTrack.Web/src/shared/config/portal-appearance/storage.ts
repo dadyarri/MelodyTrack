@@ -10,7 +10,10 @@ export function readPortalAppearance() {
   try {
     return { appearance: parsePortalAppearance(localStorage.getItem(portalAppearanceStorageKey)), warning: "" };
   } catch {
-    return { appearance: "rpg" as PortalAppearance, warning: "Хранилище браузера недоступно. Выбор оформления действует только на этой странице." };
+    return {
+      appearance: "rpg" as PortalAppearance,
+      warning: "Хранилище браузера недоступно. Выбор оформления действует только на этой странице.",
+    };
   }
 }
 
