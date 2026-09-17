@@ -2432,6 +2432,8 @@ The new portal shell should establish the redesigned user experience before the 
 
 ---
 
+> **Standalone-practice delivery order:** Complete the standalone practice track (Stages 27, 30, 28, and 29) in the primary authenticated application before beginning Stages 24–26. Stage 31 then integrates those completed runtimes with the homework and client-portal surfaces. The numeric stage identifiers are retained for traceability; the delivery order below is authoritative.
+
 ## Stage 24: Course Progress Integration and Hardening
 
 MelodyTrack should restore client-facing course progress as part of the redesigned portal while hardening the existing course-progress domain for daily teaching use. Services remain appointment and billing concepts; courses represent a client's long-term learning path.
@@ -2605,26 +2607,27 @@ They do not need to be implemented in this stage.
 
 ---
 
-## Stage 27: Shared Practice Platform Architecture
+## Stage 27: Standalone Practice Platform Architecture ✅
 
-Interactive practice should be implemented as one reusable platform shared by homework, standalone trainer pages, the client portal, and the primary authenticated MelodyTrack application.
+Deliver the reusable practice platform and standalone trainers in the primary authenticated MelodyTrack application before resuming course-progress and homework work. This is an intentional delivery-order change: Stages 24–26 are not prerequisites for this stage.
 
-Trainer implementations must not depend on a particular UI surface.
+The platform must nevertheless be designed for later reuse by homework, the client portal, and teacher previews. Trainer implementations must not depend on any particular UI surface, and the initial standalone host must not become a second, permanent trainer implementation.
 
 ### Remaining scope
 
 - Keep exercise type separate from exercise configuration.
-- Use a reusable model conceptually similar to:
+- Use a reusable runtime definition conceptually similar to:
 
 ```text
-PracticeExercise
-├── Id
+PracticeExerciseDefinition
 ├── Type
 └── Configuration
 ```
 
 - Keep trainer-specific configuration structured and versionable.
 - Do not create a separate exercise type for every parameter combination.
+- Treat the standalone definition as session-local browser state. Do not persist standalone exercises or configurations to Backend and do not introduce saved configurations, presets, recent configurations, or a recording catalogue.
+- A later homework-backed exercise may wrap/reference the same definition with durable identity, but must not change the runtime configuration contract.
 - Separate:
 
   - exercise definition;
@@ -2633,12 +2636,14 @@ PracticeExercise
   - timing/audio engine;
   - rendering;
   - optional browser audio-analysis integration.
-- Ensure the same trainer runtime can be used:
+- Deliver a standalone host in the primary authenticated MelodyTrack application that every staff member can use to browse, configure, and run the approved trainers without course enrollment or homework.
+- Define stable host/runtime boundaries so the same runtime can later be mounted:
 
   - inside a homework document;
   - in teacher preview;
-  - from standalone trainer pages in the client portal;
-  - from standalone trainer pages in the primary authenticated MelodyTrack application.
+  - on standalone trainer pages in the client portal;
+  - on standalone trainer pages in the primary authenticated MelodyTrack application.
+- Keep surface-specific concerns outside the runtime: routing, navigation, authorization, visual shell, persistence ownership, and document-node editing belong to the host adapter.
 - Do not create separate trainer implementations for staff/main-application and client-portal use.
 - All supported exercise parameters must be explicitly configurable by the teacher when preparing an exercise. Do not hide required teaching parameters behind fixed hard-coded presets.
 
@@ -2696,6 +2701,29 @@ React renders current state and the visual playhead but does not act as the musi
 
 Do not use `setInterval()` as the timing authority.
 
+### Administrator video-export contract
+
+Every approved trainer must expose a reusable recording mode in the primary authenticated application's administrator portal. An administrator configures the trainer, clicks **Record**, enters a duration in seconds, waits while browser-local recording proceeds in the background, and downloads the resulting video.
+
+- Export runs entirely in the administrator's browser. Do not create an export-job API, server-side renderer, server-side media storage, upload, or background processing flow.
+- The export uses the current unsaved trainer configuration, runtime, musical clock, animation state, and visual semantics of the interactive session. The recording UI must not save or catalogue the configuration.
+- Duration defaults to the configured trainer's single-iteration duration. The administrator may enter any positive number of seconds; do not impose a product maximum. Export may continue through as many exercise or animation cycles as necessary; reaching the end of one cycle must not truncate the video.
+- The exported frame contains only the trainer presentation. It must exclude administrator navigation, configuration forms, browser chrome, dialogs, cursors, and unrelated application UI.
+- Export rendering must have an explicit presentation/capture boundary rather than relying on a screenshot of the administrator page.
+- Capture the isolated trainer presentation into an in-memory browser-local canvas `MediaStream` and encode it at 30 FPS as WebM with `MediaRecorder`. Render at a resolution that keeps notation, chords, and instructional text sharp (1080p-equivalent or higher for the selected trainer layout). The platform owns the shared recording lifecycle, duration control, and download; a trainer supplies only its configured runtime and exportable presentation.
+- Exported video is silent. Do not add the metronome, trainer sounds, microphone input, or another audio track to the captured stream.
+- The output Blob exists only in browser memory long enough to download it. Do not persist it to IndexedDB or send it to Backend. Browser resource exhaustion may fail an unusually long recording, but must never silently truncate it.
+- Random trainer modes generate a fresh sequence for each recording; do not store or expose a random seed.
+- Export does not create a second trainer renderer or a video-only timing model.
+
+### Recording reliability and resource boundary
+
+- Do not impose a product maximum duration, but before recording show a conservative estimated output size based on duration, resolution, and selected encoding settings. Warn clearly when the estimate is large.
+- Tell the administrator to keep the capture tab visible and the device awake. Browser-only recording cannot guarantee 30 FPS while a tab is backgrounded, throttled, or suspended.
+- Before recording, verify that the browser supports the selected WebM `MediaRecorder` MIME type. If not, do not start a recording that cannot be downloaded correctly.
+- Keep every asset drawn into the capture canvas same-origin or CORS-clean. A tainted canvas must produce a clear pre-recording error rather than a blank or failed video.
+- Count encoded chunks and surface recording/encoder failures immediately. On failure, discard the incomplete capture and do not offer it as a completed video.
+
 ### Deferred product work
 
 - Browser audio analysis and local recording are implemented separately in Stage 32.
@@ -2706,16 +2734,18 @@ Do not use `setInterval()` as the timing authority.
 ### Integration with the refactored architecture
 
 - Keep the trainer runtime independent from the Tiptap homework editor.
-- Homework documents reference exercises rather than embedding trainer runtime implementation details.
-- Keep trainer configuration compatible with both embedded and standalone execution.
+- Model the versioned exercise definition independently of its host. The standalone host creates only ephemeral browser-local definitions; a later homework persistence model must wrap the same contract rather than replace it.
+- Homework documents will reference exercises rather than embedding trainer runtime implementation details when Stage 26 is implemented.
+- Keep trainer configuration compatible with embedded and standalone execution, including a read-only runtime mode for later client-facing homework use.
+- Do not put portal components, Tiptap NodeViews, or main-application route state inside trainer packages.
 - Reuse the same timing primitives across all trainer types.
 
 ### Done looks like
 
-- MelodyTrack has one trainer architecture shared by every application surface.
+- The primary authenticated application has a standalone trainer host capable of registering every approved trainer type.
 - Trainer configuration, timing, rendering, and optional analysis concerns are separable.
-- Homework and standalone training do not require duplicate trainer implementations.
-- New trainer types can reuse the platform without changing homework infrastructure.
+- The runtime has documented host contracts that allow homework and portal integration later without changing trainer semantics or duplicating implementations.
+- New trainer types can reuse the platform without changing standalone-host infrastructure.
 
 ---
 
@@ -2827,7 +2857,7 @@ The exercise UI must make the required accent visually explicit without changing
 
 Use the provided strumming-trainer reference as a layout reference, not as a visual-style reference.
 
-Keep the MelodyTrack RPG/fantasy visual system.
+For the initial standalone host, use the primary application's visual system. Keep the trainer runtime presentation independent of that shell so the later client-portal adapter can apply the RPG/fantasy visual system without forking trainer behavior.
 
 Arrange the trainer in this order:
 
@@ -2895,16 +2925,17 @@ The base trainer does not attempt to determine from microphone audio:
 
 Browser audio analysis in Stage 32 evaluates audible events and timing without pretending to reconstruct the complete hand-motion layer.
 
+### Administrator video export
+
+An administrator can record a video of the currently configured guitar-strumming exercise for a specified duration. The recording uses the live strumming runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+
 ### Integration with the refactored architecture
 
 - Implement through the shared practice runtime.
 - Keep both visual representations derived from the structured exercise configuration.
-- Support:
-
-  - homework embeds;
-  - teacher preview;
-  - standalone use in the primary authenticated application;
-  - standalone use in the client portal.
+- Deliver standalone use in the primary authenticated application first.
+- Expose the runtime through the Stage 27 host contract; do not add a Tiptap NodeView, homework dependency, or portal-specific implementation in this stage.
+- Stage 31 will mount this same runtime for homework, teacher preview, and the client portal.
 
 ### Done looks like
 
@@ -2912,7 +2943,7 @@ Browser audio analysis in Stage 32 evaluates audible events and timing without p
 - Every approved string action, accent, and rest can be represented explicitly.
 - Arrow/grid and musical-notation views remain synchronized.
 - The optional chord layer can train strumming and chord changes in one exercise without duplicating runtime logic.
-- The trainer runs from all intended MelodyTrack surfaces.
+- The trainer is usable as a standalone primary-application trainer and remains mountable on later surfaces without behavior changes.
 
 ---
 
@@ -3028,6 +3059,10 @@ The diagram orientation must match the approved reference:
 
 Do not rotate the diagram into the more common vertical-neck orientation.
 
+#### Administrator video export
+
+An administrator can record a video of the currently configured chord-change exercise for a specified duration. The recording uses the live chord-change runtime, may continue beyond one progression/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+
 ### Rhythm trainer
 
 Implement a trainer for practising rhythm independently from a particular chord progression or strumming technique.
@@ -3122,6 +3157,10 @@ Render the same structured rhythm in:
 
 Both views must be generated from one underlying rhythmic structure.
 
+#### Administrator video export
+
+An administrator can record a video of the currently configured rhythm exercise for a specified duration. The recording uses the live rhythm runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+
 ### Deferred trainer ideas
 
 Do not implement a picking/arpeggio trainer.
@@ -3144,9 +3183,9 @@ Both approved trainers reuse:
 - common rhythmic values;
 - the shared timing engine;
 - shared metronome behavior;
-- homework custom-node integration;
 - primary-application standalone execution;
-- client-portal standalone execution.
+
+Stage 31 later supplies homework custom-node integration and client-portal execution through host adapters over these same runtimes.
 
 ### Done looks like
 
@@ -3161,7 +3200,7 @@ Both approved trainers reuse:
 
 ## Stage 30: Shared Metronome and Exercise Timing
 
-Every currently approved trainer operates under the shared metronome.
+Deliver this timing foundation immediately after Stage 27 and before the individual standalone trainer implementations. Every currently approved trainer operates under the shared metronome.
 
 The metronome should be a reusable timing component rather than a separate implementation inside each trainer.
 
@@ -3179,32 +3218,9 @@ Support:
 - automatic exercise-following mode;
 - automatic BPM progression defined by the active exercise.
 
-### Homework behavior
-
-A homework page may contain several exercises.
-
-By default, the page-level metronome follows the currently active exercise.
-
-For example:
-
-```text
-Exercise A → 70 BPM
-Metronome  → 70 BPM
-
-Exercise B → 95 BPM
-Metronome  → 95 BPM
-```
-
-Exercises publish their desired timing configuration to the shared metronome rather than creating separate global metronomes.
-
 ### Standalone behavior
 
-Use the same metronome/timing implementation when a trainer runs:
-
-- in the client portal;
-- in the primary authenticated MelodyTrack application.
-
-Standalone trainers should therefore behave musically the same way as their homework-embedded versions.
+Use one metronome/timing implementation for every standalone trainer in the primary authenticated application. A trainer publishes its timing configuration to that implementation rather than creating its own clock.
 
 ### Manual override
 
@@ -3229,24 +3245,24 @@ The exercise configuration determines whether this behavior is enabled.
 
 - Keep one timing authority based on Web Audio rather than React timers.
 - Keep metronome state at page/service/runtime scope rather than duplicating musical clocks inside individual trainer components.
-- Ensure several embedded exercises can safely share the page-level metronome.
+- Define a host-facing timing ownership contract so a later page with several embedded exercises can safely select the active exercise without changing trainer timing code.
 
 ### Done looks like
 
 - Every trainer uses one common musical clock and metronome implementation.
-- Switching active homework exercises switches metronome configuration correctly.
-- Standalone and embedded trainer timing is consistent.
+- All standalone trainers in the primary authenticated application behave consistently.
+- Later embedded and portal hosts can use the same timing contract without a second metronome implementation.
 - Automatic BPM progression works by bars or repetitions.
 
 ---
 
-## Stage 31: Shared Trainer Catalogue and Cross-Surface Availability
+## Stage 31: Trainer Integration and Cross-Surface Availability
 
-Trainers should be usable independently from homework and courses and must not be restricted to the client portal.
+After the standalone trainer set and Stages 24–26 are complete, integrate the existing trainer platform with homework and the client portal. This stage joins the standalone-practice and client-portal tracks; it must not redesign or reimplement trainers.
 
 ### Remaining scope
 
-Expose standalone trainers in both:
+Expose the already-delivered standalone trainers in both:
 
 - the client portal;
 - the primary authenticated MelodyTrack application.
@@ -3259,7 +3275,7 @@ Available standalone trainers at this point are:
 - chord changes;
 - rhythm.
 
-Appropriate users of either surface should be able to:
+Every staff member in the primary authenticated application and every client in the client portal should be able to:
 
 - browse trainer types;
 - open a trainer;
@@ -3268,7 +3284,14 @@ Appropriate users of either surface should be able to:
 - use it independently from a course;
 - use it independently from homework.
 
-Homework exercises continue to reuse the same runtimes.
+Add the following host adapters over the Stage 27 runtime contracts:
+
+- the `practiceExercise` homework document node and its teacher NodeView/editor experience;
+- read-only and interactive client homework rendering;
+- teacher preview;
+- standalone client-portal routes and catalogue entries.
+
+Homework exercises continue to reuse the same runtimes. A document stores only an exercise reference; it must never embed trainer configuration or runtime state.
 
 ### Configuration
 
@@ -3292,14 +3315,15 @@ These remain future work unless separately scheduled.
 
 ### Integration with the refactored architecture
 
-- Reuse the same trainer entity/configuration/runtime on all surfaces.
+- Reuse the same exercise contract, configuration validation, timing engine, and runtime on all surfaces.
 - Do not create separate client and primary-application trainer implementations.
 - Client-facing presentation follows the RPG portal design system.
 - Primary-application presentation follows the main application UI while preserving identical trainer behavior and musical semantics.
+- Surface adapters may provide navigation, authorization, document editing, and visual-shell differences only; they may not fork exercise semantics, musical timing, or trainer configuration.
 
 ### Done looks like
 
-- The same trainer can run in homework, the client portal, and the primary MelodyTrack application.
+- The same trainer can run in homework, the client portal, and the primary MelodyTrack application through one runtime implementation.
 - Standalone practice does not require course enrollment or homework.
 - Trainer behavior does not diverge between application surfaces.
 
@@ -3912,21 +3936,25 @@ Stage 22 RPG design system
    ↓
 Stage 23 New portal shell + home
    ↓
+STANDALONE PRACTICE TRACK — priority delivery order
+Stage 27 Standalone practice platform architecture
+   ↓
+Stage 30 Shared metronome + exercise timing
+   ↓
+Stage 28 Guitar strumming trainer
+   ↓
+Stage 29 Chord-change + rhythm trainers
+   ↓
+Primary authenticated application: standalone trainer catalogue/routes
+
+CLIENT PORTAL + HOMEWORK TRACK — resumes after standalone trainers
 Stage 24 Course progress integration + hardening
    ↓
 Stage 25 Structured homework documents
    ↓
 Stage 26 Custom homework document nodes
    ↓
-Stage 27 Shared practice platform architecture
-   ↓
-Stage 28 Guitar strumming trainer
-   ↓
-Stage 29 Chord-change + rhythm trainers
-   ↓
-Stage 30 Shared metronome + exercise timing
-   ↓
-Stage 31 Shared trainer catalogue + cross-surface availability
+Stage 31 Trainer integration + cross-surface availability
    ↓
 Stage 32 Browser audio analysis + local practice recording
    ↓
