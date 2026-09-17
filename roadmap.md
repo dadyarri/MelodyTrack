@@ -2701,11 +2701,11 @@ React renders current state and the visual playhead but does not act as the musi
 
 Do not use `setInterval()` as the timing authority.
 
-### Administrator video-export contract
+### Staff video-recording contract
 
-Every approved trainer must expose a reusable recording mode in the primary authenticated application's administrator portal. An administrator configures the trainer, clicks **Record**, enters a duration in seconds, waits while browser-local recording proceeds in the background, and downloads the resulting video.
+Every approved trainer must expose a reusable recording mode in the primary authenticated application. Any staff member with access to that application configures the trainer, clicks **Record**, enters a duration in seconds, waits while browser-local recording proceeds in the background, and downloads the resulting video.
 
-- Export runs entirely in the administrator's browser. Do not create an export-job API, server-side renderer, server-side media storage, upload, or background processing flow.
+- Export runs entirely in the staff member's browser. Do not create an export-job API, server-side renderer, server-side media storage, upload, or background processing flow.
 - The export uses the current unsaved trainer configuration, runtime, musical clock, animation state, and visual semantics of the interactive session. The recording UI must not save or catalogue the configuration.
 - Duration defaults to the configured trainer's single-iteration duration. The administrator may enter any positive number of seconds; do not impose a product maximum. Export may continue through as many exercise or animation cycles as necessary; reaching the end of one cycle must not truncate the video.
 - The exported frame contains only the trainer presentation. It must exclude administrator navigation, configuration forms, browser chrome, dialogs, cursors, and unrelated application UI.
@@ -2719,7 +2719,7 @@ Every approved trainer must expose a reusable recording mode in the primary auth
 ### Recording reliability and resource boundary
 
 - Do not impose a product maximum duration, but before recording show a conservative estimated output size based on duration, resolution, and selected encoding settings. Warn clearly when the estimate is large.
-- Tell the administrator to keep the capture tab visible and the device awake. Browser-only recording cannot guarantee 30 FPS while a tab is backgrounded, throttled, or suspended.
+- Tell the staff member to keep the capture tab visible and the device awake. Browser-only recording cannot guarantee 30 FPS while a tab is backgrounded, throttled, or suspended.
 - Before recording, verify that the browser supports the selected WebM `MediaRecorder` MIME type. If not, do not start a recording that cannot be downloaded correctly.
 - Keep every asset drawn into the capture canvas same-origin or CORS-clean. A tainted canvas must produce a clear pre-recording error rather than a blank or failed video.
 - Count encoded chunks and surface recording/encoder failures immediately. On failure, discard the incomplete capture and do not offer it as a completed video.
@@ -2749,7 +2749,7 @@ Every approved trainer must expose a reusable recording mode in the primary auth
 
 ---
 
-## Stage 28: Guitar Strumming Trainer
+## Stage 28: Guitar Strumming Trainer ✅
 
 The first trainer should implement configurable guitar-strumming exercises while explicitly separating the rhythmic action performed on the strings from the physical hand-motion pattern.
 
@@ -2760,7 +2760,12 @@ The trainer may optionally include the chord-change runtime from Stage 29 so one
 Support configuration for:
 
 - BPM;
-- time signature;
+- one of these time signatures:
+
+  - `2/4`;
+  - `3/4`;
+  - `4/4`;
+  - `6/8`;
 - number of bars;
 - number of repetitions;
 - the shared supported rhythmic values;
@@ -2769,6 +2774,14 @@ Support configuration for:
 - count-in;
 - looping;
 - automatic BPM progression.
+
+For a new standalone session, default to a one-bar `4/4` pattern at 80 BPM: quarter-note `Down`, `Up`, `Down`, `Up` strums; four repetitions; a fixed five-second countdown before every start; looping enabled; and automatic BPM progression disabled. Do not enable the optional chord layer until Stage 29 implements it.
+
+### Pattern editing and validation
+
+Use a bar/beat grid as the teacher-facing authoring interface, with add/remove/edit actions for structured events and synchronized notation as the preview. Do not use a compact pattern string or a free-text editor.
+
+Every configured strumming bar must be completely filled according to its selected time signature before the exercise can start. Do not support pickup bars, implicit duration gaps, or silently padded bars.
 
 ### Structured strumming model
 
@@ -2914,6 +2927,8 @@ React should render:
 - current repetition/bar;
 - current BPM.
 
+The first implementation is silent apart from the shared Stage 30 metronome. Keep the action playback interface extensible so a later product decision can add synthesized strum/click sounds without changing exercise configuration, timing, or rendering semantics.
+
 ### Audio-analysis boundary
 
 The base trainer does not attempt to determine from microphone audio:
@@ -2925,9 +2940,9 @@ The base trainer does not attempt to determine from microphone audio:
 
 Browser audio analysis in Stage 32 evaluates audible events and timing without pretending to reconstruct the complete hand-motion layer.
 
-### Administrator video export
+### Staff video export
 
-An administrator can record a video of the currently configured guitar-strumming exercise for a specified duration. The recording uses the live strumming runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+Any staff member with access to the primary authenticated application can record a video of the currently configured guitar-strumming exercise for a specified duration. The recording uses the live strumming runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
 
 ### Integration with the refactored architecture
 
@@ -3059,9 +3074,9 @@ The diagram orientation must match the approved reference:
 
 Do not rotate the diagram into the more common vertical-neck orientation.
 
-#### Administrator video export
+#### Staff video export
 
-An administrator can record a video of the currently configured chord-change exercise for a specified duration. The recording uses the live chord-change runtime, may continue beyond one progression/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+Any staff member with access to the primary authenticated application can record a video of the currently configured chord-change exercise for a specified duration. The recording uses the live chord-change runtime, may continue beyond one progression/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
 
 ### Rhythm trainer
 
@@ -3157,9 +3172,9 @@ Render the same structured rhythm in:
 
 Both views must be generated from one underlying rhythmic structure.
 
-#### Administrator video export
+#### Staff video export
 
-An administrator can record a video of the currently configured rhythm exercise for a specified duration. The recording uses the live rhythm runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
+Any staff member with access to the primary authenticated application can record a video of the currently configured rhythm exercise for a specified duration. The recording uses the live rhythm runtime, may continue beyond one pattern/animation cycle, and shows only the trainer presentation as defined by the Stage 27 video-export contract.
 
 ### Deferred trainer ideas
 
