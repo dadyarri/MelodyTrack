@@ -3,6 +3,7 @@ export * from "./browser";
 export * from "./money";
 export * from "./pluralize";
 export * from "./react/useCreatedReferenceOptions";
+export * from "./react/useAudioClock";
 export * from "./react/useDebouncedValue";
 export * from "./react/useOpenCreateRouteIntent";
 export * from "./refetch";

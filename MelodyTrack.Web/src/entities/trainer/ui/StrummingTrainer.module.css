@@ -1,0 +1,138 @@
+.trainerCard {
+  overflow: hidden;
+}
+
+.trainerCard :global(.ant-card-body) {
+  display: grid;
+  gap: 24px;
+  padding: 24px;
+}
+
+.trainerCard :global(.ant-typography) {
+  margin: 0;
+}
+
+.trainerCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: #172033;
+}
+
+.controls,
+.eventGrid {
+  display: grid;
+  gap: 12px;
+}
+
+.controls {
+  grid-template-columns: repeat(auto-fit, minmax(128px, max-content));
+  justify-content: start;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.eventGrid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.timeSignatureControl {
+  justify-self: start;
+}
+
+.timeSignatureControl :global(.ant-segmented) {
+  width: max-content;
+  white-space: nowrap;
+}
+
+.control,
+.timeSignatureControl,
+.eventEditor {
+  display: grid;
+  gap: 8px;
+}
+
+.switchControl {
+  grid-template-columns: auto auto;
+  align-items: center;
+  justify-content: start;
+  gap: 8px;
+}
+
+.switchControl :global(.ant-switch) {
+  justify-self: start;
+}
+
+.eventEditor {
+  padding: 16px;
+  position: relative;
+  align-content: start;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 8px;
+  background: var(--ant-color-fill-quaternary);
+}
+
+.eventNumber {
+  color: var(--ant-color-text-tertiary);
+  font-size: 12px;
+}
+
+.strokeButton {
+  height: 102px;
+  display: grid;
+  place-content: center;
+  font-size: 46px;
+  line-height: 1;
+}
+
+.actionPicker,
+.valuePicker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(44px, 1fr));
+  gap: 6px;
+}
+
+.eventActions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.eventActions button:last-child {
+  grid-column: span 2;
+}
+
+.alert,
+.note {
+  margin: 0;
+}
+
+@media (max-width: 560px) {
+  .trainerCard :global(.ant-card-body) {
+    gap: 20px;
+    padding: 16px;
+  }
+
+  .controls {
+    grid-template-columns: 1fr;
+    padding: 12px;
+  }
+
+  .control :global(.ant-input-number),
+  .timeSignatureControl :global(.ant-segmented) {
+    width: 100%;
+  }
+
+  .eventEditor {
+    padding: 12px;
+  }
+
+  .actionPicker,
+  .valuePicker {
+    grid-template-columns: repeat(3, minmax(44px, 1fr));
+  }
+}
