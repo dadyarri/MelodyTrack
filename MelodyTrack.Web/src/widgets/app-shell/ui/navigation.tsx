@@ -87,6 +87,13 @@ export const appNavItems: AppNavItem[] = [
     visibility: "all",
   },
   {
+    key: "/trainers",
+    icon: <ToolOutlined />,
+    label: "Тренажёры",
+    shortcut: "G",
+    visibility: "all",
+  },
+  {
     key: "/vacation-requests",
     icon: <CalendarRangeOutlined />,
     label: "Заявки",

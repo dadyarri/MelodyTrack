@@ -1,0 +1,10 @@
+.page {
+  display: grid;
+  gap: 24px;
+  max-width: 960px;
+}
+
+.intro {
+  margin: 0;
+  color: var(--ant-color-text-secondary);
+}

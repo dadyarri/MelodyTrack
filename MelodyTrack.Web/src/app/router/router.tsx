@@ -29,6 +29,7 @@ const prefetchStaffRoute = createRoutePrefetcher<QueryClient>(
     "/schedule": () => import("@/pages/schedule"),
     "/services": () => import("@/pages/services"),
     "/tasks": () => import("@/pages/tasks"),
+    "/trainers": () => import("@/pages/trainers"),
     "/users": () => import("@/pages/users"),
     "/vacation-requests": () => import("@/pages/vacation-requests"),
   },
@@ -310,6 +311,16 @@ export const router = createBrowserRouter([
                 <TasksPage />
               </AdminRoute>
             ),
+          };
+        },
+      },
+      {
+        path: "trainers",
+        lazy: async () => {
+          const { TrainersPage } = await recoverableImport(() => import("@/pages/trainers"));
+
+          return {
+            Component: TrainersPage,
           };
         },
       },
