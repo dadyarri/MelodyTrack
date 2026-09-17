@@ -11,6 +11,31 @@ const executablePath = configuredChromium ?? (existsSync(systemChromium) ? syste
 
 export default defineConfig({
   plugins: [react()],
+  optimizeDeps: {
+    // A dependency discovered after the browser runner starts makes Vite reload the
+    // page, aborting whichever test module is being imported. Keep the browser
+    // test server's dependency graph fixed before Chromium connects.
+    noDiscovery: true,
+    include: [
+      "@tanstack/react-query",
+      "@testing-library/react",
+      "@xyflow/react",
+      "antd",
+      "antd/locale/ru_RU",
+      "dayjs",
+      "dexie",
+      "libphonenumber-js",
+      "lucide-react",
+      "react",
+      "react-dom",
+      "react/jsx-dev-runtime",
+      "react/jsx-runtime",
+      "react-router",
+      "scheduler",
+      "tinyduration",
+      "vitest-browser-react",
+    ],
+  },
   resolve: {
     alias: {
       "@": fileURLToPath(new URL("./src", import.meta.url)),
