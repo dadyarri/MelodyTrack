@@ -3,3 +3,17 @@
   gap: 24px;
   max-width: 960px;
 }
+
+.metronomeControls {
+  display: grid;
+  gap: 12px;
+}
+
+.metronomeControls label {
+  display: grid;
+  gap: 6px;
+}
+
+.metronomeControls :global(.ant-switch) {
+  justify-self: start;
+}

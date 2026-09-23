@@ -1,10 +1,13 @@
 import {
+  createDefaultStrummingConfiguration,
   handMotions,
   rhythmicValues,
   strumActions,
+  type StrummingBar,
   type StrummingConfiguration,
   type StrummingEvent,
   strummingTimeSignatures,
+  tempoProgressionUnits,
 } from "@/entities/trainer";
 
 export const trainerConfigurationsStorageKey = "melodytrack.trainers.configurations.v1";
@@ -28,29 +31,67 @@ function isStrummingEvent(value: unknown): value is StrummingEvent {
   );
 }
 
+function isStrummingBar(value: unknown): value is StrummingBar {
+  return isRecord(value) && Array.isArray(value.events) && value.events.every(isStrummingEvent);
+}
+
+function parseMetronome(value: unknown) {
+  if (!isRecord(value) || typeof value.enabled !== "boolean" || typeof value.volume !== "number" || value.volume < 0 || value.volume > 1)
+    return null;
+  return { enabled: value.enabled, volume: value.volume };
+}
+
+function parseTempoProgression(value: unknown) {
+  if (!isRecord(value) || typeof value.enabled !== "boolean" || typeof value.increment !== "number" || value.increment <= 0) return null;
+  if (typeof value.every !== "number" || !Number.isInteger(value.every) || value.every < 1 || typeof value.unit !== "string") return null;
+  if (!tempoProgressionUnits.includes(value.unit as (typeof tempoProgressionUnits)[number])) return null;
+  return {
+    enabled: value.enabled,
+    increment: value.increment,
+    every: value.every,
+    unit: value.unit as (typeof tempoProgressionUnits)[number],
+  };
+}
+
 export function parseStrummingTrainerConfiguration(value: unknown): StrummingConfiguration | null {
   if (!isRecord(value)) return null;
 
-  const { bars, repetitions } = value;
+  const { repetitions } = value;
 
   if (
     typeof value.bpm !== "number" ||
     !Number.isFinite(value.bpm) ||
     typeof value.timeSignature !== "string" ||
     !strummingTimeSignatures.includes(value.timeSignature as StrummingConfiguration["timeSignature"]) ||
-    typeof bars !== "number" ||
-    !Number.isInteger(bars) ||
-    bars < 1 ||
     typeof repetitions !== "number" ||
     !Number.isInteger(repetitions) ||
     repetitions < 1 ||
     typeof value.loop !== "boolean" ||
-    !Array.isArray(value.events) ||
-    !value.events.every(isStrummingEvent)
+    ((!Array.isArray(value.bars) || !value.bars.every(isStrummingBar)) &&
+      !(
+        typeof value.bars === "number" &&
+        Number.isInteger(value.bars) &&
+        value.bars > 0 &&
+        Array.isArray(value.events) &&
+        value.events.every(isStrummingEvent)
+      ))
   )
     return null;
 
-  return value as StrummingConfiguration;
+  const defaults = createDefaultStrummingConfiguration();
+  const bars = Array.isArray(value.bars)
+    ? value.bars
+    : Array.from({ length: value.bars }, () => ({ events: value.events as StrummingEvent[] }));
+
+  return {
+    bpm: value.bpm,
+    timeSignature: value.timeSignature as StrummingConfiguration["timeSignature"],
+    bars,
+    repetitions,
+    loop: value.loop,
+    metronome: parseMetronome(value.metronome) ?? defaults.metronome,
+    tempoProgression: parseTempoProgression(value.tempoProgression) ?? defaults.tempoProgression,
+  };
 }
 
 function getBrowserStorage() {
