@@ -20,7 +20,7 @@ Treat shared build files, central package/configuration files, solution membersh
 
 - Before any `dotnet` command that can access the internet or restore implicitly, request an elevated shell or the product's expanded network/filesystem permission. Do not try it in the restricted sandbox first. If permission is denied or unavailable, stop that verification lane and report it as blocked.
 - Follow current repository commands and project scripts rather than reconstructing long command lines from memory. Keep generated logs, binlogs, test results, and other transient artifacts out of commits.
-- Verification may observe and report failures. Do not change product code merely to make a check pass unless the user also asked for fixes.
+- When a selected verifier finds a failure caused by the current change batch, diagnose and fix it immediately, then rerun the affected verification lane. Continue until the verifier succeeds or a prerequisite/external failure blocks progress. Do not change unrelated pre-existing failures merely to make a check pass; report those separately.
 - `npm run verify:fix` is intentionally mutating. Inspect and report every resulting change; do not silently discard or commit it.
 - Docker-backed checks may create only temporary, self-cleaning resources. Do not touch shared or production services.
 
@@ -35,7 +35,7 @@ Always run `git diff --check` and inspect the final diff. Add lanes according to
 - **Unified hosting, Dockerfile, entrypoint, publish layout, health routes, or SPA fallback:** use the focused runtime tests and `scripts/verify-unified-image.sh` when applicable, then confirm temporary containers and images are cleaned up.
 - **Documentation or release metadata only:** validate the changed format, links, schemas, or purpose-specific tooling. Do not run a product build without a concrete dependency on the changed content.
 
-When a focused check fails, capture the exact failure and stop widening that lane unless a broader command is needed to distinguish scope. Do not repeatedly rerun the same failing command without a new hypothesis.
+When a focused check fails, capture the exact failure and identify whether it belongs to the current change batch. For a current-change failure, implement the smallest correct fix and rerun the failed lane, then continue the remaining selected checks. For an unrelated or external failure, stop widening that lane and report it. Do not repeatedly rerun the same failing command without a code change or a new hypothesis.
 
 ## Report evidence
 
