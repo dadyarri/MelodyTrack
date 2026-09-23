@@ -2157,6 +2157,38 @@ This is an accounting-domain discovery/architecture stage. Validate the model wi
 
 ---
 
+# Public Landing Page — Planned
+
+### Goal
+
+Add a public lead-generation page for the teacher without moving the existing CRM or changing its canonical application origin.
+
+### Route and hosting contract
+
+- Keep the staff CRM at `/`; its current authentication, routes, deep links, assets, and browser-storage scope must remain unchanged.
+- Publish the initial landing page at the anonymous `GET /start` route on the existing public host, for example `https://mt.example.com/start`.
+- `/start` is deliberately a temporary same-host route, not the future brand-domain information architecture. When a teacher-owned domain is available, the landing may move to its root and `/start` should redirect permanently to the new canonical URL.
+- Do not move the CRM beneath `/app`, `/crm`, or any other path as part of this stage. That is a separate migration because the current SPA and its external links are rooted at `/`.
+- Keep `/api`, `/p`, health, OpenAPI, telemetry, God Mode, and every existing SPA/infrastructure boundary unchanged. `/start` must be handled before the authenticated application shell and must not become an API fallback.
+
+### Landing scope
+
+- Make the page usable without authentication and independently styled from the staff CRM.
+- Include the teacher's positioning, services/programmes, proof or testimonials where supplied, a clear call to action, and configured contact links.
+- Supply route-specific document title, description, canonical URL, and Open Graph preview metadata. The public response must remain crawlable by search and social-preview clients; do not rely solely on client-side JavaScript to expose essential landing content or metadata.
+- The initial call to action may link to an external contact channel. Do not introduce lead persistence, analytics vendors, a new CRM lead model, or a public form endpoint until their data, consent, spam-protection, and follow-up requirements are explicitly agreed.
+- Preserve the existing CSP, cache, compression, forwarded-header, and static-asset behavior. Do not weaken security headers merely to embed third-party widgets.
+
+### Done looks like
+
+- an unauthenticated visitor can open `/start` directly and through a refresh without reaching the staff login/dashboard;
+- the CRM still opens and deep-links from `/` exactly as before;
+- the landing has correct crawlable metadata and a working configured call to action;
+- unknown API and infrastructure paths still return their normal non-SPA responses;
+- a future brand-domain cutover has one isolated redirect/migration point rather than a CRM path-base migration.
+
+---
+
 # Client Portal Redesign Program
 
 The portal redesign is a dedicated product workstream starting at Stage 20. Stage 19 is intentionally left unassigned so the redesign keeps its agreed Stage 20–39 numbering. The program intentionally supersedes the refactor-era client portal PIN model while preserving the completed refactor history above.
