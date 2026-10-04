@@ -1,6 +1,4 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -10,9 +8,11 @@ using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 using MelodyTrack.Data.Security;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -20,19 +20,19 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 public sealed class RegisterEndpoint
 {
 
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Register)]
     public static async Task<Results<Created<RegisterResponse>, ApiProblemDetails>> HandleAsync(
-        RegisterRequest req,
-        AppDbContext db,
-        IAuditLogService auditLogService,
-        CredentialHasher credentialHasher,
-        TimeProvider timeProvider,
-        ILogger<RegisterEndpoint> logger,
-        HttpContext httpContext,
-        ApiValidationErrorCollection validationErrors,
-        CancellationToken ct
-    )
+    RegisterRequest req,
+    AppDbContext db,
+    IAuditLogService auditLogService,
+    CredentialHasher credentialHasher,
+    TimeProvider timeProvider,
+    ILogger<RegisterEndpoint> logger,
+    HttpContext httpContext,
+    ApiValidationErrorCollection validationErrors,
+    CancellationToken ct
+)
     {
         if (!Ulid.TryParse(req.InviteCode, out var code))
         {

@@ -202,7 +202,14 @@ public class CalendarSubscriptionEndpointTests(MelodyTrackFixture app) : Integra
 
     private static Appointment CreateAppointment(Client client, Service service, DateTime startDate, User? provider = null) => new()
     {
-        Id = Ulid.NewUlid(), Client = client, Service = service, Provider = provider, StartDate = startDate, EndDate = startDate.AddHours(1), Status = AppointmentStatus.Planned, IsDeleted = false
+        Id = Ulid.NewUlid(),
+        Client = client,
+        Service = service,
+        Provider = provider,
+        StartDate = startDate,
+        EndDate = startDate.AddHours(1),
+        Status = AppointmentStatus.Planned,
+        IsDeleted = false
     };
 
     private static AppointmentRecurrenceRule CreateDailyRule(

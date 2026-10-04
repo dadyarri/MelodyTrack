@@ -1,6 +1,4 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -8,7 +6,9 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -17,15 +17,15 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 public sealed class Verify2FaEndpoint
 {
 
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.VerifyTwoFactor)]
     public static async Task<Results<Ok<RecoveryCodesResponse>, UnauthorizedHttpResult>> HandleAsync(
-        Verify2FaRequest req,
-        AppDbContext db,
-        ICurrentUserAccessor currentUserAccessor,
-        ILogger<Verify2FaEndpoint> logger,
-        CancellationToken ct
-    )
+    Verify2FaRequest req,
+    AppDbContext db,
+    ICurrentUserAccessor currentUserAccessor,
+    ILogger<Verify2FaEndpoint> logger,
+    CancellationToken ct
+)
     {
         var authenticatedEmail = currentUserAccessor.Email;
         var email = authenticatedEmail ?? req.Email;

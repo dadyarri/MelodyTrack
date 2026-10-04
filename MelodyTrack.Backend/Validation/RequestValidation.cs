@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.RegularExpressions;
-using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.AliasDictionaries.Requests;
+using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Aliases.Requests;
 using MelodyTrack.Backend.Api.ClientPortal.Requests;
-using MelodyTrack.Backend.Api.ClientSources.Requests;
 using MelodyTrack.Backend.Api.Clients.Requests;
+using MelodyTrack.Backend.Api.ClientSources.Requests;
 using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Requests;

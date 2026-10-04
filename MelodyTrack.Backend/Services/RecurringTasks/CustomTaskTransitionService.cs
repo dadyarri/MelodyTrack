@@ -3,8 +3,8 @@ using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Utils;
-using Microsoft.EntityFrameworkCore;
 using MelodyTrack.Core.Auditing;
+using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services.RecurringTasks;
 

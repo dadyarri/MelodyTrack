@@ -7,8 +7,8 @@ using MelodyTrack.Backend.Api.AliasDictionaries.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Tests.Infrastructure;
 using MelodyTrack.Backend.Utils;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;

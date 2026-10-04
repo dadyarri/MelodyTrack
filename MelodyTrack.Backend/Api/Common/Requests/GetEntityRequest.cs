@@ -5,7 +5,7 @@ namespace MelodyTrack.Backend.Api.Common.Requests;
 
 public class GetEntityRequest
 {
-        [FromRoute]
+    [FromRoute]
     public Ulid Id { get; set; }
 
     [FromQuery(Name = "expectedActivityId")]

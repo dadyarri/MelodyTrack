@@ -4,11 +4,11 @@ using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using MelodyTrack.Backend.ErrorHandling;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
 

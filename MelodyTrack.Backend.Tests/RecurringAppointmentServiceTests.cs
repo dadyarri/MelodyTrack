@@ -17,8 +17,11 @@ public class RecurringAppointmentServiceTests
     {
         var client = new Client
         {
-            Id = Ulid.NewUlid(), FirstName = "Test", LastName = "Name",
-            CreatedAtUtc = DateTime.UtcNow, Contacts = new ClientContacts()
+            Id = Ulid.NewUlid(),
+            FirstName = "Test",
+            LastName = "Name",
+            CreatedAtUtc = DateTime.UtcNow,
+            Contacts = new ClientContacts()
         };
         var service = new Service { Id = Ulid.NewUlid(), Name = "Test Service" };
         var recurrenceType = new RecurrenceType { Id = Ulid.NewUlid(), Type = type, DisplayName = type.ToString() };

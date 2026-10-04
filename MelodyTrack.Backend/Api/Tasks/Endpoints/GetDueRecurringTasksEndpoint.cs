@@ -1,5 +1,4 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Tasks.Responses;
 using MelodyTrack.Backend.Data;
@@ -7,6 +6,7 @@ using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 

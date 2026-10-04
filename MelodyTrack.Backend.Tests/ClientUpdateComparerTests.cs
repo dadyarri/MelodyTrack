@@ -66,25 +66,44 @@ public class ClientUpdateComparerTests
 
     private static Client CreateClient() => new()
     {
-        Id = Ulid.NewUlid(), FirstName = "Anna", LastName = "Client", Patronymic = "Petrovna",
-        DateOfBirth = new DateOnly(2000, 1, 2), SourceId = Ulid.NewUlid(), CreatedAtUtc = DateTime.UtcNow,
+        Id = Ulid.NewUlid(),
+        FirstName = "Anna",
+        LastName = "Client",
+        Patronymic = "Petrovna",
+        DateOfBirth = new DateOnly(2000, 1, 2),
+        SourceId = Ulid.NewUlid(),
+        CreatedAtUtc = DateTime.UtcNow,
         Contacts = new ClientContacts
         {
-            Id = Ulid.NewUlid(), Email = "client@example.com", Phone = "+79990000000",
-            Telegram = "@client", Vk = "https://vk.com/client"
+            Id = Ulid.NewUlid(),
+            Email = "client@example.com",
+            Phone = "+79990000000",
+            Telegram = "@client",
+            Vk = "https://vk.com/client"
         }
     };
 
     private static UpdateClientRequest CreateMatchingRequest(Client client) => new()
     {
-        Id = client.Id, FirstName = client.FirstName, LastName = client.LastName, Patronymic = client.Patronymic,
-        DateOfBirth = client.DateOfBirth, Email = client.Contacts.Email, Phone = client.Contacts.Phone,
-        Telegram = client.Contacts.Telegram, Vk = client.Contacts.Vk, SourceId = client.SourceId
+        Id = client.Id,
+        FirstName = client.FirstName,
+        LastName = client.LastName,
+        Patronymic = client.Patronymic,
+        DateOfBirth = client.DateOfBirth,
+        Email = client.Contacts.Email,
+        Phone = client.Contacts.Phone,
+        Telegram = client.Contacts.Telegram,
+        Vk = client.Contacts.Vk,
+        SourceId = client.SourceId
     };
 
     private static ClientVacation CreateVacation(Client client, DateTime start, DateTime end) => new()
     {
-        Id = Ulid.NewUlid(), Client = client, ClientId = client.Id, StartDate = start, EndDate = end
+        Id = Ulid.NewUlid(),
+        Client = client,
+        ClientId = client.Id,
+        StartDate = start,
+        EndDate = end
     };
 
     private static DateTime Utc(int year, int month, int day) =>

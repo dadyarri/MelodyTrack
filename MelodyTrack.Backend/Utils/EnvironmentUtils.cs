@@ -1,4 +1,4 @@
-﻿using MelodyTrack.Backend.Exceptions;
+using MelodyTrack.Backend.Exceptions;
 
 namespace MelodyTrack.Backend.Utils;
 

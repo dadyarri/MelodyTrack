@@ -1,16 +1,16 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
-using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Data.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
-using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -18,21 +18,21 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 public sealed class RefreshEndpoint
 {
 
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.Refresh)]
     public static async Task<Results<Ok<LoginResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
-        AppDbContext db,
-        [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
-        IAuditLogService auditLogService,
-        SessionSecurityMonitor sessionSecurityMonitor,
-        RefreshSessionCookieService refreshCookieService,
-        AuthenticationTokenHasher tokenHasher,
-        JwtTokenService jwtTokenService,
-        TimeProvider timeProvider,
-        ILogger<RefreshEndpoint> logger,
-        HttpContext httpContext,
-        CancellationToken ct
-    )
+    AppDbContext db,
+    [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
+    IAuditLogService auditLogService,
+    SessionSecurityMonitor sessionSecurityMonitor,
+    RefreshSessionCookieService refreshCookieService,
+    AuthenticationTokenHasher tokenHasher,
+    JwtTokenService jwtTokenService,
+    TimeProvider timeProvider,
+    ILogger<RefreshEndpoint> logger,
+    HttpContext httpContext,
+    CancellationToken ct
+)
     {
         logger.LogDebug("Attempting to refresh token");
         var presentedRefreshToken = refreshCookieService.ReadRefreshToken(httpContext.Request);

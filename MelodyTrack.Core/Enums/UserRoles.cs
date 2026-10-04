@@ -1,4 +1,4 @@
-﻿namespace MelodyTrack.Backend.Data.Enums;
+namespace MelodyTrack.Backend.Data.Enums;
 
 [Flags]
 public enum UserRoles

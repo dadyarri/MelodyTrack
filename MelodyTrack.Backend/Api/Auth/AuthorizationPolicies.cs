@@ -1,9 +1,9 @@
+using MelodyTrack.Backend.Configuration;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Policy;
-using MelodyTrack.Backend.Configuration;
 using Microsoft.Extensions.Options;
 
 namespace MelodyTrack.Backend.Api.Auth;

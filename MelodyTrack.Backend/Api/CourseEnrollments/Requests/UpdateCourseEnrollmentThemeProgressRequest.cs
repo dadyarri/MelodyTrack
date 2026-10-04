@@ -1,7 +1,7 @@
 using System.Text.Json.Serialization;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Validation;
 using MelodyTrack.Core.Auditing;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.CourseEnrollments.Requests;
 

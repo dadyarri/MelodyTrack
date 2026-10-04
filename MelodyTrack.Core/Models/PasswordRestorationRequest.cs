@@ -1,4 +1,4 @@
-﻿namespace MelodyTrack.Backend.Data.Models;
+namespace MelodyTrack.Backend.Data.Models;
 
 public class PasswordRestorationRequest : BaseModel
 {

@@ -59,15 +59,23 @@ public class DestructiveOperationTests(MelodyTrackFixture app) : IntegrationTest
         var client = await TestDataFactory.CreateClientAsync(db, "Delete", "Payment", TestContext.Current.CancellationToken);
         var payment = new Payment
         {
-            Id = Ulid.NewUlid(), Client = client, Amount = 100m,
-            Date = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc), Description = "Delete me"
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Amount = 100m,
+            Date = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            Description = "Delete me"
         };
         var currentActivityId = Ulid.NewUlid();
         await db.Payments.AddAsync(payment, TestContext.Current.CancellationToken);
         await db.AuditLogs.AddAsync(new AuditLog
         {
-            Id = currentActivityId, CreatedAtUtc = DateTime.UtcNow, Category = "payments",
-            Action = "payment_created", EntityType = "payment", EntityId = payment.Id.ToString(), Details = "created"
+            Id = currentActivityId,
+            CreatedAtUtc = DateTime.UtcNow,
+            Category = "payments",
+            Action = "payment_created",
+            EntityType = "payment",
+            EntityId = payment.Id.ToString(),
+            Details = "created"
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));
@@ -99,12 +107,21 @@ public class DestructiveOperationTests(MelodyTrackFixture app) : IntegrationTest
         var now = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc);
         var course = new Course
         {
-            Id = Ulid.NewUlid(), Name = "Disposable course", Description = "test", CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = Ulid.NewUlid(),
+            Name = "Disposable course",
+            Description = "test",
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
         var enrollment = new CourseEnrollment
         {
-            Id = Ulid.NewUlid(), Client = client, ClientId = client.Id,
-            Course = course, CourseId = course.Id, CreatedAtUtc = now, UpdatedAtUtc = now
+            Id = Ulid.NewUlid(),
+            Client = client,
+            ClientId = client.Id,
+            Course = course,
+            CourseId = course.Id,
+            CreatedAtUtc = now,
+            UpdatedAtUtc = now
         };
         await db.CourseEnrollments.AddAsync(enrollment, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);

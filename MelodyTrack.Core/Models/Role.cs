@@ -1,4 +1,4 @@
-﻿using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Enums;
 
 namespace MelodyTrack.Backend.Data.Models;
 

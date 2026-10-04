@@ -1,4 +1,3 @@
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Clients.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
@@ -8,9 +7,10 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
-using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.EntityFrameworkCore;
 using MelodyTrack.Data.Security;
+using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Clients.Endpoints;
 

@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Validation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Releases.Requests;
 

@@ -1,11 +1,11 @@
-using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Dashboard.Requests;
 using MelodyTrack.Backend.Api.Dashboard.Responses;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 
@@ -13,15 +13,15 @@ namespace MelodyTrack.Backend.Api.Dashboard.Endpoints;
 public sealed class GetDashboardStatsEndpoint
 {
 
-        [EnableRateLimiting("expensive-read")]
+    [EnableRateLimiting("expensive-read")]
     public static async Task<Results<Ok<GetDashboardStatsResponse>, UnauthorizedHttpResult, ApiProblemDetails>> HandleAsync(
-        [AsParameters] GetDashboardStatsRequest req,
-        IPersonalDashboardQueryService dashboardQueryService,
-        ICurrentUserAccessor currentUserAccessor,
-        TimeProvider timeProvider,
-        ApiValidationErrorCollection validationErrors,
-        CancellationToken ct
-    )
+    [AsParameters] GetDashboardStatsRequest req,
+    IPersonalDashboardQueryService dashboardQueryService,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider,
+    ApiValidationErrorCollection validationErrors,
+    CancellationToken ct
+)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
 

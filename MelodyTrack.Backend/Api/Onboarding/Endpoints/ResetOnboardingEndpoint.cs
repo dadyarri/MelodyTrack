@@ -1,9 +1,9 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Onboarding.Responses;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Onboarding.Endpoints;
 

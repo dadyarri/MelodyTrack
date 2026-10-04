@@ -1,4 +1,4 @@
-﻿using UaDetector;
+using UaDetector;
 
 namespace MelodyTrack.Backend.Utils;
 

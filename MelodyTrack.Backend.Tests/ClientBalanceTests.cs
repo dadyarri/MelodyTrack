@@ -28,12 +28,21 @@ public class ClientBalanceTests(MelodyTrackFixture app) : IntegrationTestBase(ap
         var date = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
-            Id = Ulid.NewUlid(), Service = service, Price = 175m, EffectiveDate = date.AddDays(-1)
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 175m,
+            EffectiveDate = date.AddDays(-1)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddAsync(new Appointment
         {
-            Id = Ulid.NewUlid(), Client = debtor, Service = service, Provider = admin,
-            StartDate = date, EndDate = date.AddHours(1), Status = AppointmentStatus.Burned, IsDeleted = false
+            Id = Ulid.NewUlid(),
+            Client = debtor,
+            Service = service,
+            Provider = admin,
+            StartDate = date,
+            EndDate = date.AddHours(1),
+            Status = AppointmentStatus.Burned,
+            IsDeleted = false
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(admin));

@@ -1,18 +1,18 @@
-using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using System.Text;
 using Ical.Net;
 using Ical.Net.CalendarComponents;
 using Ical.Net.DataTypes;
 using Ical.Net.Serialization;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
-using MelodyTrack.Backend.ErrorHandling;
 using Microsoft.EntityFrameworkCore;
 using IcalCalendarEvent = Ical.Net.CalendarComponents.CalendarEvent;
 

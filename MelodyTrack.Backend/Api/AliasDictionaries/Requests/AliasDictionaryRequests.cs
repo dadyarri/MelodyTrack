@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Validation;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.AliasDictionaries.Requests;
 

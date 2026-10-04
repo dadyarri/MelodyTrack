@@ -1,10 +1,10 @@
-using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Common.Responses;
 using MelodyTrack.Backend.Api.Users.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;

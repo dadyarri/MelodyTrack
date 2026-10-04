@@ -1,6 +1,4 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
@@ -9,10 +7,12 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Data.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
-using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

@@ -96,7 +96,10 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
 
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
-            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = utcBoundary.AddDays(-1)
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = utcBoundary.AddDays(-1)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddAsync(Appointment(client, service, teacher, utcBoundary, AppointmentStatus.Completed), TestContext.Current.CancellationToken);
         await db.RecurrenceRules.AddAsync(new AppointmentRecurrenceRule
@@ -291,7 +294,10 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var start = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc);
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
-            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = start.AddDays(-1)
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = start.AddDays(-1)
         }, TestContext.Current.CancellationToken);
 
         var clients = Enumerable.Range(1, 125).Select(index => new Client
@@ -339,7 +345,11 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         ], TestContext.Current.CancellationToken);
         await db.UserVacations.AddAsync(new UserVacation
         {
-            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, StartDate = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc)
+            Id = Ulid.NewUlid(),
+            UserId = teacher.Id,
+            User = teacher,
+            StartDate = new DateTime(2026, 7, 7, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 8, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
 
         var first = Appointment(client, service, teacher, monday.AddHours(8.5), AppointmentStatus.Planned);
@@ -376,7 +386,13 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
         await db.UserWorkingHoursDays.AddAsync(new UserWorkingHoursDay
         {
-            Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Sunday, IsWorkingDay = true, StartMinuteOfDay = 60, EndMinuteOfDay = 5 * 60
+            Id = Ulid.NewUlid(),
+            UserId = teacher.Id,
+            User = teacher,
+            DayOfWeek = DayOfWeek.Sunday,
+            IsWorkingDay = true,
+            StartMinuteOfDay = 60,
+            EndMinuteOfDay = 5 * 60
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
@@ -402,12 +418,19 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var day = new DateTime(2026, 1, 10, 0, 0, 0, DateTimeKind.Utc);
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
-            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = day.AddDays(10)
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = day.AddDays(10)
         }, TestContext.Current.CancellationToken);
         var clients = Enumerable.Range(1, 101)
             .Select(index => new Client
             {
-                Id = Ulid.NewUlid(), FirstName = $"Debtor {index}", LastName = "Client", CreatedAtUtc = day.AddDays(-1), Contacts = new ClientContacts { Id = Ulid.NewUlid() }
+                Id = Ulid.NewUlid(),
+                FirstName = $"Debtor {index}",
+                LastName = "Client",
+                CreatedAtUtc = day.AddDays(-1),
+                Contacts = new ClientContacts { Id = Ulid.NewUlid() }
             })
             .ToList();
         await db.Clients.AddRangeAsync(clients, TestContext.Current.CancellationToken);
@@ -438,7 +461,10 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var paused = await TestDataFactory.CreateClientAsync(db, "Paused", "Client", TestContext.Current.CancellationToken);
         await db.ServicePriceHistory.AddAsync(new ServicePrice
         {
-            Id = Ulid.NewUlid(), Service = service, Price = 100m, EffectiveDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+            Id = Ulid.NewUlid(),
+            Service = service,
+            Price = 100m,
+            EffectiveDate = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
         await db.Appointments.AddRangeAsync(
         [

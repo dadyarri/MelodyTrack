@@ -1,4 +1,4 @@
-﻿namespace MelodyTrack.Backend.Data.Models;
+namespace MelodyTrack.Backend.Data.Models;
 
 /// <summary>
 ///     Database representation of user, who have access to data

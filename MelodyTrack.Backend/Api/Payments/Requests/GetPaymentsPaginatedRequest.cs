@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Attributes;
 using MelodyTrack.Backend.Data.Models;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Payments.Requests;
 

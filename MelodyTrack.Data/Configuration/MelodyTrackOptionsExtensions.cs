@@ -1,9 +1,9 @@
 using MelodyTrack.Core.Configuration;
+using MelodyTrack.Data.Security;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
-using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Data.Configuration;
 

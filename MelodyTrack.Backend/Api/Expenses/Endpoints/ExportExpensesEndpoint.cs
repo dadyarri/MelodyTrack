@@ -1,7 +1,5 @@
-using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using ClosedXML.Excel;
+using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
@@ -9,6 +7,8 @@ using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Expenses.Endpoints;
@@ -18,15 +18,15 @@ public sealed class ExportExpensesEndpoint
 {
     private const string ExcelContentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 
-        [EnableRateLimiting("expensive-read")]
+    [EnableRateLimiting("expensive-read")]
     [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
     public static async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
-        [AsParameters] GetExpensesPaginatedRequest req,
-        AppDbContext db,
-        ICurrentUserAccessor currentUserAccessor,
-        TimeProvider timeProvider,
-        CancellationToken ct
-    )
+    [AsParameters] GetExpensesPaginatedRequest req,
+    AppDbContext db,
+    ICurrentUserAccessor currentUserAccessor,
+    TimeProvider timeProvider,
+    CancellationToken ct
+)
     {
         var currentUserRole = (await currentUserAccessor.GetAsync(ct))?.Role.RoleName;
         if (currentUserRole is null)

@@ -1,13 +1,13 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
@@ -16,17 +16,17 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 public sealed class GetInviteCodeInformationEndpoint
 {
 
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.InviteInformation)]
     public static async Task<Results<Ok<GetInviteCodeInformationResponse>, ApiProblemDetails>> HandleAsync(
-        [AsParameters] GetInviteCodeInformationRequest req,
-        AppDbContext db,
-        TimeProvider timeProvider,
-        ILogger<GetInviteCodeInformationEndpoint> logger,
-        HttpContext httpContext,
-        ApiValidationErrorCollection validationErrors,
-        CancellationToken ct
-    )
+    [AsParameters] GetInviteCodeInformationRequest req,
+    AppDbContext db,
+    TimeProvider timeProvider,
+    ILogger<GetInviteCodeInformationEndpoint> logger,
+    HttpContext httpContext,
+    ApiValidationErrorCollection validationErrors,
+    CancellationToken ct
+)
     {
         var ulidParsed = Ulid.TryParse(req.InviteCode, out var ulid);
 

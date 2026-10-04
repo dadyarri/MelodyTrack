@@ -1,13 +1,13 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Api.Clients;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;

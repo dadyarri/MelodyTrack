@@ -275,7 +275,13 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         DateTime start,
         AppointmentStatus status) => new()
         {
-            Id = Ulid.NewUlid(), Client = client, Service = service, Provider = provider,
-            StartDate = start, EndDate = start.AddHours(1), Status = status, IsDeleted = false
+            Id = Ulid.NewUlid(),
+            Client = client,
+            Service = service,
+            Provider = provider,
+            StartDate = start,
+            EndDate = start.AddHours(1),
+            Status = status,
+            IsDeleted = false
         };
 }

@@ -1,8 +1,6 @@
-using Microsoft.AspNetCore.Mvc;
+using System.Security.Cryptography;
 using MelodyTrack.Backend.Api;
 using MelodyTrack.Backend.Api.Auth;
-using Microsoft.AspNetCore.Authorization;
-using System.Security.Cryptography;
 using MelodyTrack.Backend.Api.CalendarSubscriptions.Responses;
 using MelodyTrack.Backend.Api.Common.Requests;
 using MelodyTrack.Backend.Data;
@@ -11,7 +9,9 @@ using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.CalendarSubscriptions.Endpoints;

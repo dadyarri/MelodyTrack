@@ -1,16 +1,16 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Api.Auth.Responses;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Extensions;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Data.Security;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using UaDetector;
-using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 
@@ -18,20 +18,20 @@ namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 public sealed class Recover2FaEndpoint
 {
 
-        [AllowAnonymous]
+    [AllowAnonymous]
     [EnableRateLimiting(ApiRateLimitPolicies.RecoverTwoFactor)]
     public static async Task<Results<Ok<Recover2FaResponse>, UnauthorizedHttpResult, ForbidHttpResult>> HandleAsync(
-        Recover2FaRequest req,
-        AppDbContext db,
-        [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
-        RefreshSessionCookieService refreshCookieService,
-        AuthenticationTokenHasher tokenHasher,
-        JwtTokenService jwtTokenService,
-        TimeProvider timeProvider,
-        ILogger<Recover2FaEndpoint> logger,
-        HttpContext httpContext,
-        CancellationToken ct
-    )
+    Recover2FaRequest req,
+    AppDbContext db,
+    [Microsoft.AspNetCore.Mvc.FromServices] IUaDetector uaDetector,
+    RefreshSessionCookieService refreshCookieService,
+    AuthenticationTokenHasher tokenHasher,
+    JwtTokenService jwtTokenService,
+    TimeProvider timeProvider,
+    ILogger<Recover2FaEndpoint> logger,
+    HttpContext httpContext,
+    CancellationToken ct
+)
     {
         var normalizedEmail = UserUtils.NormalizeEmail(req.Email);
         var user = await db.Users

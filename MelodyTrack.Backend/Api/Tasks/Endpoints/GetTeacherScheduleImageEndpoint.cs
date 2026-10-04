@@ -1,11 +1,11 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Services.RecurringTasks;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.Api.Tasks.Endpoints;
 
@@ -14,14 +14,14 @@ public sealed class GetTeacherScheduleImageEndpoint
 {
     private const string PngContentType = "image/png";
 
-        [EnableRateLimiting("expensive-read")]
+    [EnableRateLimiting("expensive-read")]
     public static async Task<Results<FileContentHttpResult, UnauthorizedHttpResult, ForbidHttpResult, NotFound<ApiProblemDetails>>> HandleAsync(
-        [AsParameters] GetTeacherScheduleImageRequest req,
-        ITeacherScheduleImageGenerator teacherScheduleImageGenerator,
-        ICurrentUserAccessor currentUserAccessor,
-        HttpContext httpContext,
-        CancellationToken ct
-    )
+    [AsParameters] GetTeacherScheduleImageRequest req,
+    ITeacherScheduleImageGenerator teacherScheduleImageGenerator,
+    ICurrentUserAccessor currentUserAccessor,
+    HttpContext httpContext,
+    CancellationToken ct
+)
     {
         var currentUser = await currentUserAccessor.GetAsync(ct);
         if (currentUser is null)

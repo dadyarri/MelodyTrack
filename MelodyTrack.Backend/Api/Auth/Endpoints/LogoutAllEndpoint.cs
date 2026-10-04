@@ -1,8 +1,8 @@
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.Authorization;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 

@@ -1,4 +1,4 @@
-﻿namespace MelodyTrack.Backend.Api.Auth.Responses;
+namespace MelodyTrack.Backend.Api.Auth.Responses;
 
 public class LoginResponse
 {

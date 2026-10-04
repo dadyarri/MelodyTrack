@@ -23,14 +23,22 @@ public class SessionSecurityMonitorTests(MelodyTrackFixture app) : IntegrationTe
         {
             await db.Sessions.AddAsync(new Session
             {
-                Id = Ulid.NewUlid(), User = user, DeviceInfo = $"test-{index}",
-                RefreshToken = $"hash-{index}", ValidUntil = DateTime.UtcNow.AddHours(1), WasRevoked = false
+                Id = Ulid.NewUlid(),
+                User = user,
+                DeviceInfo = $"test-{index}",
+                RefreshToken = $"hash-{index}",
+                ValidUntil = DateTime.UtcNow.AddHours(1),
+                WasRevoked = false
             }, TestContext.Current.CancellationToken);
         }
         await db.Sessions.AddAsync(new Session
         {
-            Id = Ulid.NewUlid(), User = user, DeviceInfo = "revoked",
-            RefreshToken = "revoked-hash", ValidUntil = DateTime.UtcNow.AddHours(1), WasRevoked = true
+            Id = Ulid.NewUlid(),
+            User = user,
+            DeviceInfo = "revoked",
+            RefreshToken = "revoked-hash",
+            ValidUntil = DateTime.UtcNow.AddHours(1),
+            WasRevoked = true
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 

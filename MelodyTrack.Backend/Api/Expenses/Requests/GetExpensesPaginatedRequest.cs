@@ -1,5 +1,5 @@
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Common.Requests;
+using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Expenses.Requests;
 

@@ -1,13 +1,13 @@
-using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Api;
-using Microsoft.AspNetCore.RateLimiting;
-using Microsoft.AspNetCore.Mvc;
 using MelodyTrack.Backend.Api.Reports.Reporting;
 using MelodyTrack.Backend.Api.Reports.Requests;
 using MelodyTrack.Backend.Api.Reports.Responses;
 using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.ErrorHandling;
 using MelodyTrack.Backend.Services;
 using Microsoft.AspNetCore.Http.HttpResults;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace MelodyTrack.Backend.Api.Reports.Endpoints;
 
@@ -15,7 +15,7 @@ namespace MelodyTrack.Backend.Api.Reports.Endpoints;
 public sealed class GetWorkReportEndpoint
 {
     [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
-        [EnableRateLimiting("expensive-read")]
+    [EnableRateLimiting("expensive-read")]
     public static async Task<Results<Ok<WorkReportResponse>, UnauthorizedHttpResult, ForbidHttpResult, ApiProblemDetails>> HandleAsync(
         [AsParameters] GetReportRequest req,
         ICurrentUserAccessor currentUserAccessor,

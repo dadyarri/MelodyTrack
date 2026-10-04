@@ -3,9 +3,9 @@ using MelodyTrack.Backend.Api.Auth.Requests;
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Services;
 using MelodyTrack.Backend.Utils;
+using MelodyTrack.Data.Security;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-using MelodyTrack.Data.Security;
 
 namespace MelodyTrack.Backend.Api.Auth.Endpoints;
 

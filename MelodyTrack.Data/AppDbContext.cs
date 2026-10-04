@@ -1,4 +1,4 @@
-﻿using MelodyTrack.Backend.Data.Enums;
+using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
 using MelodyTrack.Backend.Data.ValueConverters;
 using MelodyTrack.Core.Security;
