@@ -18,10 +18,22 @@ export function ReleaseVersion({ compact = false }: { compact?: boolean }) {
   const version = query.data?.currentVersion;
   const label = version ? (compact ? `v${version}` : `Версия ${version}`) : compact ? "—" : "Версия недоступна";
 
-  return (
+  return compact ? (
     <Typography.Text type="secondary" title={version ? `Версия ${version}` : "Версия недоступна"}>
       {label}
     </Typography.Text>
+  ) : (
+    <Space size={4} wrap>
+      <Typography.Text type="secondary" title={version ? `Версия ${version}` : "Версия недоступна"}>
+        {label}
+      </Typography.Text>
+      <Typography.Text type="secondary">
+        {" • "}сделал{" "}
+        <Typography.Link href="https://dadyarri.dev" target="_blank" rel="noreferrer">
+          dadyarri
+        </Typography.Link>
+      </Typography.Text>
+    </Space>
   );
 }
 
