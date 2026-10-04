@@ -48,7 +48,16 @@ public static class CourseResponseMapper
                                     Title = theme.Title,
                                     Description = theme.Description,
                                     LessonContent = theme.LessonContent,
-                                    HomeworkContent = theme.HomeworkContent,
+                                    HomeworkDocument = theme.HomeworkDocument,
+                                    PracticeExercises = theme.PracticeExercises
+                                        .OrderBy(exercise => exercise.Id)
+                                        .Select(exercise => new CourseThemePracticeExerciseDto
+                                        {
+                                            Id = exercise.Id,
+                                            Type = exercise.Type,
+                                            Configuration = exercise.Configuration
+                                        })
+                                        .ToList(),
                                     Order = theme.Order,
                                     ExperiencePointsReward = theme.ExperiencePointsReward,
                                     DependencyThemeIds = theme.Dependencies

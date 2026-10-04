@@ -66,8 +66,16 @@ public class CourseThemeDto
     public required string Title { get; set; }
     public string? Description { get; set; }
     public string? LessonContent { get; set; }
-    public string? HomeworkContent { get; set; }
+    public string? HomeworkDocument { get; set; }
+    public required List<CourseThemePracticeExerciseDto> PracticeExercises { get; set; }
     public required int Order { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public required List<Ulid> DependencyThemeIds { get; set; }
+}
+
+public class CourseThemePracticeExerciseDto
+{
+    public required Ulid Id { get; set; }
+    public required string Type { get; set; }
+    public required string Configuration { get; set; }
 }

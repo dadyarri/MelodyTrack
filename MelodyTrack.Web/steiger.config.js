@@ -8,6 +8,7 @@ const intentionalFocusedSlices = [
   "features/client-portal",
   "features/edit-user",
   "features/enroll-client-course",
+  "features/homework-document",
   "features/manage-appointment",
   "features/view-release-notes",
   "features/update-course-progress",

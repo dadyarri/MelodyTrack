@@ -7,6 +7,7 @@ using MelodyTrack.Backend.Api.ClientPortal.Requests;
 using MelodyTrack.Backend.Api.Clients.Requests;
 using MelodyTrack.Backend.Api.ClientSources.Requests;
 using MelodyTrack.Backend.Api.CourseEnrollments.Requests;
+using MelodyTrack.Backend.Api.Courses;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Api.Expenses.Requests;
 using MelodyTrack.Backend.Api.Payments.Requests;
@@ -277,6 +278,14 @@ internal static partial class RequestValidation
                     Max(errors, theme.Description, 4000, "Blocks", "Описание темы не должно быть длиннее 4000 символов.");
                     if (theme.Order <= 0) Add(errors, "Blocks", "Порядок темы должен быть больше нуля.");
                     if (theme.ExperiencePointsReward < 0) Add(errors, "Blocks", "Очки опыта не могут быть меньше нуля.");
+                    try
+                    {
+                        CourseThemeDocumentPersistence.Validate(theme.LessonContent, theme.HomeworkDocument, theme.PracticeExercises);
+                    }
+                    catch (ArgumentException exception)
+                    {
+                        Add(errors, "Blocks", exception.Message);
+                    }
                 }
             }
         }

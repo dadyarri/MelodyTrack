@@ -2535,11 +2535,11 @@ MelodyTrack should restore client-facing course progress as part of the redesign
 
 ---
 
-## Stage 25: Replace BBCode Homework with Structured Documents
+## Stage 25: Replace BBCode Homework with Structured Documents ✅
 
 Homework should move from SCEditor/BBCode to a structured document model capable of supporting both rich text and interactive application nodes. Existing BBCode data does not need to be migrated.
 
-### Remaining scope
+### Completed scope
 
 - Replace BBCode homework storage with versioned JSON documents.
 - Use a document envelope containing:
@@ -2563,6 +2563,7 @@ Homework should move from SCEditor/BBCode to a structured document model capable
   - editing;
   - persistence;
   - read-only rendering.
+- Use the same structured schema for both lesson material and homework so application nodes can appear in either document.
 - Validate:
 
   - document schema version;
@@ -2579,8 +2580,7 @@ Homework should move from SCEditor/BBCode to a structured document model capable
 
 ### Deferred product work
 
-- Custom application nodes are added in Stage 26.
-- Interactive trainers are added later.
+- Custom application nodes and the first interactive trainer integration are implemented in Stage 26.
 - No BBCode migration layer is required.
 
 ### Integration with the refactored architecture
@@ -2598,11 +2598,11 @@ Homework should move from SCEditor/BBCode to a structured document model capable
 
 ---
 
-## Stage 26: Custom Homework Document Nodes
+## Stage 26: Custom Homework Document Nodes ✅
 
 Homework documents should support real MelodyTrack components rather than only formatted text.
 
-### Remaining scope
+### Completed scope
 
 - Add reusable custom-node infrastructure to the structured homework model.
 - Implement the first custom node:
@@ -2633,7 +2633,7 @@ They do not need to be implemented in this stage.
 
 ### Done looks like
 
-- Teachers can insert application-specific exercise nodes into homework.
+- Teachers can insert application-specific exercise nodes into lesson material and homework.
 - Clients see those nodes as real interactive components.
 - The custom-node mechanism is reusable beyond the first trainer.
 

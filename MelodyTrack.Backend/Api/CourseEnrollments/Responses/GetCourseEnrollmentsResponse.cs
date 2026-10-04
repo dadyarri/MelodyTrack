@@ -37,7 +37,8 @@ public class CourseEnrollmentThemeDto
     public required string ThemeTitle { get; set; }
     public string? ThemeDescription { get; set; }
     public string? LessonContent { get; set; }
-    public string? HomeworkContent { get; set; }
+    public string? HomeworkDocument { get; set; }
+    public required List<CourseThemePracticeExerciseDto> PracticeExercises { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public required CourseThemeProgressState State { get; set; }
     public DateTime? UnlockedAtUtc { get; set; }

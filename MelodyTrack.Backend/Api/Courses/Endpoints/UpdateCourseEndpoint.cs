@@ -49,6 +49,10 @@ public sealed class UpdateCourseEndpoint
                 .ThenInclude(block => block.Branches)
                     .ThenInclude(branch => branch.Themes)
                         .ThenInclude(theme => theme.Dependencies)
+            .Include(item => item.Blocks)
+                .ThenInclude(block => block.Branches)
+                    .ThenInclude(branch => branch.Themes)
+                        .ThenInclude(theme => theme.PracticeExercises)
             .FirstOrDefaultAsync(item => item.Id == req.Id, ct);
 
         if (course is null)

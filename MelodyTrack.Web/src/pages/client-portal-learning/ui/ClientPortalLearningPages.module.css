@@ -42,11 +42,6 @@
   overflow-wrap: anywhere;
 }
 .assignment .homeworkContent {
-  --mt-bbcode-text: var(--rpg-ink);
-  --mt-bbcode-muted: var(--rpg-muted);
-  --mt-bbcode-border-strong: var(--rpg-line);
-  --mt-bbcode-card: var(--rpg-paper-shaded);
-  --mt-bbcode-accent: var(--rpg-green);
   max-height: none;
   overflow: visible;
   padding: 0;

@@ -5,6 +5,7 @@ import * as v from "valibot";
 
 import { type Course, courseQueryKeys, coursesApi } from "@/entities/course";
 import { hasAdminAccess, useAuth } from "@/entities/session";
+import { type HomeworkExercise, mapExerciseDtos } from "@/features/homework-document";
 import type { Ulid } from "@/shared/api";
 import { jsonDurableFormCodec, useDurableForm } from "@/shared/lib/react";
 
@@ -14,7 +15,8 @@ type EditorTheme = {
   key: string;
   description?: string;
   lessonContent?: string;
-  homeworkContent?: string;
+  homeworkDocument?: string;
+  practiceExercises: HomeworkExercise[];
   experiencePointsReward: number;
   dependencyKeys: string[];
 };
@@ -82,7 +84,8 @@ function createEmptyTheme(index: number, patch?: EditorThemePatch): EditorTheme 
     key: `theme-${String(index + 1)}`,
     description: patch?.description ?? "",
     lessonContent: patch?.lessonContent ?? "",
-    homeworkContent: patch?.homeworkContent ?? "",
+    homeworkDocument: patch?.homeworkDocument ?? "",
+    practiceExercises: patch?.practiceExercises ?? [],
     experiencePointsReward: patch?.experiencePointsReward ?? 0,
     dependencyKeys: patch?.dependencyKeys ?? [],
   };
@@ -186,7 +189,8 @@ function mapCourseToEditor(course: Course): EditorCourse {
                 key: keysByThemeId.get(theme.id) || theme.key,
                 description: theme.description ?? "",
                 lessonContent: theme.lessonContent ?? "",
-                homeworkContent: theme.homeworkContent ?? "",
+                homeworkDocument: theme.homeworkDocument ?? "",
+                practiceExercises: mapExerciseDtos(theme.practiceExercises),
                 experiencePointsReward: theme.experiencePointsReward,
                 dependencyKeys: theme.dependencyThemeIds,
               })),
@@ -329,7 +333,12 @@ export function useCoursesPageController() {
               title: theme.title,
               description: theme.description,
               lessonContent: theme.lessonContent,
-              homeworkContent: theme.homeworkContent,
+              homeworkDocument: theme.homeworkDocument,
+              practiceExercises: theme.practiceExercises.map((exercise) => ({
+                reference: exercise.id,
+                type: exercise.type,
+                configuration: exercise.configuration,
+              })),
               order: themeIndex + 1,
               experiencePointsReward: theme.experiencePointsReward,
               dependencyKeys: theme.dependencyKeys.map(
@@ -639,6 +648,7 @@ function isEditorCourseDraft(value: unknown): value is EditorCourse {
                 typeof theme.title === "string" &&
                 typeof theme.key === "string" &&
                 typeof theme.experiencePointsReward === "number" &&
+                Array.isArray(theme.practiceExercises) &&
                 Array.isArray(theme.dependencyKeys) &&
                 theme.dependencyKeys.every((key) => typeof key === "string"),
             ),

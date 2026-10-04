@@ -1188,9 +1188,9 @@ export interface CourseEnrollmentThemeDto extends AdditionalDataHolder, Parsable
      */
     experiencePointsReward?: number | null;
     /**
-     * The homeworkContent property
+     * The homeworkDocument property
      */
-    homeworkContent?: string | null;
+    homeworkDocument?: string | null;
     /**
      * The id property
      */
@@ -1199,6 +1199,10 @@ export interface CourseEnrollmentThemeDto extends AdditionalDataHolder, Parsable
      * The lessonContent property
      */
     lessonContent?: string | null;
+    /**
+     * The practiceExercises property
+     */
+    practiceExercises?: CourseThemePracticeExerciseDto[] | null;
     /**
      * The recentAppointments property
      */
@@ -1320,9 +1324,9 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
      */
     experiencePointsReward?: number | null;
     /**
-     * The homeworkContent property
+     * The homeworkDocument property
      */
-    homeworkContent?: string | null;
+    homeworkDocument?: string | null;
     /**
      * The id property
      */
@@ -1339,6 +1343,10 @@ export interface CourseTheme extends AdditionalDataHolder, Parsable {
      * The order property
      */
     order?: number | null;
+    /**
+     * The practiceExercises property
+     */
+    practiceExercises?: CourseThemePracticeExercise[] | null;
     /**
      * The requiredForThemes property
      */
@@ -1384,9 +1392,9 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
      */
     experiencePointsReward?: number | null;
     /**
-     * The homeworkContent property
+     * The homeworkDocument property
      */
-    homeworkContent?: string | null;
+    homeworkDocument?: string | null;
     /**
      * The id property
      */
@@ -1404,9 +1412,59 @@ export interface CourseThemeDto extends AdditionalDataHolder, Parsable {
      */
     order?: number | null;
     /**
+     * The practiceExercises property
+     */
+    practiceExercises?: CourseThemePracticeExerciseDto[] | null;
+    /**
      * The title property
      */
     title?: string | null;
+}
+export interface CourseThemePracticeExercise extends AdditionalDataHolder, Parsable {
+    /**
+     * The configuration property
+     */
+    configuration?: string | null;
+    /**
+     * The courseThemeId property
+     */
+    courseThemeId?: string | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The type property
+     */
+    type?: string | null;
+}
+export interface CourseThemePracticeExerciseDto extends AdditionalDataHolder, Parsable {
+    /**
+     * The configuration property
+     */
+    configuration?: string | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The type property
+     */
+    type?: string | null;
+}
+export interface CourseThemePracticeExerciseRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The configuration property
+     */
+    configuration?: string | null;
+    /**
+     * The reference property
+     */
+    reference?: string | null;
+    /**
+     * The type property
+     */
+    type?: string | null;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2295,6 +2353,33 @@ export function createCourseThemeDtoFromDiscriminatorValue(parseNode: ParseNode 
 export function createCourseThemeFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoCourseTheme;
 }
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CourseThemePracticeExerciseDto}
+ */
+// @ts-ignore
+export function createCourseThemePracticeExerciseDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCourseThemePracticeExerciseDto;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CourseThemePracticeExercise}
+ */
+// @ts-ignore
+export function createCourseThemePracticeExerciseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCourseThemePracticeExercise;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CourseThemePracticeExerciseRequest}
+ */
+// @ts-ignore
+export function createCourseThemePracticeExerciseRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCourseThemePracticeExerciseRequest;
+}
 export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable {
     /**
      * The dependencyKeys property
@@ -2309,9 +2394,9 @@ export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable
      */
     experiencePointsReward?: number | null;
     /**
-     * The homeworkContent property
+     * The homeworkDocument property
      */
-    homeworkContent?: string | null;
+    homeworkDocument?: string | null;
     /**
      * The key property
      */
@@ -2324,6 +2409,10 @@ export interface CreateCourseThemeRequest extends AdditionalDataHolder, Parsable
      * The order property
      */
     order?: number | null;
+    /**
+     * The practiceExercises property
+     */
+    practiceExercises?: CourseThemePracticeExerciseRequest[] | null;
     /**
      * The title property
      */
@@ -5251,9 +5340,10 @@ export function deserializeIntoCourseEnrollmentThemeDto(courseEnrollmentThemeDto
         "courseThemeId": n => { courseEnrollmentThemeDto.courseThemeId = n.getStringValue(); },
         "earnedExperiencePoints": n => { courseEnrollmentThemeDto.earnedExperiencePoints = n.getNumberValue(); },
         "experiencePointsReward": n => { courseEnrollmentThemeDto.experiencePointsReward = n.getNumberValue(); },
-        "homeworkContent": n => { courseEnrollmentThemeDto.homeworkContent = n.getStringValue(); },
+        "homeworkDocument": n => { courseEnrollmentThemeDto.homeworkDocument = n.getStringValue(); },
         "id": n => { courseEnrollmentThemeDto.id = n.getStringValue(); },
         "lessonContent": n => { courseEnrollmentThemeDto.lessonContent = n.getStringValue(); },
+        "practiceExercises": n => { courseEnrollmentThemeDto.practiceExercises = n.getCollectionOfObjectValues<CourseThemePracticeExerciseDto>(createCourseThemePracticeExerciseDtoFromDiscriminatorValue); },
         "recentAppointments": n => { courseEnrollmentThemeDto.recentAppointments = n.getCollectionOfObjectValues<CourseEnrollmentThemeAppointmentDto>(createCourseEnrollmentThemeAppointmentDtoFromDiscriminatorValue); },
         "startedAtUtc": n => { courseEnrollmentThemeDto.startedAtUtc = n.getDateValue(); },
         "state": n => { courseEnrollmentThemeDto.state = n.getNumberValue(); },
@@ -5322,11 +5412,12 @@ export function deserializeIntoCourseTheme(courseTheme: Partial<CourseTheme> | u
         "dependencies": n => { courseTheme.dependencies = n.getCollectionOfObjectValues<CourseThemeDependency>(createCourseThemeDependencyFromDiscriminatorValue); },
         "description": n => { courseTheme.description = n.getStringValue(); },
         "experiencePointsReward": n => { courseTheme.experiencePointsReward = n.getNumberValue(); },
-        "homeworkContent": n => { courseTheme.homeworkContent = n.getStringValue(); },
+        "homeworkDocument": n => { courseTheme.homeworkDocument = n.getStringValue(); },
         "id": n => { courseTheme.id = n.getStringValue(); },
         "key": n => { courseTheme.key = n.getStringValue(); },
         "lessonContent": n => { courseTheme.lessonContent = n.getStringValue(); },
         "order": n => { courseTheme.order = n.getNumberValue(); },
+        "practiceExercises": n => { courseTheme.practiceExercises = n.getCollectionOfObjectValues<CourseThemePracticeExercise>(createCourseThemePracticeExerciseFromDiscriminatorValue); },
         "requiredForThemes": n => { courseTheme.requiredForThemes = n.getCollectionOfObjectValues<CourseThemeDependency>(createCourseThemeDependencyFromDiscriminatorValue); },
         "title": n => { courseTheme.title = n.getStringValue(); },
     }
@@ -5357,12 +5448,53 @@ export function deserializeIntoCourseThemeDto(courseThemeDto: Partial<CourseThem
         "dependencyThemeIds": n => { courseThemeDto.dependencyThemeIds = n.getCollectionOfPrimitiveValues<string>("string"); },
         "description": n => { courseThemeDto.description = n.getStringValue(); },
         "experiencePointsReward": n => { courseThemeDto.experiencePointsReward = n.getNumberValue(); },
-        "homeworkContent": n => { courseThemeDto.homeworkContent = n.getStringValue(); },
+        "homeworkDocument": n => { courseThemeDto.homeworkDocument = n.getStringValue(); },
         "id": n => { courseThemeDto.id = n.getStringValue(); },
         "key": n => { courseThemeDto.key = n.getStringValue(); },
         "lessonContent": n => { courseThemeDto.lessonContent = n.getStringValue(); },
         "order": n => { courseThemeDto.order = n.getNumberValue(); },
+        "practiceExercises": n => { courseThemeDto.practiceExercises = n.getCollectionOfObjectValues<CourseThemePracticeExerciseDto>(createCourseThemePracticeExerciseDtoFromDiscriminatorValue); },
         "title": n => { courseThemeDto.title = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CourseThemePracticeExercise The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCourseThemePracticeExercise(courseThemePracticeExercise: Partial<CourseThemePracticeExercise> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "configuration": n => { courseThemePracticeExercise.configuration = n.getStringValue(); },
+        "courseThemeId": n => { courseThemePracticeExercise.courseThemeId = n.getStringValue(); },
+        "id": n => { courseThemePracticeExercise.id = n.getStringValue(); },
+        "type": n => { courseThemePracticeExercise.type = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CourseThemePracticeExerciseDto The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCourseThemePracticeExerciseDto(courseThemePracticeExerciseDto: Partial<CourseThemePracticeExerciseDto> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "configuration": n => { courseThemePracticeExerciseDto.configuration = n.getStringValue(); },
+        "id": n => { courseThemePracticeExerciseDto.id = n.getStringValue(); },
+        "type": n => { courseThemePracticeExerciseDto.type = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param CourseThemePracticeExerciseRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCourseThemePracticeExerciseRequest(courseThemePracticeExerciseRequest: Partial<CourseThemePracticeExerciseRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "configuration": n => { courseThemePracticeExerciseRequest.configuration = n.getStringValue(); },
+        "reference": n => { courseThemePracticeExerciseRequest.reference = n.getStringValue(); },
+        "type": n => { courseThemePracticeExerciseRequest.type = n.getStringValue(); },
     }
 }
 /**
@@ -5515,10 +5647,11 @@ export function deserializeIntoCreateCourseThemeRequest(createCourseThemeRequest
         "dependencyKeys": n => { createCourseThemeRequest.dependencyKeys = n.getCollectionOfPrimitiveValues<string>("string"); },
         "description": n => { createCourseThemeRequest.description = n.getStringValue(); },
         "experiencePointsReward": n => { createCourseThemeRequest.experiencePointsReward = n.getNumberValue(); },
-        "homeworkContent": n => { createCourseThemeRequest.homeworkContent = n.getStringValue(); },
+        "homeworkDocument": n => { createCourseThemeRequest.homeworkDocument = n.getStringValue(); },
         "key": n => { createCourseThemeRequest.key = n.getStringValue(); },
         "lessonContent": n => { createCourseThemeRequest.lessonContent = n.getStringValue(); },
         "order": n => { createCourseThemeRequest.order = n.getNumberValue(); },
+        "practiceExercises": n => { createCourseThemeRequest.practiceExercises = n.getCollectionOfObjectValues<CourseThemePracticeExerciseRequest>(createCourseThemePracticeExerciseRequestFromDiscriminatorValue); },
         "title": n => { createCourseThemeRequest.title = n.getStringValue(); },
     }
 }
@@ -10281,9 +10414,10 @@ export function serializeCourseEnrollmentThemeDto(writer: SerializationWriter, c
     writer.writeStringValue("courseThemeId", courseEnrollmentThemeDto.courseThemeId);
     writer.writeNumberValue("earnedExperiencePoints", courseEnrollmentThemeDto.earnedExperiencePoints);
     writer.writeNumberValue("experiencePointsReward", courseEnrollmentThemeDto.experiencePointsReward);
-    writer.writeStringValue("homeworkContent", courseEnrollmentThemeDto.homeworkContent);
+    writer.writeStringValue("homeworkDocument", courseEnrollmentThemeDto.homeworkDocument);
     writer.writeStringValue("id", courseEnrollmentThemeDto.id);
     writer.writeStringValue("lessonContent", courseEnrollmentThemeDto.lessonContent);
+    writer.writeCollectionOfObjectValues<CourseThemePracticeExerciseDto>("practiceExercises", courseEnrollmentThemeDto.practiceExercises, serializeCourseThemePracticeExerciseDto);
     writer.writeCollectionOfObjectValues<CourseEnrollmentThemeAppointmentDto>("recentAppointments", courseEnrollmentThemeDto.recentAppointments, serializeCourseEnrollmentThemeAppointmentDto);
     writer.writeDateValue("startedAtUtc", courseEnrollmentThemeDto.startedAtUtc);
     writer.writeNumberValue("state", courseEnrollmentThemeDto.state);
@@ -10356,11 +10490,12 @@ export function serializeCourseTheme(writer: SerializationWriter, courseTheme: P
     writer.writeCollectionOfObjectValues<CourseThemeDependency>("dependencies", courseTheme.dependencies, serializeCourseThemeDependency);
     writer.writeStringValue("description", courseTheme.description);
     writer.writeNumberValue("experiencePointsReward", courseTheme.experiencePointsReward);
-    writer.writeStringValue("homeworkContent", courseTheme.homeworkContent);
+    writer.writeStringValue("homeworkDocument", courseTheme.homeworkDocument);
     writer.writeStringValue("id", courseTheme.id);
     writer.writeStringValue("key", courseTheme.key);
     writer.writeStringValue("lessonContent", courseTheme.lessonContent);
     writer.writeNumberValue("order", courseTheme.order);
+    writer.writeCollectionOfObjectValues<CourseThemePracticeExercise>("practiceExercises", courseTheme.practiceExercises, serializeCourseThemePracticeExercise);
     writer.writeCollectionOfObjectValues<CourseThemeDependency>("requiredForThemes", courseTheme.requiredForThemes, serializeCourseThemeDependency);
     writer.writeStringValue("title", courseTheme.title);
     writer.writeAdditionalData(courseTheme.additionalData);
@@ -10393,13 +10528,57 @@ export function serializeCourseThemeDto(writer: SerializationWriter, courseTheme
     writer.writeCollectionOfPrimitiveValues<string>("dependencyThemeIds", courseThemeDto.dependencyThemeIds);
     writer.writeStringValue("description", courseThemeDto.description);
     writer.writeNumberValue("experiencePointsReward", courseThemeDto.experiencePointsReward);
-    writer.writeStringValue("homeworkContent", courseThemeDto.homeworkContent);
+    writer.writeStringValue("homeworkDocument", courseThemeDto.homeworkDocument);
     writer.writeStringValue("id", courseThemeDto.id);
     writer.writeStringValue("key", courseThemeDto.key);
     writer.writeStringValue("lessonContent", courseThemeDto.lessonContent);
     writer.writeNumberValue("order", courseThemeDto.order);
+    writer.writeCollectionOfObjectValues<CourseThemePracticeExerciseDto>("practiceExercises", courseThemeDto.practiceExercises, serializeCourseThemePracticeExerciseDto);
     writer.writeStringValue("title", courseThemeDto.title);
     writer.writeAdditionalData(courseThemeDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CourseThemePracticeExercise The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCourseThemePracticeExercise(writer: SerializationWriter, courseThemePracticeExercise: Partial<CourseThemePracticeExercise> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!courseThemePracticeExercise || isSerializingDerivedType) { return; }
+    writer.writeStringValue("configuration", courseThemePracticeExercise.configuration);
+    writer.writeStringValue("courseThemeId", courseThemePracticeExercise.courseThemeId);
+    writer.writeStringValue("id", courseThemePracticeExercise.id);
+    writer.writeStringValue("type", courseThemePracticeExercise.type);
+    writer.writeAdditionalData(courseThemePracticeExercise.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CourseThemePracticeExerciseDto The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCourseThemePracticeExerciseDto(writer: SerializationWriter, courseThemePracticeExerciseDto: Partial<CourseThemePracticeExerciseDto> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!courseThemePracticeExerciseDto || isSerializingDerivedType) { return; }
+    writer.writeStringValue("configuration", courseThemePracticeExerciseDto.configuration);
+    writer.writeStringValue("id", courseThemePracticeExerciseDto.id);
+    writer.writeStringValue("type", courseThemePracticeExerciseDto.type);
+    writer.writeAdditionalData(courseThemePracticeExerciseDto.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param CourseThemePracticeExerciseRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCourseThemePracticeExerciseRequest(writer: SerializationWriter, courseThemePracticeExerciseRequest: Partial<CourseThemePracticeExerciseRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!courseThemePracticeExerciseRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("configuration", courseThemePracticeExerciseRequest.configuration);
+    writer.writeStringValue("reference", courseThemePracticeExerciseRequest.reference);
+    writer.writeStringValue("type", courseThemePracticeExerciseRequest.type);
+    writer.writeAdditionalData(courseThemePracticeExerciseRequest.additionalData);
 }
 /**
  * Serializes information the current object
@@ -10562,10 +10741,11 @@ export function serializeCreateCourseThemeRequest(writer: SerializationWriter, c
     writer.writeCollectionOfPrimitiveValues<string>("dependencyKeys", createCourseThemeRequest.dependencyKeys);
     writer.writeStringValue("description", createCourseThemeRequest.description);
     writer.writeNumberValue("experiencePointsReward", createCourseThemeRequest.experiencePointsReward);
-    writer.writeStringValue("homeworkContent", createCourseThemeRequest.homeworkContent);
+    writer.writeStringValue("homeworkDocument", createCourseThemeRequest.homeworkDocument);
     writer.writeStringValue("key", createCourseThemeRequest.key);
     writer.writeStringValue("lessonContent", createCourseThemeRequest.lessonContent);
     writer.writeNumberValue("order", createCourseThemeRequest.order);
+    writer.writeCollectionOfObjectValues<CourseThemePracticeExerciseRequest>("practiceExercises", createCourseThemeRequest.practiceExercises, serializeCourseThemePracticeExerciseRequest);
     writer.writeStringValue("title", createCourseThemeRequest.title);
     writer.writeAdditionalData(createCourseThemeRequest.additionalData);
 }

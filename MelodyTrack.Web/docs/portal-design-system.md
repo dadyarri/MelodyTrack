@@ -157,7 +157,7 @@ Query cancellation propagates to the HTTP boundary. API failures show retry and 
 information; failed loads are not presented as empty course or homework lists.
 
 Courses show assigned course names, descriptions, and programme outlines. Homework
-shows nonempty BBCode assignments only for themes in WaitingForHomework (4), without
+shows nonempty structured-document assignments only for themes in WaitingForHomework (4), without
 submission or completion actions. Progress maps and lesson-material access remain
 deferred. Upcoming trainer and leaderboard pages contain no fabricated scores or XP.
 

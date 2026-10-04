@@ -57,7 +57,7 @@ Business-agnostic infrastructure now has stable shared public APIs:
 - `shared/config` owns validated public environment configuration;
 - `shared/lib` owns generic date, money, download, draft, polling, pluralization,
   and keyboard helpers;
-- `shared/ui` owns generic icons, charts, BBCode UI, summaries, and existing
+- `shared/ui` owns generic icons, charts, summaries, and existing
   reusable primitives.
 
 The former top-level `api`, `components`, and `utils` compatibility locations
@@ -205,10 +205,10 @@ public assets. The closeout build transfers approximately 1,229 KiB raw /
 404 KiB gzip / 379 KiB Brotli of initial JavaScript. The largest JavaScript
 chunk is approximately 433 KiB raw.
 
-SCEditor and its theme are loaded only when a course lesson/homework editor is
-opened; the main course route is approximately 231 KiB raw and the deferred
-editor is approximately 111 KiB. Navigation intent prefetch deduplicates route
-module loads and warms only the dashboard and schedule default critical data.
+The shared Tiptap/ProseMirror editor supports lesson and homework documents,
+including referenced trainer nodes. The editor and trainer runtime are split into
+dedicated lazy chunks. Navigation intent prefetch deduplicates route module
+loads and warms only the dashboard and schedule default critical data.
 
 TanStack Query now has explicit freshness, cancellation, polling, pagination,
 and mutation invalidation behavior. Durable drafts use validated,

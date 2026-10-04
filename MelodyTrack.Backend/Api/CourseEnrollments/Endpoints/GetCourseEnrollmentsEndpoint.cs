@@ -47,8 +47,14 @@ public sealed class GetCourseEnrollmentsEndpoint
                     .ThenInclude(block => block.Branches)
                         .ThenInclude(branch => branch.Themes)
                             .ThenInclude(theme => theme.Dependencies)
+            .Include(item => item.Course)
+                .ThenInclude(course => course.Blocks)
+                    .ThenInclude(block => block.Branches)
+                        .ThenInclude(branch => branch.Themes)
+                            .ThenInclude(theme => theme.PracticeExercises)
             .Include(item => item.Themes)
                 .ThenInclude(theme => theme.CourseTheme)
+                    .ThenInclude(theme => theme.PracticeExercises)
             .AsQueryable();
 
         if (req.ClientId is not null)
@@ -97,7 +103,8 @@ public sealed class GetCourseEnrollmentsEndpoint
                         ThemeTitle = theme.CourseTheme.Title,
                         ThemeDescription = theme.CourseTheme.Description,
                         LessonContent = theme.CourseTheme.LessonContent,
-                        HomeworkContent = theme.CourseTheme.HomeworkContent,
+                        HomeworkDocument = theme.CourseTheme.HomeworkDocument,
+                        PracticeExercises = theme.CourseTheme.PracticeExercises.Select(exercise => new CourseThemePracticeExerciseDto { Id = exercise.Id, Type = exercise.Type, Configuration = exercise.Configuration }).ToList(),
                         ExperiencePointsReward = theme.CourseTheme.ExperiencePointsReward,
                         State = theme.State,
                         UnlockedAtUtc = theme.UnlockedAtUtc,

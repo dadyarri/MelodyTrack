@@ -39,8 +39,16 @@ public class CreateCourseThemeRequest
     public required string Title { get; set; }
     public string? Description { get; set; }
     public string? LessonContent { get; set; }
-    public string? HomeworkContent { get; set; }
+    public string? HomeworkDocument { get; set; }
+    public List<CourseThemePracticeExerciseRequest> PracticeExercises { get; set; } = [];
     public required int Order { get; set; }
     public required int ExperiencePointsReward { get; set; }
     public List<string> DependencyKeys { get; set; } = [];
+}
+
+public class CourseThemePracticeExerciseRequest
+{
+    public required string Reference { get; set; }
+    public required string Type { get; set; }
+    public required string Configuration { get; set; }
 }

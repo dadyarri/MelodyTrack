@@ -19,7 +19,9 @@ public class CourseTheme : BaseModel
 
     public string? LessonContent { get; set; }
 
-    public string? HomeworkContent { get; set; }
+    public string? HomeworkDocument { get; set; }
+
+    public List<CourseThemePracticeExercise> PracticeExercises { get; set; } = [];
 
     public required int Order { get; set; }
 

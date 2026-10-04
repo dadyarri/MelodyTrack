@@ -4,7 +4,7 @@ import type { CourseEnrollment } from "@/entities/course";
 export function getPortalHomework(enrollments: readonly Pick<CourseEnrollment, "id" | "courseName" | "themes">[]) {
   return enrollments.flatMap((enrollment) =>
     enrollment.themes
-      .filter((theme) => theme.state === 4 && Boolean(theme.homeworkContent?.trim()))
+      .filter((theme) => theme.state === 4 && Boolean(theme.homeworkDocument?.trim()))
       .map((theme) => ({ enrollmentId: enrollment.id, courseName: enrollment.courseName, theme })),
   );
 }

@@ -192,7 +192,7 @@ public class ScheduleEndpointTests(MelodyTrackFixture app) : IntegrationTestBase
             Key = "finger-warmup",
             Title = "Finger warmup",
             LessonContent = "Warm up each finger separately.",
-            HomeworkContent = "Repeat the warmup at home.",
+            HomeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Repeat the warmup at home.\"}]}]}}",
             Order = 1,
             ExperiencePointsReward = 1
         };

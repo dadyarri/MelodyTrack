@@ -110,10 +110,38 @@
   justify-content: space-between;
 }
 
-.themeEditorModal :global(.ant-modal-body) {
+.courseEditorModal :global(.ant-modal-body) {
   max-height: min(720px, calc(var(--visual-viewport-height) - 220px));
   overflow-y: auto;
   padding-right: 18px;
+}
+
+.themeEditorModalRoot.themeEditorModalRoot :global(.ant-modal-wrap) {
+  padding: 0;
+}
+
+.themeEditorModal.themeEditorModal {
+  top: 0;
+  max-width: 100vw;
+  height: var(--visual-viewport-height, 100dvh);
+  margin: 0;
+  padding-bottom: 0;
+}
+
+.themeEditorModal.themeEditorModal :global(.ant-modal-content) {
+  display: flex;
+  overflow: hidden;
+  flex-direction: column;
+  height: var(--visual-viewport-height, 100dvh);
+  max-height: none;
+  border-radius: 0;
+}
+
+.themeEditorModal.themeEditorModal :global(.ant-modal-body) {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .numberGrid {

@@ -1,0 +1,64 @@
+.editor {
+  width: 100%;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.content {
+  color: inherit;
+  line-height: 1.6;
+}
+.content :global(.tiptap) {
+  min-height: 140px;
+  outline: none;
+}
+.content :global(.tiptap p:first-child) {
+  margin-top: 0;
+}
+.content :global(.tiptap blockquote) {
+  position: relative;
+  margin: 18px 0;
+  padding: 34px 20px 14px 24px;
+  border-inline-start: 4px solid var(--ant-color-primary);
+  border-radius: 0 10px 10px 0;
+  background: var(--ant-color-primary-bg);
+  color: var(--ant-color-text);
+}
+.content :global(.tiptap blockquote::before) {
+  position: absolute;
+  top: 10px;
+  inset-inline-start: 24px;
+  color: var(--ant-color-primary);
+  content: "Цитата";
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.content :global(.tiptap blockquote p:last-child) {
+  margin-bottom: 0;
+}
+.exercise {
+  width: min(100%, 880px);
+  margin: 16px auto;
+  padding: 12px;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  background: var(--bg-card);
+}
+.linkField {
+  display: grid;
+  gap: 6px;
+  width: 100%;
+}
+.linkSwitch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}

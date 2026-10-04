@@ -4,7 +4,7 @@ import { useLocation } from "react-router";
 import { StrummingTrainer, TrainerTimingHost } from "@/entities/trainer";
 import { PortalCourseCard } from "@/entities/course";
 import { getPortalHomework, usePortalEnrollments } from "@/features/client-portal";
-import { BbcodeContent } from "@/shared/ui/editors";
+import { mapExerciseDtos, StructuredHomeworkContent } from "@/features/homework-document";
 import { RpgApiError, RpgBadge, RpgPanel, RpgState } from "@/shared/ui/rpg";
 
 import styles from "./ClientPortalLearningPages.module.css";
@@ -100,7 +100,11 @@ export function ClientPortalHomeworkPage() {
           <div>
             <RpgBadge>Домашняя практика</RpgBadge>
           </div>
-          <BbcodeContent value={theme.homeworkContent ?? ""} className={styles.homeworkContent} />
+          <StructuredHomeworkContent
+            value={theme.homeworkDocument}
+            exercises={mapExerciseDtos(theme.practiceExercises)}
+            className={styles.homeworkContent}
+          />
         </RpgPanel>
       ))}
     </LearningPage>

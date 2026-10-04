@@ -51,6 +51,8 @@
     "@microsoft/kiota-serialization-multipart": "1.0.0-preview.103",
     "@microsoft/kiota-serialization-text": "1.0.0-preview.103",
     "@tanstack/react-query": "^5.100.10",
+    "@tiptap/react": "^3.31.3",
+    "@tiptap/starter-kit": "^3.31.3",
     "@xyflow/react": "^12.11.0",
     "antd": "^6.4.2",
     "dayjs": "^1.11.20",
@@ -60,7 +62,6 @@
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
     "react-router": "^8.3.0",
-    "sceditor": "^3.2.1",
     "valibot": "^1.4.2"
   },
   "overrides": {

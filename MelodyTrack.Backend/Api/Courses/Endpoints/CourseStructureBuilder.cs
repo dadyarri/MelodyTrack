@@ -1,3 +1,4 @@
+using MelodyTrack.Backend.Api.Courses;
 using MelodyTrack.Backend.Api.Courses.Requests;
 using MelodyTrack.Backend.Data.Models;
 
@@ -52,11 +53,10 @@ internal static class CourseStructureBuilder
                             Key = themeRequest.Key,
                             Title = themeRequest.Title,
                             Description = themeRequest.Description,
-                            LessonContent = themeRequest.LessonContent,
-                            HomeworkContent = themeRequest.HomeworkContent,
                             Order = themeRequest.Order,
                             ExperiencePointsReward = themeRequest.ExperiencePointsReward
                         };
+                        CourseThemeDocumentPersistence.Apply(theme, themeRequest.LessonContent, themeRequest.HomeworkDocument, themeRequest.PracticeExercises);
                     }
                     else
                     {
@@ -65,11 +65,10 @@ internal static class CourseStructureBuilder
                         theme.Key = themeRequest.Key;
                         theme.Title = themeRequest.Title;
                         theme.Description = themeRequest.Description;
-                        theme.LessonContent = themeRequest.LessonContent;
-                        theme.HomeworkContent = themeRequest.HomeworkContent;
                         theme.Order = themeRequest.Order;
                         theme.ExperiencePointsReward = themeRequest.ExperiencePointsReward;
                         theme.Dependencies.Clear();
+                        CourseThemeDocumentPersistence.Apply(theme, themeRequest.LessonContent, themeRequest.HomeworkDocument, themeRequest.PracticeExercises);
                     }
 
                     branch.Themes.Add(theme);

@@ -32,13 +32,17 @@ import type {
 } from "@/entities/course";
 import { TrainerTimingHost } from "@/entities/trainer";
 import { courseEnrollmentsApi, courseQueryKeys } from "@/entities/course";
+import {
+  type HomeworkExercise,
+  reconcileDocumentExercises,
+  StructuredHomeworkContent,
+  StructuredHomeworkEditor,
+} from "@/features/homework-document";
 import { useUpdateCourseProgress } from "@/features/update-course-progress";
 import type { Ulid } from "@/shared/api";
 import { pluralizeRu } from "@/shared/lib";
 import { jsonDurableFormCodec, useDurableForm } from "@/shared/lib/react";
 import { DraftFormModal, DraftModalTitle, PageLayout } from "@/shared/ui";
-import { BbcodeContent } from "@/shared/ui/editors";
-import { BbcodeEditor } from "@/shared/ui/editors";
 import {
   BookOutlined,
   DeleteOutlined,
@@ -1051,8 +1055,9 @@ function CourseNodeModal({
   return (
     <Modal
       open
-      width={selected.kind === "theme" || selected.kind === "course" ? 760 : 560}
-      className={selected.kind === "theme" || selected.kind === "course" ? styles.themeEditorModal : undefined}
+      width={selected.kind === "theme" ? "100vw" : selected.kind === "course" ? 760 : 560}
+      rootClassName={selected.kind === "theme" ? styles.themeEditorModalRoot : undefined}
+      className={selected.kind === "theme" ? styles.themeEditorModal : selected.kind === "course" ? styles.courseEditorModal : undefined}
       title={<DraftModalTitle title={title} restored={nodeDraft.restored} saveStatus={nodeDraft.status} onRetry={nodeDraft.retry} />}
       onCancel={onClose}
       onOk={() => {
@@ -1205,23 +1210,32 @@ function CourseNodeModal({
             <Form.Item noStyle shouldUpdate>
               {() => (
                 <Space orientation="vertical" size={16} className="wide">
-                  <BbcodeEditor
-                    label="Текст занятия"
+                  <StructuredHomeworkEditor
+                    title="Текст занятия"
                     value={readFormString(form.getFieldValue("lessonContent"))}
-                    onChange={(value) => {
-                      form.setFieldValue("lessonContent", value);
-                      nodeDraft.formProps.onValuesChange?.({ lessonContent: value }, form.getFieldsValue());
+                    exercises={readHomeworkExercises(form.getFieldValue("practiceExercises"))}
+                    onChange={(document, exercises) => {
+                      const practiceExercises = reconcileDocumentExercises(
+                        exercises,
+                        readFormString(form.getFieldValue("homeworkDocument")),
+                        readHomeworkExercises(form.getFieldValue("practiceExercises")),
+                      );
+                      form.setFieldsValue({ lessonContent: document, practiceExercises });
+                      nodeDraft.formProps.onValuesChange?.({ lessonContent: document, practiceExercises }, form.getFieldsValue());
                     }}
-                    helper="Используйте BBCode для форматирования текста, списков, ссылок, цитат и вставок кода."
                   />
-                  <BbcodeEditor
-                    label="Домашнее задание"
-                    value={readFormString(form.getFieldValue("homeworkContent"))}
-                    onChange={(value) => {
-                      form.setFieldValue("homeworkContent", value);
-                      nodeDraft.formProps.onValuesChange?.({ homeworkContent: value }, form.getFieldsValue());
+                  <StructuredHomeworkEditor
+                    value={readFormString(form.getFieldValue("homeworkDocument"))}
+                    exercises={readHomeworkExercises(form.getFieldValue("practiceExercises"))}
+                    onChange={(document, exercises) => {
+                      const practiceExercises = reconcileDocumentExercises(
+                        exercises,
+                        readFormString(form.getFieldValue("lessonContent")),
+                        readHomeworkExercises(form.getFieldValue("practiceExercises")),
+                      );
+                      form.setFieldsValue({ homeworkDocument: document, practiceExercises });
+                      nodeDraft.formProps.onValuesChange?.({ homeworkDocument: document, practiceExercises }, form.getFieldsValue());
                     }}
-                    helper="Используйте BBCode для форматирования текста, списков, ссылок, цитат и вставок кода."
                   />
                 </Space>
               )}
@@ -1429,7 +1443,7 @@ function ThemeProgressDetails({
       <div className={styles.detailSection}>
         <Typography.Text strong>Материал урока</Typography.Text>
         {theme.lessonContent ? (
-          <BbcodeContent value={theme.lessonContent} />
+          <StructuredHomeworkContent value={theme.lessonContent} exercises={theme.practiceExercises} />
         ) : (
           <Typography.Text type="secondary">Материал урока пока не заполнен.</Typography.Text>
         )}
@@ -1437,8 +1451,8 @@ function ThemeProgressDetails({
 
       <div className={styles.detailSection}>
         <Typography.Text strong>Домашнее задание</Typography.Text>
-        {theme.homeworkContent ? (
-          <BbcodeContent value={theme.homeworkContent} />
+        {theme.homeworkDocument ? (
+          <StructuredHomeworkContent value={theme.homeworkDocument} exercises={theme.practiceExercises} />
         ) : (
           <Typography.Text type="secondary">Домашнее задание пока не заполнено.</Typography.Text>
         )}
@@ -1468,7 +1482,8 @@ function AddNodeModal({ controller, intent, onClose }: { controller: Controller;
   return (
     <DraftFormModal
       open
-      width={intent.kind === "theme" ? 760 : 560}
+      width={intent.kind === "theme" ? "100vw" : 560}
+      rootClassName={intent.kind === "theme" ? styles.themeEditorModalRoot : undefined}
       className={intent.kind === "theme" ? styles.themeEditorModal : undefined}
       title={title}
       restored={addDraft.restored}
@@ -1536,23 +1551,32 @@ function AddNodeModal({ controller, intent, onClose }: { controller: Controller;
             <Form.Item noStyle shouldUpdate>
               {() => (
                 <Space orientation="vertical" size={16} className="wide">
-                  <BbcodeEditor
-                    label="Текст занятия"
+                  <StructuredHomeworkEditor
+                    title="Текст занятия"
                     value={readFormString(form.getFieldValue("lessonContent"))}
-                    onChange={(value) => {
-                      form.setFieldValue("lessonContent", value);
-                      addDraft.formProps.onValuesChange?.({ lessonContent: value }, form.getFieldsValue());
+                    exercises={readHomeworkExercises(form.getFieldValue("practiceExercises"))}
+                    onChange={(document, exercises) => {
+                      const practiceExercises = reconcileDocumentExercises(
+                        exercises,
+                        readFormString(form.getFieldValue("homeworkDocument")),
+                        readHomeworkExercises(form.getFieldValue("practiceExercises")),
+                      );
+                      form.setFieldsValue({ lessonContent: document, practiceExercises });
+                      addDraft.formProps.onValuesChange?.({ lessonContent: document, practiceExercises }, form.getFieldsValue());
                     }}
-                    helper="Используйте BBCode для форматирования текста, списков, ссылок, цитат и вставок кода."
                   />
-                  <BbcodeEditor
-                    label="Домашнее задание"
-                    value={readFormString(form.getFieldValue("homeworkContent"))}
-                    onChange={(value) => {
-                      form.setFieldValue("homeworkContent", value);
-                      addDraft.formProps.onValuesChange?.({ homeworkContent: value }, form.getFieldsValue());
+                  <StructuredHomeworkEditor
+                    value={readFormString(form.getFieldValue("homeworkDocument"))}
+                    exercises={readHomeworkExercises(form.getFieldValue("practiceExercises"))}
+                    onChange={(document, exercises) => {
+                      const practiceExercises = reconcileDocumentExercises(
+                        exercises,
+                        readFormString(form.getFieldValue("lessonContent")),
+                        readHomeworkExercises(form.getFieldValue("practiceExercises")),
+                      );
+                      form.setFieldsValue({ homeworkDocument: document, practiceExercises });
+                      addDraft.formProps.onValuesChange?.({ homeworkDocument: document, practiceExercises }, form.getFieldsValue());
                     }}
-                    helper="Используйте BBCode для форматирования текста, списков, ссылок, цитат и вставок кода."
                   />
                 </Space>
               )}
@@ -2290,7 +2314,8 @@ function getSelectionFormValues(selected: SelectedEditorNode) {
         dependencyKeys: selected.theme.dependencyKeys,
         experiencePointsReward: selected.theme.experiencePointsReward,
         lessonContent: selected.theme.lessonContent,
-        homeworkContent: selected.theme.homeworkContent,
+        homeworkDocument: selected.theme.homeworkDocument,
+        practiceExercises: selected.theme.practiceExercises,
       };
   }
 }
@@ -2346,7 +2371,8 @@ function applySelectionValues(controller: Controller, selected: SelectedEditorNo
         dependencyKeys: readFormStringArray(values.dependencyKeys),
         experiencePointsReward: readFormNumber(values.experiencePointsReward),
         lessonContent: readFormString(values.lessonContent),
-        homeworkContent: readFormString(values.homeworkContent),
+        homeworkDocument: readFormString(values.homeworkDocument),
+        practiceExercises: readHomeworkExercises(values.practiceExercises),
       });
       return;
   }
@@ -2362,6 +2388,17 @@ function readFormStringArray(value: unknown) {
 
 function readFormNumber(value: unknown) {
   return typeof value === "number" && Number.isFinite(value) ? value : 0;
+}
+
+function readHomeworkExercises(value: unknown): HomeworkExercise[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap((exercise) => {
+    if (!exercise || typeof exercise !== "object") return [];
+    const candidate = exercise as Partial<HomeworkExercise>;
+    return typeof candidate.id === "string" && candidate.type === "strumming" && typeof candidate.configuration === "string"
+      ? [{ id: candidate.id, type: candidate.type, configuration: candidate.configuration }]
+      : [];
+  });
 }
 
 function getNextLevelThreshold(levels: EditorLevel[]) {
@@ -2389,7 +2426,8 @@ function addEditorNode(controller: Controller, intent: AddNodeIntent, values: Re
       dependencyKeys: readFormStringArray(values.dependencyKeys),
       experiencePointsReward: readFormNumber(values.experiencePointsReward),
       lessonContent: readFormString(values.lessonContent),
-      homeworkContent: readFormString(values.homeworkContent),
+      homeworkDocument: readFormString(values.homeworkDocument),
+      practiceExercises: readHomeworkExercises(values.practiceExercises),
     },
     intent.insertIndex,
   );

@@ -79,6 +79,18 @@ export default defineConfig(({ mode }) => {
                 name: "select-runtime",
                 test: /[\\/]node_modules[\\/]@rc-component[\\/](select|virtual-list)[\\/]/,
               },
+              {
+                name: "tiptap-runtime",
+                test: /[\\/]node_modules[\\/](@tiptap|prosemirror-)/,
+              },
+              {
+                name: "antd-layout-runtime",
+                test: /[\\/]node_modules[\\/]antd[\\/]es[\\/](app|card|config-provider|grid|layout|space|theme|typography|_util)[\\/]/,
+              },
+              {
+                name: "antd-feedback-runtime",
+                test: /[\\/]node_modules[\\/]antd[\\/]es[\\/](alert|message|modal|notification|popconfirm|popover|spin|tooltip)[\\/]/,
+              },
             ],
           },
         },

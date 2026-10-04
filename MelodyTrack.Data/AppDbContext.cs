@@ -46,6 +46,7 @@ public class AppDbContext : DbContext
     public DbSet<CourseBlock> CourseBlocks { get; set; }
     public DbSet<CourseBranch> CourseBranches { get; set; }
     public DbSet<CourseTheme> CourseThemes { get; set; }
+    public DbSet<CourseThemePracticeExercise> CourseThemePracticeExercises { get; set; }
     public DbSet<CourseThemeDependency> CourseThemeDependencies { get; set; }
     public DbSet<CourseEnrollment> CourseEnrollments { get; set; }
     public DbSet<CourseEnrollmentTheme> CourseEnrollmentThemes { get; set; }
@@ -512,6 +513,12 @@ public class AppDbContext : DbContext
             .HasOne(e => e.Branch)
             .WithMany(e => e.Themes)
             .HasForeignKey(e => e.BranchId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<CourseThemePracticeExercise>()
+            .HasOne(e => e.CourseTheme)
+            .WithMany(e => e.PracticeExercises)
+            .HasForeignKey(e => e.CourseThemeId)
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<CourseThemeDependency>()

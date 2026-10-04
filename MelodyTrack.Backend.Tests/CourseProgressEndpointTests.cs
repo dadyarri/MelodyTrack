@@ -515,7 +515,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
 
         var introTheme = listPayload.Enrollments.Single().Themes.Single(item => item.ThemeTitle == "Intro to rhythm");
         introTheme.LessonContent.ShouldBe("Clap quarter notes and identify the pulse.");
-        introTheme.HomeworkContent.ShouldBe("Practice with the metronome for 5 minutes.");
+        introTheme.HomeworkDocument.ShouldBe("{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Practice with the metronome for 5 minutes.\"}]}]}}");
         introTheme.RecentAppointments.Count.ShouldBe(1);
         introTheme.RecentAppointments.Single().LessonNotes.ShouldBe("Повторили базовый ритм и хлопки.");
     }
@@ -884,7 +884,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro to rhythm updated",
                                         lessonContent = "Updated lesson notes.",
-                                        homeworkContent = "Updated homework.",
+                                        homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated homework.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()
@@ -1507,7 +1507,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
                                         lessonContent = "Clap quarter notes and identify the pulse.",
-                                        homeworkContent = "Practice with the metronome for 5 minutes.",
+                                        homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Practice with the metronome for 5 minutes.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 3,
                                         dependencyKeys = Array.Empty<string>()
@@ -1517,7 +1517,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "pulse-clap",
                                         title = "Clap patterns",
                                         lessonContent = "Switch between simple clap combinations.",
-                                        homeworkContent = "Record three clap patterns at home.",
+                                        homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Record three clap patterns at home.\"}]}]}}",
                                         order = 2,
                                         experiencePointsReward = 5,
                                         dependencyKeys = new[] { "count-intro" }
@@ -1535,7 +1535,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                         key = "count-intro",
                                         title = "Count aloud",
                                         lessonContent = "Count beats aloud while tapping.",
-                                        homeworkContent = "Count four bars before starting the track.",
+                                        homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Count four bars before starting the track.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 4,
                                         dependencyKeys = Array.Empty<string>()

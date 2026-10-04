@@ -33,8 +33,11 @@ export default defineConfig({
       "react-router",
       "scheduler",
       "tinyduration",
+      "use-sync-external-store/shim/index.js",
+      "use-sync-external-store/shim/with-selector.js",
       "vitest-browser-react",
     ],
+    needsInterop: ["use-sync-external-store/shim/index.js", "use-sync-external-store/shim/with-selector.js"],
   },
   resolve: {
     alias: {
