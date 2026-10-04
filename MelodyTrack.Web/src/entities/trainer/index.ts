@@ -1,14 +1,23 @@
+export type { ExerciseTimingConfiguration, ExerciseTimingPosition } from "./model/exerciseTiming";
+export { TrainerTimingHost, useTrainerTiming } from "./ui/TrainerTimingHost";
 export { PortalTrainerCard } from "./ui/PortalTrainerCard";
 export { StrummingTrainer, type StrummingTrainerProps } from "./ui/StrummingTrainer";
 export {
   createDefaultStrummingConfiguration,
-  fixedCountInDurationSeconds,
-  getActiveStrummingEventIndex,
+  createDefaultStrummingBar,
+  changeStrummingGrid,
+  parseStrummingConfiguration,
+  getStrummingPlaybackDurationSeconds,
+  maximumStrummingBars,
+  maximumStrummingRepetitions,
+  getBarDurationSeconds,
   getBarLengthInQuarterNotes,
+  getBarSlotCount,
+  getCountInBeats,
+  getCountInDurationSeconds,
+  getMetronomeBeatDurationSeconds,
   getStrummingCountLabels,
   getStrummingDurationSeconds,
-  getStrummingEventDurationSeconds,
-  getEmptyStrummingGridSpans,
   handMotions,
   isCompleteStrummingConfiguration,
   isCompleteStrummingBar,
@@ -22,7 +31,7 @@ export {
   type StrumAction,
   type StrummingConfiguration,
   type StrummingBar,
-  type StrummingEvent,
+  type StrummingStroke,
   type StrummingTimeSignature,
   tempoProgressionUnits,
   type TempoProgression,

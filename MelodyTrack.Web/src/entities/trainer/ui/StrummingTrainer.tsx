@@ -1,587 +1,163 @@
-import { Alert, Button, Card, InputNumber, Popover, Segmented, Space, Switch, Typography } from "antd";
-import { useEffect, useRef, useState } from "react";
+import { Alert, Button, Card, Collapse, InputNumber, Modal, Popover, Segmented, Space, Switch, Typography } from "antd";
+import { useId, useMemo, useState, useSyncExternalStore } from "react";
 
-import { downloadBlob, getSupportedWebmMimeType, recordCanvasVideo, useAudioClock } from "@/shared/lib";
-
+import { downloadBlob, maximumCanvasVideoSeconds } from "@/shared/lib";
 import {
-  createDefaultStrummingConfiguration,
-  fixedCountInDurationSeconds,
-  getBarLengthInQuarterNotes,
-  getEmptyStrummingGridSpans,
-  getStrummingCountLabels,
-  getStrummingDurationSeconds,
-  getStrummingEventDurationSeconds,
-  type HandMotion,
-  handMotions,
-  isCompleteStrummingConfiguration,
-  rhythmicValues,
-  shouldIncreaseTempo,
-  strumActions,
-  type StrummingBar,
-  type StrummingConfiguration,
-  type StrummingEvent,
-  strummingTimeSignatures,
+  changeStrummingGrid, createDefaultStrummingBar, createDefaultStrummingConfiguration, getBarSlotCount,
+  getCountInDurationSeconds, getStrummingCountLabels, getStrummingPlaybackDurationSeconds, handMotions,
+  maximumStrummingBars, maximumStrummingRepetitions, parseStrummingConfiguration, rhythmicValues, strumActions,
+  strummingTimeSignatures, type HandMotion, type RhythmicValue, type StrummingBar, type StrummingConfiguration,
+  type StrummingStroke,
 } from "../model/practiceExercise";
+import { TrainerTimingHost } from "./TrainerTimingHost";
+import { useStrummingPlayback } from "./useStrummingPlayback";
+import { actionCodes, actionLabels, handMotionCodes, handMotionLabels } from "./drawStrummingTrainer";
 import styles from "./StrummingTrainer.module.css";
 
-type ScheduledTrainerStep = Readonly<{ time: number; activeIndex: number | null; countInBeat: number | null; bpm: number }>;
-
-const actionLabels = {
-  down: "Вниз",
-  up: "Вверх",
-  "down-click": "Вниз с щелчком",
-  "down-dead-notes": "Вниз по заглушенным",
-  "up-dead-notes": "Вверх по заглушенным",
-  "down-bass-strings": "Вниз по басовым",
-  "up-bass-strings": "Вверх по басовым",
-  "down-treble-strings": "Вниз по тонким",
-  "up-treble-strings": "Вверх по тонким",
-  rest: "Пауза",
-} as const;
-const rhythmicValueLabels = {
-  whole: "1",
-  half: "1/2",
-  quarter: "1/4",
-  eighth: "1/8",
-  sixteenth: "1/16",
-  "eighth-triplet": "1/8T",
-} as const;
-const actionCodes = {
-  down: "↓",
-  up: "↑",
-  "down-click": "↓•",
-  "down-dead-notes": "↓×",
-  "up-dead-notes": "↑×",
-  "down-bass-strings": "↓B",
-  "up-bass-strings": "↑B",
-  "down-treble-strings": "↓T",
-  "up-treble-strings": "↑T",
-  rest: "—",
-} as const;
-const handMotionLabels: Record<HandMotion, string> = {
-  down: "Вниз",
-  up: "Вверх",
-  muted: "Глушь",
-  rest: "Без движения",
-  "double-down-up": "Двойной вниз-вверх",
-};
-const handMotionCodes: Record<HandMotion, string> = { down: "↓", up: "↑", muted: "×", rest: "—", "double-down-up": "⇊" };
-
-function drawTrainer(
-  canvas: HTMLCanvasElement,
-  configuration: StrummingConfiguration,
-  activeIndex: number | null,
-  countInBeat: number | null = null,
-) {
-  const context = canvas.getContext("2d");
-  if (!context) return;
-  context.fillStyle = "#172033";
-  context.fillRect(0, 0, canvas.width, canvas.height);
-  context.fillStyle = "#e8edf7";
-  context.font = "700 64px sans-serif";
-  context.fillText("Гитарный бой", 90, 120);
-  context.font = "40px sans-serif";
-  context.fillStyle = "#b9c7dd";
-  context.fillText(`${configuration.timeSignature} · ${String(configuration.bpm)} BPM`, 90, 184);
-  const events = configuration.bars.flatMap((bar) => bar.events);
-  const labels = configuration.bars.flatMap((bar) => getStrummingCountLabels(bar.events));
-  const columns = Math.max(1, Math.min(8, events.length));
-  const width = (canvas.width - 180 - (columns - 1) * 20) / columns;
-  events.forEach((event, index) => {
-    const x = 90 + (index % columns) * (width + 20);
-    const y = 260 + Math.floor(index / columns) * 290;
-    context.fillStyle = index === activeIndex ? "#f4b860" : "#2d3c59";
-    context.fillRect(x, y, width, 240);
-    context.fillStyle = index === activeIndex ? "#172033" : "#e8edf7";
-    context.font = "700 34px sans-serif";
-    context.fillText(labels[index], x + 24, y + 48);
-    context.font = "700 86px sans-serif";
-    context.fillText(actionCodes[event.action], x + width / 2 - 38, y + 132);
-    context.font = "600 28px sans-serif";
-    context.fillText(`рука ${handMotionCodes[event.handMotion]}`, x + 24, y + 194);
-  });
-  if (countInBeat !== null) {
-    context.fillStyle = "rgba(0, 0, 0, 0.48)";
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.fillStyle = "#ffffff";
-    context.font = "700 280px sans-serif";
-    context.textAlign = "center";
-    context.fillText(String(countInBeat), canvas.width / 2, canvas.height / 2 + 100);
-    context.textAlign = "start";
-  }
+const smallScreenQuery = "(max-width: 767px)";
+function subscribeScreen(listener: () => void) {
+  const query = window.matchMedia(smallScreenQuery);
+  query.addEventListener("change", listener);
+  return () => query.removeEventListener("change", listener);
 }
-
-function createRestEvent(): StrummingEvent {
-  return { rhythmicValue: "sixteenth", handMotion: "rest", action: "rest", accent: false };
-}
-
+function isSmallScreen() { return window.matchMedia(smallScreenQuery).matches; }
 export type StrummingTrainerProps = Readonly<{
   configuration?: StrummingConfiguration;
   onConfigurationChange?: (configuration: StrummingConfiguration) => void;
   onPlaybackChange?: (isRunning: boolean) => void;
   showConfiguration?: boolean;
 }>;
-
-export function StrummingTrainer({
-  configuration: suppliedConfiguration,
-  onConfigurationChange,
-  onPlaybackChange,
-  showConfiguration = true,
-}: StrummingTrainerProps) {
-  const canRecordVideo = getSupportedWebmMimeType() !== null;
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const { getElapsedSeconds, isRunning, reset, scheduleMetronomeClick, start, stop } = useAudioClock();
+export function StrummingTrainer(props: StrummingTrainerProps) {
+  const smallScreen = useSyncExternalStore(subscribeScreen, isSmallScreen, () => true);
+  if (smallScreen) return <Alert type="info" showIcon title="Тренажёр пока не поддерживает небольшие экраны" description="Откройте его на компьютере или увеличьте ширину окна до 768 px. Остальная часть задания доступна." />;
+  if (props.configuration !== undefined && !parseStrummingConfiguration(props.configuration)) return <Alert type="warning" showIcon title="Не удалось открыть упражнение" description="Конфигурация тренажёра некорректна или имеет неподдерживаемую версию. Попросите преподавателя заново настроить упражнение." />;
+  return <TrainerTimingHost><StrummingTrainerRuntime {...props} /></TrainerTimingHost>;
+}
+function StrummingTrainerRuntime({ configuration: suppliedConfiguration, onConfigurationChange, onPlaybackChange, showConfiguration = true }: StrummingTrainerProps) {
   const [uncontrolledConfiguration, setUncontrolledConfiguration] = useState(createDefaultStrummingConfiguration);
   const configuration = suppliedConfiguration ?? uncontrolledConfiguration;
-  const [activeConfiguration, setActiveConfiguration] = useState(() => suppliedConfiguration ?? createDefaultStrummingConfiguration());
-  const [recordingSeconds, setRecordingSeconds] = useState(() =>
-    Math.ceil(getStrummingDurationSeconds(createDefaultStrummingConfiguration())),
-  );
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordingError, setRecordingError] = useState<string | null>(null);
-  const displayedConfiguration = isRunning ? activeConfiguration : configuration;
-  const isComplete = isCompleteStrummingConfiguration(configuration);
-  const canvasHeight = Math.max(720, 580 + Math.ceil(displayedConfiguration.bars.flatMap((bar) => bar.events).length / 8) * 290);
-  const applyConfiguration = (nextConfiguration: StrummingConfiguration) => {
-    if (isRunning) return;
-    if (suppliedConfiguration === undefined) setUncontrolledConfiguration(nextConfiguration);
-    onConfigurationChange?.(nextConfiguration);
-    setActiveConfiguration(nextConfiguration);
+  const [manualTempo, setManualTempo] = useState<number | null>(null);
+  const overrideTempo = showConfiguration ? manualTempo : null;
+  const playbackConfiguration = useMemo(() => overrideTempo === null ? configuration : { ...configuration, bpm: overrideTempo, tempoProgression: { ...configuration.tempoProgression, enabled: false } }, [configuration, overrideTempo]);
+  const [recordingSecondsOverride, setRecordingSecondsOverride] = useState<number | null>(null);
+  const [pendingChange, setPendingChange] = useState<StrummingConfiguration | null>(null);
+  const [selectedBar, setSelectedBar] = useState(0);
+  const id = useId();
+  const currentBar = Math.min(selectedBar, configuration.bars.length - 1);
+  const playback = useStrummingPlayback(playbackConfiguration, onPlaybackChange, currentBar);
+  const { isBusy, isRunning, isRecording, position } = playback;
+  const sessionConfiguration = isRunning ? playback.activeConfiguration : configuration;
+  const countInDuration = getCountInDurationSeconds(playbackConfiguration.timeSignature, playbackConfiguration.bpm);
+  const maximumRecordingSeconds = Math.floor(maximumCanvasVideoSeconds - countInDuration - 0.06);
+  const defaultRecordingSeconds = Math.min(maximumRecordingSeconds, Math.max(1, getStrummingPlaybackDurationSeconds(playbackConfiguration)));
+  const recordingSeconds = Math.min(maximumRecordingSeconds, recordingSecondsOverride ?? defaultRecordingSeconds);
+  const applyConfiguration = (next: StrummingConfiguration) => {
+    if (isBusy || !showConfiguration) return;
+    if (suppliedConfiguration === undefined) setUncontrolledConfiguration(next);
+    if (showConfiguration) onConfigurationChange?.(next);
   };
   const updateBar = (barIndex: number, update: (bar: StrummingBar) => StrummingBar) => {
-    applyConfiguration({ ...configuration, bars: configuration.bars.map((bar, index) => (index === barIndex ? update(bar) : bar)) });
+    applyConfiguration({ ...configuration, bars: configuration.bars.map((bar, index) => index === barIndex ? update(bar) : bar) });
   };
-  const updateEvent = (barIndex: number, eventIndex: number, changes: Partial<StrummingEvent>) => {
-    updateBar(barIndex, (bar) => ({
-      ...bar,
-      events: bar.events.map((event, index) => (index === eventIndex ? { ...event, ...changes } : event)),
-    }));
+  const changeGrid = (barIndex: number, rhythmicValue: RhythmicValue) => {
+    const bar = changeStrummingGrid(configuration.bars[barIndex], configuration.timeSignature, rhythmicValue);
+    if (bar) updateBar(barIndex, () => bar);
+    else setPendingChange({ ...configuration, bars: configuration.bars.map((current, index) => index === barIndex ? createDefaultStrummingBar(configuration.timeSignature, rhythmicValue) : current) });
   };
-
-  useEffect(() => onPlaybackChange?.(isRunning), [isRunning, onPlaybackChange]);
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !isRunning) {
-      if (canvas) drawTrainer(canvas, displayedConfiguration, null);
-      return;
-    }
-    const scheduledSteps: ScheduledTrainerStep[] = [];
-    let nextStepTime = getElapsedSeconds() + 0.06,
-      remainingCountInBeats = fixedCountInDurationSeconds,
-      barIndex = 0,
-      eventIndex = 0,
-      completedIterations = 0,
-      completedBars = 0,
-      currentBpm = activeConfiguration.bpm,
-      activeIndex = 0;
-    let stopAt: number | null = null,
-      schedulerId: ReturnType<typeof setTimeout> | null = null,
-      animationFrame: number | null = null,
-      lastStep: ScheduledTrainerStep | null = null,
-      nextMetronomeTime: number | null = null,
-      metronomeBeat = 0;
-    const beatsPerBar = Number(activeConfiguration.timeSignature.split("/")[0]);
-    let metronomeBeatDuration = (getBarLengthInQuarterNotes(activeConfiguration.timeSignature) * 60) / currentBpm / beatsPerBar;
-    const schedule = () => {
-      const scheduleUntil = getElapsedSeconds() + 0.12;
-      while (stopAt === null && nextStepTime < scheduleUntil) {
-        if (remainingCountInBeats > 0) {
-          scheduledSteps.push({ time: nextStepTime, activeIndex: null, countInBeat: remainingCountInBeats, bpm: currentBpm });
-          if (activeConfiguration.metronome.enabled)
-            scheduleMetronomeClick({
-              time: nextStepTime,
-              accented: remainingCountInBeats === fixedCountInDurationSeconds,
-              volume: activeConfiguration.metronome.volume,
-            });
-          remainingCountInBeats -= 1;
-          nextStepTime += 1;
-          continue;
-        }
-        nextMetronomeTime ??= nextStepTime;
-        while (nextMetronomeTime < scheduleUntil) {
-          if (activeConfiguration.metronome.enabled)
-            scheduleMetronomeClick({
-              time: nextMetronomeTime,
-              accented: metronomeBeat === 0,
-              volume: activeConfiguration.metronome.volume,
-            });
-          metronomeBeat = (metronomeBeat + 1) % beatsPerBar;
-          nextMetronomeTime += metronomeBeatDuration;
-        }
-        const event = activeConfiguration.bars[barIndex].events[eventIndex];
-        scheduledSteps.push({ time: nextStepTime, activeIndex, countInBeat: null, bpm: currentBpm });
-        nextStepTime += getStrummingEventDurationSeconds(event, currentBpm);
-        eventIndex += 1;
-        activeIndex += 1;
-        if (eventIndex !== activeConfiguration.bars[barIndex].events.length) continue;
-        eventIndex = 0;
-        barIndex += 1;
-        completedBars += 1;
-        if (
-          activeConfiguration.tempoProgression.unit === "bars" &&
-          shouldIncreaseTempo(activeConfiguration.tempoProgression, completedBars, completedIterations)
-        ) {
-          currentBpm = Math.min(currentBpm + activeConfiguration.tempoProgression.increment, 240);
-          metronomeBeatDuration = (getBarLengthInQuarterNotes(activeConfiguration.timeSignature) * 60) / currentBpm / beatsPerBar;
-        }
-        if (barIndex !== activeConfiguration.bars.length) continue;
-        barIndex = 0;
-        activeIndex = 0;
-        completedIterations += 1;
-        if (
-          activeConfiguration.tempoProgression.unit === "repetitions" &&
-          shouldIncreaseTempo(activeConfiguration.tempoProgression, completedBars, completedIterations)
-        ) {
-          currentBpm = Math.min(currentBpm + activeConfiguration.tempoProgression.increment, 240);
-          metronomeBeatDuration = (getBarLengthInQuarterNotes(activeConfiguration.timeSignature) * 60) / currentBpm / beatsPerBar;
-        }
-        if (!activeConfiguration.loop && completedIterations >= activeConfiguration.repetitions) stopAt = nextStepTime;
-      }
-      if (stopAt === null) schedulerId = setTimeout(schedule, 25);
-    };
-    const draw = () => {
-      const elapsed = getElapsedSeconds();
-      while (scheduledSteps.length > 0 && scheduledSteps[0].time <= elapsed) lastStep = scheduledSteps.shift() ?? null;
-      if (lastStep) drawTrainer(canvas, { ...activeConfiguration, bpm: lastStep.bpm }, lastStep.activeIndex, lastStep.countInBeat);
-      if (stopAt !== null && elapsed >= stopAt) {
-        stop();
-        return;
-      }
-      animationFrame = requestAnimationFrame(draw);
-    };
-    schedule();
-    animationFrame = requestAnimationFrame(draw);
-    return () => {
-      if (schedulerId !== null) clearTimeout(schedulerId);
-      if (animationFrame !== null) cancelAnimationFrame(animationFrame);
-    };
-  }, [activeConfiguration, displayedConfiguration, getElapsedSeconds, isRunning, scheduleMetronomeClick, stop]);
-  const startTrainer = () => {
-    if (!isComplete) return;
-    reset();
-    setActiveConfiguration(configuration);
-    start();
+  const changeTimeSignature = (timeSignature: StrummingConfiguration["timeSignature"]) => {
+    setPendingChange({ ...configuration, timeSignature, bars: configuration.bars.map(() => createDefaultStrummingBar(timeSignature)) });
   };
-  const recordTrainer = () => {
-    const canvas = canvasRef.current;
-    if (!canvas || !isComplete || isRecording) return;
-    setRecordingError(null);
-    setIsRecording(true);
-    startTrainer();
-    void recordCanvasVideo({ canvas, durationSeconds: fixedCountInDurationSeconds + recordingSeconds })
-      .then(({ blob }) => {
-        downloadBlob(blob, "melodytrack-guitar-strumming.webm");
-      })
-      .catch((error: unknown) => {
-        setRecordingError(error instanceof Error ? error.message : "Не удалось записать видео.");
-      })
-      .finally(() => {
-        stop();
-        setIsRecording(false);
-      });
-  };
-  const renderBar = (bar: StrummingBar, barIndex: number, kind: "stroke" | "motion") => {
-    const counts = getStrummingCountLabels(bar.events);
-    const emptySlots = Math.ceil(getEmptyStrummingGridSpans({ timeSignature: configuration.timeSignature, ...bar }) / 3);
-    return (
-      <div className={styles.barGroup} key={`bar-${String(barIndex)}-${kind}`}>
-        <Typography.Text className={styles.barLabel}>Такт {barIndex + 1}</Typography.Text>
-        <div className={styles.barCells}>
-          {bar.events.map((event, eventIndex) =>
-            kind === "stroke" ? (
-              <div className={styles.rhythmColumn} key={`stroke-${String(eventIndex)}`}>
-                <Typography.Text className={styles.countLabel}>{counts[eventIndex]}</Typography.Text>
-                <Popover
-                  trigger="click"
-                  content={
-                    <div className={styles.picker}>
-                      {strumActions.map((action) => (
-                        <Button
-                          key={action}
-                          disabled={isRunning}
-                          type={action === event.action ? "primary" : "default"}
-                          title={actionLabels[action]}
-                          onClick={() => {
-                            updateEvent(barIndex, eventIndex, { action });
-                          }}
-                        >
-                          {actionCodes[action]}
-                        </Button>
-                      ))}
-                    </div>
-                  }
-                >
-                  <Button className={styles.rhythmCell} disabled={isRunning} title={actionLabels[event.action]}>
-                    {actionCodes[event.action]}
-                  </Button>
-                </Popover>
-                <Space.Compact className={styles.eventTools}>
-                  <Popover
-                    trigger="click"
-                    content={
-                      <div className={styles.picker}>
-                        {rhythmicValues.map((rhythmicValue) => (
-                          <Button
-                            key={rhythmicValue}
-                            disabled={isRunning}
-                            type={rhythmicValue === event.rhythmicValue ? "primary" : "default"}
-                            onClick={() => {
-                              updateEvent(barIndex, eventIndex, { rhythmicValue });
-                            }}
-                          >
-                            {rhythmicValueLabels[rhythmicValue]}
-                          </Button>
-                        ))}
-                      </div>
-                    }
-                  >
-                    <Button size="small" disabled={isRunning}>
-                      {rhythmicValueLabels[event.rhythmicValue]}
-                    </Button>
-                  </Popover>
-                  <Button
-                    size="small"
-                    type={event.accent ? "primary" : "default"}
-                    disabled={isRunning || event.action === "rest"}
-                    onClick={() => {
-                      updateEvent(barIndex, eventIndex, { accent: !event.accent });
-                    }}
-                  >
-                    !
-                  </Button>
-                  <Button
-                    size="small"
-                    danger
-                    disabled={isRunning || bar.events.length === 1}
-                    onClick={() => {
-                      updateBar(barIndex, (current) => ({ ...current, events: current.events.filter((_, index) => index !== eventIndex) }));
-                    }}
-                  >
-                    ×
-                  </Button>
-                </Space.Compact>
-              </div>
-            ) : (
-              <div className={styles.motionColumn} key={`motion-${String(eventIndex)}`}>
-                <Popover
-                  trigger="click"
-                  content={
-                    <div className={styles.picker}>
-                      {handMotions.map((handMotion) => (
-                        <Button
-                          key={handMotion}
-                          disabled={isRunning}
-                          type={handMotion === event.handMotion ? "primary" : "default"}
-                          title={handMotionLabels[handMotion]}
-                          onClick={() => {
-                            updateEvent(barIndex, eventIndex, { handMotion });
-                          }}
-                        >
-                          {handMotionCodes[handMotion]}
-                        </Button>
-                      ))}
-                    </div>
-                  }
-                >
-                  <Button className={styles.motionCell} disabled={isRunning} title={handMotionLabels[event.handMotion]}>
-                    {handMotionCodes[event.handMotion]}
-                  </Button>
-                </Popover>
-              </div>
-            ),
-          )}
-          {Array.from({ length: emptySlots }, (_, index) => (
-            <Button
-              className={styles.emptyCell}
-              key={`empty-${String(index)}`}
-              disabled={isRunning}
-              title={kind === "stroke" ? "Добавить шестнадцатую ноту" : "Добавить движение руки без удара"}
-              onClick={() => {
-                updateBar(barIndex, (current) => ({
-                  ...current,
-                  events: [...current.events, { ...createRestEvent(), handMotion: kind === "motion" ? "down" : "rest" }],
-                }));
-              }}
-            >
-              +
-            </Button>
-          ))}
-        </div>
+  const renderRow = (bar: StrummingBar, barIndex: number, kind: "stroke" | "motion") => {
+    const labels = getStrummingCountLabels(configuration.timeSignature, bar.strokes.length);
+    const items = kind === "stroke" ? bar.strokes : bar.handMotions;
+    return <div className={styles.editorRow}>
+      <Typography.Text className={styles.rowLabel}>{kind === "stroke" ? "Удары" : "Движения руки"}</Typography.Text>
+      <div className={styles.barCells} style={{ gridTemplateColumns: `repeat(${items.length}, 64px)` }}>
+        {items.map((item, index) => {
+          const stroke = kind === "stroke" ? item as StrummingStroke : null;
+          const motion = kind === "motion" ? item as HandMotion : null;
+          const label = `Такт ${barIndex + 1}, позиция ${index + 1}`;
+          return <div className={styles.rhythmColumn} key={index}>
+            <Popover trigger="click" content={<div className={styles.picker}>
+              {stroke ? strumActions.map(action => <Button key={action} disabled={isBusy} type={action === stroke.action ? "primary" : "default"} aria-label={actionLabels[action]} title={actionLabels[action]} onClick={() => updateBar(barIndex, current => ({ ...current, strokes: current.strokes.map((value, itemIndex) => itemIndex === index ? { action, accent: action === "rest" ? false : value.accent } : value) }))}>{actionCodes[action]}</Button>) : handMotions.map(value => <Button key={value} disabled={isBusy} type={value === motion ? "primary" : "default"} aria-label={handMotionLabels[value]} title={handMotionLabels[value]} onClick={() => updateBar(barIndex, current => ({ ...current, handMotions: current.handMotions.map((currentMotion, itemIndex) => itemIndex === index ? value : currentMotion) }))}>{handMotionCodes[value]}</Button>)}
+            </div>}>
+              <Button className={styles.rhythmCell} disabled={isBusy} aria-label={`${label}: ${stroke ? `удар ${actionLabels[stroke.action]}` : `рука ${handMotionLabels[motion ?? "rest"]}`}`} title={stroke ? actionLabels[stroke.action] : handMotionLabels[motion ?? "rest"]}>{stroke ? actionCodes[stroke.action] : handMotionCodes[motion ?? "rest"]}</Button>
+            </Popover>
+            <Typography.Text className={styles.countLabel}>{labels[index]}</Typography.Text>
+            {stroke ? <Button className={styles.slotTool} type={stroke.accent ? "primary" : "default"} disabled={isBusy || stroke.action === "rest"} aria-label={`${label}: акцент`} aria-pressed={stroke.accent} title="Акцент — выделить удар, сыграть сильнее" onClick={() => updateBar(barIndex, current => ({ ...current, strokes: current.strokes.map((value, itemIndex) => itemIndex === index ? { ...value, accent: !value.accent } : value) }))}>!</Button> : <div className={styles.slotToolSpacer} />}
+            <Button className={styles.slotTool} disabled={isBusy || (stroke ? stroke.action === "rest" : motion === "rest")} aria-label={`${label}: ${stroke ? "убрать удар" : "убрать движение"}`} title="Заменить паузой, не сдвигая остальные действия" onClick={() => updateBar(barIndex, current => stroke ? { ...current, strokes: current.strokes.map((value, itemIndex) => itemIndex === index ? { action: "rest", accent: false } : value) } : { ...current, handMotions: current.handMotions.map((value, itemIndex) => itemIndex === index ? "rest" : value) })}>—</Button>
+          </div>;
+        })}
       </div>
-    );
+    </div>;
   };
-  const setTimeSignature = (timeSignature: StrummingConfiguration["timeSignature"]) => {
-    const next = createDefaultStrummingConfiguration(timeSignature);
-    applyConfiguration({
-      ...next,
-      bars: Array.from({ length: configuration.bars.length }, () => next.bars[0]),
-      bpm: configuration.bpm,
-      repetitions: configuration.repetitions,
-      loop: configuration.loop,
-      metronome: configuration.metronome,
-      tempoProgression: configuration.tempoProgression,
-    });
-  };
-  const setBarCount = (count: number) => {
-    const defaultBar = createDefaultStrummingConfiguration(configuration.timeSignature).bars[0];
-    applyConfiguration({ ...configuration, bars: Array.from({ length: count }, (_, index) => configuration.bars[index] ?? defaultBar) });
-  };
-  return (
-    <Card className={styles.trainerCard}>
-      <canvas ref={canvasRef} width="1920" height={canvasHeight} className={styles.trainerCanvas} aria-label="Тренажёр гитарного боя" />
-      {showConfiguration ? (
-        <>
-          <div className={styles.controls}>
-            <div className={styles.timeSignatureControl}>
-              Размер
-              <Segmented
-                value={configuration.timeSignature}
-                options={[...strummingTimeSignatures]}
-                disabled={isRunning}
-                onChange={(timeSignature) => {
-                  setTimeSignature(timeSignature);
-                }}
-              />
-            </div>
-            <div className={styles.control}>
-              BPM
-              <InputNumber
-                min={30}
-                max={240}
-                value={configuration.bpm}
-                disabled={isRunning}
-                onChange={(bpm) => {
-                  applyConfiguration({ ...configuration, bpm: bpm ?? 80 });
-                }}
-              />
-            </div>
-            <div className={styles.control}>
-              Тактов
-              <InputNumber
-                min={1}
-                value={configuration.bars.length}
-                disabled={isRunning}
-                onChange={(count) => {
-                  setBarCount(count ?? 1);
-                }}
-              />
-            </div>
-            <div className={styles.control}>
-              Повторов
-              <InputNumber
-                min={1}
-                value={configuration.repetitions}
-                disabled={isRunning || configuration.loop}
-                onChange={(repetitions) => {
-                  applyConfiguration({ ...configuration, repetitions: repetitions ?? 1 });
-                }}
-              />
-            </div>
-            <div className={styles.switchControl}>
-              Цикл
-              <Switch
-                checked={configuration.loop}
-                disabled={isRunning}
-                onChange={(loop) => {
-                  applyConfiguration({ ...configuration, loop });
-                }}
-              />
-            </div>
-            <div className={styles.switchControl}>
-              Ускорение
-              <Switch
-                checked={configuration.tempoProgression.enabled}
-                disabled={isRunning}
-                onChange={(enabled) => {
-                  applyConfiguration({ ...configuration, tempoProgression: { ...configuration.tempoProgression, enabled } });
-                }}
-              />
-            </div>
-            {configuration.tempoProgression.enabled ? (
-              <div className={styles.progressionControls}>
-                <div className={styles.control}>
-                  + BPM
-                  <InputNumber
-                    min={1}
-                    max={60}
-                    value={configuration.tempoProgression.increment}
-                    disabled={isRunning}
-                    onChange={(increment) => {
-                      applyConfiguration({
-                        ...configuration,
-                        tempoProgression: { ...configuration.tempoProgression, increment: increment ?? 5 },
-                      });
-                    }}
-                  />
-                </div>
-                <div className={styles.control}>
-                  Каждые
-                  <InputNumber
-                    min={1}
-                    value={configuration.tempoProgression.every}
-                    disabled={isRunning}
-                    onChange={(every) => {
-                      applyConfiguration({ ...configuration, tempoProgression: { ...configuration.tempoProgression, every: every ?? 1 } });
-                    }}
-                  />
-                </div>
-                <div className={styles.timeSignatureControl}>
-                  Единица
-                  <Segmented
-                    value={configuration.tempoProgression.unit}
-                    options={[
-                      { label: "такта", value: "bars" },
-                      { label: "повтора", value: "repetitions" },
-                    ]}
-                    disabled={isRunning}
-                    onChange={(unit) => {
-                      const tempoProgressionUnit = unit === "bars" ? "bars" : "repetitions";
-                      applyConfiguration({
-                        ...configuration,
-                        tempoProgression: { ...configuration.tempoProgression, unit: tempoProgressionUnit },
-                      });
-                    }}
-                  />
-                </div>
-              </div>
-            ) : null}
-          </div>
-          <section className={styles.patternSection}>
-            <Typography.Title level={2}>Ритмический рисунок</Typography.Title>
-            <Typography.Text type="secondary">Удары</Typography.Text>
-            <div className={styles.patternTrack}>{configuration.bars.map((bar, index) => renderBar(bar, index, "stroke"))}</div>
-          </section>
-          <section className={styles.patternSection}>
-            <Typography.Text type="secondary">Движение руки — может не совпадать с ударом</Typography.Text>
-            <div className={styles.patternTrack}>{configuration.bars.map((bar, index) => renderBar(bar, index, "motion"))}</div>
-          </section>
-        </>
-      ) : null}
+  const progression = configuration.tempoProgression;
+  const completedProgressionUnits = position ? progression.unit === "bars" ? (position.repetition - 1) * configuration.bars.length + (position.bar ?? 0) : position.repetition - 1 : 0;
+  const nextIncreaseText = manualTempo === null && progression.enabled && isRunning && position && position.countIn === null ? position.bpm >= 240 ? "Достигнут максимальный темп." : `Следующее повышение через ${progression.every - completedProgressionUnits % progression.every} ${progression.unit === "bars" ? "такт(а)" : "полный повтор(а)"}.` : "";
+  const progressionText = progression.enabled ? `Темп повышается на ${progression.increment} BPM каждые ${progression.every} ${progression.unit === "bars" ? "такт(а)" : "повтор(а)"}, максимум до 240 BPM.` : "Ускорение выключено.";
+  return <Card className={styles.trainerCard}>
+    <div className={styles.presentation}>
+      <canvas ref={playback.canvasRef} width="1200" height="430" className={styles.trainerCanvas} aria-label="Рисунок гитарного боя: текущий такт" />
+      <Typography.Text role="status" aria-live="polite">
+        {isRunning && position ? position.countIn !== null ? `Приготовьтесь: ${position.countIn}` : `Такт ${(position.bar ?? 0) + 1} из ${configuration.bars.length} · повтор ${position.repetition}${sessionConfiguration.loop ? "" : ` из ${sessionConfiguration.repetitions}`} · ${position.bpm} BPM` : playback.isStarting ? "Включаем звук…" : "Нажмите «Старт», чтобы начать с отсчёта."}
+      </Typography.Text>
       <Space wrap>
-        <Button type="primary" disabled={!isComplete || isRunning} onClick={startTrainer}>
-          Старт
-        </Button>
-        <Button onClick={stop} disabled={!isRunning}>
-          Стоп
-        </Button>
-        <Space.Compact>
-          <InputNumber
-            min={1}
-            value={recordingSeconds}
-            onChange={(seconds) => {
-              setRecordingSeconds(seconds ?? Math.ceil(getStrummingDurationSeconds(configuration)));
-            }}
-          />
-          <Typography.Text>сек.</Typography.Text>
-        </Space.Compact>
-        <Button disabled={!canRecordVideo || !isComplete || isRecording || isRunning} onClick={recordTrainer}>
-          {isRecording ? "Запись…" : "Записать WebM"}
-        </Button>
+        <Button type="primary" disabled={isBusy} onClick={() => playback.startPlayback()}>Старт</Button>
+        <Button disabled={!isBusy} onClick={playback.stopPlayback}>Стоп</Button>
+        <Button disabled={!playback.canRecordVideo || isBusy} onClick={() => playback.startPlayback(recordingSeconds, recordingSecondsOverride === null)}>{isRecording ? "Запись…" : "Записать WebM"}</Button>
+        {playback.video ? <Button onClick={() => { if (playback.video) downloadBlob(playback.video, "melodytrack-guitar-strumming.webm"); }}>Скачать WebM</Button> : null}
       </Space>
-      {!isComplete ? (
-        <Alert className={styles.alert} type="warning" title="Заполните каждый такт полностью, прежде чем начать упражнение." />
-      ) : null}
-      {recordingError ? <Alert className={styles.alert} type="error" title={recordingError} /> : null}
-    </Card>
-  );
+      {playback.video ? <Typography.Text type="success">Видео готово. Нажмите «Скачать WebM», чтобы сохранить его.</Typography.Text> : null}
+      {!playback.canRecordVideo ? <Typography.Text type="secondary">Запись WebM в этом браузере недоступна. Проигрывание работает; для записи попробуйте другой браузер.</Typography.Text> : null}
+      {playback.error ? <Alert type="warning" showIcon title={playback.error} /> : null}
+    </div>
+    {showConfiguration ? <div className={styles.progressionControls}>
+      <div className={styles.switchControl}><label htmlFor={`${id}-follow`}>Следовать темпу упражнения</label><Switch id={`${id}-follow`} checked={manualTempo === null} disabled={isBusy} onChange={follow => setManualTempo(follow ? null : configuration.bpm)} /></div>
+      {manualTempo !== null ? <label className={styles.control} htmlFor={`${id}-manual-tempo`}>Темп проигрывания, BPM<InputNumber id={`${id}-manual-tempo`} min={30} max={240} value={manualTempo} disabled={isBusy} onChange={bpm => { if (bpm !== null && bpm >= 30 && bpm <= 240) setManualTempo(bpm); }} /></label> : null}
+      <Typography.Text type="secondary">{manualTempo === null ? "Метроном следует темпу и ускорению упражнения." : "Ручной темп: следование упражнению и автоматическое ускорение отключены. Настройки упражнения сохраняются."}</Typography.Text>
+    </div> : null}
+    {showConfiguration ? <div className={styles.controls}>
+      <label className={styles.control} htmlFor={`${id}-bpm`}>Темп, BPM<InputNumber id={`${id}-bpm`} min={30} max={240} value={configuration.bpm} disabled={isBusy} onChange={bpm => { if (bpm !== null && bpm >= 30 && bpm <= 240) applyConfiguration({ ...configuration, bpm }); }} /></label>
+      <label className={styles.control} htmlFor={`${id}-repetitions`}>Повторов<InputNumber id={`${id}-repetitions`} min={1} max={maximumStrummingRepetitions} precision={0} value={configuration.repetitions} disabled={isBusy || configuration.loop} onChange={repetitions => { if (repetitions !== null && repetitions >= 1 && repetitions <= maximumStrummingRepetitions) applyConfiguration({ ...configuration, repetitions: Math.round(repetitions) }); }} /></label>
+      <div className={styles.switchControl}><label htmlFor={`${id}-loop`}>Повторять без остановки</label><Switch id={`${id}-loop`} checked={configuration.loop} disabled={isBusy} onChange={loop => applyConfiguration({ ...configuration, loop })} /></div>
+      <div className={styles.switchControl}><label htmlFor={`${id}-metronome`}>Метроном</label><Switch id={`${id}-metronome`} checked={configuration.metronome.enabled} disabled={isBusy} onChange={enabled => applyConfiguration({ ...configuration, metronome: { ...configuration.metronome, enabled } })} /></div>
+      <label className={styles.control} htmlFor={`${id}-volume`}>Громкость, %<InputNumber id={`${id}-volume`} min={0} max={100} value={Math.round(configuration.metronome.volume * 100)} disabled={isBusy || !configuration.metronome.enabled} onChange={volume => { if (volume !== null && volume >= 0 && volume <= 100) applyConfiguration({ ...configuration, metronome: { ...configuration.metronome, volume: volume / 100 } }); }} /></label>
+      <label className={styles.control} htmlFor={`${id}-seconds`}>Видео после отсчёта, сек.<InputNumber id={`${id}-seconds`} min={1} max={maximumRecordingSeconds} precision={2} value={recordingSeconds} disabled={isBusy || !playback.canRecordVideo} onChange={seconds => setRecordingSecondsOverride(seconds === null ? null : Math.max(1, Math.min(maximumRecordingSeconds, seconds)))} /></label>
+    </div> : <Typography.Text type="secondary">Упражнение настроено преподавателем: {configuration.bpm} BPM, {configuration.timeSignature}, {configuration.loop ? "непрерывное повторение" : `${configuration.repetitions} повтор(а)`}. Для самостоятельной настройки откройте «Тренажёры» в клиентском портале.</Typography.Text>}
+    <Space wrap><Typography.Text type="secondary">{recordingSecondsOverride === null ? "Видео по умолчанию записывает заданное число полных повторов, даже при включённом цикле." : "Видео записывает выбранное число секунд и может закончиться посреди рисунка."}</Typography.Text>{recordingSecondsOverride !== null ? <Button disabled={isBusy} onClick={() => setRecordingSecondsOverride(null)}>Записывать полные повторы</Button> : null}</Space>
+
+    <Typography.Text type="secondary">Чем меньше BPM, тем медленнее. Перед началом прозвучит один такт отсчёта. В 6/8 щелчки идут вдвое чаще значения BPM. Звук — только метроном; тренажёр показывает движения и не оценивает вашу игру.</Typography.Text>
+    {showConfiguration ? <div className={styles.progressionControls}>
+      <div className={styles.switchControl}><label htmlFor={`${id}-progression`}>Постепенно ускорять</label><Switch id={`${id}-progression`} checked={progression.enabled} disabled={isBusy || manualTempo !== null} onChange={enabled => applyConfiguration({ ...configuration, tempoProgression: { ...progression, enabled } })} /></div>
+      {progression.enabled ? <>
+        <label className={styles.control} htmlFor={`${id}-increment`}>Прибавка BPM<InputNumber id={`${id}-increment`} min={1} max={60} precision={0} value={progression.increment} disabled={isBusy || manualTempo !== null} onChange={increment => { if (increment !== null && increment >= 1 && increment <= 60) applyConfiguration({ ...configuration, tempoProgression: { ...progression, increment: Math.round(increment) } }); }} /></label>
+        <label className={styles.control} htmlFor={`${id}-every`}>Каждые<InputNumber id={`${id}-every`} min={1} max={100} precision={0} value={progression.every} disabled={isBusy || manualTempo !== null} onChange={every => { if (every !== null && every >= 1 && every <= 100) applyConfiguration({ ...configuration, tempoProgression: { ...progression, every: Math.round(every) } }); }} /></label>
+        <Segmented aria-label="Когда повышать темп" value={progression.unit} options={[{ label: "Такты", value: "bars" }, { label: "Полные повторы", value: "repetitions" }]} disabled={isBusy || manualTempo !== null} onChange={unit => applyConfiguration({ ...configuration, tempoProgression: { ...progression, unit: unit === "bars" ? "bars" : "repetitions" } })} />
+      </> : null}
+      <Typography.Text type="secondary">{manualTempo === null ? progressionText : "Автоматическое ускорение отключено ручным темпом."} {nextIncreaseText} Такт — один фрагмент рисунка; полный повтор — все такты по порядку.</Typography.Text>
+    </div> : <Typography.Text type="secondary">{progressionText} {nextIncreaseText}</Typography.Text>}
+    {recordingSecondsOverride === null && getStrummingPlaybackDurationSeconds(playbackConfiguration) > maximumRecordingSeconds ? <Alert type="info" showIcon title="Полное упражнение длиннее лимита видео" description="Запись завершится через три минуты. Уменьшите число повторов или задайте длительность в секундах." /> : null}
+    <Typography.Text type="secondary">Видео ограничено тремя минутами вместе с отсчётом. «Стоп» сохранит уже записанную часть. Если упражнение закончится раньше, запись тоже завершится.</Typography.Text>
+    {showConfiguration ? <section className={styles.patternSection}>
+      <Typography.Title level={3}>Ритмический рисунок</Typography.Title>
+      <div className={styles.barHeading}>
+        <div className={styles.control}>Размер такта<Segmented aria-label="Размер такта" value={configuration.timeSignature} options={[...strummingTimeSignatures]} disabled={isBusy} onChange={value => changeTimeSignature(value as StrummingConfiguration["timeSignature"])} /></div>
+        <Button disabled={isBusy || configuration.bars.length >= maximumStrummingBars} onClick={() => { applyConfiguration({ ...configuration, bars: [...configuration.bars, createDefaultStrummingBar(configuration.timeSignature)] }); setSelectedBar(configuration.bars.length); }}>Добавить такт</Button>
+      </div>
+      <Typography.Text type="secondary">Выберите число шагов, затем действие в каждой ячейке. Обе строки идут одновременно слева направо. «—» убирает действие, оставляя его место во времени.</Typography.Text>
+      <Segmented aria-label="Такт для редактирования" value={currentBar} options={configuration.bars.map((_, index) => ({ label: `Такт ${index + 1}`, value: index }))} disabled={isBusy} onChange={value => setSelectedBar(Number(value))} />
+      <div className={styles.barGroup}>
+        <div className={styles.barHeading}>
+          <Typography.Text>Такт {currentBar + 1}</Typography.Text>
+          <Segmented aria-label="Число шагов в такте" value={configuration.bars[currentBar].rhythmicValue} options={rhythmicValues.filter(value => !(configuration.timeSignature === "6/8" && value === "quarter") && Number.isInteger(getBarSlotCount(configuration.timeSignature, value))).map(value => ({ label: `${getBarSlotCount(configuration.timeSignature, value)} шагов`, value }))} disabled={isBusy} onChange={value => changeGrid(currentBar, value as RhythmicValue)} />
+          <Button danger disabled={isBusy || configuration.bars.length === 1} onClick={() => { applyConfiguration({ ...configuration, bars: configuration.bars.filter((_, index) => index !== currentBar) }); setSelectedBar(Math.max(0, currentBar - 1)); }}>Удалить такт</Button>
+        </div>
+        <div className={styles.gridScroller}>{renderRow(configuration.bars[currentBar], currentBar, "stroke")}{renderRow(configuration.bars[currentBar], currentBar, "motion")}</div>
+      </div>
+    </section> : null}
+    <Collapse items={[{ key: "legend", label: "Что означают значки", children: <div className={styles.legend}>{strumActions.map(action => <Typography.Text key={action}>{actionCodes[action]} — {actionLabels[action]}</Typography.Text>)}{handMotions.filter(motion => motion === "muted" || motion === "down-up" || motion === "up-down").map(motion => <Typography.Text key={motion}>{handMotionCodes[motion]} — {handMotionLabels[motion]}</Typography.Text>)}<Typography.Text>! — акцент: сыграть удар сильнее. Акцент виден в рисунке и видео, звук метронома от него не меняется.</Typography.Text></div> }]} />
+    <Modal title="Заменить рисунок?" open={pendingChange !== null} okText="Заменить рисунок" cancelText="Оставить как есть" onCancel={() => setPendingChange(null)} onOk={() => { if (pendingChange) applyConfiguration(pendingChange); setPendingChange(null); }}>
+      <Typography.Paragraph>При этой смене размера или числа шагов текущий рисунок не помещается в новую сетку. Он будет заменён стандартным. Остальные настройки сохранятся.</Typography.Paragraph>
+    </Modal>
+  </Card>;
 }

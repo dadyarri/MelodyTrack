@@ -30,6 +30,7 @@ import type {
   CourseEnrollmentThemeProgressAction,
   CourseThemeProgressState,
 } from "@/entities/course";
+import { TrainerTimingHost } from "@/entities/trainer";
 import { courseEnrollmentsApi, courseQueryKeys } from "@/entities/course";
 import { useUpdateCourseProgress } from "@/features/update-course-progress";
 import type { Ulid } from "@/shared/api";
@@ -150,6 +151,10 @@ const edgeTypes: EdgeTypes = {
 };
 
 export function CourseWorkspace() {
+  return <TrainerTimingHost><CourseWorkspaceContent /></TrainerTimingHost>;
+}
+
+function CourseWorkspaceContent() {
   const controller = useCoursesPageController();
   const { message, modal } = AntdApp.useApp();
   const [searchParams, setSearchParams] = useSearchParams();

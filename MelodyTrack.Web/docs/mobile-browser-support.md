@@ -153,3 +153,12 @@ or a development-only API port.
    picker, or permission flow after both immediate and deliberately delayed
    preparation. Confirm the gated operation begins from its own explicit user
    action and that denial or unsupported behavior leaves a usable fallback.
+
+## Guitar strumming trainer
+
+The strumming trainer currently requires a viewport width of at least 768 CSS
+pixels, including when embedded in lesson or homework documents. Narrower
+viewports show an unsupported-screen message without mounting its playback
+runtime. Resizing below that threshold cancels playback and recording; document
+text remains available. This temporary feature restriction does not change the
+application-wide browser support baseline.

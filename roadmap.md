@@ -3245,13 +3245,24 @@ Stage 31 later supplies homework custom-node integration and client-portal execu
 
 ---
 
-## Stage 30: Shared Metronome and Exercise Timing
+## Stage 30: Shared Metronome and Exercise Timing ✅
 
 Deliver this timing foundation immediately after Stage 27 and before the individual standalone trainer implementations. Every currently approved trainer operates under the shared metronome.
 
 The metronome should be a reusable timing component rather than a separate implementation inside each trainer.
 
-### Remaining scope
+### Implemented timing foundation
+
+- Added a reusable timing host with one Web Audio clock and an active-exercise ownership contract.
+- Standalone staff/portal pages and structured-document hosts reuse that authority; selecting another exercise stops the previous owner and finishes its recording.
+- Metronome audio is included in live WebM recordings.
+- Standalone practice supports a manual playback tempo with a visible indication that exercise following and automatic progression are disabled.
+- Course document exercises retain teacher-defined settings; independent portal practice is configurable.
+- Shared scheduling, count-in, beat accents, bar/repetition progression, and finite duration calculations now live in the common timing implementation. Trainers publish timing configuration and consume positions.
+- Course workspace, structured documents, staff practice, and portal practice share the same host contract.
+- Implementation is complete; automated verification has not been run because repository policy requires separate user authorization.
+
+### Completed scope
 
 Support:
 

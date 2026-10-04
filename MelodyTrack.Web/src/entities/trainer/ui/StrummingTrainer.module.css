@@ -1,165 +1,25 @@
-.trainerCard {
-  overflow: hidden;
-}
-.trainerCard :global(.ant-card-body) {
-  display: grid;
-  gap: 24px;
-  padding: 24px;
-}
-.trainerCard :global(.ant-typography) {
-  margin: 0;
-}
-.trainerCanvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  background: #172033;
-}
-.controls {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(150px, 1fr));
-  gap: 12px;
-  align-items: end;
-  padding: 16px;
-  border: 1px solid var(--ant-color-border-secondary);
-  border-radius: 12px;
-  background: var(--ant-color-fill-quaternary);
-}
-.control,
-.timeSignatureControl {
-  display: grid;
-  gap: 8px;
-  min-width: 0;
-}
-.timeSignatureControl :global(.ant-segmented) {
-  width: max-content;
-  white-space: nowrap;
-}
-.switchControl {
-  display: grid;
-  grid-template-columns: auto auto;
-  align-items: center;
-  justify-content: start;
-  gap: 8px;
-}
-.switchControl :global(.ant-switch) {
-  justify-self: start;
-}
-.progressionControls {
-  display: grid;
-  grid-column: 1 / -1;
-  grid-template-columns: repeat(3, minmax(150px, 1fr));
-  gap: 12px;
-}
-.patternSection {
-  display: grid;
-  gap: 10px;
-}
-.patternTrack {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  padding: 4px 2px 12px;
-}
-.barGroup {
-  display: grid;
-  flex: 0 0 auto;
-  gap: 8px;
-  padding-right: 20px;
-  border-right: 2px solid var(--ant-color-border-secondary);
-}
-.barGroup:last-child {
-  padding-right: 0;
-  border-right: 0;
-}
-.barLabel {
-  color: var(--ant-color-text-tertiary);
-  font-size: 12px;
-}
-.barCells {
-  display: flex;
-  align-items: start;
-  gap: 6px;
-  min-height: 104px;
-}
-.rhythmColumn {
-  display: grid;
-  grid-template-rows: 18px 58px 24px;
-  gap: 5px;
-  width: 62px;
-}
-.motionColumn {
-  display: grid;
-  grid-template-rows: 18px 58px 24px;
-  width: 62px;
-  padding-top: 23px;
-}
-.countLabel {
-  min-height: 18px;
-  text-align: center;
-  color: var(--ant-color-text-secondary);
-  font-size: 12px;
-}
-.rhythmCell,
-.motionCell,
-.emptyCell {
-  display: grid;
-  place-content: center;
-  width: 62px;
-  height: 58px;
-  padding: 0;
-  font-size: 30px;
-  line-height: 1;
-}
-.motionCell {
-  border-radius: 50%;
-  font-size: 26px;
-}
-.emptyCell {
-  align-self: start;
-  margin-top: 23px;
-  border-style: dashed;
-  color: var(--ant-color-text-tertiary);
-  background: transparent;
-}
-.eventTools {
-  width: 62px;
-}
-.eventTools :global(.ant-btn) {
-  min-width: 0;
-  padding-inline: 5px;
-  font-size: 11px;
-}
-.picker {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(42px, 1fr));
-  gap: 6px;
-  max-width: 270px;
-}
-.alert {
-  margin: 0;
-}
-@media (max-width: 760px) {
-  .controls,
-  .progressionControls {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-@media (max-width: 560px) {
-  .trainerCard :global(.ant-card-body) {
-    gap: 20px;
-    padding: 16px;
-  }
-  .controls {
-    grid-template-columns: 1fr;
-    padding: 12px;
-  }
-  .control :global(.ant-input-number),
-  .timeSignatureControl :global(.ant-segmented) {
-    width: 100%;
-  }
-  .picker {
-    grid-template-columns: repeat(3, minmax(42px, 1fr));
-  }
-}
+.trainerCard { min-width: 0; overflow: hidden; }
+.trainerCard :global(.ant-card-body) { display: grid; gap: 20px; padding: 20px; }
+.trainerCard :global(.ant-typography) { margin: 0; }
+.presentation { display: grid; gap: 12px; }
+.trainerCanvas { display: block; width: 100%; height: auto; border-radius: 12px; background: #172033; }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; padding: 16px; border: 1px solid var(--ant-color-border-secondary); border-radius: 12px; }
+.control { display: grid; gap: 8px; min-width: 0; }
+.switchControl { display: flex; align-items: center; gap: 12px; }
+.progressionControls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+.progressionControls > :global(.ant-typography) { flex-basis: 100%; }
+.patternSection { display: grid; gap: 16px; min-width: 0; }
+.patternSection > :global(.ant-segmented) { max-width: 100%; overflow-x: auto; }
+.barGroup { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--ant-color-border-secondary); border-radius: 12px; min-width: 0; }
+.barHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
+.gridScroller { overflow-x: auto; min-width: 0; padding-bottom: 8px; }
+.editorRow { display: grid; grid-template-columns: 120px max-content; gap: 12px; padding: 8px 0; }
+.rowLabel { padding-top: 18px; color: var(--ant-color-text-secondary); }
+.barCells { display: grid; gap: 8px; }
+.rhythmColumn { display: grid; grid-template-rows: 64px 20px 36px 36px; gap: 4px; }
+.rhythmCell { width: 64px; height: 64px; padding: 0; font-size: 28px; }
+.countLabel { text-align: center; color: var(--ant-color-text-secondary); }
+.slotTool, .slotToolSpacer { width: 64px; height: 36px; }
+.picker { display: grid; grid-template-columns: repeat(3, minmax(64px, 1fr)); gap: 8px; }
+.picker :global(.ant-btn) { min-width: 64px; height: 44px; }
+.legend { display: grid; gap: 8px; }

@@ -3,6 +3,7 @@ export { downloadBlob } from "./download";
 export {
   canvasVideoBitrate,
   canvasVideoFrameRate,
+  maximumCanvasVideoSeconds,
   estimateVideoBytes,
   getSupportedWebmMimeType,
   recordCanvasVideo,

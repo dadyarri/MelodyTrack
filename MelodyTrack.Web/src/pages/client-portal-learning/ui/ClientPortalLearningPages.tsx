@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
 
+import { StrummingTrainer, TrainerTimingHost } from "@/entities/trainer";
 import { PortalCourseCard } from "@/entities/course";
 import { getPortalHomework, usePortalEnrollments } from "@/features/client-portal";
 import { BbcodeContent } from "@/shared/ui/editors";
@@ -10,10 +11,10 @@ import styles from "./ClientPortalLearningPages.module.css";
 
 function LearningPage({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <div className={styles.page}>
+    <TrainerTimingHost><div className={styles.page}>
       <h1>{title}</h1>
       {children}
-    </div>
+    </div></TrainerTimingHost>
   );
 }
 
@@ -109,9 +110,8 @@ export function ClientPortalHomeworkPage() {
 export function ClientPortalTrainersPage() {
   return (
     <LearningPage title="Тренажёры">
-      <RpgState kind="empty" title="Мастерская готовится к открытию">
-        Самостоятельные музыкальные упражнения скоро появятся здесь. Пока продолжайте практику по заданиям преподавателя.
-      </RpgState>
+      <p>Самостоятельная практика: настраивайте рисунок, темп и метроном. Эти настройки не изменяют задания преподавателя.</p>
+      <StrummingTrainer />
     </LearningPage>
   );
 }
