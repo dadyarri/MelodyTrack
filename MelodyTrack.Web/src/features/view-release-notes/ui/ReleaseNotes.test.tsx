@@ -236,7 +236,7 @@ describe("ReleaseNotes", () => {
     vi.mocked(getReleaseHistory).mockResolvedValue(history);
     renderReleaseNotes(<ReleaseVersion />);
     expect(await screen.findByText("Версия 2026.07.1.1")).toBeInTheDocument();
-    expect(screen.getByText("сделал")).toBeInTheDocument();
+    expect(screen.getByText(/сделал/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "dadyarri" })).toHaveAttribute("href", "https://dadyarri.dev");
     expect(screen.queryByRole("dialog", { name: "Что нового" })).not.toBeInTheDocument();
   });
