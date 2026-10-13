@@ -1,3 +1,4 @@
+import type { ComponentProps } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
@@ -38,7 +39,7 @@ describe("Structured course document editor", () => {
   });
 
   it("offers a trainer type before inserting the node", async () => {
-    const onChange = vi.fn();
+    const onChange = vi.fn<NonNullable<ComponentProps<typeof StructuredHomeworkEditor>["onChange"]>>();
     const screen = await render(<StructuredHomeworkEditor value={emptyDocument} exercises={[]} onChange={onChange} />);
 
     await screen.getByRole("button", { name: /Добавить тренажёр/ }).click();
@@ -61,7 +62,7 @@ describe("Structured course document editor", () => {
         content: [{ type: "paragraph", content: [{ type: "text", text: "Открыть сайт" }] }],
       },
     });
-    const onChange = vi.fn();
+    const onChange = vi.fn<NonNullable<ComponentProps<typeof StructuredHomeworkEditor>["onChange"]>>();
     const screen = await render(<StructuredHomeworkEditor value={value} exercises={[]} onChange={onChange} />);
 
     await screen.getByText("Открыть сайт", { exact: true }).dblClick();
@@ -75,9 +76,9 @@ describe("Structured course document editor", () => {
     let serialized = JSON.parse(onChange.mock.lastCall?.[0] as string) as {
       document: { content: Array<{ content: Array<{ text: string; marks?: Array<{ type: string; attrs?: { href?: string } }> }> }> };
     };
-    let linkedText = serialized.document.content[0]?.content.find((node) => node.text === "Сайт проекта");
+    const linkedText = serialized.document.content[0]?.content.find((node) => node.text === "Сайт проекта");
     expect(linkedText?.text).toBe("Сайт проекта");
-    expect(linkedText?.marks).toContainEqual(expect.objectContaining({ type: "link", attrs: expect.objectContaining({ href: "https://example.com/course" }) }));
+    expect(linkedText?.marks?.find((mark) => mark.type === "link")?.attrs?.href).toBe("https://example.com/course");
 
     await screen.getByText("Сайт проекта", { exact: true }).dblClick();
     await screen.getByRole("button", { name: "Ссылка" }).click();
@@ -86,9 +87,9 @@ describe("Structured course document editor", () => {
     await expect.poll(() => onChange.mock.calls.length).toBeGreaterThan(1);
 
     serialized = JSON.parse(onChange.mock.lastCall?.[0] as string) as typeof serialized;
-    linkedText = serialized.document.content[0]?.content.find((node) => node.text === "Сайт проекта");
-    expect(linkedText?.text).toBe("Сайт проекта");
-    expect(linkedText?.marks).toBeUndefined();
+    const unlinkedContent = serialized.document.content[0]?.content ?? [];
+    expect(unlinkedContent.map((node) => node.text).join("")).toContain("Сайт проекта");
+    expect(unlinkedContent.some((node) => node.marks?.some((mark) => mark.type === "link"))).toBe(false);
   });
 
   it("renders a labelled quote with a visible leading border", async () => {

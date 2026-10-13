@@ -30,8 +30,8 @@ import type {
   CourseEnrollmentThemeProgressAction,
   CourseThemeProgressState,
 } from "@/entities/course";
-import { TrainerTimingHost } from "@/entities/trainer";
 import { courseEnrollmentsApi, courseQueryKeys } from "@/entities/course";
+import { TrainerTimingHost } from "@/entities/trainer";
 import {
   type HomeworkExercise,
   reconcileDocumentExercises,
@@ -155,7 +155,11 @@ const edgeTypes: EdgeTypes = {
 };
 
 export function CourseWorkspace() {
-  return <TrainerTimingHost><CourseWorkspaceContent /></TrainerTimingHost>;
+  return (
+    <TrainerTimingHost>
+      <CourseWorkspaceContent />
+    </TrainerTimingHost>
+  );
 }
 
 function CourseWorkspaceContent() {

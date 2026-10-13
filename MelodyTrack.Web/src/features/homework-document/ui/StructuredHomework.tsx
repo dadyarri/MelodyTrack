@@ -2,9 +2,14 @@ import { getMarkRange, Node } from "@tiptap/core";
 import { EditorContent, NodeViewWrapper, type ReactNodeViewProps, ReactNodeViewRenderer, useEditor, useEditorState } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Alert, Button, Card, Dropdown, Input, Modal, Space, Switch, Tooltip, Typography } from "antd";
-import { lazy, type ReactNode, Suspense, useEffect, useMemo, useState } from "react";
+import { lazy, type ReactNode, Suspense, useEffect, useId, useMemo, useState } from "react";
 
-import { createDefaultStrummingConfiguration, parseStrummingConfiguration, TrainerTimingHost, type StrummingConfiguration } from "@/entities/trainer";
+import {
+  createDefaultStrummingConfiguration,
+  parseStrummingConfiguration,
+  type StrummingConfiguration,
+  TrainerTimingHost,
+} from "@/entities/trainer";
 import {
   BoldOutlined,
   CodeOutlined,
@@ -62,18 +67,35 @@ function ExerciseNodeView({ node, updateAttributes, editor, deleteNode }: ReactN
     <NodeViewWrapper className={styles.exercise} contentEditable={false}>
       <Typography.Title level={5}>Тренажёр «{definition?.label ?? "Неизвестное упражнение"}»</Typography.Title>
       <Suspense fallback={<Typography.Text type="secondary">Загружаем тренажёр…</Typography.Text>}>
-        {configuration ? <LazyStrummingTrainer
-          configuration={configuration}
-          showConfiguration={editor.isEditable}
-          onConfigurationChange={
-            editor.isEditable
-              ? (value) => {
-                  updateAttributes({ configuration: JSON.stringify(value) });
-                }
-              : undefined
-          }
-        /> : <Alert type="warning" showIcon title="Не удалось открыть упражнение" description="Конфигурация некорректна или имеет неподдерживаемую версию." />}
-        {!configuration && editor.isEditable ? <Button onClick={() => updateAttributes({ exerciseType: "strumming", configuration: JSON.stringify(createDefaultStrummingConfiguration()) })}>Заменить стандартным упражнением</Button> : null}
+        {configuration ? (
+          <LazyStrummingTrainer
+            configuration={configuration}
+            showConfiguration={editor.isEditable}
+            onConfigurationChange={
+              editor.isEditable
+                ? (value) => {
+                    updateAttributes({ configuration: JSON.stringify(value) });
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <Alert
+            type="warning"
+            showIcon
+            title="Не удалось открыть упражнение"
+            description="Конфигурация некорректна или имеет неподдерживаемую версию."
+          />
+        )}
+        {!configuration && editor.isEditable ? (
+          <Button
+            onClick={() => {
+              updateAttributes({ exerciseType: "strumming", configuration: JSON.stringify(createDefaultStrummingConfiguration()) });
+            }}
+          >
+            Заменить стандартным упражнением
+          </Button>
+        ) : null}
       </Suspense>
       {editor.isEditable ? (
         <Button danger onClick={deleteNode}>
@@ -123,6 +145,7 @@ export function StructuredHomeworkEditor({
   title?: string;
   allowExercises?: boolean;
 }) {
+  const linkId = useId();
   const [linkDialog, setLinkDialog] = useState<LinkDialogState | null>(null);
   const initialContent = useMemo(() => hydrateExerciseNodes(parseHomeworkDocument(value), exercises), [exercises, value]);
   const editor = useEditor({
@@ -209,78 +232,78 @@ export function StructuredHomeworkEditor({
     <TrainerTimingHost>
       <Card size="small" title={title} className={styles.editor}>
         <div className={styles.toolbar} role="toolbar" aria-label={`Форматирование: ${title}`}>
-        <Space.Compact>
-          <ToolbarButton
-            label="Жирный"
-            active={toolbarState?.bold ?? false}
-            icon={<BoldOutlined />}
-            onClick={() => editor.chain().focus().toggleBold().run()}
-          />
-          <ToolbarButton
-            label="Курсив"
-            active={toolbarState?.italic ?? false}
-            icon={<ItalicOutlined />}
-            onClick={() => editor.chain().focus().toggleItalic().run()}
-          />
-          <ToolbarButton
-            label="Подчёркнутый"
-            active={toolbarState?.underline ?? false}
-            icon={<UnderlineOutlined />}
-            onClick={() => editor.chain().focus().toggleUnderline().run()}
-          />
-          <ToolbarButton
-            label="Зачёркнутый"
-            active={toolbarState?.strike ?? false}
-            icon={<StrikethroughOutlined />}
-            onClick={() => editor.chain().focus().toggleStrike().run()}
-          />
-        </Space.Compact>
-        <Space.Compact>
-          <ToolbarButton
-            label="Маркированный список"
-            active={toolbarState?.bulletList ?? false}
-            icon={<UnorderedListOutlined />}
-            onClick={() => editor.chain().focus().toggleBulletList().run()}
-          />
-          <ToolbarButton
-            label="Нумерованный список"
-            active={toolbarState?.orderedList ?? false}
-            icon={<OrderedListOutlined />}
-            onClick={() => editor.chain().focus().toggleOrderedList().run()}
-          />
-          <ToolbarButton
-            label="Цитата"
-            active={toolbarState?.blockquote ?? false}
-            icon={<QuoteOutlined />}
-            onClick={() => editor.chain().focus().toggleBlockquote().run()}
-          />
-          <ToolbarButton
-            label="Блок кода"
-            active={toolbarState?.codeBlock ?? false}
-            icon={<CodeOutlined />}
-            onClick={() => editor.chain().focus().toggleCodeBlock().run()}
-          />
-          <ToolbarButton label="Ссылка" active={toolbarState?.link ?? false} icon={<LinkOutlined />} onClick={openLinkDialog} />
-        </Space.Compact>
-        {allowExercises ? (
-          <Dropdown
-            trigger={["click"]}
-            menu={{
-              items: Object.entries(exerciseDefinitions).map(([key, definition]) => ({
-                key,
-                icon: definition.icon,
-                label: definition.label,
-              })),
-              onClick: ({ key }) => {
-                insertExercise(key as ExerciseType);
-              },
-            }}
-          >
-            <Button size="small" icon={<GuitarOutlined />}>
-              Добавить тренажёр <DownOutlined />
-            </Button>
-          </Dropdown>
-        ) : null}
+          <Space.Compact>
+            <ToolbarButton
+              label="Жирный"
+              active={toolbarState?.bold ?? false}
+              icon={<BoldOutlined />}
+              onClick={() => editor.chain().focus().toggleBold().run()}
+            />
+            <ToolbarButton
+              label="Курсив"
+              active={toolbarState?.italic ?? false}
+              icon={<ItalicOutlined />}
+              onClick={() => editor.chain().focus().toggleItalic().run()}
+            />
+            <ToolbarButton
+              label="Подчёркнутый"
+              active={toolbarState?.underline ?? false}
+              icon={<UnderlineOutlined />}
+              onClick={() => editor.chain().focus().toggleUnderline().run()}
+            />
+            <ToolbarButton
+              label="Зачёркнутый"
+              active={toolbarState?.strike ?? false}
+              icon={<StrikethroughOutlined />}
+              onClick={() => editor.chain().focus().toggleStrike().run()}
+            />
+          </Space.Compact>
+          <Space.Compact>
+            <ToolbarButton
+              label="Маркированный список"
+              active={toolbarState?.bulletList ?? false}
+              icon={<UnorderedListOutlined />}
+              onClick={() => editor.chain().focus().toggleBulletList().run()}
+            />
+            <ToolbarButton
+              label="Нумерованный список"
+              active={toolbarState?.orderedList ?? false}
+              icon={<OrderedListOutlined />}
+              onClick={() => editor.chain().focus().toggleOrderedList().run()}
+            />
+            <ToolbarButton
+              label="Цитата"
+              active={toolbarState?.blockquote ?? false}
+              icon={<QuoteOutlined />}
+              onClick={() => editor.chain().focus().toggleBlockquote().run()}
+            />
+            <ToolbarButton
+              label="Блок кода"
+              active={toolbarState?.codeBlock ?? false}
+              icon={<CodeOutlined />}
+              onClick={() => editor.chain().focus().toggleCodeBlock().run()}
+            />
+            <ToolbarButton label="Ссылка" active={toolbarState?.link ?? false} icon={<LinkOutlined />} onClick={openLinkDialog} />
+          </Space.Compact>
+          {allowExercises ? (
+            <Dropdown
+              trigger={["click"]}
+              menu={{
+                items: Object.entries(exerciseDefinitions).map(([key, definition]) => ({
+                  key,
+                  icon: definition.icon,
+                  label: definition.label,
+                })),
+                onClick: ({ key }) => {
+                  insertExercise(key as ExerciseType);
+                },
+              }}
+            >
+              <Button size="small" icon={<GuitarOutlined />}>
+                Добавить тренажёр <DownOutlined />
+              </Button>
+            </Dropdown>
+          ) : null}
         </div>
         <EditorContent editor={editor} className={styles.content} />
       </Card>
@@ -299,17 +322,19 @@ export function StructuredHomeworkEditor({
       >
         {linkDialog ? (
           <Space orientation="vertical" size={16} className="wide">
-            <label className={styles.linkField}>
+            <label className={styles.linkField} htmlFor={`${linkId}-text`}>
               <Typography.Text>Текст ссылки</Typography.Text>
               <Input
+                id={`${linkId}-text`}
                 value={linkDialog.text}
                 onChange={(event) => {
                   setLinkDialog({ ...linkDialog, text: event.target.value });
                 }}
               />
             </label>
-            <label className={styles.linkSwitch}>
+            <label className={styles.linkSwitch} htmlFor={`${linkId}-enabled`}>
               <Switch
+                id={`${linkId}-enabled`}
                 checked={linkDialog.enabled}
                 onChange={(enabled) => {
                   setLinkDialog({ ...linkDialog, enabled });
@@ -317,9 +342,10 @@ export function StructuredHomeworkEditor({
               />
               <Typography.Text>Ссылка включена</Typography.Text>
             </label>
-            <label className={styles.linkField}>
+            <label className={styles.linkField} htmlFor={`${linkId}-href`}>
               <Typography.Text>Адрес ссылки</Typography.Text>
               <Input
+                id={`${linkId}-href`}
                 type="url"
                 value={linkDialog.href}
                 disabled={!linkDialog.enabled}
@@ -346,5 +372,9 @@ export function StructuredHomeworkContent({
 }) {
   const content = useMemo(() => hydrateExerciseNodes(parseHomeworkDocument(value), exercises), [exercises, value]);
   const editor = useEditor({ extensions, content, editable: false, immediatelyRender: false });
-  return <TrainerTimingHost><EditorContent editor={editor} className={`${styles.content} ${className}`} /></TrainerTimingHost>;
+  return (
+    <TrainerTimingHost>
+      <EditorContent editor={editor} className={`${styles.content} ${className}`} />
+    </TrainerTimingHost>
+  );
 }

@@ -128,7 +128,7 @@
   padding-bottom: 0;
 }
 
-.themeEditorModal.themeEditorModal :global(.ant-modal-content) {
+.themeEditorModal.themeEditorModal :global(.ant-modal-container) {
   display: flex;
   overflow: hidden;
   flex-direction: column;

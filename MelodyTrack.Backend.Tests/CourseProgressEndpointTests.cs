@@ -514,7 +514,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         listPayload.ShouldNotBeNull();
 
         var introTheme = listPayload.Enrollments.Single().Themes.Single(item => item.ThemeTitle == "Intro to rhythm");
-        introTheme.LessonContent.ShouldBe("Clap quarter notes and identify the pulse.");
+        introTheme.LessonContent.ShouldBe(LessonDocument("Clap quarter notes and identify the pulse."));
         introTheme.HomeworkDocument.ShouldBe("{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Practice with the metronome for 5 minutes.\"}]}]}}");
         introTheme.RecentAppointments.Count.ShouldBe(1);
         introTheme.RecentAppointments.Single().LessonNotes.ShouldBe("Повторили базовый ритм и хлопки.");
@@ -883,7 +883,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "pulse-intro",
                                         title = "Intro to rhythm updated",
-                                        lessonContent = "Updated lesson notes.",
+                                        lessonContent = LessonDocument("Updated lesson notes."),
                                         homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Updated homework.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 4,
@@ -1506,7 +1506,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "pulse-intro",
                                         title = "Intro to rhythm",
-                                        lessonContent = "Clap quarter notes and identify the pulse.",
+                                        lessonContent = LessonDocument("Clap quarter notes and identify the pulse."),
                                         homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Practice with the metronome for 5 minutes.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 3,
@@ -1516,7 +1516,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "pulse-clap",
                                         title = "Clap patterns",
-                                        lessonContent = "Switch between simple clap combinations.",
+                                        lessonContent = LessonDocument("Switch between simple clap combinations."),
                                         homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Record three clap patterns at home.\"}]}]}}",
                                         order = 2,
                                         experiencePointsReward = 5,
@@ -1534,7 +1534,7 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
                                     {
                                         key = "count-intro",
                                         title = "Count aloud",
-                                        lessonContent = "Count beats aloud while tapping.",
+                                        lessonContent = LessonDocument("Count beats aloud while tapping."),
                                         homeworkDocument = "{\"schemaVersion\":1,\"document\":{\"type\":\"doc\",\"content\":[{\"type\":\"paragraph\",\"content\":[{\"type\":\"text\",\"text\":\"Count four bars before starting the track.\"}]}]}}",
                                         order = 1,
                                         experiencePointsReward = 4,
@@ -1554,4 +1554,10 @@ public class CourseProgressEndpointTests(MelodyTrackFixture app) : IntegrationTe
         payload.ShouldNotBeNull();
         return payload.Id;
     }
+    private static string LessonDocument(string text) => System.Text.Json.JsonSerializer.Serialize(new
+    {
+        schemaVersion = 1,
+        document = new { type = "doc", content = new[] { new { type = "paragraph", content = new[] { new { type = "text", text } } } } }
+    });
+
 }
