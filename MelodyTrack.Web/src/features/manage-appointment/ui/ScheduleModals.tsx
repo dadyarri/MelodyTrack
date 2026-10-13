@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import type { FormInstance, FormProps } from "antd";
 import { Button, Checkbox, DatePicker, Form, Input, Modal, Select, Space, Typography } from "antd";
 import type { DefaultOptionType } from "antd/es/select";
@@ -9,8 +10,8 @@ import { getAppointmentStatusLabel } from "@/entities/appointment";
 import { ClientSelect } from "@/entities/client";
 import { getPhoneUri, getSocialLinkHref } from "@/entities/client";
 import { ServiceSelect } from "@/entities/service";
-import { UserSelect } from "@/entities/user";
-import { DATE_FORMAT, DATE_TIME_FORMAT, formatDateTime, TIME_FORMAT } from "@/shared/lib";
+import { userQueryKeys, usersApi, UserSelect } from "@/entities/user";
+import { browserTimezone, DATE_FORMAT, DATE_TIME_FORMAT, formatDateTime, teacherTimeToUtc, TIME_FORMAT, toTeacherTime } from "@/shared/lib";
 import { formatRecordActivitySummary } from "@/shared/lib";
 import type { DurableFormStatus } from "@/shared/lib/react";
 import { DraftFormModal, StatusBanner } from "@/shared/ui";
@@ -40,6 +41,7 @@ const weeklyDayOptions: { label: string; value: number }[] = [
 ];
 
 export type AppointmentFormValues = {
+  timezone?: string;
   clientId: string;
   serviceId: string;
   providerId?: string;
@@ -52,6 +54,7 @@ export type AppointmentFormValues = {
 };
 
 export type AppointmentEditFormValues = {
+  timezone?: string;
   clientId: string;
   serviceId: string;
   providerId?: string;
@@ -111,6 +114,7 @@ export function AppointmentEditModal({
   onReapplyDraft: () => void;
   onRetryDraft: () => void;
 }) {
+  const zone = useFormTimezone(form, Boolean(appointment));
   useEffect(() => {
     if (!appointment) {
       form.resetFields();
@@ -123,7 +127,8 @@ export function AppointmentEditModal({
       providerId: lockedProviderId ?? appointment.provider?.id,
       courseThemeId: appointment.courseTheme?.id,
       lessonNotes: appointment.lessonNotes ?? undefined,
-      startDate: dayjs(appointment.startDate),
+      startDate: toTeacherTime(appointment.startDate, appointment.provider?.timezone ?? browserTimezone),
+      timezone: appointment.provider?.timezone ?? browserTimezone,
     });
   }, [appointment, form, lockedProviderId]);
 
@@ -142,7 +147,7 @@ export function AppointmentEditModal({
       onOk={() => {
         form.submit();
       }}
-      confirmLoading={editPending}
+      confirmLoading={editPending || zone.loading}
       destroyOnHidden
     >
       {appointment ? (
@@ -160,6 +165,9 @@ export function AppointmentEditModal({
               description={formatRecordActivitySummary(appointment.lastActivity)}
             />
           ) : null}
+          <Form.Item name="timezone" hidden>
+            <Input />
+          </Form.Item>
           <Form.Item label="Клиент">
             <Space orientation="vertical" size={8} className="wide">
               <Form.Item name="clientId" noStyle rules={[{ required: true }]}>
@@ -194,7 +202,7 @@ export function AppointmentEditModal({
               maxLength={4000}
             />
           </Form.Item>
-          <Form.Item name="startDate" label="Начало" rules={[{ required: true }]}>
+          <Form.Item name="startDate" label={`Начало (${zone.timezone})`} rules={[{ required: true }]}>
             <DatePicker showTime={{ format: TIME_FORMAT }} format={DATE_TIME_FORMAT} className="wide" />
           </Form.Item>
           {appointment.recurringRule ? (
@@ -256,6 +264,7 @@ export function AppointmentCreateModal({
   courseThemesLoading: boolean;
 }) {
   const recurrenceTypeId = Form.useWatch("recurrenceTypeId", form);
+  const zone = useFormTimezone(form, open);
   const startDate = Form.useWatch("startDate", form);
   const weeklyDays = Form.useWatch("weeklyDays", form);
   const weeklyRecurrenceType = recurrenceTypes.find((item) => item.key === "weekly");
@@ -307,7 +316,7 @@ export function AppointmentCreateModal({
       onOk={() => {
         form.submit();
       }}
-      confirmLoading={createPending}
+      confirmLoading={createPending || zone.loading}
       destroyOnHidden
     >
       <Form<AppointmentFormValues>
@@ -320,6 +329,9 @@ export function AppointmentCreateModal({
           onDraftChange(values);
         }}
       >
+        <Form.Item name="timezone" hidden>
+          <Input />
+        </Form.Item>
         <Form.Item name="recurrenceTypeId" hidden>
           <input type="hidden" />
         </Form.Item>
@@ -353,7 +365,7 @@ export function AppointmentCreateModal({
         <Form.Item name="lessonNotes" label="Заметки по уроку">
           <Input.TextArea autoSize={{ minRows: 3, maxRows: 6 }} placeholder="Кратко зафиксируйте, что было на уроке" maxLength={4000} />
         </Form.Item>
-        <Form.Item name="startDate" label="Начало" rules={[{ required: true }]}>
+        <Form.Item name="startDate" label={`Начало (${zone.timezone})`} rules={[{ required: true }]}>
           <DatePicker showTime={{ format: TIME_FORMAT }} format={DATE_TIME_FORMAT} className="wide" />
         </Form.Item>
         <Form.Item label="Повторение">
@@ -477,11 +489,27 @@ export function RecurringDeleteModal({
               description={formatRecordActivitySummary(appointment.lastActivity)}
             />
           ) : null}
-          <Typography.Text>Выберите, как удалить запись на {formatDateTime(dayjs(appointment.startDate))}.</Typography.Text>
+          <Typography.Text>
+            Выберите, как удалить запись на{" "}
+            {formatDateTime(
+              toTeacherTime(
+                appointment.startDate,
+                appointment.recurringRule?.timezone ?? appointment.provider?.timezone ?? browserTimezone,
+              ),
+            )}
+            .
+          </Typography.Text>
           {isMultiDayWeeklyRecurringAppointment(appointment) ? (
             <Typography.Text type="secondary">
               Серия повторяется по дням: {formatWeeklyPattern(appointment.recurringRule?.recurrencePattern)}. Если выбрать удаление серии,
-              действие затронет все эти дни, а не только {getWeekdayLabel(dayjs(appointment.startDate))}.
+              действие затронет все эти дни, а не только{" "}
+              {getWeekdayLabel(
+                toTeacherTime(
+                  appointment.startDate,
+                  appointment.recurringRule?.timezone ?? appointment.provider?.timezone ?? browserTimezone,
+                ),
+              )}
+              .
             </Typography.Text>
           ) : null}
           <Space orientation="vertical" size={10} className={`wide ${styles.recurringDeleteActions}`}>
@@ -545,7 +573,14 @@ export function RecurringRescheduleModal({
             />
           ) : null}
           <Typography.Text>
-            Выберите, как перенести запись с {formatDateTime(dayjs(appointment.startDate))} на {formatDateTime(nextStartDate)}.
+            Выберите, как перенести запись с{" "}
+            {formatDateTime(
+              toTeacherTime(
+                appointment.startDate,
+                appointment.recurringRule?.timezone ?? appointment.provider?.timezone ?? browserTimezone,
+              ),
+            )}{" "}
+            на {formatDateTime(nextStartDate)}.
           </Typography.Text>
           <Space orientation="vertical" size={10} className={`wide ${styles.recurringDeleteActions}`}>
             <Button
@@ -573,7 +608,7 @@ export function RecurringRescheduleModal({
                 onReschedule(appointment, nextStartDate, "all");
               }}
             >
-              Все записи
+              Все будущие записи
             </Button>
             <Button block disabled={reschedulePending} onClick={onCancel}>
               Отмена
@@ -606,7 +641,7 @@ export function AppointmentDetailsModal({
     return null;
   }
 
-  const start = dayjs(appointment.startDate);
+  const start = toTeacherTime(appointment.startDate, appointment.provider?.timezone ?? browserTimezone);
   const end = dayjs(appointment.endDate);
   const clientName = [appointment.client.lastName, appointment.client.firstName, appointment.client.patronymic].filter(Boolean).join(" ");
   const recurrenceSummary = appointment.recurringRule ? formatRecurringRuleSummary(appointment.recurringRule) : null;
@@ -795,9 +830,14 @@ function formatWeeklyPattern(pattern?: number | null) {
 
 function getRecurringDeleteOptions(appointment: Appointment): RecurringDeleteOption[] {
   if (isMultiDayWeeklyRecurringAppointment(appointment)) {
-    const selectedDayLabel = getWeekdayLabel(dayjs(appointment.startDate));
+    const selectedDayLabel = getWeekdayLabel(
+      toTeacherTime(appointment.startDate, appointment.recurringRule?.timezone ?? appointment.provider?.timezone ?? browserTimezone),
+    );
     const weeklyPattern = formatWeeklyPattern(appointment.recurringRule?.recurrencePattern);
-    const remainingDays = formatRemainingWeeklyPattern(appointment.recurringRule?.recurrencePattern, dayjs(appointment.startDate));
+    const remainingDays = formatRemainingWeeklyPattern(
+      appointment.recurringRule?.recurrencePattern,
+      toTeacherTime(appointment.startDate, appointment.provider?.timezone ?? browserTimezone),
+    );
 
     return [
       {
@@ -812,8 +852,8 @@ function getRecurringDeleteOptions(appointment: Appointment): RecurringDeleteOpt
       },
       {
         scope: "weekday-all",
-        label: "Все записи в этот день недели",
-        description: `Удалятся все записи на ${selectedDayLabel}. Дни ${remainingDays} останутся в серии.`,
+        label: "Все будущие записи в этот день недели",
+        description: `Удалятся будущие записи на ${selectedDayLabel}. Дни ${remainingDays} останутся в серии.`,
       },
       {
         scope: "this-and-following",
@@ -841,8 +881,8 @@ function getRecurringDeleteOptions(appointment: Appointment): RecurringDeleteOpt
     },
     {
       scope: "all",
-      label: "Все записи",
-      description: "Удалится вся серия.",
+      label: "Все будущие записи",
+      description: "Удалится будущая часть серии.",
     },
   ];
 }
@@ -914,3 +954,31 @@ const appointmentStatusOptions: {
     ),
   },
 ];
+
+function useFormTimezone(form: FormInstance, enabled: boolean) {
+  const providerId = Form.useWatch("providerId", form) as string | undefined;
+  const storedZone = Form.useWatch("timezone", form) as string | undefined;
+  const availability = useQuery({
+    queryKey: userQueryKeys.availability(providerId),
+    queryFn: () => {
+      if (!providerId) throw new Error("Преподаватель не выбран.");
+      return usersApi.getAvailability(providerId);
+    },
+    enabled: enabled && Boolean(providerId),
+  });
+  const timezone = availability.data?.timezone ?? browserTimezone;
+  useEffect(() => {
+    if (!enabled || (providerId && !availability.data) || storedZone === timezone) return;
+    const current = form.getFieldValue("startDate") as Dayjs | null | undefined;
+    if (current) {
+      try {
+        const instant = storedZone ? teacherTimeToUtc(current, storedZone) : current.toISOString();
+        form.setFieldValue("startDate", toTeacherTime(instant, timezone));
+      } catch (error) {
+        form.setFields([{ name: "startDate", errors: [error instanceof Error ? error.message : "Выберите корректное время занятия."] }]);
+      }
+    }
+    form.setFieldValue("timezone", timezone);
+  }, [availability.data, enabled, form, providerId, storedZone, timezone]);
+  return { timezone, loading: Boolean(providerId) && !availability.data };
+}

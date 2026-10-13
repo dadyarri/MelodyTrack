@@ -3,6 +3,7 @@ import { Button, Input, Popconfirm, Space, Tag } from "antd";
 import { type Client, type ClientLifecycleStatus, formatClientName } from "@/entities/client";
 import { CourseEnrollmentCreateModal } from "@/features/enroll-client-course";
 import { ClientEditorModal, ClientVacationsModal } from "@/features/manage-client";
+import { VacationManagement } from "@/features/manage-vacation-requests";
 import { formatDateTime } from "@/shared/lib";
 import { formatMoney } from "@/shared/lib";
 import { ActionableEmptyState } from "@/shared/ui";
@@ -261,6 +262,11 @@ export function ClientsPage() {
         }}
       />
       <ClientVacationsModal
+        management={
+          controller.vacationsClient ? (
+            <VacationManagement subject={{ subjectType: "client", subjectId: controller.vacationsClient.id }} />
+          ) : undefined
+        }
         client={controller.vacationsClient}
         form={controller.vacationsForm}
         saving={controller.vacationsMutation.isPending}

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Alert, App as AntdApp, Button, Card, Empty, Form, Input, List, Modal, Segmented, Space, Tag, Typography } from "antd";
+import { Alert, App as AntdApp, Button, Card, Checkbox, Empty, Form, Input, List, Modal, Segmented, Space, Tag, Typography } from "antd";
 import { useState } from "react";
 
 import {
@@ -12,9 +12,10 @@ import {
   type WorkingHoursRequestStatus,
 } from "@/entities/user";
 
+import { invalidateScheduling } from "../lib/invalidateScheduling";
 import styles from "./VacationRequestWorkspace.module.css";
 
-type DecisionFormValues = { message?: string };
+type DecisionFormValues = { message?: string; cancelConflictingAppointments?: boolean };
 type DecisionState = { action: "approve" | "decline"; request: WorkingHoursRequest };
 
 export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review" }) {
@@ -29,7 +30,7 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
     queryFn: ({ signal }) => (review ? workingHoursRequestsApi.listReview(reviewView, signal) : workingHoursRequestsApi.listMine(signal)),
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: workingHoursRequestQueryKeys.all });
+  const invalidate = () => invalidateScheduling(queryClient);
 
   const cancelMutation = useMutation({
     mutationFn: (request: WorkingHoursRequest) => workingHoursRequestsApi.cancel(request.id, request.version),
@@ -41,7 +42,11 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
 
   const decisionMutation = useMutation({
     mutationFn: ({ state, values }: { state: DecisionState; values: DecisionFormValues }) => {
-      const input = { expectedVersion: state.request.version, message: values.message?.trim() || undefined };
+      const input = {
+        expectedVersion: state.request.version,
+        message: values.message?.trim() || undefined,
+        cancelConflictingAppointments: values.cancelConflictingAppointments,
+      };
       return state.action === "approve"
         ? workingHoursRequestsApi.approve(state.request.id, input)
         : workingHoursRequestsApi.decline(state.request.id, input);
@@ -103,6 +108,9 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
                   {request.decisionMessage ? (
                     <Typography.Paragraph type="secondary">Комментарий к решению: {request.decisionMessage}</Typography.Paragraph>
                   ) : null}
+                  <Typography.Text>
+                    Часовой пояс: {request.currentTimezone} → {request.requestedTimezone}
+                  </Typography.Text>
                   <div className={styles.scheduleComparison}>
                     {review ? <ScheduleSummary title="Текущий график" days={request.currentWorkingHours} /> : null}
                     <ScheduleSummary title="Запрошенный график" days={request.requestedWorkingHours} />
@@ -169,6 +177,11 @@ export function WorkingHoursRequestWorkspace({ mode }: { mode: "staff" | "review
             if (decision) decisionMutation.mutate({ state: decision, values });
           }}
         >
+          {decision?.action === "approve" ? (
+            <Form.Item name="cancelConflictingAppointments" valuePropName="checked">
+              <Checkbox>Отменить будущие запланированные занятия, которые не помещаются в новый график</Checkbox>
+            </Form.Item>
+          ) : null}
           <Form.Item name="message" label="Комментарий" rules={[{ max: 500, message: "Не больше 500 символов" }]}>
             <Input.TextArea rows={3} maxLength={500} showCount />
           </Form.Item>

@@ -34,4 +34,40 @@ describe("timed user availability", () => {
       vacationId: "01JTESTVACATION00000000000",
     });
   });
+
+  it("uses only existing working minutes when the teacher's clock moves forward", () => {
+    const spring: UserAvailability = {
+      ...availability,
+      timezone: "Europe/Berlin",
+      vacations: [],
+      workingHours: [{ dayOfWeek: "sunday", isWorkingDay: true, startTime: "02:30", endTime: "04:00" }],
+    };
+
+    expect(isSlotAvailable(spring, dayjs("2030-03-31T01:00:00Z"), 60)).toBe(true);
+    expect(() => getBlockedRanges(spring, dayjs("2030-03-31T00:00:00"), 0, 24)).not.toThrow();
+  });
+
+  it("blocks a lesson crossing the gap between repeated working windows", () => {
+    const autumn: UserAvailability = {
+      ...availability,
+      timezone: "Europe/Berlin",
+      vacations: [],
+      workingHours: [{ dayOfWeek: "sunday", isWorkingDay: true, startTime: "02:00", endTime: "02:30" }],
+    };
+
+    expect(isSlotAvailable(autumn, dayjs("2030-10-27T00:00:00Z"), 30)).toBe(true);
+    expect(isSlotAvailable(autumn, dayjs("2030-10-27T01:00:00Z"), 30)).toBe(true);
+    expect(isSlotAvailable(autumn, dayjs("2030-10-27T00:20:00Z"), 60)).toBe(false);
+  });
+
+  it("allows a lesson ending exactly at midnight when working hours end at 24:00", () => {
+    const late: UserAvailability = {
+      ...availability,
+      timezone: "UTC",
+      vacations: [],
+      workingHours: [{ dayOfWeek: "monday", isWorkingDay: true, startTime: "22:00", endTime: "24:00" }],
+    };
+
+    expect(isSlotAvailable(late, dayjs("2030-06-03T23:00:00Z"), 60)).toBe(true);
+  });
 });

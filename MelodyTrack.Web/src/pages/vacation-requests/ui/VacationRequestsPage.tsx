@@ -1,5 +1,5 @@
 import { hasSuperuserAccess, useAuth } from "@/entities/session";
-import { VacationRequestWorkspace, WorkingHoursRequestWorkspace } from "@/features/manage-vacation-requests";
+import { VacationManagement, VacationRequestWorkspace, WorkingHoursRequestWorkspace } from "@/features/manage-vacation-requests";
 import { PageLayout } from "@/shared/ui";
 
 export function VacationRequestsPage() {
@@ -16,6 +16,7 @@ export function VacationRequestsPage() {
       }
       size={20}
     >
+      {review ? <VacationManagement /> : null}
       <VacationRequestWorkspace mode={review ? "review" : "staff"} />
       <WorkingHoursRequestWorkspace mode={review ? "review" : "staff"} />
     </PageLayout>

@@ -22,10 +22,10 @@ import {
   userQueryKeys,
   usersApi,
   type WeekdayKey,
-  workingHoursRequestQueryKeys,
   workingHoursRequestsApi,
 } from "@/entities/user";
 import { weekdayOrder } from "@/entities/user";
+import { invalidateScheduling } from "@/features/manage-vacation-requests";
 import { onboardingApi, onboardingQueryKeys } from "@/features/onboarding";
 import type { Ulid } from "@/shared/api";
 import { getApiErrorMessages } from "@/shared/api";
@@ -37,6 +37,8 @@ import { useUrlCopyModal } from "@/shared/ui";
 type TotpSetupState = Setup2FaResponse & { password: string };
 
 export type AvailabilityFormValues = {
+  timezone?: string;
+  cancelConflictingAppointments?: boolean;
   workingHours: Array<{
     dayOfWeek: WeekdayKey;
     isWorkingDay: boolean;
@@ -61,6 +63,8 @@ export type PersonalInfoFormValues = {
 };
 
 type AvailabilityDraftValues = {
+  timezone?: string;
+  cancelConflictingAppointments?: boolean;
   workingHours: Array<{ dayOfWeek: WeekdayKey; isWorkingDay: boolean; timeRange?: [string, string] }>;
   vacations: Array<{ period: [string, string] }>;
 };
@@ -73,6 +77,8 @@ const personalInfoDraftSchema = v.object({
   vk: v.optional(v.nullable(v.string())),
 });
 const availabilityDraftSchema = v.object({
+  timezone: v.optional(v.string()),
+  cancelConflictingAppointments: v.optional(v.boolean()),
   workingHours: v.array(
     v.object({
       dayOfWeek: v.picklist(weekdayOrder),
@@ -85,6 +91,8 @@ const availabilityDraftSchema = v.object({
 const personalInfoDraftCodec = jsonDurableFormCodec<PersonalInfoFormValues>();
 const availabilityDraftCodec = {
   serialize: (values: AvailabilityFormValues): AvailabilityDraftValues => ({
+    timezone: values.timezone,
+    cancelConflictingAppointments: values.cancelConflictingAppointments,
     workingHours: values.workingHours.map((item) => ({
       ...item,
       timeRange: item.timeRange ? [item.timeRange[0].toISOString(), item.timeRange[1].toISOString()] : undefined,
@@ -96,6 +104,8 @@ const availabilityDraftCodec = {
       })),
   }),
   deserialize: (values: AvailabilityDraftValues): Partial<AvailabilityFormValues> => ({
+    timezone: values.timezone,
+    cancelConflictingAppointments: values.cancelConflictingAppointments,
     workingHours: values.workingHours.map((item) => ({
       ...item,
       timeRange: item.timeRange ? [dayjs(item.timeRange[0]), dayjs(item.timeRange[1])] : undefined,
@@ -115,6 +125,7 @@ function hasVacationPeriod(period?: [Dayjs, Dayjs]) {
 
 function mapAvailabilityToForm(availability: UserAvailability): AvailabilityFormValues {
   return {
+    timezone: availability.timezone ?? "Europe/Moscow",
     workingHours: weekdayOrder.map((dayOfWeek) => {
       const item = availability.workingHours.find((entry) => entry.dayOfWeek === dayOfWeek);
       return {
@@ -348,7 +359,7 @@ export function useProfilePageController() {
         endTime: item.isWorkingDay && item.timeRange?.[1] ? item.timeRange[1].format("HH:mm") : null,
       }));
       if (requiresScheduleApproval) {
-        return workingHoursRequestsApi.create({ workingHours });
+        return workingHoursRequestsApi.create({ workingHours, timezone: values.timezone });
       }
 
       const userId = meQuery.data?.id;
@@ -359,7 +370,11 @@ export function useProfilePageController() {
         userId,
         {
           workingHours,
+          timezone: values.timezone,
+          cancelConflictingAppointments: values.cancelConflictingAppointments,
           vacations: (availabilityQuery.data?.vacations ?? []).map((item) => ({
+            id: item.id,
+            version: item.version ?? undefined,
             startDate: item.startDate,
             endDate: item.endDate,
           })),
@@ -370,9 +385,7 @@ export function useProfilePageController() {
     onSuccess: async () => {
       message.success(requiresScheduleApproval ? "Заявка на изменение рабочих дней отправлена" : "График работы сохранен");
       await availabilityDraft.clearAfterSuccess();
-      await queryClient.invalidateQueries({
-        queryKey: requiresScheduleApproval ? workingHoursRequestQueryKeys.all : userQueryKeys.availability(meQuery.data?.id),
-      });
+      await invalidateScheduling(queryClient);
     },
     meta: { suppressErrorNotification: true },
     onError: async (error, variables) => {

@@ -1,4 +1,4 @@
-export * from "./date";
+export * from "./datetime";
 export * from "./browser";
 export * from "./money";
 export * from "./pluralize";

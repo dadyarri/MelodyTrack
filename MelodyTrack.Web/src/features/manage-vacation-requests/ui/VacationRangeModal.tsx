@@ -4,6 +4,7 @@ import type { Dayjs } from "dayjs";
 import { useEffect } from "react";
 
 import { userQueryKeys, usersApi } from "@/entities/user";
+import { teacherTimeToUtc } from "@/shared/lib";
 import { DeleteOutlined } from "@/shared/ui/icons";
 
 export type VacationRangeFormValues = {
@@ -18,6 +19,7 @@ export function VacationRangeModal({
   requestApproval,
   editing = false,
   removePending = false,
+  timezone,
   subjectId,
   subjectName,
   onCancel,
@@ -30,6 +32,7 @@ export function VacationRangeModal({
   requestApproval: boolean;
   editing?: boolean;
   removePending?: boolean;
+  timezone?: string;
   subjectId?: string;
   subjectName?: string;
   onCancel: () => void;
@@ -38,8 +41,16 @@ export function VacationRangeModal({
 }) {
   const [form] = Form.useForm<VacationRangeFormValues>();
   const selectedPeriod = Form.useWatch("period", form) as VacationRangeFormValues["period"] | undefined;
-  const selectedStart = selectedPeriod?.[0].isValid() ? selectedPeriod[0].toISOString() : undefined;
-  const selectedEnd = selectedPeriod?.[1].isValid() ? selectedPeriod[1].toISOString() : undefined;
+  const convert = (value: Dayjs | undefined) => {
+    if (!value?.isValid()) return undefined;
+    try {
+      return timezone ? teacherTimeToUtc(value, timezone) : value.toISOString();
+    } catch {
+      return undefined;
+    }
+  };
+  const selectedStart = convert(selectedPeriod?.[0]);
+  const selectedEnd = convert(selectedPeriod?.[1]);
   const canCheckConflicts = open && !requestApproval && Boolean(subjectId && selectedStart && selectedEnd);
   const conflictCountQuery = useQuery({
     queryKey: userQueryKeys.vacationAppointmentConflictCount(subjectId, selectedStart, selectedEnd),
@@ -64,7 +75,7 @@ export function VacationRangeModal({
     <Modal
       open={open}
       title={editing ? "Изменить отпуск" : requestApproval ? "Запросить отпуск" : "Добавить отпуск"}
-      okText={editing ? "Сохранить" : requestApproval ? "Отправить заявку" : "Добавить"}
+      okText={requestApproval ? "Отправить заявку" : editing ? "Сохранить" : "Добавить"}
       confirmLoading={pending || conflictCountQuery.isFetching}
       okButtonProps={{ disabled: conflictCountQuery.isFetching }}
       onCancel={onCancel}
@@ -88,7 +99,7 @@ export function VacationRangeModal({
       }
     >
       <Typography.Paragraph type="secondary">
-        {editing
+        {editing && !requestApproval
           ? `Изменения${subjectName ? ` для ${subjectName}` : ""} сразу повлияют на доступность.`
           : requestApproval
             ? "Период начнёт влиять на расписание после решения суперпользователя."
@@ -108,7 +119,7 @@ export function VacationRangeModal({
       >
         <Form.Item
           name="period"
-          label="Начало и окончание"
+          label={`Начало и окончание${timezone ? ` (${timezone})` : ""}`}
           rules={[
             { required: true, message: "Укажите период отпуска" },
             {

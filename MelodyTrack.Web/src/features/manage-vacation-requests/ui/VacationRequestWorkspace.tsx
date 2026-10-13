@@ -1,27 +1,13 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Alert,
-  App as AntdApp,
-  Button,
-  Card,
-  Checkbox,
-  DatePicker,
-  Empty,
-  Form,
-  Input,
-  List,
-  Modal,
-  Segmented,
-  Space,
-  Tag,
-  Typography,
-} from "antd";
+import { Alert, App as AntdApp, Button, Card, Checkbox, Empty, Form, Input, List, Modal, Segmented, Space, Tag, Typography } from "antd";
 import type { Dayjs } from "dayjs";
 import { useState } from "react";
 
 import { vacationRequestQueryKeys, vacationRequestsApi } from "../api/vacationRequestApi";
+import { invalidateScheduling } from "../lib/invalidateScheduling";
 import type { VacationRequest, VacationRequestStatus } from "../model/types";
 import { PortalVacationRequests } from "./PortalVacationRequests";
+import { VacationManagement } from "./VacationManagement";
 import styles from "./VacationRequestWorkspace.module.css";
 
 type RequestFormValues = {
@@ -42,7 +28,6 @@ type DecisionState = {
 export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | "review" }) {
   const { message } = AntdApp.useApp();
   const queryClient = useQueryClient();
-  const [requestForm] = Form.useForm<RequestFormValues>();
   const [decisionForm] = Form.useForm<DecisionFormValues>();
   const [reviewView, setReviewView] = useState<"pending" | "history">("pending");
   const [decision, setDecision] = useState<DecisionState | null>(null);
@@ -53,7 +38,7 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
     queryFn: ({ signal }) => (review ? vacationRequestsApi.listReview(reviewView, signal) : vacationRequestsApi.listMine(portal, signal)),
   });
 
-  const invalidate = () => queryClient.invalidateQueries({ queryKey: vacationRequestQueryKeys.all });
+  const invalidate = () => invalidateScheduling(queryClient);
 
   const createMutation = useMutation({
     mutationFn: (values: RequestFormValues) =>
@@ -66,7 +51,6 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
         portal,
       ),
     onSuccess: async () => {
-      if (!portal) requestForm.resetFields();
       await invalidate();
       if (!portal) void message.success("Заявка отправлена суперпользователю");
     },
@@ -103,53 +87,31 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
 
   if (portal)
     return (
-      <PortalVacationRequests
-        requests={requests}
-        loading={query.isLoading}
-        error={query.error}
-        cancelled={cancelMutation.isSuccess}
-        mutationError={createMutation.error ?? cancelMutation.error}
-        creating={createMutation.isPending}
-        cancelling={cancelMutation.isPending}
-        onRetry={() => {
-          void query.refetch();
-        }}
-        onCreate={createMutation.mutateAsync}
-        onCancel={(request) => {
-          cancelMutation.mutate(request);
-        }}
-      />
+      <Space orientation="vertical" className="wide">
+        <VacationManagement allowCreate={false} />
+        <PortalVacationRequests
+          requests={requests}
+          loading={query.isLoading}
+          error={query.error}
+          cancelled={cancelMutation.isSuccess}
+          mutationError={createMutation.error ?? cancelMutation.error}
+          creating={createMutation.isPending}
+          cancelling={cancelMutation.isPending}
+          onRetry={() => {
+            void query.refetch();
+          }}
+          onCreate={createMutation.mutateAsync}
+          onCancel={(request) => {
+            cancelMutation.mutate(request);
+          }}
+        />
+      </Space>
     );
 
   return (
     <Space orientation="vertical" size={20} className="wide">
       {!review ? (
-        <Card title="Новая заявка">
-          <Alert
-            type="info"
-            showIcon
-            className={styles.notice}
-            title="Отпуск начнёт влиять на расписание только после одобрения суперпользователем."
-          />
-          <Form<RequestFormValues>
-            form={requestForm}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={(values) => {
-              createMutation.mutate(values);
-            }}
-          >
-            <Form.Item name="period" label="Период отпуска" rules={[{ required: true, message: "Укажите период отпуска" }]}>
-              <DatePicker.RangePicker className="wide" format="DD.MM.YYYY HH:mm" showTime={{ format: "HH:mm", minuteStep: 15 }} />
-            </Form.Item>
-            <Form.Item name="message" label="Комментарий" rules={[{ max: 500, message: "Не больше 500 символов" }]}>
-              <Input.TextArea rows={3} maxLength={500} showCount placeholder="Необязательное сообщение для суперпользователя" />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" loading={createMutation.isPending}>
-              Отправить заявку
-            </Button>
-          </Form>
-        </Card>
+        <VacationManagement />
       ) : (
         <Segmented
           value={reviewView}
@@ -201,6 +163,9 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
                       Текущие отпуска: {request.existingVacations.map((item) => formatPeriod(item.startDate, item.endDate)).join(", ")}
                     </Typography.Text>
                   ) : null}
+                  <Tag>
+                    {request.action === "update" ? "Изменение отпуска" : request.action === "delete" ? "Удаление отпуска" : "Новый отпуск"}
+                  </Tag>
                   <Space wrap size={[8, 6]}>
                     <Typography.Text type="secondary">Создана {formatDateTime(request.createdAtUtc)}</Typography.Text>
                     {review && request.existingVacations.length > 0 ? <Tag>Отпусков уже: {request.existingVacations.length}</Tag> : null}
@@ -283,7 +248,7 @@ export function VacationRequestWorkspace({ mode }: { mode: "staff" | "portal" | 
           <Form.Item name="message" label="Комментарий" rules={[{ max: 500, message: "Не больше 500 символов" }]}>
             <Input.TextArea rows={3} maxLength={500} showCount />
           </Form.Item>
-          {decision?.action === "approve" && decision.request.conflictingAppointmentCount > 0 ? (
+          {decision?.action === "approve" && decision.request.action !== "delete" ? (
             <Form.Item name="cancelConflictingAppointments" valuePropName="checked">
               <Checkbox>Отменить пересекающиеся запланированные занятия, если они есть, и одобрить отпуск</Checkbox>
             </Form.Item>

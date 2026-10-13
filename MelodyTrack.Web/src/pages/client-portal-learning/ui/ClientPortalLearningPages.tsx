@@ -1,8 +1,8 @@
 import { type ReactNode, useEffect } from "react";
 import { useLocation } from "react-router";
 
-import { StrummingTrainer, TrainerTimingHost } from "@/entities/trainer";
 import { PortalCourseCard } from "@/entities/course";
+import { StrummingTrainer, TrainerTimingHost } from "@/entities/trainer";
 import { getPortalHomework, usePortalEnrollments } from "@/features/client-portal";
 import { mapExerciseDtos, StructuredHomeworkContent } from "@/features/homework-document";
 import { RpgApiError, RpgBadge, RpgPanel, RpgState } from "@/shared/ui/rpg";
@@ -11,10 +11,12 @@ import styles from "./ClientPortalLearningPages.module.css";
 
 function LearningPage({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <TrainerTimingHost><div className={styles.page}>
-      <h1>{title}</h1>
-      {children}
-    </div></TrainerTimingHost>
+    <TrainerTimingHost>
+      <div className={styles.page}>
+        <h1>{title}</h1>
+        {children}
+      </div>
+    </TrainerTimingHost>
   );
 }
 

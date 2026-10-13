@@ -129,6 +129,7 @@ export function PortalVacationRequests({
                   {labels[request.status]}
                 </RpgBadge>
               </div>
+              <p>{request.action === "delete" ? "Удаление отпуска" : request.action === "update" ? "Изменение отпуска" : "Новый отпуск"}</p>
               <h3>
                 {dayjs(request.startDate).format("D MMM YYYY, HH:mm")} — {dayjs(request.endDate).format("D MMM YYYY, HH:mm")}
               </h3>

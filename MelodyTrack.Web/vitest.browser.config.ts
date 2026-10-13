@@ -23,6 +23,8 @@ export default defineConfig({
       "antd",
       "antd/locale/ru_RU",
       "dayjs",
+      "dayjs/plugin/timezone",
+      "dayjs/plugin/utc",
       "dexie",
       "libphonenumber-js",
       "lucide-react",
@@ -37,7 +39,12 @@ export default defineConfig({
       "use-sync-external-store/shim/with-selector.js",
       "vitest-browser-react",
     ],
-    needsInterop: ["use-sync-external-store/shim/index.js", "use-sync-external-store/shim/with-selector.js"],
+    needsInterop: [
+      "dayjs/plugin/timezone",
+      "dayjs/plugin/utc",
+      "use-sync-external-store/shim/index.js",
+      "use-sync-external-store/shim/with-selector.js",
+    ],
   },
   resolve: {
     alias: {

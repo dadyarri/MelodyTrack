@@ -37,8 +37,9 @@ export const usersApi = {
   updateAvailability(
     id: Ulid,
     input: {
+      timezone?: string;
       workingHours: UserWorkingHoursDay[];
-      vacations: Array<{ startDate: string; endDate: string }>;
+      vacations: Array<{ id?: string; version?: number; startDate: string; endDate: string }>;
       cancelConflictingAppointments?: boolean;
     },
     options?: { expectedActivityId?: Ulid },

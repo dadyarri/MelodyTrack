@@ -17,10 +17,12 @@ import { type CourseEnrollment, courseEnrollmentsApi, courseQueryKeys, type Cour
 import { hasAdminAccess, hasSuperuserAccess, useAuth } from "@/entities/session";
 import { userQueryKeys, usersApi } from "@/entities/user";
 import { getVisibleScheduleHours } from "@/entities/user";
+import { vacationsApi } from "@/entities/vacation";
 import type { AppointmentEditFormValues, AppointmentFormValues } from "@/features/manage-appointment";
-import { type VacationRangeFormValues, vacationRequestQueryKeys, vacationRequestsApi } from "@/features/manage-vacation-requests";
+import { invalidateScheduling, type VacationRangeFormValues } from "@/features/manage-vacation-requests";
 import { usePaymentCreateController } from "@/features/record-payment";
 import { getApiErrorMessages, type Ulid } from "@/shared/api";
+import { teacherTimeToUtc, toTeacherTime } from "@/shared/lib";
 import { useOpenCreateRouteIntent } from "@/shared/lib";
 import { useCreatedReferenceOptions } from "@/shared/lib";
 import { createIdempotencyKey } from "@/shared/lib";
@@ -38,6 +40,7 @@ export type AppointmentDraftValues = {
   providerId?: string;
   courseThemeId?: string;
   lessonNotes?: string;
+  timezone?: string;
   startDate?: string;
   recurrenceTypeId?: string;
   patternEndDate?: string;
@@ -49,6 +52,7 @@ const appointmentDraftSchema = v.object({
   providerId: v.optional(v.string()),
   courseThemeId: v.optional(v.string()),
   lessonNotes: v.optional(v.string()),
+  timezone: v.optional(v.string()),
   startDate: v.optional(v.string()),
   recurrenceTypeId: v.optional(v.string()),
   patternEndDate: v.optional(v.string()),
@@ -58,8 +62,8 @@ const appointmentDraftCodec = {
   serialize: serializeAppointmentDraft,
   deserialize: (values: AppointmentDraftValues): Partial<AppointmentFormValues> => ({
     ...values,
-    startDate: values.startDate ? dayjs(values.startDate) : null,
-    patternEndDate: values.patternEndDate ? dayjs(values.patternEndDate) : undefined,
+    startDate: values.startDate ? toTeacherTime(values.startDate, values.timezone ?? timezone) : null,
+    patternEndDate: values.patternEndDate ? toTeacherTime(values.patternEndDate, values.timezone ?? timezone) : undefined,
   }),
 };
 const appointmentEditDraftSchema = v.object({
@@ -68,6 +72,7 @@ const appointmentEditDraftSchema = v.object({
   providerId: v.optional(v.string()),
   courseThemeId: v.optional(v.string()),
   lessonNotes: v.optional(v.string()),
+  timezone: v.optional(v.string()),
   startDate: v.string(),
 });
 type AppointmentEditDraftValues = Omit<AppointmentEditFormValues, "startDate"> & { startDate: string };
@@ -75,7 +80,7 @@ const appointmentEditDraftCodec = {
   serialize: (values: AppointmentEditFormValues): AppointmentEditDraftValues => ({ ...values, startDate: values.startDate.toISOString() }),
   deserialize: (values: AppointmentEditDraftValues): Partial<AppointmentEditFormValues> => ({
     ...values,
-    startDate: dayjs(values.startDate),
+    startDate: toTeacherTime(values.startDate, values.timezone ?? timezone),
   }),
 };
 
@@ -143,7 +148,7 @@ export function useSchedulePageController() {
   const canCreateVacations = Boolean(
     effectiveProviderFilterId && (hasSuperuserAccess(auth.user) || effectiveProviderFilterId === auth.user?.id),
   );
-  const canManageVacations = Boolean(effectiveProviderFilterId && hasSuperuserAccess(auth.user));
+  const canManageVacations = canCreateVacations;
   const lockedProviderId = isSpecialistFilterLocked ? auth.user?.id : undefined;
   const createPrefillClientId = createRouteIntent.prefillClientId;
   const isCreateModalOpen = canCreateAppointments && (isOpen || createRouteIntent.hasOpenCreateIntent);
@@ -290,7 +295,8 @@ export function useSchedulePageController() {
 
   const openVacationModal = (period: [Dayjs, Dayjs]) => {
     setEditingVacationId(null);
-    setVacationInitialPeriod(period);
+    const zone = providerAvailabilityQuery.data?.timezone ?? timezone;
+    setVacationInitialPeriod([toTeacherTime(period[0], zone), toTeacherTime(period[1], zone)]);
   };
 
   const openVacationEditor = (vacationId: string) => {
@@ -301,7 +307,10 @@ export function useSchedulePageController() {
     }
 
     setEditingVacationId(vacation.id);
-    setVacationInitialPeriod([dayjs(vacation.startDate), dayjs(vacation.endDate)]);
+    setVacationInitialPeriod([
+      toTeacherTime(vacation.startDate, providerAvailabilityQuery.data?.timezone ?? timezone),
+      toTeacherTime(vacation.endDate, providerAvailabilityQuery.data?.timezone ?? timezone),
+    ]);
   };
 
   const vacationMutation = useMutation({
@@ -311,54 +320,29 @@ export function useSchedulePageController() {
         throw new Error("Выберите свой календарь или календарь сотрудника, доступный для управления.");
       }
 
-      const input = {
-        startDate: values.period[0].toISOString(),
-        endDate: values.period[1].toISOString(),
-      };
-      if (editingVacationId && !hasSuperuserAccess(auth.user)) {
-        throw new Error("Изменять утверждённые отпуска может только суперпользователь.");
-      }
-      if (!hasSuperuserAccess(auth.user)) {
-        return vacationRequestsApi.create(input, false);
-      }
-
       const availability = providerAvailabilityQuery.data;
-      if (!availability || availability.userId !== providerId) {
-        throw new Error("Дождитесь загрузки доступности выбранного сотрудника.");
-      }
-
-      if (editingVacationId && !availability.vacations.some((item) => item.id === editingVacationId)) {
-        throw new Error("Отпуск уже был изменён или удалён. Обновите календарь.");
-      }
-
-      const vacations = editingVacationId
-        ? availability.vacations.map((item) =>
-            item.id === editingVacationId ? input : { startDate: item.startDate, endDate: item.endDate },
-          )
-        : [...availability.vacations.map((item) => ({ startDate: item.startDate, endDate: item.endDate })), input];
-
-      return usersApi.updateAvailability(
-        providerId,
-        {
-          workingHours: availability.workingHours,
-          vacations,
-          cancelConflictingAppointments: values.cancelConflictingAppointments,
-        },
-        { expectedActivityId: availability.lastActivity?.id },
-      );
+      if (!availability || availability.userId !== providerId) throw new Error("Дождитесь загрузки графика.");
+      const input = {
+        startDate: teacherTimeToUtc(values.period[0], availability.timezone ?? timezone),
+        endDate: teacherTimeToUtc(values.period[1], availability.timezone ?? timezone),
+        cancelConflictingAppointments: values.cancelConflictingAppointments,
+      };
+      const existing = availability.vacations.find((item) => item.id === editingVacationId);
+      if (editingVacationId && !existing) throw new Error("Отпуск уже изменён. Обновите календарь.");
+      return existing
+        ? vacationsApi.update(existing.id, { ...input, expectedVersion: existing.version ?? 1 })
+        : vacationsApi.create({ ...input, subjectType: "staff", subjectId: providerId });
     },
     onSuccess: async () => {
       const successMessage = editingVacationId
-        ? "Отпуск изменён"
+        ? hasSuperuserAccess(auth.user)
+          ? "Отпуск изменён"
+          : "Заявка на изменение отправлена"
         : hasSuperuserAccess(auth.user)
           ? "Отпуск добавлен"
           : "Заявка на отпуск отправлена";
       closeVacationModal();
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: appointmentQueryKeys.appointmentsAll }),
-        queryClient.invalidateQueries({ queryKey: userQueryKeys.availability(effectiveProviderFilterId) }),
-        queryClient.invalidateQueries({ queryKey: vacationRequestQueryKeys.all }),
-      ]);
+      await invalidateScheduling(queryClient);
       void message.success(successMessage);
     },
   });
@@ -370,25 +354,21 @@ export function useSchedulePageController() {
       if (!providerId || !canManageVacations || !availability || availability.userId !== providerId) {
         throw new Error("Отпуск больше недоступен для удаления. Обновите календарь.");
       }
-      if (!availability.vacations.some((item) => item.id === vacationId)) {
+      const existing = availability.vacations.find((item) => item.id === vacationId);
+      if (!existing) {
         throw new Error("Отпуск уже был удалён.");
       }
 
-      return usersApi.updateAvailability(
-        providerId,
-        {
-          workingHours: availability.workingHours,
-          vacations: availability.vacations
-            .filter((item) => item.id !== vacationId)
-            .map((item) => ({ startDate: item.startDate, endDate: item.endDate })),
-        },
-        { expectedActivityId: availability.lastActivity?.id },
-      );
+      return vacationsApi.remove(existing.id, existing.version ?? 1);
     },
     onSuccess: async () => {
       closeVacationModal();
-      await queryClient.invalidateQueries({ queryKey: userQueryKeys.availability(effectiveProviderFilterId) });
-      void message.success("Отпуск удалён");
+      await invalidateScheduling(queryClient);
+      void message.success(
+        hasSuperuserAccess(auth.user)
+          ? "Отпуск удалён. Восстановить занятия можно в управлении отпусками."
+          : "Заявка на удаление отправлена",
+      );
     },
   });
 
@@ -400,7 +380,9 @@ export function useSchedulePageController() {
     const vacationId = editingVacationId;
     modal.confirm({
       title: "Удалить отпуск?",
-      content: "Период снова станет доступен для записей.",
+      content: hasSuperuserAccess(auth.user)
+        ? "Период станет доступен. Отменённые занятия восстанавливаются отдельно, по выбору."
+        : "Удаление начнёт действовать после согласования суперпользователем.",
       okText: "Удалить",
       cancelText: "Отмена",
       okButtonProps: { danger: true },
@@ -501,11 +483,12 @@ export function useSchedulePageController() {
   };
 
   const createMutation = useMutation({
-    mutationFn: (values: AppointmentFormValues) => {
+    mutationFn: async (values: AppointmentFormValues) => {
+      const teacherAvailability = values.providerId ? await usersApi.getAvailability(values.providerId) : null;
       const requestController = new AbortController();
       createRequestControllerRef.current = requestController;
       return appointmentsApi
-        .create(buildCreateAppointmentPayload(values, recurrenceTypesQuery.data ?? [], timezone), {
+        .create(buildCreateAppointmentPayload(values, recurrenceTypesQuery.data ?? [], teacherAvailability?.timezone ?? timezone), {
           idempotencyKey: createIdempotencyKey(),
           signal: requestController.signal,
         })
@@ -577,7 +560,9 @@ export function useSchedulePageController() {
   });
 
   const editMutation = useMutation({
-    mutationFn: ({ id, input, expectedActivityId }: { id: string; input: AppointmentEditFormValues; expectedActivityId?: Ulid }) => {
+    mutationFn: async ({ id, input, expectedActivityId }: { id: string; input: AppointmentEditFormValues; expectedActivityId?: Ulid }) => {
+      const teacherAvailability = input.providerId ? await usersApi.getAvailability(input.providerId) : null;
+      const zone = teacherAvailability?.timezone ?? timezone;
       return appointmentsApi.update(id, {
         clientId: input.clientId,
         serviceId: input.serviceId,
@@ -586,8 +571,8 @@ export function useSchedulePageController() {
         hasCourseThemeSelection: true,
         lessonNotes: input.lessonNotes?.trim() || null,
         hasLessonNotes: true,
-        startDate: input.startDate.toISOString(),
-        timezone,
+        startDate: teacherTimeToUtc(input.startDate, zone),
+        timezone: zone,
         expectedActivityId,
       });
     },
@@ -637,7 +622,8 @@ export function useSchedulePageController() {
             providerId: lockedProviderId ?? freshAppointment.provider?.id,
             courseThemeId: freshAppointment.courseTheme?.id,
             lessonNotes: freshAppointment.lessonNotes ?? undefined,
-            startDate: dayjs(freshAppointment.startDate),
+            startDate: toTeacherTime(freshAppointment.startDate, freshAppointment.provider?.timezone ?? timezone),
+            timezone: freshAppointment.provider?.timezone ?? timezone,
           });
         },
       });
@@ -961,10 +947,14 @@ function buildCreateAppointmentPayload(values: AppointmentFormValues, recurrence
     providerId: values.providerId,
     courseThemeId: values.courseThemeId,
     lessonNotes: values.lessonNotes?.trim() || undefined,
-    startDate: values.startDate.toISOString(),
+    startDate: teacherTimeToUtc(values.startDate, timezone),
     timezone,
     recurrenceTypeId: recurrenceType?.id,
-    patternEndDate: recurrenceType ? values.patternEndDate?.endOf("day").toISOString() : undefined,
+    patternEndDate: recurrenceType
+      ? values.patternEndDate
+        ? teacherTimeToUtc(values.patternEndDate.endOf("day"), timezone)
+        : undefined
+      : undefined,
     recurrencePattern: recurrenceType ? getRecurrencePattern(recurrenceType.key, values.startDate, values.weeklyDays) : undefined,
   };
 }
@@ -983,6 +973,7 @@ function getRecurrencePattern(key: RecurrenceType["key"], startDate: Dayjs, week
 
 function serializeAppointmentDraft(values: AppointmentFormValues): AppointmentDraftValues {
   return {
+    timezone: values.timezone,
     clientId: values.clientId,
     serviceId: values.serviceId,
     providerId: values.providerId,

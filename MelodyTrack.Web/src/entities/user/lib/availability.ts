@@ -1,5 +1,7 @@
 import dayjs, { type Dayjs } from "dayjs";
 
+import { browserTimezone, getTeacherWorkingIntervals, toTeacherTime } from "@/shared/lib";
+
 import type { UserAvailability, WeekdayKey } from "../model/types";
 
 export type AvailabilityBlockedRange = {
@@ -26,6 +28,7 @@ export function isSlotAvailable(availability: UserAvailability | null | undefine
     return true;
   }
 
+  const localStart = toTeacherTime(startDate, availability.timezone ?? browserTimezone);
   const endDate = startDate.add(durationMinutes, "minute");
   const overlapsVacation = availability.vacations.some(
     (vacation) => startDate.isBefore(dayjs(vacation.endDate)) && endDate.isAfter(dayjs(vacation.startDate)),
@@ -34,19 +37,22 @@ export function isSlotAvailable(availability: UserAvailability | null | undefine
     return false;
   }
 
-  const dayKey = getWeekdayKey(startDate);
+  const dayKey = getWeekdayKey(localStart);
   const workingDay = availability.workingHours.find((item) => item.dayOfWeek === dayKey);
   if (!workingDay) {
-    return true;
+    return false;
   }
 
   if (!workingDay.isWorkingDay || !workingDay.startTime || !workingDay.endTime) {
     return false;
   }
 
-  const startMinute = startDate.hour() * 60 + startDate.minute();
-  const endMinute = startMinute + durationMinutes;
-  return startMinute >= parseTimeToMinutes(workingDay.startTime) && endMinute <= parseTimeToMinutes(workingDay.endTime);
+  return getTeacherWorkingIntervals(
+    localStart.format("YYYY-MM-DD"),
+    workingDay.startTime,
+    workingDay.endTime,
+    availability.timezone ?? browserTimezone,
+  ).some((interval) => startDate.valueOf() >= interval.start.valueOf() && endDate.valueOf() <= interval.end.valueOf());
 }
 
 export function getBlockedRanges(availability: UserAvailability | null | undefined, day: Dayjs, startHour: number, endHour: number) {
@@ -77,27 +83,28 @@ export function getBlockedRanges(availability: UserAvailability | null | undefin
     ];
   });
 
-  const dayKey = getWeekdayKey(day);
-  const workingDay = availability.workingHours.find((item) => item.dayOfWeek === dayKey);
-  if (!workingDay) {
-    return vacationRanges;
+  const zone = availability.timezone ?? browserTimezone;
+  const localFirst = toTeacherTime(visibleStart, zone).startOf("day");
+  const localLast = toTeacherTime(visibleEnd, zone).startOf("day");
+  const workingRanges: Array<{ start: number; end: number }> = [];
+  for (let local = localFirst; local.format("YYYY-MM-DD") <= localLast.format("YYYY-MM-DD"); local = local.add(1, "day")) {
+    const workingDay = availability.workingHours.find((item) => item.dayOfWeek === getWeekdayKey(local));
+    if (!workingDay?.isWorkingDay || !workingDay.startTime || !workingDay.endTime) continue;
+    const date = local.format("YYYY-MM-DD");
+    for (const { start, end } of getTeacherWorkingIntervals(date, workingDay.startTime, workingDay.endTime, zone)) {
+      if (start.valueOf() < visibleEnd.valueOf() && end.valueOf() > visibleStart.valueOf())
+        workingRanges.push({
+          start: Math.max(dayStart, start.diff(day.startOf("day"), "minute")),
+          end: Math.min(dayEnd, end.diff(day.startOf("day"), "minute")),
+        });
+    }
   }
-
-  if (!workingDay.isWorkingDay || !workingDay.startTime || !workingDay.endTime) {
-    return [...vacationRanges, { startMinute: dayStart, endMinute: dayEnd, isVacation: false }];
+  let cursor = dayStart;
+  for (const work of workingRanges.sort((left, right) => left.start - right.start)) {
+    if (work.start > cursor) ranges.push({ startMinute: cursor, endMinute: work.start, isVacation: false });
+    cursor = Math.max(cursor, work.end);
   }
-
-  const workStart = parseTimeToMinutes(workingDay.startTime);
-  const workEnd = parseTimeToMinutes(workingDay.endTime);
-
-  if (workStart > dayStart) {
-    ranges.push({ startMinute: dayStart, endMinute: workStart, isVacation: false });
-  }
-
-  if (workEnd < dayEnd) {
-    ranges.push({ startMinute: workEnd, endMinute: dayEnd, isVacation: false });
-  }
-
+  if (cursor < dayEnd) ranges.push({ startMinute: cursor, endMinute: dayEnd, isVacation: false });
   return [...ranges, ...vacationRanges].filter((range) => range.endMinute > range.startMinute);
 }
 
@@ -105,6 +112,9 @@ export function getVisibleScheduleHours(
   availabilities: Array<UserAvailability | null | undefined>,
   fallback = { startHour: 10, endHour: 21 },
 ) {
+  if (availabilities.some((item) => item?.timezone && item.timezone !== browserTimezone)) {
+    return { startHour: 0, endHour: 24 };
+  }
   const workingRanges = availabilities.flatMap((availability) =>
     (availability?.workingHours ?? []).flatMap((item) => {
       if (!item.isWorkingDay || !item.startTime || !item.endTime) {

@@ -5,11 +5,11 @@ import type {
   ClientHistoryContactsDto,
   ClientHistoryResponse,
   ClientHistorySummaryDto,
-  ClientVacation as GeneratedClientVacation,
   ClientWithBalanceDto,
   CreateClientRequest,
   LookupClientDto,
   UpdateClientRequest,
+  Vacation as GeneratedClientVacation,
 } from "@/shared/api/generated/models";
 
 export type ClientLifecycleStatus = 0 | 1 | 2 | 3;

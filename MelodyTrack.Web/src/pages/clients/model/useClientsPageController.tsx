@@ -30,6 +30,7 @@ type ClientSubmitInput = {
   vk?: string;
   phone?: string;
   sourceId?: string;
+  cancelConflictingAppointments?: boolean;
   vacations?: Array<{ startDate: string; endDate: string }>;
 };
 
@@ -691,10 +692,12 @@ function prepareClientVacationUpdate(client: Client, values: ClientVacationsForm
     lastName: client.lastName,
     patronymic: client.patronymic,
     dateOfBirth: client.dateOfBirth,
+    email: client.email,
     phone: getClientContactValue(client, "phone"),
     telegram: getClientContactValue(client, "telegram"),
     vk: getClientContactValue(client, "vk"),
     sourceId: client.sourceId,
+    cancelConflictingAppointments: values.cancelConflictingAppointments,
     vacations: (values.vacations ?? []).flatMap((vacation) =>
       vacation.period ? [{ startDate: vacation.period[0].toISOString(), endDate: vacation.period[1].toISOString() }] : [],
     ),

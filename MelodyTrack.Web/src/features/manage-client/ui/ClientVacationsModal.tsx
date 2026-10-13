@@ -1,5 +1,6 @@
-import { Button, DatePicker, Form, Space, Typography } from "antd";
+import { Button, Checkbox, DatePicker, Form, Modal, Space, Typography } from "antd";
 import type { Dayjs } from "dayjs";
+import type { ReactNode } from "react";
 
 import type { Client } from "@/entities/client";
 import { DATE_FORMAT } from "@/shared/lib";
@@ -7,11 +8,13 @@ import type { DurableFormStatus } from "@/shared/lib/react";
 import { DraftFormModal } from "@/shared/ui";
 
 export type ClientVacationsFormValues = {
+  cancelConflictingAppointments?: boolean;
   vacations?: Array<{ period?: [Dayjs, Dayjs] }>;
 };
 
 export function ClientVacationsModal({
   client,
+  management,
   form,
   saving,
   onCancel,
@@ -26,6 +29,7 @@ export function ClientVacationsModal({
   onRetryDraft,
 }: {
   client: Client | null;
+  management?: ReactNode;
   form: ReturnType<typeof Form.useForm<ClientVacationsFormValues>>[0];
   saving: boolean;
   onCancel: () => void;
@@ -39,6 +43,12 @@ export function ClientVacationsModal({
   onReapplyDraft: () => void;
   onRetryDraft: () => void;
 }) {
+  if (management && !hasDraft)
+    return (
+      <Modal open={client !== null} title="Отпуска клиента" onCancel={onCancel} footer={null} width={760}>
+        {management}
+      </Modal>
+    );
   return (
     <DraftFormModal
       open={client !== null}
@@ -56,8 +66,15 @@ export function ClientVacationsModal({
       }}
       confirmLoading={saving}
     >
-      <Typography.Paragraph type="secondary">Встречи, пересекающие эти периоды, не будут показаны или созданы.</Typography.Paragraph>
+      {management}
+      <Typography.Paragraph type="secondary">
+        Сохранённый черновик списка отпусков. Запланированные занятия, пересекающие новые периоды, требуют явной отмены; история занятий
+        сохраняется.
+      </Typography.Paragraph>
       <Form form={form} layout="vertical" onFinish={onSubmit} onValuesChange={onValuesChange}>
+        <Form.Item name="cancelConflictingAppointments" valuePropName="checked">
+          <Checkbox>Разрешить отмену пересекающихся запланированных занятий</Checkbox>
+        </Form.Item>
         <Form.List name="vacations">
           {(fields, { add, remove }) => (
             <Space orientation="vertical" className="wide">

@@ -1,4 +1,4 @@
-import { Alert, Button, Card, Divider, Form, Input, List, Space, Switch, Tag, TimePicker, Typography } from "antd";
+import { Alert, Button, Card, Checkbox, Divider, Form, Input, List, Space, Switch, Tag, TimePicker, Typography } from "antd";
 
 import { formatPhoneInput, isValidPhone, normalizeSocialLink } from "@/entities/client";
 import type { MeResponse } from "@/entities/session";
@@ -174,6 +174,18 @@ export function ProfilePage() {
                   : "Выходные и нерабочие дни выключаются переключателем. Изменения суперпользователя применяются сразу и фиксируются в аудите."}
               </Typography.Text>
             </div>
+            <Form.Item
+              name="timezone"
+              label="Часовой пояс преподавателя"
+              rules={[{ required: true, message: "Укажите часовой пояс IANA" }]}
+            >
+              <Input placeholder="Europe/Moscow" />
+            </Form.Item>
+            {!controller.requiresScheduleApproval ? (
+              <Form.Item name="cancelConflictingAppointments" valuePropName="checked">
+                <Checkbox>Разрешить отмену будущих занятий, которые не помещаются в новый график</Checkbox>
+              </Form.Item>
+            ) : null}
             <Form.List name="workingHours">
               {(fields) => (
                 <Space orientation="vertical" size={12} className="wide">

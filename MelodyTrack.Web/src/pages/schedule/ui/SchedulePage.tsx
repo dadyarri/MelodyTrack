@@ -212,6 +212,7 @@ export function SchedulePage() {
         }}
       />
       <VacationRangeModal
+        timezone={controller.providerAvailabilityQuery.data?.timezone ?? undefined}
         initialPeriod={controller.vacationInitialPeriod}
         open={controller.vacationInitialPeriod !== null}
         pending={controller.vacationMutation.isPending || controller.removeVacationMutation.isPending}
