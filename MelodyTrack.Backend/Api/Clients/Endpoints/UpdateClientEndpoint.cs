@@ -17,15 +17,17 @@ public sealed class UpdateClientEndpoint
 {
 
     [Microsoft.AspNetCore.Authorization.Authorize(Policy = MelodyTrack.Backend.Api.Auth.AuthorizationPolicies.Administrator)]
-    public static async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>>> HandleAsync(
+    public static async Task<Results<Ok<CreateEntityResponse>, UnauthorizedHttpResult, ForbidHttpResult, NotFound, Conflict<StaleEntityConflictResponse>, Conflict<ApiProblemDetails>>> HandleAsync(
         UpdateClientRequest req,
         Ulid id,
         AppDbContext db,
         ICurrentUserAccessor currentUserAccessor,
         IAuditLogService auditLogService,
         IVacationRequestSubjectLock vacationRequestSubjectLock,
+        VacationService vacations,
         IEntityFreshnessService entityFreshnessService,
         ILogger<UpdateClientEndpoint> logger,
+        HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
         CancellationToken ct
     )
@@ -131,17 +133,13 @@ public sealed class UpdateClientEndpoint
 
         if (vacationsChanged)
         {
-            db.ClientVacations.RemoveRange(client.Vacations);
-            client.Vacations = req.Vacations!
-                .Select(item => new Data.Models.ClientVacation
-                {
-                    Id = Ulid.NewUlid(),
-                    ClientId = client.Id,
-                    Client = client,
-                    StartDate = item.StartDate,
-                    EndDate = item.EndDate
-                })
-                .ToList();
+            var result = await vacations.ReplaceAsync(VacationRequestSubjectType.Client, client.Id,
+                req.Vacations!.Select(item => new VacationReplacement(item.Id, item.Version, item.StartDate, item.EndDate)).ToList(),
+                req.CancelConflictingAppointments, ct);
+            if (result.Failure != VacationRequestWorkflowFailure.None)
+            {
+                return TypedResults.Conflict(ApiErrorResponseFactory.CreateProblemDetails(httpContext, StatusCodes.Status409Conflict, result.Detail));
+            }
         }
 
         await db.SaveChangesAsync(ct);

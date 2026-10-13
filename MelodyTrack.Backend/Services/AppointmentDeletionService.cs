@@ -1,6 +1,7 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Utils;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services;
@@ -14,230 +15,79 @@ public enum AppointmentDeleteScope
     WeekdayAll
 }
 
-public enum DeleteAppointmentResult
-{
-    Success,
-    NotFound
-}
+public enum DeleteAppointmentResult { Success, NotFound }
 
 public interface IAppointmentDeletionService
 {
     Task<DeleteAppointmentResult> DeleteAsync(Ulid appointmentId, AppointmentDeleteScope scope, CancellationToken ct);
 }
 
-public class AppointmentDeletionService(AppDbContext db) : IAppointmentDeletionService
+public sealed class AppointmentDeletionService(AppDbContext db, IRecurringAppointmentService recurrence, TimeProvider timeProvider)
+    : IAppointmentDeletionService
 {
     public async Task<DeleteAppointmentResult> DeleteAsync(Ulid appointmentId, AppointmentDeleteScope scope, CancellationToken ct)
     {
-        var appointment = await db.Appointments
-            .Include(item => item.Client)
-            .Include(item => item.Service)
-            .Include(item => item.Provider)
-            .Include(item => item.RecurringRule)
-            .ThenInclude(item => item!.RecurrenceType)
-            .FirstOrDefaultAsync(item => item.Id == appointmentId && !item.IsDeleted, ct);
-
-        if (appointment is null)
-        {
-            return DeleteAppointmentResult.NotFound;
-        }
-
-        if (appointment.RecurringRule is null || scope == AppointmentDeleteScope.Single)
-        {
-            appointment.IsDeleted = true;
-            await db.SaveChangesAsync(ct);
-            return DeleteAppointmentResult.Success;
-        }
-
-        if (scope is AppointmentDeleteScope.WeekdayThisAndFollowing or AppointmentDeleteScope.WeekdayAll)
-        {
-            var normalizedScope = NormalizeWeekdayScope(appointment.RecurringRule, scope);
-            if (normalizedScope != scope)
-            {
-                scope = normalizedScope;
-            }
-            else
-            {
-                await using var weekdayTransaction = await db.Database.BeginTransactionAsync(ct);
-                await DeleteWeeklyDayScopeAsync(appointment, scope, ct);
-                await db.SaveChangesAsync(ct);
-                await weekdayTransaction.CommitAsync(ct);
-                return DeleteAppointmentResult.Success;
-            }
-        }
-
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
-
-        var recurringRuleId = appointment.RecurringRule.Id;
-        var recurringRule = appointment.RecurringRule;
-
-        if (scope == AppointmentDeleteScope.ThisAndFollowing)
+        await VacationRequestSubjectLock.AcquireSchedulingAsync(db, ct);
+        var selected = await db.Appointments.Include(item => item.Client).Include(item => item.Service).Include(item => item.Provider)
+            .Include(item => item.RecurringRule).ThenInclude(item => item!.RecurrenceType)
+            .SingleOrDefaultAsync(item => item.Id == appointmentId && !item.IsDeleted, ct);
+        if (selected is null) return DeleteAppointmentResult.NotFound;
+        if (selected.RecurringRule is null || scope == AppointmentDeleteScope.Single)
         {
-            await db.Appointments
-                .Where(item =>
-                    item.RecurringRule != null &&
-                    item.RecurringRule.Id == recurringRuleId &&
-                    item.StartDate >= appointment.StartDate &&
-                    !item.IsDeleted)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.IsDeleted, true), ct);
-
-            if (appointment.StartDate.Date <= appointment.RecurringRule.StartDate.Date)
-            {
-                await DetachAppointmentsFromRecurringRuleAsync(recurringRuleId, ct);
-                db.RecurrenceRules.Remove(recurringRule);
-            }
-            else
-            {
-                appointment.RecurringRule.EndDate = appointment.StartDate.Date.AddDays(-1);
-            }
+            selected.IsDeleted = true;
         }
         else
         {
-            await db.Appointments
-                .Where(item =>
-                    item.RecurringRule != null &&
-                    item.RecurringRule.Id == recurringRuleId &&
-                    !item.IsDeleted)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.IsDeleted, true), ct);
-
-            await DetachAppointmentsFromRecurringRuleAsync(recurringRuleId, ct);
-            db.RecurrenceRules.Remove(recurringRule);
-        }
-
-        await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-
-        return DeleteAppointmentResult.Success;
-    }
-
-    private async Task DeleteWeeklyDayScopeAsync(Appointment appointment, AppointmentDeleteScope scope, CancellationToken ct)
-    {
-        var recurringRule = appointment.RecurringRule!;
-        var recurringRuleId = recurringRule.Id;
-        var dayFlag = GetDayFlag(appointment.StartDate.DayOfWeek);
-        var remainingPattern = (recurringRule.RecurrencePattern ?? 0) & ~dayFlag;
-
-        if (scope == AppointmentDeleteScope.WeekdayThisAndFollowing)
-        {
-            if (HasEarlierWeekdayOccurrence(recurringRule.StartDate, appointment.StartDate, appointment.StartDate.DayOfWeek))
+            var rule = selected.RecurringRule;
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            var cutoff = scope is AppointmentDeleteScope.All or AppointmentDeleteScope.WeekdayAll
+                ? now : selected.StartDate > now ? selected.StartDate : now;
+            var weekdayOnly = scope is AppointmentDeleteScope.WeekdayAll or AppointmentDeleteScope.WeekdayThisAndFollowing
+                && rule.RecurrenceType.Type == AppointmentRecurrenceType.Weekly;
+            var weekday = DateTimeUtils.ConvertDateToTimezone(selected.StartDate, rule.Timezone).DayOfWeek;
+            var pattern = (rule.RecurrencePattern ?? 0) & ~RecurringAppointmentService.DayFlag(weekday);
+            var stored = await db.Appointments.Where(item => item.RecurringRuleId == rule.Id && item.StartDate >= cutoff).ToListAsync(ct);
+            var interruptions = await db.SchedulingInterruptions.Where(item => item.RecurringRuleId == rule.Id && item.StartDate >= cutoff).ToListAsync(ct);
+            AppointmentRecurrenceRule? next = null;
+            if (weekdayOnly && pattern != 0)
             {
-                var historicalRule = new AppointmentRecurrenceRule
+                var searchStart = cutoff > rule.StartDate ? cutoff : rule.StartDate;
+                var first = recurrence.GetAppointmentsForRule(rule, searchStart, searchStart.AddDays(7)).FirstOrDefault();
+                if (first is not null)
                 {
-                    Id = Ulid.NewUlid(),
-                    Client = appointment.Client,
-                    Service = appointment.Service,
-                    Provider = appointment.Provider,
-                    StartDate = recurringRule.StartDate,
-                    EndDate = appointment.StartDate.Date.AddDays(-1),
-                    RecurrenceType = recurringRule.RecurrenceType,
-                    RecurrencePattern = dayFlag
-                };
-
-                await db.RecurrenceRules.AddAsync(historicalRule, ct);
-
-                var earlierWeekdayAppointments = await db.Appointments
-                    .Where(item =>
-                        item.RecurringRule != null &&
-                        item.RecurringRule.Id == recurringRuleId &&
-                        item.StartDate < appointment.StartDate &&
-                        item.StartDate.DayOfWeek == appointment.StartDate.DayOfWeek)
-                    .ToListAsync(ct);
-
-                foreach (var earlierAppointment in earlierWeekdayAppointments)
-                {
-                    earlierAppointment.RecurringRule = historicalRule;
+                    next = new AppointmentRecurrenceRule
+                    {
+                        Id = Ulid.NewUlid(), Client = rule.Client, Service = rule.Service, Provider = rule.Provider,
+                        StartDate = first.StartDate, EndDate = rule.EndDate, Timezone = rule.Timezone,
+                        DurationMinutes = rule.DurationMinutes, RecurrenceType = rule.RecurrenceType, RecurrencePattern = pattern
+                    };
+                    db.RecurrenceRules.Add(next);
                 }
             }
-
-            await db.Appointments
-                .Where(item =>
-                    item.RecurringRule != null &&
-                    item.RecurringRule.Id == recurringRuleId &&
-                    item.StartDate >= appointment.StartDate &&
-                    item.StartDate.DayOfWeek == appointment.StartDate.DayOfWeek &&
-                    !item.IsDeleted)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.IsDeleted, true), ct);
-        }
-        else
-        {
-            await db.Appointments
-                .Where(item =>
-                    item.RecurringRule != null &&
-                    item.RecurringRule.Id == recurringRuleId &&
-                    item.StartDate.DayOfWeek == appointment.StartDate.DayOfWeek &&
-                    !item.IsDeleted)
-                .ExecuteUpdateAsync(setters => setters
-                    .SetProperty(item => item.IsDeleted, true), ct);
-        }
-
-        recurringRule.RecurrencePattern = remainingPattern;
-    }
-
-    private async Task DetachAppointmentsFromRecurringRuleAsync(Ulid recurringRuleId, CancellationToken ct)
-    {
-        var appointments = await db.Appointments
-            .Include(item => item.RecurringRule)
-            .Where(item =>
-                item.RecurringRule != null &&
-                item.RecurringRule.Id == recurringRuleId)
-            .ToListAsync(ct);
-
-        foreach (var item in appointments)
-        {
-            item.RecurringRule = null;
-        }
-    }
-
-    private static AppointmentDeleteScope NormalizeWeekdayScope(AppointmentRecurrenceRule recurringRule, AppointmentDeleteScope scope)
-    {
-        if (recurringRule.RecurrenceType.Type != AppointmentRecurrenceType.Weekly || CountEnabledDays(recurringRule.RecurrencePattern) <= 1)
-        {
-            return scope == AppointmentDeleteScope.WeekdayAll
-                ? AppointmentDeleteScope.All
-                : AppointmentDeleteScope.ThisAndFollowing;
-        }
-
-        return scope;
-    }
-
-    private static int CountEnabledDays(int? recurrencePattern)
-    {
-        if (recurrencePattern is null or 0)
-        {
-            return 0;
-        }
-
-        var count = 0;
-        for (var bit = 0; bit < 7; bit++)
-        {
-            if ((recurrencePattern.Value & (1 << bit)) != 0)
+            rule.EndDate = cutoff.AddTicks(-10);
+            foreach (var item in stored)
             {
-                count++;
+                if (item.Status is AppointmentStatus.Completed or AppointmentStatus.Burned && !item.IsDeleted) continue;
+                var removed = next is null || DateTimeUtils.ConvertDateToTimezone(item.StartDate, rule.Timezone).DayOfWeek == weekday;
+                if (removed) item.IsDeleted = true;
+                else
+                {
+                    item.RecurringRule = next;
+                    item.RecurringRuleId = next!.Id;
+                    item.RecurrenceOrdinal = recurrence.GetOrdinal(next, item.StartDate);
+                }
+            }
+            foreach (var item in interruptions)
+            {
+                if (next is null || DateTimeUtils.ConvertDateToTimezone(item.StartDate, rule.Timezone).DayOfWeek == weekday) continue;
+                item.RecurringRule = next;
+                item.RecurringRuleId = next.Id;
+                item.RecurrenceOrdinal = recurrence.GetOrdinal(next, item.StartDate);
             }
         }
-
-        return count;
-    }
-
-    private static bool HasEarlierWeekdayOccurrence(DateTime ruleStartDate, DateTime appointmentStartDate, DayOfWeek dayOfWeek)
-    {
-        var firstOccurrenceDate = GetFirstOccurrenceOnOrAfter(ruleStartDate.Date, dayOfWeek);
-        return firstOccurrenceDate < appointmentStartDate.Date;
-    }
-
-    private static DateTime GetFirstOccurrenceOnOrAfter(DateTime startDate, DayOfWeek dayOfWeek)
-    {
-        var offset = ((int)dayOfWeek - (int)startDate.DayOfWeek + 7) % 7;
-        return startDate.AddDays(offset);
-    }
-
-    private static int GetDayFlag(DayOfWeek dayOfWeek)
-    {
-        return dayOfWeek == DayOfWeek.Sunday
-            ? 64
-            : 1 << ((int)dayOfWeek - 1);
+        await db.SaveChangesAsync(ct);
+        await transaction.CommitAsync(ct);
+        return DeleteAppointmentResult.Success;
     }
 }

@@ -32,9 +32,9 @@ public class AppDbContext : DbContext
     public DbSet<Expense> Expenses { get; set; }
     public DbSet<ExpenseCategory> ExpenseCategories { get; set; }
     public DbSet<ClientSource> ClientSources { get; set; }
-    public DbSet<ClientVacation> ClientVacations { get; set; }
+    public DbSet<Vacation> Vacations { get; set; }
     public DbSet<UserWorkingHoursDay> UserWorkingHoursDays { get; set; }
-    public DbSet<UserVacation> UserVacations { get; set; }
+    public DbSet<SchedulingInterruption> SchedulingInterruptions { get; set; }
     public DbSet<UserOnboardingState> UserOnboardingStates { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<RequestReplay> RequestReplays { get; set; }
@@ -570,6 +570,15 @@ public class AppDbContext : DbContext
             .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<Appointment>()
+            .HasOne(item => item.RecurringRule)
+            .WithMany()
+            .HasForeignKey(item => item.RecurringRuleId)
+            .OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<Appointment>()
+            .HasIndex(item => new { item.RecurringRuleId, item.RecurrenceOrdinal })
+            .IsUnique();
+
+        modelBuilder.Entity<Appointment>()
             .HasOne(e => e.CourseTheme)
             .WithMany()
             .HasForeignKey(e => e.CourseThemeId)
@@ -581,7 +590,7 @@ public class AppDbContext : DbContext
             .HasForeignKey(e => e.CategoryId)
             .OnDelete(DeleteBehavior.SetNull);
 
-        modelBuilder.Entity<ClientVacation>()
+        modelBuilder.Entity<Vacation>()
             .HasOne(item => item.Client)
             .WithMany(item => item.Vacations)
             .HasForeignKey(item => item.ClientId)
@@ -603,11 +612,32 @@ public class AppDbContext : DbContext
             .HasIndex(e => new { e.UserId, e.DayOfWeek })
             .IsUnique();
 
-        modelBuilder.Entity<UserVacation>()
+        modelBuilder.Entity<Vacation>()
             .HasOne(e => e.User)
             .WithMany(e => e.Vacations)
             .HasForeignKey(e => e.UserId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        modelBuilder.Entity<Vacation>().HasQueryFilter(item => !item.IsCancelled);
+        modelBuilder.Entity<Vacation>().Property(item => item.Version).IsConcurrencyToken();
+        modelBuilder.Entity<Vacation>().HasIndex(item => new { item.UserId, item.StartDate });
+        modelBuilder.Entity<Vacation>().HasIndex(item => new { item.ClientId, item.StartDate });
+        modelBuilder.Entity<Vacation>().ToTable(table =>
+        {
+            table.HasCheckConstraint("CK_Vacations_Subject", "(\"UserId\" IS NULL) <> (\"ClientId\" IS NULL)");
+            table.HasCheckConstraint("CK_Vacations_Range", "\"StartDate\" < \"EndDate\"");
+            table.HasCheckConstraint("CK_Vacations_Version", "\"Version\" > 0");
+        });
+
+        modelBuilder.Entity<SchedulingInterruption>().Property(item => item.SubjectType).HasConversion<string>();
+        modelBuilder.Entity<SchedulingInterruption>().HasOne(item => item.Vacation).WithMany()
+            .HasForeignKey(item => item.VacationId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SchedulingInterruption>().HasOne(item => item.Appointment).WithMany()
+            .HasForeignKey(item => item.AppointmentId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<SchedulingInterruption>().HasOne(item => item.RecurringRule).WithMany()
+            .HasForeignKey(item => item.RecurringRuleId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<SchedulingInterruption>().HasIndex(item => new { item.VacationId, item.RestoredAtUtc });
+        modelBuilder.Entity<SchedulingInterruption>().HasIndex(item => new { item.RecurringRuleId, item.RecurrenceOrdinal });
 
         modelBuilder.Entity<VacationRequest>()
             .Property(e => e.RequesterPrincipalType)
@@ -618,6 +648,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<VacationRequest>()
             .Property(e => e.Status)
             .HasConversion<string>();
+        modelBuilder.Entity<VacationRequest>().Property(item => item.Action).HasConversion<string>();
+        modelBuilder.Entity<VacationRequest>().HasOne<Vacation>().WithMany()
+            .HasForeignKey(item => item.TargetVacationId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<VacationRequest>().HasOne<Vacation>().WithMany()
+            .HasForeignKey(item => item.ResultingVacationId).OnDelete(DeleteBehavior.SetNull);
         modelBuilder.Entity<VacationRequest>()
             .HasIndex(e => new { e.SubjectType, e.SubjectId, e.Status });
         modelBuilder.Entity<VacationRequest>()

@@ -25,7 +25,7 @@ public class Client : BaseModel
 
     public required ClientContacts Contacts { get; set; } = new();
 
-    public List<ClientVacation> Vacations { get; set; } = [];
+    public List<Vacation> Vacations { get; set; } = [];
 
     public List<Appointment> Appointments { get; set; } = [];
 }

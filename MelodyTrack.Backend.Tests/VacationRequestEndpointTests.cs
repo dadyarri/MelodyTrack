@@ -37,7 +37,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         response.StatusCode.ShouldBe(HttpStatusCode.Created);
         result.Status.ShouldBe("pending");
         result.SubjectId.ShouldBe(teacher.Id);
-        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
         (await db.Notifications.AnyAsync(item =>
             item.UserId == superuser.Id && item.ReferenceId == result.Id,
             TestContext.Current.CancellationToken)).ShouldBeTrue();
@@ -106,7 +106,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         approved.Status.ShouldBe("approved");
         approved.ResultingVacationId.ShouldNotBeNull();
         retryResponse.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        var vacation = await db.UserVacations.SingleAsync(
+        var vacation = await db.Vacations.SingleAsync(
             item => item.UserId == administrator.Id,
             TestContext.Current.CancellationToken);
         vacation.StartDate.ShouldBe(Utc(2030, 8, 1, 9));
@@ -154,7 +154,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
             new VacationRequestDecisionRequest { Id = created.Id, ExpectedVersion = created.Version });
 
         response.StatusCode.ShouldBe(HttpStatusCode.Conflict);
-        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
         db.ChangeTracker.Clear();
         (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).IsDeleted.ShouldBeFalse();
     }
@@ -199,7 +199,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         db.ChangeTracker.Clear();
         (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
             .ShouldBe(AppointmentStatus.Cancelled);
-        (await db.UserVacations.SingleAsync(item => item.UserId == teacher.Id, TestContext.Current.CancellationToken)).EndDate
+        (await db.Vacations.SingleAsync(item => item.UserId == teacher.Id, TestContext.Current.CancellationToken)).EndDate
             .ShouldBe(Utc(2030, 9, 20, 18));
         (await db.AuditLogs.AnyAsync(
             item => item.Action == "appointment_updated" && item.EntityId == appointment.Id.ToString(),
@@ -233,7 +233,7 @@ public sealed class VacationRequestEndpointTests(MelodyTrackFixture app) : Integ
         declineResponse.StatusCode.ShouldBe(HttpStatusCode.OK);
         declined.Status.ShouldBe("declined");
         (await db.VacationRequests.CountAsync(item => item.Status == VacationRequestStatus.Cancelled, TestContext.Current.CancellationToken)).ShouldBe(1);
-        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     [Fact]

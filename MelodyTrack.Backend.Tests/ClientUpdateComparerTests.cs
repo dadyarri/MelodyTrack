@@ -97,7 +97,7 @@ public class ClientUpdateComparerTests
         SourceId = client.SourceId
     };
 
-    private static ClientVacation CreateVacation(Client client, DateTime start, DateTime end) => new()
+    private static Vacation CreateVacation(Client client, DateTime start, DateTime end) => new()
     {
         Id = Ulid.NewUlid(),
         Client = client,

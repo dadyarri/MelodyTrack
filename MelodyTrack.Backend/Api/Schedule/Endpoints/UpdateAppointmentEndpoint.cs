@@ -26,10 +26,12 @@ public sealed class UpdateAppointmentEndpoint
             [AppointmentUpdatePreparationError.CourseThemeNotFound] = (nameof(UpdateAppointmentRequest.CourseThemeId), "Тема курса не найдена", StatusCodes.Status404NotFound),
             [AppointmentUpdatePreparationError.CourseThemeUnavailable] = (nameof(UpdateAppointmentRequest.CourseThemeId), "Эта тема недоступна для выбранного клиента.", StatusCodes.Status400BadRequest),
             [AppointmentUpdatePreparationError.MissingTimezone] = (nameof(UpdateAppointmentRequest.Timezone), "Нужно указать таймзону.", StatusCodes.Status400BadRequest),
-            [AppointmentUpdatePreparationError.ProviderUnavailable] = (nameof(UpdateAppointmentRequest.StartDate), "Запись попадает в нерабочее время преподавателя или в отпуск.", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.ProviderUnavailable] = (nameof(UpdateAppointmentRequest.StartDate), "Участники недоступны: отпуск, выходной, рабочие часы или другое занятие.", StatusCodes.Status400BadRequest),
             [AppointmentUpdatePreparationError.MissingRecurrencePattern] = (nameof(UpdateAppointmentRequest.RecurrencePattern), "Паттерн повторения не указан", StatusCodes.Status404NotFound),
             [AppointmentUpdatePreparationError.MissingRecurrenceStartDate] = (nameof(UpdateAppointmentRequest.StartDate), "Дата начала не задана", StatusCodes.Status404NotFound),
-            [AppointmentUpdatePreparationError.RecurrenceTypeNotFound] = (nameof(UpdateAppointmentRequest.RecurrenceTypeId), "Тип повторения не найден", StatusCodes.Status404NotFound)
+            [AppointmentUpdatePreparationError.RecurrenceTypeNotFound] = (nameof(UpdateAppointmentRequest.RecurrenceTypeId), "Тип повторения не найден", StatusCodes.Status404NotFound),
+            [AppointmentUpdatePreparationError.InvalidRecurrencePattern] = (nameof(UpdateAppointmentRequest.RecurrencePattern), "Некорректный шаблон повторения", StatusCodes.Status400BadRequest),
+            [AppointmentUpdatePreparationError.RecurringPatternChange] = (nameof(UpdateAppointmentRequest.RecurrencePattern), "Изменение шаблона существующей серии через отдельное занятие недоступно. Завершите будущую часть серии и создайте новую.", StatusCodes.Status400BadRequest)
         };
 
     public static async Task<Results<NoContent, UnauthorizedHttpResult, NotFound<ApiProblemDetails>, ApiProblemDetails, Conflict<StaleEntityConflictResponse>>> HandleAsync(
@@ -39,12 +41,16 @@ public sealed class UpdateAppointmentEndpoint
         IAuditLogService auditLogService,
         IEntityFreshnessService entityFreshnessService,
         AppointmentUpdatePreparationService preparationService,
+        RecurringAppointmentReschedulingService reschedulingService,
+        TimeProvider timeProvider,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
         CancellationToken ct
     )
     {
         req.Id = id;
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await VacationRequestSubjectLock.AcquireSchedulingAsync(db, ct);
         var appointment = await db.Appointments
             .Where(e => e.Id == req.Id && !e.IsDeleted)
             .Include(e => e.Service)
@@ -89,7 +95,13 @@ public sealed class UpdateAppointmentEndpoint
 
         if (appointment.RecurringRule is not null && preparation.Changes.StartDateChanged && preparation.Scope != AppointmentUpdateScope.Single)
         {
-            await RescheduleRecurringSeriesAsync(db, appointment, req.StartDate!.Value, preparation.Scope, ct);
+            var seriesError = await reschedulingService.RescheduleAsync(appointment, req.StartDate!.Value,
+                preparation.Scope == AppointmentUpdateScope.All, ct);
+            if (seriesError is not null)
+            {
+                validationErrors.Add(nameof(req.StartDate), seriesError);
+                return new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict);
+            }
             await auditLogService.WriteAsync(new AuditLogWriteRequest
             {
                 Event = preparation.Scope == AppointmentUpdateScope.All
@@ -106,6 +118,7 @@ public sealed class UpdateAppointmentEndpoint
             )
             }, ct);
 
+            await transaction.CommitAsync(ct);
             return TypedResults.NoContent();
         }
 
@@ -148,18 +161,31 @@ public sealed class UpdateAppointmentEndpoint
                 )
             }, ct);
 
+            await transaction.CommitAsync(ct);
             return TypedResults.NoContent();
         }
 
         if (req.StartDate is not null)
         {
             appointment.StartDate = req.StartDate.Value;
-            appointment.EndDate = req.StartDate.Value.AddHours(1);
+            appointment.EndDate = req.StartDate.Value.Add(preparation.Duration);
         }
 
         if (preparation.RequestedStatus is not null)
         {
             appointment.Status = preparation.RequestedStatus.Value;
+        }
+
+        if (preparation.RequestedStatus is not null)
+        {
+            var unresolved = await db.SchedulingInterruptions.Where(item => item.AppointmentId == appointment.Id
+                && item.RestoredAtUtc == null && item.SupersededAtUtc == null).ToListAsync(ct);
+            var now = timeProvider.GetUtcNow().UtcDateTime;
+            foreach (var interruption in unresolved)
+            {
+                if (appointment.Status == AppointmentStatus.Planned) interruption.RestoredAtUtc = now;
+                else interruption.SupersededAtUtc = now;
+            }
         }
 
         var recurrenceError = await preparationService.ApplyRecurrenceAsync(appointment, req, ct);
@@ -187,6 +213,7 @@ public sealed class UpdateAppointmentEndpoint
             )
         }, ct);
 
+        await transaction.CommitAsync(ct);
         return TypedResults.NoContent();
     }
 
@@ -198,111 +225,6 @@ public sealed class UpdateAppointmentEndpoint
         var (field, message, status) = PreparationErrors[error];
         validationErrors.Add(field, message);
         return new ApiProblemDetails(validationErrors, httpContext, status);
-    }
-
-    private static async Task RescheduleRecurringSeriesAsync(
-        AppDbContext db,
-        Appointment appointment,
-        DateTime nextStartDate,
-        AppointmentUpdateScope scope,
-        CancellationToken ct)
-    {
-        var recurringRule = appointment.RecurringRule!;
-        var delta = nextStartDate - appointment.StartDate;
-        var originalRuleEndDate = recurringRule.EndDate;
-
-        await using var transaction = await db.Database.BeginTransactionAsync(ct);
-
-        if (scope == AppointmentUpdateScope.All || appointment.StartDate.Date <= recurringRule.StartDate.Date)
-        {
-            recurringRule.StartDate = recurringRule.StartDate.Add(delta);
-            recurringRule.EndDate = recurringRule.EndDate?.Add(delta);
-            recurringRule.RecurrencePattern = ShiftRecurrencePattern(recurringRule, delta, nextStartDate);
-
-            var recurringAppointments = await db.Appointments
-                .Where(item =>
-                    item.RecurringRule != null &&
-                    item.RecurringRule.Id == recurringRule.Id &&
-                    !item.IsDeleted)
-                .ToListAsync(ct);
-
-            foreach (var recurringAppointment in recurringAppointments)
-            {
-                recurringAppointment.StartDate = recurringAppointment.StartDate.Add(delta);
-                recurringAppointment.EndDate = recurringAppointment.EndDate.Add(delta);
-            }
-
-            await db.SaveChangesAsync(ct);
-            await transaction.CommitAsync(ct);
-            return;
-        }
-
-        await db.Appointments
-            .Where(item =>
-                item.RecurringRule != null &&
-                item.RecurringRule.Id == recurringRule.Id &&
-                item.StartDate >= appointment.StartDate &&
-                !item.IsDeleted)
-            .ExecuteUpdateAsync(setters => setters
-                .SetProperty(item => item.IsDeleted, true), ct);
-
-        recurringRule.EndDate = appointment.StartDate.Date.AddDays(-1);
-
-        var nextRule = new AppointmentRecurrenceRule
-        {
-            Id = Ulid.NewUlid(),
-            Client = appointment.Client,
-            Service = appointment.Service,
-            Provider = appointment.Provider,
-            StartDate = nextStartDate,
-            EndDate = originalRuleEndDate?.Add(delta),
-            RecurrenceType = recurringRule.RecurrenceType,
-            RecurrencePattern = ShiftRecurrencePattern(recurringRule, delta, nextStartDate)
-        };
-
-        await db.RecurrenceRules.AddAsync(nextRule, ct);
-        await db.SaveChangesAsync(ct);
-        await transaction.CommitAsync(ct);
-    }
-
-    private static int? ShiftRecurrencePattern(AppointmentRecurrenceRule recurringRule, TimeSpan delta, DateTime nextStartDate)
-    {
-        return recurringRule.RecurrenceType.Type switch
-        {
-            AppointmentRecurrenceType.Daily => recurringRule.RecurrencePattern,
-            AppointmentRecurrenceType.Monthly => nextStartDate.Day,
-            AppointmentRecurrenceType.Weekly => ShiftWeeklyPattern(recurringRule.RecurrencePattern, delta.Days),
-            _ => recurringRule.RecurrencePattern
-        };
-    }
-
-    private static int? ShiftWeeklyPattern(int? currentPattern, int dayOffset)
-    {
-        if (currentPattern is null or 0)
-        {
-            return currentPattern;
-        }
-
-        var normalizedOffset = ((dayOffset % 7) + 7) % 7;
-        if (normalizedOffset == 0)
-        {
-            return currentPattern;
-        }
-
-        var shiftedPattern = 0;
-        for (var bitIndex = 0; bitIndex < 7; bitIndex++)
-        {
-            var currentFlag = 1 << bitIndex;
-            if ((currentPattern.Value & currentFlag) == 0)
-            {
-                continue;
-            }
-
-            var shiftedIndex = (bitIndex + normalizedOffset) % 7;
-            shiftedPattern |= 1 << shiftedIndex;
-        }
-
-        return shiftedPattern;
     }
 
     private static string FormatClientDisplayName(Client? client)

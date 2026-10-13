@@ -38,7 +38,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Wednesday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 17 * 60 },
             new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Thursday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 17 * 60 }
         ], TestContext.Current.CancellationToken);
-        await db.UserVacations.AddAsync(new UserVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             UserId = teacher.Id,
@@ -109,7 +109,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             Service = service,
             Provider = teacher,
             StartDate = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 7, 1, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2026, 7, 1, 10, 0, 0, DateTimeKind.Utc),
             RecurrenceType = recurrenceType,
             RecurrencePattern = 1
         }, TestContext.Current.CancellationToken);
@@ -336,6 +336,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         var teacherWithoutAppointments = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Capacity", "Client", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Capacity service", TestContext.Current.CancellationToken);
+        teacher.ScheduleTimezone = "UTC";
         var monday = new DateTime(2026, 7, 6, 0, 0, 0, DateTimeKind.Utc);
 
         await db.UserWorkingHoursDays.AddRangeAsync(
@@ -343,7 +344,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Monday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 12 * 60 },
             new UserWorkingHoursDay { Id = Ulid.NewUlid(), UserId = teacher.Id, User = teacher, DayOfWeek = DayOfWeek.Tuesday, IsWorkingDay = true, StartMinuteOfDay = 9 * 60, EndMinuteOfDay = 12 * 60 }
         ], TestContext.Current.CancellationToken);
-        await db.UserVacations.AddAsync(new UserVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             UserId = teacher.Id,
@@ -384,6 +385,7 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var teacher = await TestDataFactory.CreateAdminUserAsync(db, TestContext.Current.CancellationToken);
+        teacher.ScheduleTimezone = "Europe/Berlin";
         await db.UserWorkingHoursDays.AddAsync(new UserWorkingHoursDay
         {
             Id = Ulid.NewUlid(),
@@ -473,10 +475,10 @@ public sealed class ReportEndpointTests(MelodyTrackFixture app) : IntegrationTes
             Appointment(vacation, service, teacher, new DateTime(2026, 3, 1, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed),
             Appointment(paused, service, teacher, new DateTime(2026, 4, 1, 10, 0, 0, DateTimeKind.Utc), AppointmentStatus.Completed)
         ], TestContext.Current.CancellationToken);
-        await db.ClientVacations.AddRangeAsync(
+        await db.Vacations.AddRangeAsync(
         [
-            new ClientVacation { Id = Ulid.NewUlid(), ClientId = vacation.Id, Client = vacation, StartDate = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
-            new ClientVacation { Id = Ulid.NewUlid(), ClientId = paused.Id, Client = paused, StartDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc) }
+            new Vacation { Id = Ulid.NewUlid(), ClientId = vacation.Id, Client = vacation, StartDate = new DateTime(2026, 5, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc) },
+            new Vacation { Id = Ulid.NewUlid(), ClientId = paused.Id, Client = paused, StartDate = new DateTime(2026, 4, 10, 0, 0, 0, DateTimeKind.Utc), EndDate = new DateTime(2026, 4, 30, 0, 0, 0, DateTimeKind.Utc) }
         ], TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 

@@ -87,7 +87,7 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         var tomorrowVisibleId = Ulid.NewUlid();
         var todayVisibleStart = nowUtc > todayStartUtc.AddMinutes(1) ? nowUtc.AddMinutes(-1) : todayStartUtc;
 
-        await db.ClientVacations.AddAsync(new ClientVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             ClientId = vacationClient.Id,
@@ -114,14 +114,15 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
 
         response.Today.Date.ShouldBe(DateOnly.FromDateTime(todayStartUtc));
         response.Today.Count.ShouldBe(response.Today.Appointments.Count);
-        response.Today.Appointments.ShouldHaveSingleItem().Id.ShouldBe(todayVisibleId);
+        response.Today.Appointments.Count.ShouldBe(2);
+        response.Today.Appointments.ShouldContain(item => item.Id == todayVisibleId);
         response.Tomorrow.Date.ShouldBe(DateOnly.FromDateTime(tomorrowStartUtc));
         response.Tomorrow.Count.ShouldBe(response.Tomorrow.Appointments.Count);
         response.Tomorrow.Appointments.ShouldHaveSingleItem().Id.ShouldBe(tomorrowVisibleId);
     }
 
     [Fact]
-    public async Task GetDashboardStats_UsesBrowserTimezoneForBoundariesAndClientVacations()
+    public async Task GetDashboardStats_UsesBrowserTimezoneAndAuthoritativeAppointmentStatuses()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -137,7 +138,7 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         var dayAfterTomorrowStartUtc = TimeZoneInfo.ConvertTimeToUtc(localToday.AddDays(2).ToDateTime(TimeOnly.MinValue, DateTimeKind.Unspecified), timezone);
         var visibleId = Ulid.NewUlid();
 
-        await db.ClientVacations.AddAsync(new ClientVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             ClientId = vacationClient.Id,
@@ -156,8 +157,8 @@ public class PersonalDashboardEndpointTests(MelodyTrackFixture app) : Integratio
         var response = await GetDashboardAsync(currentUser, timezone.Id);
 
         response.Today.Date.ShouldBe(localToday);
-        response.Today.Count.ShouldBe(1);
-        response.Today.Appointments.ShouldHaveSingleItem().Id.ShouldBe(visibleId);
+        response.Today.Count.ShouldBe(2);
+        response.Today.Appointments.ShouldContain(item => item.Id == visibleId);
         DateOnly.FromDateTime(response.Today.Appointments[0].StartDate).ShouldBe(localToday);
     }
 

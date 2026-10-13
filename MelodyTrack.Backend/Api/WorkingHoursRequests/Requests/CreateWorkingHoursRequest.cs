@@ -6,6 +6,7 @@ public sealed class CreateWorkingHoursRequest : IValidatableRequest
 {
     public required List<WorkingHoursRequestDayInput> WorkingHours { get; set; }
     public string? Message { get; set; }
+    public string? Timezone { get; set; }
 }
 
 public sealed class WorkingHoursRequestDayInput

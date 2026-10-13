@@ -17,4 +17,6 @@ public class Appointment : BaseModel
     public required AppointmentStatus Status { get; set; }
     public required bool IsDeleted { get; set; }
     public AppointmentRecurrenceRule? RecurringRule { get; set; }
+    public Ulid? RecurringRuleId { get; set; }
+    public long? RecurrenceOrdinal { get; set; }
 }

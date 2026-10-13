@@ -11,6 +11,7 @@ namespace MelodyTrack.Backend.Api.Clients.Responses;
 [Facet(typeof(Client), nameof(Client.Contacts))]
 public partial class ClientWithBalanceDto
 {
+    public string? Email { get; set; }
     public decimal Balance { get; set; }
     public string? Telegram { get; set; }
     public string? Vk { get; set; }
@@ -97,7 +98,7 @@ public sealed class ClientWithBalanceDtoMapper(AppDbContext db, TimeProvider tim
         IReadOnlyDictionary<Ulid, List<ServicePriceSnapshot>> priceLookup,
         DateTime nowUtc)
     {
-        var target = new ClientWithBalanceDto(source);
+        var target = new ClientWithBalanceDto(source) { Email = source.Contacts.Email };
         var billableAppointments = appointments.Where(IsBillable).ToList();
         var completedConsultations = appointments
             .Where(appointment => appointment.Status == AppointmentStatus.Completed && appointment.IsConsultation)

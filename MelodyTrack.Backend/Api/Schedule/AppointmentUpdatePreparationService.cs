@@ -7,13 +7,20 @@ using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Api.Schedule;
 
-public sealed class AppointmentUpdatePreparationService(AppDbContext db, IUserAvailabilityService userAvailabilityService)
+public sealed class AppointmentUpdatePreparationService(AppDbContext db, ISchedulingAvailabilityService availabilityService, IRecurringAppointmentService recurrence)
 {
     internal async Task<AppointmentUpdatePreparationResult> PrepareAsync(
         Appointment appointment,
         UpdateAppointmentRequest request,
         CancellationToken ct)
     {
+        if (appointment.RecurringRule is not null
+            && (AppointmentUpdateComparer.IsRecurrenceTypeChanged(appointment, request)
+                || AppointmentUpdateComparer.IsRecurrencePatternChanged(appointment, request)))
+        {
+            return AppointmentUpdatePreparationResult.Failed(AppointmentUpdatePreparationError.RecurringPatternChange);
+        }
+
         var statusResult = ResolveStatus(request.Status);
         if (statusResult.Error != AppointmentUpdatePreparationError.None)
         {
@@ -46,7 +53,7 @@ public sealed class AppointmentUpdatePreparationService(AppDbContext db, IUserAv
         UpdateAppointmentRequest request,
         CancellationToken ct)
     {
-        if (request.RecurrenceTypeId is null)
+        if (request.RecurrenceTypeId is null || appointment.RecurringRule is not null)
         {
             return AppointmentUpdatePreparationError.None;
         }
@@ -67,7 +74,13 @@ public sealed class AppointmentUpdatePreparationService(AppDbContext db, IUserAv
             return AppointmentUpdatePreparationError.RecurrenceTypeNotFound;
         }
 
-        var recurrenceRule = appointment.RecurringRule ?? new AppointmentRecurrenceRule
+        if (recurrenceType.Type == AppointmentRecurrenceType.Weekly && request.RecurrencePattern is not (>= 1 and <= 127)
+            || recurrenceType.Type == AppointmentRecurrenceType.Monthly && request.RecurrencePattern is not (>= 1 and <= 31))
+        {
+            return AppointmentUpdatePreparationError.InvalidRecurrencePattern;
+        }
+
+        var recurrenceRule = new AppointmentRecurrenceRule
         {
             Id = Ulid.NewUlid(),
             RecurrenceType = recurrenceType,
@@ -75,16 +88,14 @@ public sealed class AppointmentUpdatePreparationService(AppDbContext db, IUserAv
             Client = appointment.Client,
             Service = appointment.Service,
             Provider = appointment.Provider,
+            Timezone = appointment.Provider?.ScheduleTimezone ?? request.Timezone ?? "UTC",
+            DurationMinutes = (int)(appointment.EndDate - appointment.StartDate).TotalMinutes,
             StartDate = request.StartDate.Value
         };
 
-        recurrenceRule.RecurrenceType = recurrenceType;
-        recurrenceRule.RecurrencePattern = request.RecurrencePattern;
-        recurrenceRule.Client = appointment.Client;
-        recurrenceRule.Service = appointment.Service;
-        recurrenceRule.Provider = appointment.Provider;
-        recurrenceRule.StartDate = appointment.RecurringRule?.StartDate ?? request.StartDate.Value;
         appointment.RecurringRule = recurrenceRule;
+        appointment.RecurringRuleId = recurrenceRule.Id;
+        appointment.RecurrenceOrdinal = recurrence.GetOrdinal(recurrenceRule, appointment.StartDate);
         return AppointmentUpdatePreparationError.None;
     }
 
@@ -209,23 +220,17 @@ public sealed class AppointmentUpdatePreparationService(AppDbContext db, IUserAv
         TimeSpan duration,
         CancellationToken ct)
     {
-        if (appointment.Provider is null || (!changes.ProviderChanged && !changes.StartDateChanged))
+        if (appointment.RecurringRule is not null && changes.StartDateChanged && ParseScope(request.Scope) != AppointmentUpdateScope.Single)
+            return AppointmentUpdatePreparationError.None;
+        var nextStatus = ResolveStatus(request.Status).Status ?? appointment.Status;
+        if (nextStatus != AppointmentStatus.Planned || (!changes.ProviderChanged && !changes.ClientChanged && !changes.StartDateChanged
+            && appointment.Status == AppointmentStatus.Planned))
         {
             return AppointmentUpdatePreparationError.None;
         }
-
-        if (string.IsNullOrWhiteSpace(request.Timezone))
-        {
-            return AppointmentUpdatePreparationError.MissingTimezone;
-        }
-
-        var isAvailable = await userAvailabilityService.IsAvailableAsync(
-            appointment.Provider.Id,
-            nextStartDate.ToUniversalTime(),
-            nextStartDate.Add(duration).ToUniversalTime(),
-            request.Timezone,
-            ct);
-        return isAvailable ? AppointmentUpdatePreparationError.None : AppointmentUpdatePreparationError.ProviderUnavailable;
+        var blockers = await availabilityService.EvaluateAsync(appointment.Client.Id, appointment.Provider?.Id,
+            nextStartDate, nextStartDate.Add(duration), [appointment.Id], ct);
+        return blockers.Count == 0 ? AppointmentUpdatePreparationError.None : AppointmentUpdatePreparationError.ProviderUnavailable;
     }
 
     private static (AppointmentStatus? Status, AppointmentUpdatePreparationError Error) ResolveStatus(string? status)
@@ -296,7 +301,9 @@ internal enum AppointmentUpdatePreparationError
     ProviderUnavailable,
     MissingRecurrencePattern,
     MissingRecurrenceStartDate,
-    RecurrenceTypeNotFound
+    RecurrenceTypeNotFound,
+    InvalidRecurrencePattern,
+    RecurringPatternChange
 }
 
 internal enum AppointmentUpdateScope

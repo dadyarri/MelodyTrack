@@ -68,7 +68,7 @@ public sealed class WorkingHoursRequestQueryService(AppDbContext db) : IWorkingH
             .ToArray();
         var users = await db.Users.AsNoTracking()
             .Where(item => userIds.Contains(item.Id))
-            .Select(item => new PersonInfo(item.Id, item.FirstName, item.LastName, item.Role.DisplayName))
+            .Select(item => new PersonInfo(item.Id, item.FirstName, item.LastName, item.Role.DisplayName, item.ScheduleTimezone))
             .ToDictionaryAsync(item => item.Id, ct);
         var currentHours = await db.UserWorkingHoursDays.AsNoTracking()
             .Where(item => userIds.Contains(item.UserId))
@@ -99,6 +99,8 @@ public sealed class WorkingHoursRequestQueryService(AppDbContext db) : IWorkingH
                 SubjectName = FormatName(subject),
                 SubjectClassification = subject?.DisplayName ?? "Сотрудник",
                 Status = ToApiKey(request.Status),
+                RequestedTimezone = request.Timezone,
+                CurrentTimezone = subject?.Timezone ?? "Europe/Moscow",
                 RequestMessage = request.RequestMessage,
                 CreatedAtUtc = request.CreatedAtUtc,
                 ProcessedAtUtc = request.ProcessedAtUtc,
@@ -152,5 +154,5 @@ public sealed class WorkingHoursRequestQueryService(AppDbContext db) : IWorkingH
 
     private static string FormatTime(int totalMinutes) => $"{totalMinutes / 60:00}:{totalMinutes % 60:00}";
 
-    private sealed record PersonInfo(Ulid Id, string FirstName, string LastName, string DisplayName);
+    private sealed record PersonInfo(Ulid Id, string FirstName, string LastName, string DisplayName, string Timezone);
 }

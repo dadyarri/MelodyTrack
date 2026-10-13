@@ -1,6 +1,6 @@
 using MelodyTrack.Backend.Data;
 using MelodyTrack.Backend.Data.Models;
-using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Scheduling;
 using Microsoft.EntityFrameworkCore;
 
 namespace MelodyTrack.Backend.Services;
@@ -15,7 +15,8 @@ public interface IUserAvailabilityService
 public record UserAvailabilitySnapshot(
     Ulid UserId,
     IReadOnlyList<UserWorkingHoursDaySnapshot> WorkingHours,
-    IReadOnlyList<UserVacationSnapshot> Vacations);
+    IReadOnlyList<UserVacationSnapshot> Vacations,
+    string Timezone = "UTC");
 
 public record UserWorkingHoursDaySnapshot(
     DayOfWeek DayOfWeek,
@@ -26,17 +27,20 @@ public record UserWorkingHoursDaySnapshot(
 public record UserVacationSnapshot(
     Ulid Id,
     DateTime StartDate,
-    DateTime EndDate);
+    DateTime EndDate,
+    int Version = 1);
 
 public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
 {
     public async Task<UserAvailabilitySnapshot> GetAvailabilityAsync(Ulid userId, CancellationToken ct)
     {
-        var userExists = await db.Users
+        var timezone = await db.Users
             .AsNoTracking()
-            .AnyAsync(e => e.Id == userId, ct);
+            .Where(e => e.Id == userId)
+            .Select(e => e.ScheduleTimezone)
+            .SingleOrDefaultAsync(ct);
 
-        if (!userExists)
+        if (timezone is null)
         {
             return new UserAvailabilitySnapshot(userId, [], []);
         }
@@ -52,17 +56,18 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
                 e.EndMinuteOfDay))
             .ToListAsync(ct);
 
-        var vacations = await db.UserVacations
+        var vacations = await db.Vacations
             .AsNoTracking()
             .Where(e => e.UserId == userId)
             .OrderBy(e => e.StartDate)
-            .Select(e => new UserVacationSnapshot(e.Id, e.StartDate, e.EndDate))
+            .Select(e => new UserVacationSnapshot(e.Id, e.StartDate, e.EndDate, e.Version))
             .ToListAsync(ct);
 
         return new UserAvailabilitySnapshot(
             userId,
             workingHours.Count > 0 ? workingHours : GetDefaultWorkingHours(),
-            vacations);
+            vacations,
+            timezone);
     }
 
     public async Task<IReadOnlyList<UserAvailabilitySnapshot>> GetAvailabilitiesAsync(IReadOnlyCollection<Ulid>? userIds, CancellationToken ct)
@@ -73,11 +78,14 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
             usersQuery = usersQuery.Where(user => userIds.Contains(user.Id));
         }
 
-        var userIdsList = await usersQuery
+        var users = await usersQuery
             .OrderBy(user => user.LastName)
             .ThenBy(user => user.FirstName)
-            .Select(user => user.Id)
+            .Select(user => new { user.Id, user.ScheduleTimezone })
             .ToListAsync(ct);
+
+        var userIdsList = users.Select(user => user.Id).ToList();
+        var timezones = users.ToDictionary(user => user.Id, user => user.ScheduleTimezone);
 
         if (userIdsList.Count == 0)
         {
@@ -100,15 +108,15 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
             })
             .ToListAsync(ct);
 
-        var vacations = await db.UserVacations
+        var vacations = await db.Vacations
             .AsNoTracking()
-            .Where(item => userIdsList.Contains(item.UserId))
+            .Where(item => item.UserId != null && userIdsList.Contains(item.UserId.Value))
             .OrderBy(item => item.UserId)
             .ThenBy(item => item.StartDate)
             .Select(item => new
             {
-                item.UserId,
-                Snapshot = new UserVacationSnapshot(item.Id, item.StartDate, item.EndDate)
+                UserId = item.UserId!.Value,
+                Snapshot = new UserVacationSnapshot(item.Id, item.StartDate, item.EndDate, item.Version)
             })
             .ToListAsync(ct);
 
@@ -123,47 +131,26 @@ public class UserAvailabilityService(AppDbContext db) : IUserAvailabilityService
             .Select(userId => new UserAvailabilitySnapshot(
                 userId,
                 workingHoursLookup.TryGetValue(userId, out var hours) && hours.Count > 0 ? hours : GetDefaultWorkingHours(),
-                vacationsLookup.GetValueOrDefault(userId, [])))
+                vacationsLookup.GetValueOrDefault(userId, []),
+                timezones[userId]))
             .ToList();
     }
 
     public async Task<bool> IsAvailableAsync(Ulid userId, DateTime startUtc, DateTime endUtc, string timezoneId, CancellationToken ct)
     {
         var availability = await GetAvailabilityAsync(userId, ct);
-        return IsAvailable(availability, startUtc, endUtc, timezoneId);
+        return IsAvailable(availability, startUtc, endUtc, availability.Timezone);
     }
 
     public static bool IsAvailable(UserAvailabilitySnapshot availability, DateTime startUtc, DateTime endUtc, string timezoneId)
     {
-        if (availability.Vacations.Any(vacation => startUtc < vacation.EndDate && endUtc > vacation.StartDate))
-        {
-            return false;
-        }
-
-        var localStart = DateTimeUtils.ConvertDateToTimezone(startUtc, timezoneId);
-        var localEnd = DateTimeUtils.ConvertDateToTimezone(endUtc, timezoneId);
-
-        if (localStart.Date != localEnd.Date)
-        {
-            return false;
-        }
-
-        var workingDay = availability.WorkingHours.FirstOrDefault(e => e.DayOfWeek == localStart.DayOfWeek);
-        if (workingDay is null)
-        {
-            return true;
-        }
-
-        if (!workingDay.IsWorkingDay)
-        {
-            return false;
-        }
-
-        var startMinuteOfDay = localStart.Hour * 60 + localStart.Minute;
-        var endMinuteOfDay = localEnd.Hour * 60 + localEnd.Minute;
-
-        return startMinuteOfDay >= workingDay.StartMinuteOfDay
-               && endMinuteOfDay <= workingDay.EndMinuteOfDay;
+        return SchedulingAvailability.Evaluate(
+            startUtc,
+            endUtc,
+            [],
+            availability.Vacations.Select(item => new SchedulingVacation(item.Id, item.StartDate, item.EndDate)).ToList(),
+            availability.WorkingHours.Select(item => new SchedulingWorkingDay(item.DayOfWeek, item.IsWorkingDay, item.StartMinuteOfDay, item.EndMinuteOfDay)).ToList(),
+            timezoneId).Count == 0;
     }
 
     public static List<UserWorkingHoursDaySnapshot> GetDefaultWorkingHours()

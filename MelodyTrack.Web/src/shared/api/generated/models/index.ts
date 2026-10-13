@@ -100,9 +100,17 @@ export interface Appointment extends AdditionalDataHolder, Parsable {
      */
     provider?: Appointment_providerMember1 | User | null;
     /**
+     * The recurrenceOrdinal property
+     */
+    recurrenceOrdinal?: number | null;
+    /**
      * The recurringRule property
      */
     recurringRule?: AppointmentRecurrenceRule | Appointment_recurringRuleMember1 | null;
+    /**
+     * The recurringRuleId property
+     */
+    recurringRuleId?: string | null;
     /**
      * The service property
      */
@@ -261,12 +269,20 @@ export interface AppointmentProviderDto extends AdditionalDataHolder, Parsable {
      * The roleDisplayName property
      */
     roleDisplayName?: string | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
 }
 export interface AppointmentRecurrenceRule extends AdditionalDataHolder, Parsable {
     /**
      * The client property
      */
     client?: Client | null;
+    /**
+     * The durationMinutes property
+     */
+    durationMinutes?: number | null;
     /**
      * The endDate property
      */
@@ -295,6 +311,10 @@ export interface AppointmentRecurrenceRule extends AdditionalDataHolder, Parsabl
      * The startDate property
      */
     startDate?: Date | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
 }
 export type AppointmentRecurrenceRule_provider = AppointmentRecurrenceRule_providerMember1 | User;
 export interface AppointmentRecurrenceRule_providerMember1 extends AdditionalDataHolder, Parsable {
@@ -320,6 +340,10 @@ export interface AppointmentRecurrenceRuleDto extends AdditionalDataHolder, Pars
      * The startDate property
      */
     startDate?: Date | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
 }
 export interface AppointmentServiceDto extends AdditionalDataHolder, Parsable {
     /**
@@ -395,6 +419,28 @@ export interface ChangePasswordRequest extends AdditionalDataHolder, Parsable {
      */
     newPassword?: string | null;
 }
+export interface ChangeVacationInput extends AdditionalDataHolder, Parsable {
+    /**
+     * The cancelConflictingAppointments property
+     */
+    cancelConflictingAppointments?: boolean | null;
+    /**
+     * The endDate property
+     */
+    endDate?: Date | null;
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
+    /**
+     * The startDate property
+     */
+    startDate?: Date | null;
+}
 export interface ChoosePortalAliasRequest extends AdditionalDataHolder, Parsable {
     /**
      * The candidateToken property
@@ -465,7 +511,7 @@ export interface Client extends AdditionalDataHolder, Parsable {
     /**
      * The vacations property
      */
-    vacations?: ClientVacation[] | null;
+    vacations?: Vacation[] | null;
 }
 export type Client_source = ClientSource | Client_sourceMember1;
 export interface Client_sourceMember1 extends AdditionalDataHolder, Parsable {
@@ -741,11 +787,7 @@ export interface ClientsReportSummaryDto extends AdditionalDataHolder, Parsable 
      */
     retentionPercent?: number | null;
 }
-export interface ClientVacation extends AdditionalDataHolder, Parsable {
-    /**
-     * The clientId property
-     */
-    clientId?: string | null;
+export interface ClientVacationRequest extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
      */
@@ -758,16 +800,10 @@ export interface ClientVacation extends AdditionalDataHolder, Parsable {
      * The startDate property
      */
     startDate?: Date | null;
-}
-export interface ClientVacationRequest extends AdditionalDataHolder, Parsable {
     /**
-     * The endDate property
+     * The version property
      */
-    endDate?: Date | null;
-    /**
-     * The startDate property
-     */
-    startDate?: Date | null;
+    version?: number | null;
 }
 export interface ClientValueReportDto extends AdditionalDataHolder, Parsable {
     /**
@@ -820,6 +856,10 @@ export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
      * The dateOfBirth property
      */
     dateOfBirth?: DateOnly | null;
+    /**
+     * The email property
+     */
+    email?: string | null;
     /**
      * The firstName property
      */
@@ -879,7 +919,7 @@ export interface ClientWithBalanceDto extends AdditionalDataHolder, Parsable {
     /**
      * The vacations property
      */
-    vacations?: ClientVacation[] | null;
+    vacations?: Vacation[] | null;
     /**
      * The vk property
      */
@@ -1823,6 +1863,15 @@ export function createChangePasswordRequestFromDiscriminatorValue(parseNode: Par
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ChangeVacationInput}
+ */
+// @ts-ignore
+export function createChangeVacationInputFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoChangeVacationInput;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {ChoosePortalAliasRequest}
  */
 // @ts-ignore
@@ -2031,15 +2080,6 @@ export function createClientsReportResponseFromDiscriminatorValue(parseNode: Par
 // @ts-ignore
 export function createClientsReportSummaryDtoFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClientsReportSummaryDto;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {ClientVacation}
- */
-// @ts-ignore
-export function createClientVacationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoClientVacation;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -2597,6 +2637,15 @@ export function createCreatePaymentRequestFromDiscriminatorValue(parseNode: Pars
 // @ts-ignore
 export function createCreateServiceRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoCreateServiceRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {CreateVacationInput}
+ */
+// @ts-ignore
+export function createCreateVacationInputFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoCreateVacationInput;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -3178,6 +3227,24 @@ export function createGetVacationRequestsResponseFromDiscriminatorValue(parseNod
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetVacationRestorationCandidatesResponse}
+ */
+// @ts-ignore
+export function createGetVacationRestorationCandidatesResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetVacationRestorationCandidatesResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {GetVacationsResponse}
+ */
+// @ts-ignore
+export function createGetVacationsResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoGetVacationsResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {GetWorkingHoursRequestsResponse}
  */
 // @ts-ignore
@@ -3663,6 +3730,15 @@ export function createResetPasswordRequestFromDiscriminatorValue(parseNode: Pars
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {RestoreVacationAppointmentsInput}
+ */
+// @ts-ignore
+export function createRestoreVacationAppointmentsInputFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoRestoreVacationAppointmentsInput;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {RevokePushSubscriptionRequest}
  */
 // @ts-ignore
@@ -3991,15 +4067,6 @@ export function createUserVacationDtoFromDiscriminatorValue(parseNode: ParseNode
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
- * @returns {UserVacation}
- */
-// @ts-ignore
-export function createUserVacationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
-    return deserializeIntoUserVacation;
-}
-/**
- * Creates a new instance of the appropriate class based on discriminator value
- * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {UserVacationItem}
  */
 // @ts-ignore
@@ -4032,6 +4099,86 @@ export function createUserWorkingHoursDayFromDiscriminatorValue(parseNode: Parse
 // @ts-ignore
 export function createUserWorkingHoursDayItemFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoUserWorkingHoursDayItem;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {Vacation}
+ */
+// @ts-ignore
+export function createVacationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacation;
+}
+export interface CreateVacationInput extends AdditionalDataHolder, Parsable {
+    /**
+     * The cancelConflictingAppointments property
+     */
+    cancelConflictingAppointments?: boolean | null;
+    /**
+     * The endDate property
+     */
+    endDate?: Date | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
+    /**
+     * The startDate property
+     */
+    startDate?: Date | null;
+    /**
+     * The subjectId property
+     */
+    subjectId?: string | null;
+    /**
+     * The subjectType property
+     */
+    subjectType?: string | null;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationOperationResponse_requestMember1 | VacationRequestResponse}
+ */
+// @ts-ignore
+export function createVacationOperationResponse_requestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationOperationResponse_request;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationOperationResponse_requestMember1}
+ */
+// @ts-ignore
+export function createVacationOperationResponse_requestMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationOperationResponse_requestMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationOperationResponse_vacationMember1 | VacationResponse}
+ */
+// @ts-ignore
+export function createVacationOperationResponse_vacationFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationOperationResponse_vacation;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationOperationResponse_vacationMember1}
+ */
+// @ts-ignore
+export function createVacationOperationResponse_vacationMember1FromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationOperationResponse_vacationMember1;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationOperationResponse}
+ */
+// @ts-ignore
+export function createVacationOperationResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationOperationResponse;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -4077,6 +4224,33 @@ export function createVacationRequestResponseFromDiscriminatorValue(parseNode: P
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationResponse}
+ */
+// @ts-ignore
+export function createVacationResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationRestorationCandidateResponse}
+ */
+// @ts-ignore
+export function createVacationRestorationCandidateResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationRestorationCandidateResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {VacationVersionInput}
+ */
+// @ts-ignore
+export function createVacationVersionInputFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoVacationVersionInput;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
  * @returns {Verify2FaRequest}
  */
 // @ts-ignore
@@ -4106,6 +4280,10 @@ export interface CreateWorkingHoursRequest extends AdditionalDataHolder, Parsabl
      * The message property
      */
     message?: string | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
     /**
      * The workingHours property
      */
@@ -4381,7 +4559,9 @@ export function deserializeIntoAppointment(appointment: Partial<Appointment> | u
         "isDeleted": n => { appointment.isDeleted = n.getBooleanValue(); },
         "lessonNotes": n => { appointment.lessonNotes = n.getStringValue(); },
         "provider": n => { appointment.provider = n.getObjectValue<Appointment_providerMember1>(createAppointment_providerMember1FromDiscriminatorValue) ?? n.getObjectValue<User>(createUserFromDiscriminatorValue); },
+        "recurrenceOrdinal": n => { appointment.recurrenceOrdinal = n.getNumberValue(); },
         "recurringRule": n => { appointment.recurringRule = n.getObjectValue<AppointmentRecurrenceRule>(createAppointmentRecurrenceRuleFromDiscriminatorValue) ?? n.getObjectValue<Appointment_recurringRuleMember1>(createAppointment_recurringRuleMember1FromDiscriminatorValue); },
+        "recurringRuleId": n => { appointment.recurringRuleId = n.getStringValue(); },
         "service": n => { appointment.service = n.getObjectValue<Service>(createServiceFromDiscriminatorValue); },
         "startDate": n => { appointment.startDate = n.getDateValue(); },
         "status": n => { appointment.status = n.getNumberValue(); },
@@ -4639,6 +4819,7 @@ export function deserializeIntoAppointmentProviderDto(appointmentProviderDto: Pa
         "id": n => { appointmentProviderDto.id = n.getStringValue(); },
         "lastName": n => { appointmentProviderDto.lastName = n.getStringValue(); },
         "roleDisplayName": n => { appointmentProviderDto.roleDisplayName = n.getStringValue(); },
+        "timezone": n => { appointmentProviderDto.timezone = n.getStringValue(); },
     }
 }
 /**
@@ -4650,6 +4831,7 @@ export function deserializeIntoAppointmentProviderDto(appointmentProviderDto: Pa
 export function deserializeIntoAppointmentRecurrenceRule(appointmentRecurrenceRule: Partial<AppointmentRecurrenceRule> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "client": n => { appointmentRecurrenceRule.client = n.getObjectValue<Client>(createClientFromDiscriminatorValue); },
+        "durationMinutes": n => { appointmentRecurrenceRule.durationMinutes = n.getNumberValue(); },
         "endDate": n => { appointmentRecurrenceRule.endDate = n.getDateValue(); },
         "id": n => { appointmentRecurrenceRule.id = n.getStringValue(); },
         "provider": n => { appointmentRecurrenceRule.provider = n.getObjectValue<AppointmentRecurrenceRule_providerMember1>(createAppointmentRecurrenceRule_providerMember1FromDiscriminatorValue) ?? n.getObjectValue<User>(createUserFromDiscriminatorValue); },
@@ -4657,6 +4839,7 @@ export function deserializeIntoAppointmentRecurrenceRule(appointmentRecurrenceRu
         "recurrenceType": n => { appointmentRecurrenceRule.recurrenceType = n.getObjectValue<RecurrenceType>(createRecurrenceTypeFromDiscriminatorValue); },
         "service": n => { appointmentRecurrenceRule.service = n.getObjectValue<Service>(createServiceFromDiscriminatorValue); },
         "startDate": n => { appointmentRecurrenceRule.startDate = n.getDateValue(); },
+        "timezone": n => { appointmentRecurrenceRule.timezone = n.getStringValue(); },
     }
 }
 /**
@@ -4694,6 +4877,7 @@ export function deserializeIntoAppointmentRecurrenceRuleDto(appointmentRecurrenc
         "key": n => { appointmentRecurrenceRuleDto.key = n.getStringValue(); },
         "recurrencePattern": n => { appointmentRecurrenceRuleDto.recurrencePattern = n.getNumberValue(); },
         "startDate": n => { appointmentRecurrenceRuleDto.startDate = n.getDateValue(); },
+        "timezone": n => { appointmentRecurrenceRuleDto.timezone = n.getStringValue(); },
     }
 }
 /**
@@ -4764,6 +4948,21 @@ export function deserializeIntoChangePasswordRequest(changePasswordRequest: Part
 }
 /**
  * The deserialization information for the current model
+ * @param ChangeVacationInput The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoChangeVacationInput(changeVacationInput: Partial<ChangeVacationInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "cancelConflictingAppointments": n => { changeVacationInput.cancelConflictingAppointments = n.getBooleanValue(); },
+        "endDate": n => { changeVacationInput.endDate = n.getDateValue(); },
+        "expectedVersion": n => { changeVacationInput.expectedVersion = n.getNumberValue(); },
+        "message": n => { changeVacationInput.message = n.getStringValue(); },
+        "startDate": n => { changeVacationInput.startDate = n.getDateValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ChoosePortalAliasRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -4796,7 +4995,7 @@ export function deserializeIntoClient(client: Partial<Client> | undefined = {}) 
         "patronymic": n => { client.patronymic = n.getStringValue(); },
         "source": n => { client.source = n.getObjectValue<ClientSource>(createClientSourceFromDiscriminatorValue) ?? n.getObjectValue<Client_sourceMember1>(createClient_sourceMember1FromDiscriminatorValue); },
         "sourceId": n => { client.sourceId = n.getStringValue(); },
-        "vacations": n => { client.vacations = n.getCollectionOfObjectValues<ClientVacation>(createClientVacationFromDiscriminatorValue); },
+        "vacations": n => { client.vacations = n.getCollectionOfObjectValues<Vacation>(createVacationFromDiscriminatorValue); },
     }
 }
 /**
@@ -5026,20 +5225,6 @@ export function deserializeIntoClientsReportSummaryDto(clientsReportSummaryDto: 
 }
 /**
  * The deserialization information for the current model
- * @param ClientVacation The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoClientVacation(clientVacation: Partial<ClientVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "clientId": n => { clientVacation.clientId = n.getStringValue(); },
-        "endDate": n => { clientVacation.endDate = n.getDateValue(); },
-        "id": n => { clientVacation.id = n.getStringValue(); },
-        "startDate": n => { clientVacation.startDate = n.getDateValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
  * @param ClientVacationRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5047,7 +5232,9 @@ export function deserializeIntoClientVacation(clientVacation: Partial<ClientVaca
 export function deserializeIntoClientVacationRequest(clientVacationRequest: Partial<ClientVacationRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { clientVacationRequest.endDate = n.getDateValue(); },
+        "id": n => { clientVacationRequest.id = n.getStringValue(); },
         "startDate": n => { clientVacationRequest.startDate = n.getDateValue(); },
+        "version": n => { clientVacationRequest.version = n.getNumberValue(); },
     }
 }
 /**
@@ -5080,6 +5267,7 @@ export function deserializeIntoClientWithBalanceDto(clientWithBalanceDto: Partia
         "balance": n => { clientWithBalanceDto.balance = n.getNumberValue(); },
         "createdAtUtc": n => { clientWithBalanceDto.createdAtUtc = n.getDateValue(); },
         "dateOfBirth": n => { clientWithBalanceDto.dateOfBirth = n.getDateOnlyValue(); },
+        "email": n => { clientWithBalanceDto.email = n.getStringValue(); },
         "firstName": n => { clientWithBalanceDto.firstName = n.getStringValue(); },
         "id": n => { clientWithBalanceDto.id = n.getStringValue(); },
         "isLeadClosed": n => { clientWithBalanceDto.isLeadClosed = n.getBooleanValue(); },
@@ -5094,7 +5282,7 @@ export function deserializeIntoClientWithBalanceDto(clientWithBalanceDto: Partia
         "sourceId": n => { clientWithBalanceDto.sourceId = n.getStringValue(); },
         "sourceName": n => { clientWithBalanceDto.sourceName = n.getStringValue(); },
         "telegram": n => { clientWithBalanceDto.telegram = n.getStringValue(); },
-        "vacations": n => { clientWithBalanceDto.vacations = n.getCollectionOfObjectValues<ClientVacation>(createClientVacationFromDiscriminatorValue); },
+        "vacations": n => { clientWithBalanceDto.vacations = n.getCollectionOfObjectValues<Vacation>(createVacationFromDiscriminatorValue); },
         "vk": n => { clientWithBalanceDto.vk = n.getStringValue(); },
     }
 }
@@ -5775,6 +5963,22 @@ export function deserializeIntoCreateServiceRequest(createServiceRequest: Partia
 }
 /**
  * The deserialization information for the current model
+ * @param CreateVacationInput The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoCreateVacationInput(createVacationInput: Partial<CreateVacationInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "cancelConflictingAppointments": n => { createVacationInput.cancelConflictingAppointments = n.getBooleanValue(); },
+        "endDate": n => { createVacationInput.endDate = n.getDateValue(); },
+        "message": n => { createVacationInput.message = n.getStringValue(); },
+        "startDate": n => { createVacationInput.startDate = n.getDateValue(); },
+        "subjectId": n => { createVacationInput.subjectId = n.getStringValue(); },
+        "subjectType": n => { createVacationInput.subjectType = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param CreateVacationRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -5795,6 +5999,7 @@ export function deserializeIntoCreateVacationRequest(createVacationRequest: Part
 export function deserializeIntoCreateWorkingHoursRequest(createWorkingHoursRequest: Partial<CreateWorkingHoursRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "message": n => { createWorkingHoursRequest.message = n.getStringValue(); },
+        "timezone": n => { createWorkingHoursRequest.timezone = n.getStringValue(); },
         "workingHours": n => { createWorkingHoursRequest.workingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayInput>(createWorkingHoursRequestDayInputFromDiscriminatorValue); },
     }
 }
@@ -6497,6 +6702,28 @@ export function deserializeIntoGetVacationRequestsResponse(getVacationRequestsRe
 }
 /**
  * The deserialization information for the current model
+ * @param GetVacationRestorationCandidatesResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetVacationRestorationCandidatesResponse(getVacationRestorationCandidatesResponse: Partial<GetVacationRestorationCandidatesResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getVacationRestorationCandidatesResponse.items = n.getCollectionOfObjectValues<VacationRestorationCandidateResponse>(createVacationRestorationCandidateResponseFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param GetVacationsResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoGetVacationsResponse(getVacationsResponse: Partial<GetVacationsResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { getVacationsResponse.items = n.getCollectionOfObjectValues<VacationResponse>(createVacationResponseFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param GetWorkingHoursRequestsResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7181,6 +7408,18 @@ export function deserializeIntoResetPasswordRequest(resetPasswordRequest: Partia
 }
 /**
  * The deserialization information for the current model
+ * @param RestoreVacationAppointmentsInput The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoRestoreVacationAppointmentsInput(restoreVacationAppointmentsInput: Partial<RestoreVacationAppointmentsInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { restoreVacationAppointmentsInput.expectedVersion = n.getNumberValue(); },
+        "interruptionIds": n => { restoreVacationAppointmentsInput.interruptionIds = n.getCollectionOfPrimitiveValues<string>("string"); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param RevokePushSubscriptionRequest The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7368,6 +7607,7 @@ export function deserializeIntoUpdateAppointmentRequest(updateAppointmentRequest
 // @ts-ignore
 export function deserializeIntoUpdateClientRequest(updateClientRequest: Partial<UpdateClientRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "cancelConflictingAppointments": n => { updateClientRequest.cancelConflictingAppointments = n.getBooleanValue(); },
         "dateOfBirth": n => { updateClientRequest.dateOfBirth = n.getDateOnlyValue(); },
         "email": n => { updateClientRequest.email = n.getStringValue(); },
         "expectedActivityId": n => { updateClientRequest.expectedActivityId = n.getStringValue(); },
@@ -7502,6 +7742,7 @@ export function deserializeIntoUpdateUserAvailabilityRequest(updateUserAvailabil
     return {
         "cancelConflictingAppointments": n => { updateUserAvailabilityRequest.cancelConflictingAppointments = n.getBooleanValue(); },
         "expectedActivityId": n => { updateUserAvailabilityRequest.expectedActivityId = n.getStringValue(); },
+        "timezone": n => { updateUserAvailabilityRequest.timezone = n.getStringValue(); },
         "vacations": n => { updateUserAvailabilityRequest.vacations = n.getCollectionOfObjectValues<UserVacationItem>(createUserVacationItemFromDiscriminatorValue); },
         "workingHours": n => { updateUserAvailabilityRequest.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDayItem>(createUserWorkingHoursDayItemFromDiscriminatorValue); },
     }
@@ -7543,9 +7784,10 @@ export function deserializeIntoUser(user: Partial<User> | undefined = {}) : Reco
         "phone": n => { user.phone = n.getStringValue(); },
         "portalAlias": n => { user.portalAlias = n.getStringValue(); },
         "role": n => { user.role = n.getObjectValue<Role>(createRoleFromDiscriminatorValue); },
+        "scheduleTimezone": n => { user.scheduleTimezone = n.getStringValue(); },
         "telegram": n => { user.telegram = n.getStringValue(); },
         "totpSecret": n => { user.totpSecret = n.getStringValue(); },
-        "vacations": n => { user.vacations = n.getCollectionOfObjectValues<UserVacation>(createUserVacationFromDiscriminatorValue); },
+        "vacations": n => { user.vacations = n.getCollectionOfObjectValues<Vacation>(createVacationFromDiscriminatorValue); },
         "vk": n => { user.vk = n.getStringValue(); },
         "workingHours": n => { user.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDay>(createUserWorkingHoursDayFromDiscriminatorValue); },
     }
@@ -7603,6 +7845,7 @@ export function deserializeIntoUser_onboardingStateMember1(user_onboardingStateM
 export function deserializeIntoUserAvailabilityResponse(userAvailabilityResponse: Partial<UserAvailabilityResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "lastActivity": n => { userAvailabilityResponse.lastActivity = n.getObjectValue<RecordActivityDto>(createRecordActivityDtoFromDiscriminatorValue) ?? n.getObjectValue<UserAvailabilityResponse_lastActivityMember1>(createUserAvailabilityResponse_lastActivityMember1FromDiscriminatorValue); },
+        "timezone": n => { userAvailabilityResponse.timezone = n.getStringValue(); },
         "userId": n => { userAvailabilityResponse.userId = n.getStringValue(); },
         "vacations": n => { userAvailabilityResponse.vacations = n.getCollectionOfObjectValues<UserVacationDto>(createUserVacationDtoFromDiscriminatorValue); },
         "workingHours": n => { userAvailabilityResponse.workingHours = n.getCollectionOfObjectValues<UserWorkingHoursDayDto>(createUserWorkingHoursDayDtoFromDiscriminatorValue); },
@@ -7652,21 +7895,6 @@ export function deserializeIntoUserOnboardingState(userOnboardingState: Partial<
 }
 /**
  * The deserialization information for the current model
- * @param UserVacation The instance to deserialize into.
- * @returns {Record<string, (node: ParseNode) => void>}
- */
-// @ts-ignore
-export function deserializeIntoUserVacation(userVacation: Partial<UserVacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
-    return {
-        "endDate": n => { userVacation.endDate = n.getDateValue(); },
-        "id": n => { userVacation.id = n.getStringValue(); },
-        "startDate": n => { userVacation.startDate = n.getDateValue(); },
-        "user": n => { userVacation.user = n.getObjectValue<User>(createUserFromDiscriminatorValue); },
-        "userId": n => { userVacation.userId = n.getStringValue(); },
-    }
-}
-/**
- * The deserialization information for the current model
  * @param UserVacationDto The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7676,6 +7904,7 @@ export function deserializeIntoUserVacationDto(userVacationDto: Partial<UserVaca
         "endDate": n => { userVacationDto.endDate = n.getDateValue(); },
         "id": n => { userVacationDto.id = n.getStringValue(); },
         "startDate": n => { userVacationDto.startDate = n.getDateValue(); },
+        "version": n => { userVacationDto.version = n.getNumberValue(); },
     }
 }
 /**
@@ -7687,7 +7916,9 @@ export function deserializeIntoUserVacationDto(userVacationDto: Partial<UserVaca
 export function deserializeIntoUserVacationItem(userVacationItem: Partial<UserVacationItem> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "endDate": n => { userVacationItem.endDate = n.getDateValue(); },
+        "id": n => { userVacationItem.id = n.getStringValue(); },
         "startDate": n => { userVacationItem.startDate = n.getDateValue(); },
+        "version": n => { userVacationItem.version = n.getNumberValue(); },
     }
 }
 /**
@@ -7737,6 +7968,83 @@ export function deserializeIntoUserWorkingHoursDayItem(userWorkingHoursDayItem: 
 }
 /**
  * The deserialization information for the current model
+ * @param Vacation The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacation(vacation: Partial<Vacation> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "clientId": n => { vacation.clientId = n.getStringValue(); },
+        "deletedAtUtc": n => { vacation.deletedAtUtc = n.getDateValue(); },
+        "endDate": n => { vacation.endDate = n.getDateValue(); },
+        "endedAtUtc": n => { vacation.endedAtUtc = n.getDateValue(); },
+        "id": n => { vacation.id = n.getStringValue(); },
+        "isCancelled": n => { vacation.isCancelled = n.getBooleanValue(); },
+        "originalEndDate": n => { vacation.originalEndDate = n.getDateValue(); },
+        "startDate": n => { vacation.startDate = n.getDateValue(); },
+        "userId": n => { vacation.userId = n.getStringValue(); },
+        "version": n => { vacation.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationOperationResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationOperationResponse(vacationOperationResponse: Partial<VacationOperationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "request": n => { vacationOperationResponse.request = n.getObjectValue<VacationOperationResponse_requestMember1>(createVacationOperationResponse_requestMember1FromDiscriminatorValue) ?? n.getObjectValue<VacationRequestResponse>(createVacationRequestResponseFromDiscriminatorValue); },
+        "requiresApproval": n => { vacationOperationResponse.requiresApproval = n.getBooleanValue(); },
+        "vacation": n => { vacationOperationResponse.vacation = n.getObjectValue<VacationOperationResponse_vacationMember1>(createVacationOperationResponse_vacationMember1FromDiscriminatorValue) ?? n.getObjectValue<VacationResponse>(createVacationResponseFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationOperationResponse_request The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationOperationResponse_request(vacationOperationResponse_request: Partial<VacationOperationResponse_requestMember1 | VacationRequestResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        ...deserializeIntoVacationOperationResponse_requestMember1(vacationOperationResponse_request as VacationOperationResponse_requestMember1),
+        ...deserializeIntoVacationRequestResponse(vacationOperationResponse_request as VacationRequestResponse),
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationOperationResponse_requestMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationOperationResponse_requestMember1(vacationOperationResponse_requestMember1: Partial<VacationOperationResponse_requestMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationOperationResponse_vacation The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationOperationResponse_vacation(vacationOperationResponse_vacation: Partial<VacationOperationResponse_vacationMember1 | VacationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        ...deserializeIntoVacationOperationResponse_vacationMember1(vacationOperationResponse_vacation as VacationOperationResponse_vacationMember1),
+        ...deserializeIntoVacationResponse(vacationOperationResponse_vacation as VacationResponse),
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationOperationResponse_vacationMember1 The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationOperationResponse_vacationMember1(vacationOperationResponse_vacationMember1: Partial<VacationOperationResponse_vacationMember1> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param VacationPeriodResponse The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -7768,6 +8076,7 @@ export function deserializeIntoVacationRequestDecisionRequest(vacationRequestDec
 // @ts-ignore
 export function deserializeIntoVacationRequestResponse(vacationRequestResponse: Partial<VacationRequestResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
+        "action": n => { vacationRequestResponse.action = n.getStringValue(); },
         "conflictingAppointmentCount": n => { vacationRequestResponse.conflictingAppointmentCount = n.getNumberValue(); },
         "createdAtUtc": n => { vacationRequestResponse.createdAtUtc = n.getDateValue(); },
         "decisionMessage": n => { vacationRequestResponse.decisionMessage = n.getStringValue(); },
@@ -7787,7 +8096,60 @@ export function deserializeIntoVacationRequestResponse(vacationRequestResponse: 
         "subjectId": n => { vacationRequestResponse.subjectId = n.getStringValue(); },
         "subjectName": n => { vacationRequestResponse.subjectName = n.getStringValue(); },
         "subjectType": n => { vacationRequestResponse.subjectType = n.getStringValue(); },
+        "targetVacationId": n => { vacationRequestResponse.targetVacationId = n.getStringValue(); },
         "version": n => { vacationRequestResponse.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationResponse(vacationResponse: Partial<VacationResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "canEnd": n => { vacationResponse.canEnd = n.getBooleanValue(); },
+        "canManage": n => { vacationResponse.canManage = n.getBooleanValue(); },
+        "deletedAtUtc": n => { vacationResponse.deletedAtUtc = n.getDateValue(); },
+        "endDate": n => { vacationResponse.endDate = n.getDateValue(); },
+        "endedAtUtc": n => { vacationResponse.endedAtUtc = n.getDateValue(); },
+        "id": n => { vacationResponse.id = n.getStringValue(); },
+        "originalEndDate": n => { vacationResponse.originalEndDate = n.getDateValue(); },
+        "requiresApproval": n => { vacationResponse.requiresApproval = n.getBooleanValue(); },
+        "startDate": n => { vacationResponse.startDate = n.getDateValue(); },
+        "state": n => { vacationResponse.state = n.getStringValue(); },
+        "subjectId": n => { vacationResponse.subjectId = n.getStringValue(); },
+        "subjectType": n => { vacationResponse.subjectType = n.getStringValue(); },
+        "timezone": n => { vacationResponse.timezone = n.getStringValue(); },
+        "version": n => { vacationResponse.version = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationRestorationCandidateResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationRestorationCandidateResponse(vacationRestorationCandidateResponse: Partial<VacationRestorationCandidateResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "available": n => { vacationRestorationCandidateResponse.available = n.getBooleanValue(); },
+        "blockers": n => { vacationRestorationCandidateResponse.blockers = n.getCollectionOfPrimitiveValues<string>("string"); },
+        "endDate": n => { vacationRestorationCandidateResponse.endDate = n.getDateValue(); },
+        "id": n => { vacationRestorationCandidateResponse.id = n.getStringValue(); },
+        "serviceName": n => { vacationRestorationCandidateResponse.serviceName = n.getStringValue(); },
+        "startDate": n => { vacationRestorationCandidateResponse.startDate = n.getDateValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param VacationVersionInput The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoVacationVersionInput(vacationVersionInput: Partial<VacationVersionInput> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "expectedVersion": n => { vacationVersionInput.expectedVersion = n.getNumberValue(); },
+        "message": n => { vacationVersionInput.message = n.getStringValue(); },
     }
 }
 /**
@@ -7866,11 +8228,13 @@ export function deserializeIntoWorkingHoursRequestDayResponse(workingHoursReques
 export function deserializeIntoWorkingHoursRequestResponse(workingHoursRequestResponse: Partial<WorkingHoursRequestResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
     return {
         "createdAtUtc": n => { workingHoursRequestResponse.createdAtUtc = n.getDateValue(); },
+        "currentTimezone": n => { workingHoursRequestResponse.currentTimezone = n.getStringValue(); },
         "currentWorkingHours": n => { workingHoursRequestResponse.currentWorkingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayResponse>(createWorkingHoursRequestDayResponseFromDiscriminatorValue); },
         "decisionMessage": n => { workingHoursRequestResponse.decisionMessage = n.getStringValue(); },
         "id": n => { workingHoursRequestResponse.id = n.getStringValue(); },
         "processedAtUtc": n => { workingHoursRequestResponse.processedAtUtc = n.getDateValue(); },
         "processedBySuperuserId": n => { workingHoursRequestResponse.processedBySuperuserId = n.getStringValue(); },
+        "requestedTimezone": n => { workingHoursRequestResponse.requestedTimezone = n.getStringValue(); },
         "requestedWorkingHours": n => { workingHoursRequestResponse.requestedWorkingHours = n.getCollectionOfObjectValues<WorkingHoursRequestDayResponse>(createWorkingHoursRequestDayResponseFromDiscriminatorValue); },
         "requesterName": n => { workingHoursRequestResponse.requesterName = n.getStringValue(); },
         "requesterUserId": n => { workingHoursRequestResponse.requesterUserId = n.getStringValue(); },
@@ -8491,6 +8855,18 @@ export interface GetVacationRequestsResponse extends AdditionalDataHolder, Parsa
      * The items property
      */
     items?: VacationRequestResponse[] | null;
+}
+export interface GetVacationRestorationCandidatesResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: VacationRestorationCandidateResponse[] | null;
+}
+export interface GetVacationsResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: VacationResponse[] | null;
 }
 export interface GetWorkingHoursRequestsResponse extends AdditionalDataHolder, Parsable {
     /**
@@ -9330,6 +9706,16 @@ export interface ResetPasswordRequest extends AdditionalDataHolder, Parsable {
      */
     token?: string | null;
 }
+export interface RestoreVacationAppointmentsInput extends AdditionalDataHolder, Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The interruptionIds property
+     */
+    interruptionIds?: string[] | null;
+}
 export interface RevokePushSubscriptionRequest extends AdditionalDataHolder, Parsable {
     /**
      * The endpoint property
@@ -9414,7 +9800,9 @@ export function serializeAppointment(writer: SerializationWriter, appointment: P
     writer.writeBooleanValue("isDeleted", appointment.isDeleted);
     writer.writeStringValue("lessonNotes", appointment.lessonNotes);
     writer.writeObjectValue<Appointment_providerMember1 | User>("provider", appointment.provider, serializeAppointment_provider);
+    writer.writeNumberValue("recurrenceOrdinal", appointment.recurrenceOrdinal);
     writer.writeObjectValue<AppointmentRecurrenceRule | Appointment_recurringRuleMember1>("recurringRule", appointment.recurringRule, serializeAppointment_recurringRule);
+    writer.writeStringValue("recurringRuleId", appointment.recurringRuleId);
     writer.writeObjectValue<Service>("service", appointment.service, serializeService);
     writer.writeDateValue("startDate", appointment.startDate);
     writer.writeNumberValue("status", appointment.status);
@@ -9677,6 +10065,7 @@ export function serializeAppointmentProviderDto(writer: SerializationWriter, app
     writer.writeStringValue("id", appointmentProviderDto.id);
     writer.writeStringValue("lastName", appointmentProviderDto.lastName);
     writer.writeStringValue("roleDisplayName", appointmentProviderDto.roleDisplayName);
+    writer.writeStringValue("timezone", appointmentProviderDto.timezone);
     writer.writeAdditionalData(appointmentProviderDto.additionalData);
 }
 /**
@@ -9689,6 +10078,7 @@ export function serializeAppointmentProviderDto(writer: SerializationWriter, app
 export function serializeAppointmentRecurrenceRule(writer: SerializationWriter, appointmentRecurrenceRule: Partial<AppointmentRecurrenceRule> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!appointmentRecurrenceRule || isSerializingDerivedType) { return; }
     writer.writeObjectValue<Client>("client", appointmentRecurrenceRule.client, serializeClient);
+    writer.writeNumberValue("durationMinutes", appointmentRecurrenceRule.durationMinutes);
     writer.writeDateValue("endDate", appointmentRecurrenceRule.endDate);
     writer.writeStringValue("id", appointmentRecurrenceRule.id);
     writer.writeObjectValue<AppointmentRecurrenceRule_providerMember1 | User>("provider", appointmentRecurrenceRule.provider, serializeAppointmentRecurrenceRule_provider);
@@ -9696,6 +10086,7 @@ export function serializeAppointmentRecurrenceRule(writer: SerializationWriter, 
     writer.writeObjectValue<RecurrenceType>("recurrenceType", appointmentRecurrenceRule.recurrenceType, serializeRecurrenceType);
     writer.writeObjectValue<Service>("service", appointmentRecurrenceRule.service, serializeService);
     writer.writeDateValue("startDate", appointmentRecurrenceRule.startDate);
+    writer.writeStringValue("timezone", appointmentRecurrenceRule.timezone);
     writer.writeAdditionalData(appointmentRecurrenceRule.additionalData);
 }
 /**
@@ -9734,6 +10125,7 @@ export function serializeAppointmentRecurrenceRuleDto(writer: SerializationWrite
     writer.writeStringValue("key", appointmentRecurrenceRuleDto.key);
     writer.writeNumberValue("recurrencePattern", appointmentRecurrenceRuleDto.recurrencePattern);
     writer.writeDateValue("startDate", appointmentRecurrenceRuleDto.startDate);
+    writer.writeStringValue("timezone", appointmentRecurrenceRuleDto.timezone);
     writer.writeAdditionalData(appointmentRecurrenceRuleDto.additionalData);
 }
 /**
@@ -9809,6 +10201,22 @@ export function serializeChangePasswordRequest(writer: SerializationWriter, chan
 }
 /**
  * Serializes information the current object
+ * @param ChangeVacationInput The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeChangeVacationInput(writer: SerializationWriter, changeVacationInput: Partial<ChangeVacationInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!changeVacationInput || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("cancelConflictingAppointments", changeVacationInput.cancelConflictingAppointments);
+    writer.writeDateValue("endDate", changeVacationInput.endDate);
+    writer.writeNumberValue("expectedVersion", changeVacationInput.expectedVersion);
+    writer.writeStringValue("message", changeVacationInput.message);
+    writer.writeDateValue("startDate", changeVacationInput.startDate);
+    writer.writeAdditionalData(changeVacationInput.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param ChoosePortalAliasRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -9843,7 +10251,7 @@ export function serializeClient(writer: SerializationWriter, client: Partial<Cli
     writer.writeStringValue("patronymic", client.patronymic);
     writer.writeObjectValue<ClientSource | Client_sourceMember1>("source", client.source, serializeClient_source);
     writer.writeStringValue("sourceId", client.sourceId);
-    writer.writeCollectionOfObjectValues<ClientVacation>("vacations", client.vacations, serializeClientVacation);
+    writer.writeCollectionOfObjectValues<Vacation>("vacations", client.vacations, serializeVacation);
     writer.writeAdditionalData(client.additionalData);
 }
 /**
@@ -10085,21 +10493,6 @@ export function serializeClientsReportSummaryDto(writer: SerializationWriter, cl
 }
 /**
  * Serializes information the current object
- * @param ClientVacation The instance to serialize from.
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeClientVacation(writer: SerializationWriter, clientVacation: Partial<ClientVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!clientVacation || isSerializingDerivedType) { return; }
-    writer.writeStringValue("clientId", clientVacation.clientId);
-    writer.writeDateValue("endDate", clientVacation.endDate);
-    writer.writeStringValue("id", clientVacation.id);
-    writer.writeDateValue("startDate", clientVacation.startDate);
-    writer.writeAdditionalData(clientVacation.additionalData);
-}
-/**
- * Serializes information the current object
  * @param ClientVacationRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10108,7 +10501,9 @@ export function serializeClientVacation(writer: SerializationWriter, clientVacat
 export function serializeClientVacationRequest(writer: SerializationWriter, clientVacationRequest: Partial<ClientVacationRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!clientVacationRequest || isSerializingDerivedType) { return; }
     writer.writeDateValue("endDate", clientVacationRequest.endDate);
+    writer.writeStringValue("id", clientVacationRequest.id);
     writer.writeDateValue("startDate", clientVacationRequest.startDate);
+    writer.writeNumberValue("version", clientVacationRequest.version);
     writer.writeAdditionalData(clientVacationRequest.additionalData);
 }
 /**
@@ -10143,6 +10538,7 @@ export function serializeClientWithBalanceDto(writer: SerializationWriter, clien
     writer.writeNumberValue("balance", clientWithBalanceDto.balance);
     writer.writeDateValue("createdAtUtc", clientWithBalanceDto.createdAtUtc);
     writer.writeDateOnlyValue("dateOfBirth", clientWithBalanceDto.dateOfBirth);
+    writer.writeStringValue("email", clientWithBalanceDto.email);
     writer.writeStringValue("firstName", clientWithBalanceDto.firstName);
     writer.writeStringValue("id", clientWithBalanceDto.id);
     writer.writeBooleanValue("isLeadClosed", clientWithBalanceDto.isLeadClosed);
@@ -10157,7 +10553,7 @@ export function serializeClientWithBalanceDto(writer: SerializationWriter, clien
     writer.writeStringValue("sourceId", clientWithBalanceDto.sourceId);
     writer.writeStringValue("sourceName", clientWithBalanceDto.sourceName);
     writer.writeStringValue("telegram", clientWithBalanceDto.telegram);
-    writer.writeCollectionOfObjectValues<ClientVacation>("vacations", clientWithBalanceDto.vacations, serializeClientVacation);
+    writer.writeCollectionOfObjectValues<Vacation>("vacations", clientWithBalanceDto.vacations, serializeVacation);
     writer.writeStringValue("vk", clientWithBalanceDto.vk);
     writer.writeAdditionalData(clientWithBalanceDto.additionalData);
 }
@@ -10878,6 +11274,23 @@ export function serializeCreateServiceRequest(writer: SerializationWriter, creat
 }
 /**
  * Serializes information the current object
+ * @param CreateVacationInput The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeCreateVacationInput(writer: SerializationWriter, createVacationInput: Partial<CreateVacationInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!createVacationInput || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("cancelConflictingAppointments", createVacationInput.cancelConflictingAppointments);
+    writer.writeDateValue("endDate", createVacationInput.endDate);
+    writer.writeStringValue("message", createVacationInput.message);
+    writer.writeDateValue("startDate", createVacationInput.startDate);
+    writer.writeStringValue("subjectId", createVacationInput.subjectId);
+    writer.writeStringValue("subjectType", createVacationInput.subjectType);
+    writer.writeAdditionalData(createVacationInput.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param CreateVacationRequest The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -10900,6 +11313,7 @@ export function serializeCreateVacationRequest(writer: SerializationWriter, crea
 export function serializeCreateWorkingHoursRequest(writer: SerializationWriter, createWorkingHoursRequest: Partial<CreateWorkingHoursRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!createWorkingHoursRequest || isSerializingDerivedType) { return; }
     writer.writeStringValue("message", createWorkingHoursRequest.message);
+    writer.writeStringValue("timezone", createWorkingHoursRequest.timezone);
     writer.writeCollectionOfObjectValues<WorkingHoursRequestDayInput>("workingHours", createWorkingHoursRequest.workingHours, serializeWorkingHoursRequestDayInput);
     writer.writeAdditionalData(createWorkingHoursRequest.additionalData);
 }
@@ -11643,6 +12057,30 @@ export function serializeGetVacationRequestsResponse(writer: SerializationWriter
 }
 /**
  * Serializes information the current object
+ * @param GetVacationRestorationCandidatesResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetVacationRestorationCandidatesResponse(writer: SerializationWriter, getVacationRestorationCandidatesResponse: Partial<GetVacationRestorationCandidatesResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getVacationRestorationCandidatesResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<VacationRestorationCandidateResponse>("items", getVacationRestorationCandidatesResponse.items, serializeVacationRestorationCandidateResponse);
+    writer.writeAdditionalData(getVacationRestorationCandidatesResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param GetVacationsResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeGetVacationsResponse(writer: SerializationWriter, getVacationsResponse: Partial<GetVacationsResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!getVacationsResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<VacationResponse>("items", getVacationsResponse.items, serializeVacationResponse);
+    writer.writeAdditionalData(getVacationsResponse.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param GetWorkingHoursRequestsResponse The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -12369,6 +12807,19 @@ export function serializeResetPasswordRequest(writer: SerializationWriter, reset
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param RestoreVacationAppointmentsInput The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeRestoreVacationAppointmentsInput(writer: SerializationWriter, restoreVacationAppointmentsInput: Partial<RestoreVacationAppointmentsInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!restoreVacationAppointmentsInput || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", restoreVacationAppointmentsInput.expectedVersion);
+    writer.writeCollectionOfPrimitiveValues<string>("interruptionIds", restoreVacationAppointmentsInput.interruptionIds);
+    writer.writeAdditionalData(restoreVacationAppointmentsInput.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param RevokePushSubscriptionRequest The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12567,6 +13018,7 @@ export function serializeUpdateAppointmentRequest(writer: SerializationWriter, u
 // @ts-ignore
 export function serializeUpdateClientRequest(writer: SerializationWriter, updateClientRequest: Partial<UpdateClientRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!updateClientRequest || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("cancelConflictingAppointments", updateClientRequest.cancelConflictingAppointments);
     writer.writeDateOnlyValue("dateOfBirth", updateClientRequest.dateOfBirth);
     writer.writeStringValue("email", updateClientRequest.email);
     writer.writeStringValue("expectedActivityId", updateClientRequest.expectedActivityId);
@@ -12710,6 +13162,7 @@ export function serializeUpdateUserAvailabilityRequest(writer: SerializationWrit
     if (!updateUserAvailabilityRequest || isSerializingDerivedType) { return; }
     writer.writeBooleanValue("cancelConflictingAppointments", updateUserAvailabilityRequest.cancelConflictingAppointments);
     writer.writeStringValue("expectedActivityId", updateUserAvailabilityRequest.expectedActivityId);
+    writer.writeStringValue("timezone", updateUserAvailabilityRequest.timezone);
     writer.writeCollectionOfObjectValues<UserVacationItem>("vacations", updateUserAvailabilityRequest.vacations, serializeUserVacationItem);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDayItem>("workingHours", updateUserAvailabilityRequest.workingHours, serializeUserWorkingHoursDayItem);
     writer.writeAdditionalData(updateUserAvailabilityRequest.additionalData);
@@ -12753,9 +13206,10 @@ export function serializeUser(writer: SerializationWriter, user: Partial<User> |
     writer.writeStringValue("phone", user.phone);
     writer.writeStringValue("portalAlias", user.portalAlias);
     writer.writeObjectValue<Role>("role", user.role, serializeRole);
+    writer.writeStringValue("scheduleTimezone", user.scheduleTimezone);
     writer.writeStringValue("telegram", user.telegram);
     writer.writeStringValue("totpSecret", user.totpSecret);
-    writer.writeCollectionOfObjectValues<UserVacation>("vacations", user.vacations, serializeUserVacation);
+    writer.writeCollectionOfObjectValues<Vacation>("vacations", user.vacations, serializeVacation);
     writer.writeStringValue("vk", user.vk);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDay>("workingHours", user.workingHours, serializeUserWorkingHoursDay);
     writer.writeAdditionalData(user.additionalData);
@@ -12814,6 +13268,7 @@ export function serializeUser_onboardingStateMember1(writer: SerializationWriter
 export function serializeUserAvailabilityResponse(writer: SerializationWriter, userAvailabilityResponse: Partial<UserAvailabilityResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userAvailabilityResponse || isSerializingDerivedType) { return; }
     writer.writeObjectValue<RecordActivityDto | UserAvailabilityResponse_lastActivityMember1>("lastActivity", userAvailabilityResponse.lastActivity, serializeUserAvailabilityResponse_lastActivity);
+    writer.writeStringValue("timezone", userAvailabilityResponse.timezone);
     writer.writeStringValue("userId", userAvailabilityResponse.userId);
     writer.writeCollectionOfObjectValues<UserVacationDto>("vacations", userAvailabilityResponse.vacations, serializeUserVacationDto);
     writer.writeCollectionOfObjectValues<UserWorkingHoursDayDto>("workingHours", userAvailabilityResponse.workingHours, serializeUserWorkingHoursDayDto);
@@ -12865,22 +13320,6 @@ export function serializeUserOnboardingState(writer: SerializationWriter, userOn
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
- * @param UserVacation The instance to serialize from.
- * @param writer Serialization writer to use to serialize this model
- */
-// @ts-ignore
-export function serializeUserVacation(writer: SerializationWriter, userVacation: Partial<UserVacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
-    if (!userVacation || isSerializingDerivedType) { return; }
-    writer.writeDateValue("endDate", userVacation.endDate);
-    writer.writeStringValue("id", userVacation.id);
-    writer.writeDateValue("startDate", userVacation.startDate);
-    writer.writeObjectValue<User>("user", userVacation.user, serializeUser);
-    writer.writeStringValue("userId", userVacation.userId);
-    writer.writeAdditionalData(userVacation.additionalData);
-}
-/**
- * Serializes information the current object
- * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param UserVacationDto The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12890,6 +13329,7 @@ export function serializeUserVacationDto(writer: SerializationWriter, userVacati
     writer.writeDateValue("endDate", userVacationDto.endDate);
     writer.writeStringValue("id", userVacationDto.id);
     writer.writeDateValue("startDate", userVacationDto.startDate);
+    writer.writeNumberValue("version", userVacationDto.version);
     writer.writeAdditionalData(userVacationDto.additionalData);
 }
 /**
@@ -12902,7 +13342,9 @@ export function serializeUserVacationDto(writer: SerializationWriter, userVacati
 export function serializeUserVacationItem(writer: SerializationWriter, userVacationItem: Partial<UserVacationItem> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!userVacationItem || isSerializingDerivedType) { return; }
     writer.writeDateValue("endDate", userVacationItem.endDate);
+    writer.writeStringValue("id", userVacationItem.id);
     writer.writeDateValue("startDate", userVacationItem.startDate);
+    writer.writeNumberValue("version", userVacationItem.version);
     writer.writeAdditionalData(userVacationItem.additionalData);
 }
 /**
@@ -12956,6 +13398,85 @@ export function serializeUserWorkingHoursDayItem(writer: SerializationWriter, us
 /**
  * Serializes information the current object
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param Vacation The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacation(writer: SerializationWriter, vacation: Partial<Vacation> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacation || isSerializingDerivedType) { return; }
+    writer.writeStringValue("clientId", vacation.clientId);
+    writer.writeDateValue("deletedAtUtc", vacation.deletedAtUtc);
+    writer.writeDateValue("endDate", vacation.endDate);
+    writer.writeDateValue("endedAtUtc", vacation.endedAtUtc);
+    writer.writeStringValue("id", vacation.id);
+    writer.writeBooleanValue("isCancelled", vacation.isCancelled);
+    writer.writeDateValue("originalEndDate", vacation.originalEndDate);
+    writer.writeDateValue("startDate", vacation.startDate);
+    writer.writeStringValue("userId", vacation.userId);
+    writer.writeNumberValue("version", vacation.version);
+    writer.writeAdditionalData(vacation.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationOperationResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationOperationResponse(writer: SerializationWriter, vacationOperationResponse: Partial<VacationOperationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationOperationResponse || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<VacationOperationResponse_requestMember1 | VacationRequestResponse>("request", vacationOperationResponse.request, serializeVacationOperationResponse_request);
+    writer.writeBooleanValue("requiresApproval", vacationOperationResponse.requiresApproval);
+    writer.writeObjectValue<VacationOperationResponse_vacationMember1 | VacationResponse>("vacation", vacationOperationResponse.vacation, serializeVacationOperationResponse_vacation);
+    writer.writeAdditionalData(vacationOperationResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationOperationResponse_request The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationOperationResponse_request(writer: SerializationWriter, vacationOperationResponse_request: Partial<VacationOperationResponse_requestMember1 | VacationRequestResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    serializeVacationOperationResponse_requestMember1(writer, vacationOperationResponse_request as VacationOperationResponse_requestMember1);
+    serializeVacationRequestResponse(writer, vacationOperationResponse_request as VacationRequestResponse);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationOperationResponse_requestMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationOperationResponse_requestMember1(writer: SerializationWriter, vacationOperationResponse_requestMember1: Partial<VacationOperationResponse_requestMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationOperationResponse_requestMember1 || isSerializingDerivedType) { return; }
+    writer.writeAdditionalData(vacationOperationResponse_requestMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationOperationResponse_vacation The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationOperationResponse_vacation(writer: SerializationWriter, vacationOperationResponse_vacation: Partial<VacationOperationResponse_vacationMember1 | VacationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    serializeVacationOperationResponse_vacationMember1(writer, vacationOperationResponse_vacation as VacationOperationResponse_vacationMember1);
+    serializeVacationResponse(writer, vacationOperationResponse_vacation as VacationResponse);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationOperationResponse_vacationMember1 The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationOperationResponse_vacationMember1(writer: SerializationWriter, vacationOperationResponse_vacationMember1: Partial<VacationOperationResponse_vacationMember1> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationOperationResponse_vacationMember1 || isSerializingDerivedType) { return; }
+    writer.writeAdditionalData(vacationOperationResponse_vacationMember1.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param VacationPeriodResponse The instance to serialize from.
  * @param writer Serialization writer to use to serialize this model
  */
@@ -12989,6 +13510,7 @@ export function serializeVacationRequestDecisionRequest(writer: SerializationWri
 // @ts-ignore
 export function serializeVacationRequestResponse(writer: SerializationWriter, vacationRequestResponse: Partial<VacationRequestResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!vacationRequestResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("action", vacationRequestResponse.action);
     writer.writeNumberValue("conflictingAppointmentCount", vacationRequestResponse.conflictingAppointmentCount);
     writer.writeDateValue("createdAtUtc", vacationRequestResponse.createdAtUtc);
     writer.writeStringValue("decisionMessage", vacationRequestResponse.decisionMessage);
@@ -13008,8 +13530,64 @@ export function serializeVacationRequestResponse(writer: SerializationWriter, va
     writer.writeStringValue("subjectId", vacationRequestResponse.subjectId);
     writer.writeStringValue("subjectName", vacationRequestResponse.subjectName);
     writer.writeStringValue("subjectType", vacationRequestResponse.subjectType);
+    writer.writeStringValue("targetVacationId", vacationRequestResponse.targetVacationId);
     writer.writeNumberValue("version", vacationRequestResponse.version);
     writer.writeAdditionalData(vacationRequestResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationResponse(writer: SerializationWriter, vacationResponse: Partial<VacationResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationResponse || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("canEnd", vacationResponse.canEnd);
+    writer.writeBooleanValue("canManage", vacationResponse.canManage);
+    writer.writeDateValue("deletedAtUtc", vacationResponse.deletedAtUtc);
+    writer.writeDateValue("endDate", vacationResponse.endDate);
+    writer.writeDateValue("endedAtUtc", vacationResponse.endedAtUtc);
+    writer.writeStringValue("id", vacationResponse.id);
+    writer.writeDateValue("originalEndDate", vacationResponse.originalEndDate);
+    writer.writeBooleanValue("requiresApproval", vacationResponse.requiresApproval);
+    writer.writeDateValue("startDate", vacationResponse.startDate);
+    writer.writeStringValue("state", vacationResponse.state);
+    writer.writeStringValue("subjectId", vacationResponse.subjectId);
+    writer.writeStringValue("subjectType", vacationResponse.subjectType);
+    writer.writeStringValue("timezone", vacationResponse.timezone);
+    writer.writeNumberValue("version", vacationResponse.version);
+    writer.writeAdditionalData(vacationResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationRestorationCandidateResponse The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationRestorationCandidateResponse(writer: SerializationWriter, vacationRestorationCandidateResponse: Partial<VacationRestorationCandidateResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationRestorationCandidateResponse || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("available", vacationRestorationCandidateResponse.available);
+    writer.writeCollectionOfPrimitiveValues<string>("blockers", vacationRestorationCandidateResponse.blockers);
+    writer.writeDateValue("endDate", vacationRestorationCandidateResponse.endDate);
+    writer.writeStringValue("id", vacationRestorationCandidateResponse.id);
+    writer.writeStringValue("serviceName", vacationRestorationCandidateResponse.serviceName);
+    writer.writeDateValue("startDate", vacationRestorationCandidateResponse.startDate);
+    writer.writeAdditionalData(vacationRestorationCandidateResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param VacationVersionInput The instance to serialize from.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeVacationVersionInput(writer: SerializationWriter, vacationVersionInput: Partial<VacationVersionInput> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!vacationVersionInput || isSerializingDerivedType) { return; }
+    writer.writeNumberValue("expectedVersion", vacationVersionInput.expectedVersion);
+    writer.writeStringValue("message", vacationVersionInput.message);
+    writer.writeAdditionalData(vacationVersionInput.additionalData);
 }
 /**
  * Serializes information the current object
@@ -13093,11 +13671,13 @@ export function serializeWorkingHoursRequestDayResponse(writer: SerializationWri
 export function serializeWorkingHoursRequestResponse(writer: SerializationWriter, workingHoursRequestResponse: Partial<WorkingHoursRequestResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
     if (!workingHoursRequestResponse || isSerializingDerivedType) { return; }
     writer.writeDateValue("createdAtUtc", workingHoursRequestResponse.createdAtUtc);
+    writer.writeStringValue("currentTimezone", workingHoursRequestResponse.currentTimezone);
     writer.writeCollectionOfObjectValues<WorkingHoursRequestDayResponse>("currentWorkingHours", workingHoursRequestResponse.currentWorkingHours, serializeWorkingHoursRequestDayResponse);
     writer.writeStringValue("decisionMessage", workingHoursRequestResponse.decisionMessage);
     writer.writeStringValue("id", workingHoursRequestResponse.id);
     writer.writeDateValue("processedAtUtc", workingHoursRequestResponse.processedAtUtc);
     writer.writeStringValue("processedBySuperuserId", workingHoursRequestResponse.processedBySuperuserId);
+    writer.writeStringValue("requestedTimezone", workingHoursRequestResponse.requestedTimezone);
     writer.writeCollectionOfObjectValues<WorkingHoursRequestDayResponse>("requestedWorkingHours", workingHoursRequestResponse.requestedWorkingHours, serializeWorkingHoursRequestDayResponse);
     writer.writeStringValue("requesterName", workingHoursRequestResponse.requesterName);
     writer.writeStringValue("requesterUserId", workingHoursRequestResponse.requesterUserId);
@@ -13422,6 +14002,10 @@ export interface UpdateAppointmentRequest extends AdditionalDataHolder, Parsable
 }
 export interface UpdateClientRequest extends AdditionalDataHolder, Parsable {
     /**
+     * The cancelConflictingAppointments property
+     */
+    cancelConflictingAppointments?: boolean | null;
+    /**
      * The dateOfBirth property
      */
     dateOfBirth?: DateOnly | null;
@@ -13616,6 +14200,10 @@ export interface UpdateUserAvailabilityRequest extends AdditionalDataHolder, Par
      */
     expectedActivityId?: string | null;
     /**
+     * The timezone property
+     */
+    timezone?: string | null;
+    /**
      * The vacations property
      */
     vacations?: UserVacationItem[] | null;
@@ -13704,6 +14292,10 @@ export interface User extends AdditionalDataHolder, Parsable {
      */
     role?: Role | null;
     /**
+     * The scheduleTimezone property
+     */
+    scheduleTimezone?: string | null;
+    /**
      * The telegram property
      */
     telegram?: string | null;
@@ -13714,7 +14306,7 @@ export interface User extends AdditionalDataHolder, Parsable {
     /**
      * The vacations property
      */
-    vacations?: UserVacation[] | null;
+    vacations?: Vacation[] | null;
     /**
      * The vk property
      */
@@ -13735,6 +14327,10 @@ export interface UserAvailabilityResponse extends AdditionalDataHolder, Parsable
      * The lastActivity property
      */
     lastActivity?: RecordActivityDto | UserAvailabilityResponse_lastActivityMember1 | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
     /**
      * The userId property
      */
@@ -13793,28 +14389,6 @@ export interface UserOnboardingState extends AdditionalDataHolder, Parsable {
      */
     userId?: string | null;
 }
-export interface UserVacation extends AdditionalDataHolder, Parsable {
-    /**
-     * The endDate property
-     */
-    endDate?: Date | null;
-    /**
-     * The id property
-     */
-    id?: string | null;
-    /**
-     * The startDate property
-     */
-    startDate?: Date | null;
-    /**
-     * The user property
-     */
-    user?: User | null;
-    /**
-     * The userId property
-     */
-    userId?: string | null;
-}
 export interface UserVacationDto extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
@@ -13828,6 +14402,10 @@ export interface UserVacationDto extends AdditionalDataHolder, Parsable {
      * The startDate property
      */
     startDate?: Date | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
 }
 export interface UserVacationItem extends AdditionalDataHolder, Parsable {
     /**
@@ -13835,9 +14413,17 @@ export interface UserVacationItem extends AdditionalDataHolder, Parsable {
      */
     endDate?: Date | null;
     /**
+     * The id property
+     */
+    id?: string | null;
+    /**
      * The startDate property
      */
     startDate?: Date | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
 }
 export interface UserWorkingHoursDay extends AdditionalDataHolder, Parsable {
     /**
@@ -13905,6 +14491,68 @@ export interface UserWorkingHoursDayItem extends AdditionalDataHolder, Parsable 
      */
     startTime?: string | null;
 }
+export interface Vacation extends AdditionalDataHolder, Parsable {
+    /**
+     * The clientId property
+     */
+    clientId?: string | null;
+    /**
+     * The deletedAtUtc property
+     */
+    deletedAtUtc?: Date | null;
+    /**
+     * The endDate property
+     */
+    endDate?: Date | null;
+    /**
+     * The endedAtUtc property
+     */
+    endedAtUtc?: Date | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The isCancelled property
+     */
+    isCancelled?: boolean | null;
+    /**
+     * The originalEndDate property
+     */
+    originalEndDate?: Date | null;
+    /**
+     * The startDate property
+     */
+    startDate?: Date | null;
+    /**
+     * The userId property
+     */
+    userId?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
+}
+export interface VacationOperationResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The request property
+     */
+    request?: VacationOperationResponse_requestMember1 | VacationRequestResponse | null;
+    /**
+     * The requiresApproval property
+     */
+    requiresApproval?: boolean | null;
+    /**
+     * The vacation property
+     */
+    vacation?: VacationOperationResponse_vacationMember1 | VacationResponse | null;
+}
+export type VacationOperationResponse_request = VacationOperationResponse_requestMember1 | VacationRequestResponse;
+export interface VacationOperationResponse_requestMember1 extends AdditionalDataHolder, Parsable {
+}
+export type VacationOperationResponse_vacation = VacationOperationResponse_vacationMember1 | VacationResponse;
+export interface VacationOperationResponse_vacationMember1 extends AdditionalDataHolder, Parsable {
+}
 export interface VacationPeriodResponse extends AdditionalDataHolder, Parsable {
     /**
      * The endDate property
@@ -13930,6 +14578,10 @@ export interface VacationRequestDecisionRequest extends AdditionalDataHolder, Pa
     message?: string | null;
 }
 export interface VacationRequestResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The action property
+     */
+    action?: string | null;
     /**
      * The conflictingAppointmentCount property
      */
@@ -14007,9 +14659,107 @@ export interface VacationRequestResponse extends AdditionalDataHolder, Parsable 
      */
     subjectType?: string | null;
     /**
+     * The targetVacationId property
+     */
+    targetVacationId?: string | null;
+    /**
      * The version property
      */
     version?: number | null;
+}
+export interface VacationResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The canEnd property
+     */
+    canEnd?: boolean | null;
+    /**
+     * The canManage property
+     */
+    canManage?: boolean | null;
+    /**
+     * The deletedAtUtc property
+     */
+    deletedAtUtc?: Date | null;
+    /**
+     * The endDate property
+     */
+    endDate?: Date | null;
+    /**
+     * The endedAtUtc property
+     */
+    endedAtUtc?: Date | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The originalEndDate property
+     */
+    originalEndDate?: Date | null;
+    /**
+     * The requiresApproval property
+     */
+    requiresApproval?: boolean | null;
+    /**
+     * The startDate property
+     */
+    startDate?: Date | null;
+    /**
+     * The state property
+     */
+    state?: string | null;
+    /**
+     * The subjectId property
+     */
+    subjectId?: string | null;
+    /**
+     * The subjectType property
+     */
+    subjectType?: string | null;
+    /**
+     * The timezone property
+     */
+    timezone?: string | null;
+    /**
+     * The version property
+     */
+    version?: number | null;
+}
+export interface VacationRestorationCandidateResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The available property
+     */
+    available?: boolean | null;
+    /**
+     * The blockers property
+     */
+    blockers?: string[] | null;
+    /**
+     * The endDate property
+     */
+    endDate?: Date | null;
+    /**
+     * The id property
+     */
+    id?: string | null;
+    /**
+     * The serviceName property
+     */
+    serviceName?: string | null;
+    /**
+     * The startDate property
+     */
+    startDate?: Date | null;
+}
+export interface VacationVersionInput extends AdditionalDataHolder, Parsable {
+    /**
+     * The expectedVersion property
+     */
+    expectedVersion?: number | null;
+    /**
+     * The message property
+     */
+    message?: string | null;
 }
 export interface Verify2FaRequest extends AdditionalDataHolder, Parsable {
     /**
@@ -14095,6 +14845,10 @@ export interface WorkingHoursRequestResponse extends AdditionalDataHolder, Parsa
      */
     createdAtUtc?: Date | null;
     /**
+     * The currentTimezone property
+     */
+    currentTimezone?: string | null;
+    /**
      * The currentWorkingHours property
      */
     currentWorkingHours?: WorkingHoursRequestDayResponse[] | null;
@@ -14114,6 +14868,10 @@ export interface WorkingHoursRequestResponse extends AdditionalDataHolder, Parsa
      * The processedBySuperuserId property
      */
     processedBySuperuserId?: string | null;
+    /**
+     * The requestedTimezone property
+     */
+    requestedTimezone?: string | null;
     /**
      * The requestedWorkingHours property
      */

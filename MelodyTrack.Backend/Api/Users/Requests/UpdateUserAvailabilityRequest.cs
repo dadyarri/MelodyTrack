@@ -12,6 +12,7 @@ public class UpdateUserAvailabilityRequest : IValidatableRequest
     public required List<UserWorkingHoursDayItem> WorkingHours { get; set; }
     public required List<UserVacationItem> Vacations { get; set; }
     public bool CancelConflictingAppointments { get; set; }
+    public string? Timezone { get; set; }
 }
 
 public class UserWorkingHoursDayItem
@@ -24,6 +25,8 @@ public class UserWorkingHoursDayItem
 
 public class UserVacationItem
 {
+    public Ulid? Id { get; set; }
+    public int? Version { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
 }

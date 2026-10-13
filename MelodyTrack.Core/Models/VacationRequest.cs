@@ -25,4 +25,7 @@ public sealed class VacationRequest : BaseModel
 
     public Ulid? ResultingVacationId { get; set; }
     public required int Version { get; set; }
+    public VacationRequestAction Action { get; set; }
+    public Ulid? TargetVacationId { get; set; }
+    public int? ExpectedVacationVersion { get; set; }
 }

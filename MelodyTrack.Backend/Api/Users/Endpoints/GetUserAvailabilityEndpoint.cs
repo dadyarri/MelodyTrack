@@ -59,6 +59,7 @@ public sealed class GetUserAvailabilityEndpoint
         {
             UserId = req.Id,
             LastActivity = await recordActivityService.GetLatestActivityAsync("user_availability", req.Id.ToString(), ct),
+            Timezone = availability.Timezone,
             WorkingHours = availability.WorkingHours
                 .Select(item => new UserWorkingHoursDayDto
                 {
@@ -73,7 +74,8 @@ public sealed class GetUserAvailabilityEndpoint
                 {
                     Id = item.Id,
                     StartDate = item.StartDate,
-                    EndDate = item.EndDate
+                    EndDate = item.EndDate,
+                    Version = item.Version
                 })
                 .ToList()
         });

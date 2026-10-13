@@ -17,6 +17,7 @@ using MelodyTrack.Backend.Api.Tasks.Requests;
 using MelodyTrack.Backend.Api.Users.Requests;
 using MelodyTrack.Backend.Api.VacationRequests.Requests;
 using MelodyTrack.Backend.Api.WorkingHoursRequests.Requests;
+using MelodyTrack.Backend.Api.Vacations.Requests;
 
 namespace MelodyTrack.Backend.Validation;
 
@@ -153,6 +154,12 @@ internal static partial class RequestValidation
             case UpdatePaymentRequest value:
                 Positive(errors, value.Amount, nameof(value.Amount), "Сумма платежа должна быть больше нуля");
                 break;
+            case UpdateAppointmentRequest value:
+                Timezone(errors, value.Timezone);
+                if (value.StartDate is { Kind: not DateTimeKind.Utc })
+                    Add(errors, nameof(value.StartDate), "Время занятия должно быть указано в UTC.");
+                Max(errors, value.LessonNotes, 4000, nameof(value.LessonNotes), "Заметки к уроку не должны быть длиннее 4000 символов.");
+                break;
             case CreateAppointmentRequest value:
                 Appointment(errors, value);
                 break;
@@ -185,6 +192,27 @@ internal static partial class RequestValidation
                 Max(errors, value.Telegram, 256, nameof(value.Telegram), "Telegram указан некорректно.");
                 Max(errors, value.Vk, 256, nameof(value.Vk), "VK указан некорректно.");
                 break;
+            case CreateVacationInput value:
+                VacationRange(errors, value.StartDate, value.EndDate);
+                Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                if (value.SubjectType is not null && value.SubjectType is not ("staff" or "client"))
+                    Add(errors, nameof(value.SubjectType), "Укажите staff или client.");
+                break;
+            case ChangeVacationInput value:
+                VacationRange(errors, value.StartDate, value.EndDate);
+                Positive(errors, (int?)value.ExpectedVersion, nameof(value.ExpectedVersion), "Версия отпуска указана некорректно.");
+                Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                break;
+            case VacationVersionInput value:
+                Positive(errors, (int?)value.ExpectedVersion, nameof(value.ExpectedVersion), "Версия отпуска указана некорректно.");
+                Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
+                break;
+            case RestoreVacationAppointmentsInput value:
+                Positive(errors, (int?)value.ExpectedVersion, nameof(value.ExpectedVersion), "Версия отпуска указана некорректно.");
+                if (value.InterruptionIds is null || value.InterruptionIds.Count is < 1 or > 250
+                    || value.InterruptionIds.Distinct().Count() != value.InterruptionIds.Count)
+                    Add(errors, nameof(value.InterruptionIds), "Выберите от 1 до 250 различных занятий.");
+                break;
             case CreateVacationRequest value:
                 VacationRange(errors, value.StartDate, value.EndDate);
                 Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
@@ -194,6 +222,7 @@ internal static partial class RequestValidation
                 break;
             case CreateWorkingHoursRequest value:
                 WorkingHours(errors, value.WorkingHours);
+                Timezone(errors, value.Timezone);
                 Max(errors, value.Message, 500, nameof(value.Message), "Сообщение должно быть не длиннее 500 символов.");
                 break;
             case VacationRequestDecisionRequest value:
@@ -392,7 +421,9 @@ internal static partial class RequestValidation
     {
         NotEmpty(errors, value.ClientId, nameof(value.ClientId), "Идентификатор клиента не может быть пустым.");
         NotEmpty(errors, value.ServiceId, nameof(value.ServiceId), "Идентификатор услуги не может быть пустым.");
-        Required(errors, value.Timezone, nameof(value.Timezone), "Нужно указать таймзону.");
+        Timezone(errors, value.Timezone);
+        if (value.StartDate.Kind != DateTimeKind.Utc || value.PatternEndDate is { Kind: not DateTimeKind.Utc })
+            Add(errors, nameof(value.StartDate), "Время занятия должно быть указано в UTC.");
         if (value.PatternEndDate.HasValue && value.StartDate > value.PatternEndDate.Value)
             Add(errors, nameof(value.StartDate), "Дата начала не может быть позже даты окончания шаблона.");
         if (value.RecurrenceTypeId.HasValue && !value.RecurrencePattern.HasValue)
@@ -406,6 +437,7 @@ internal static partial class RequestValidation
 
     private static void Availability(List<ValidationResult> errors, UpdateUserAvailabilityRequest value)
     {
+        Timezone(errors, value.Timezone);
         if (value.WorkingHours is null || value.WorkingHours.Count != 7)
         {
             Add(errors, nameof(value.WorkingHours), "Нужно указать рабочие часы для всех дней недели.");
@@ -484,6 +516,13 @@ internal static partial class RequestValidation
         {
             Add(errors, nameof(CreateVacationRequest.EndDate), "Дата окончания отпуска находится вне поддерживаемого диапазона.");
         }
+    }
+
+    private static void Timezone(List<ValidationResult> errors, string? timezone)
+    {
+        if (timezone is null) return;
+        if (!TimeZoneInfo.TryFindSystemTimeZoneById(timezone, out _) || !timezone.Contains('/') && timezone != "UTC")
+            Add(errors, "Timezone", "Укажите существующий часовой пояс IANA, например Europe/Moscow.");
     }
 
     private static void Required(List<ValidationResult> errors, string? value, string member, string message)

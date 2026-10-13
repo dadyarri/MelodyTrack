@@ -101,12 +101,12 @@ public sealed class VacationRequestQueryService(AppDbContext db) : IVacationRequ
             .Where(item => clientIds.Contains(item.Id))
             .Select(item => new PersonInfo(item.Id, item.FirstName, item.LastName, "Клиент"))
             .ToDictionaryAsync(item => item.Id, ct);
-        var staffVacations = await db.UserVacations.AsNoTracking()
-            .Where(item => staffIds.Contains(item.UserId))
+        var staffVacations = await db.Vacations.AsNoTracking()
+            .Where(item => item.UserId != null && staffIds.Contains(item.UserId.Value))
             .Select(item => new { SubjectId = item.UserId, item.StartDate, item.EndDate })
             .ToListAsync(ct);
-        var clientVacations = await db.ClientVacations.AsNoTracking()
-            .Where(item => clientIds.Contains(item.ClientId))
+        var clientVacations = await db.Vacations.AsNoTracking()
+            .Where(item => item.ClientId != null && clientIds.Contains(item.ClientId.Value))
             .Select(item => new { SubjectId = item.ClientId, item.StartDate, item.EndDate })
             .ToListAsync(ct);
 
@@ -146,7 +146,7 @@ public sealed class VacationRequestQueryService(AppDbContext db) : IVacationRequ
                 : clientVacations.Where(item => item.SubjectId == request.SubjectId)
                     .Select(item => new VacationPeriodResponse { StartDate = item.StartDate, EndDate = item.EndDate })
                     .ToArray();
-            var conflictingAppointmentCount = appointments.Count(item =>
+            var conflictingAppointmentCount = request.Action == VacationRequestAction.Delete ? 0 : appointments.Count(item =>
                 item.StartDate < request.RequestedEnd &&
                 item.EndDate > request.RequestedStart &&
                 (request.SubjectType == VacationRequestSubjectType.Client
@@ -156,6 +156,8 @@ public sealed class VacationRequestQueryService(AppDbContext db) : IVacationRequ
             return new VacationRequestResponse
             {
                 Id = request.Id,
+                Action = request.Action.ToString().ToLowerInvariant(),
+                TargetVacationId = request.TargetVacationId,
                 RequesterType = ToApiKey(request.RequesterPrincipalType),
                 RequesterId = request.RequesterId,
                 RequesterName = requesterName,

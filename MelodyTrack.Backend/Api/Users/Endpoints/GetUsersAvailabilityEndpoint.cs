@@ -62,6 +62,7 @@ public sealed class GetUsersAvailabilityEndpoint
         {
             UserId = availability.UserId,
             LastActivity = lastActivity,
+            Timezone = availability.Timezone,
             WorkingHours = availability.WorkingHours
                 .Select(item => new UserWorkingHoursDayDto
                 {
@@ -76,7 +77,8 @@ public sealed class GetUsersAvailabilityEndpoint
                 {
                     Id = item.Id,
                     StartDate = item.StartDate,
-                    EndDate = item.EndDate
+                    EndDate = item.EndDate,
+                    Version = item.Version
                 })
                 .ToList()
         };

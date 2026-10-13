@@ -59,5 +59,6 @@ public class User : BaseModel
 
     public UserOnboardingState? OnboardingState { get; set; }
     public List<UserWorkingHoursDay> WorkingHours { get; set; } = [];
-    public List<UserVacation> Vacations { get; set; } = [];
+    public string ScheduleTimezone { get; set; } = "Europe/Moscow";
+    public List<Vacation> Vacations { get; set; } = [];
 }

@@ -920,5 +920,5 @@ public sealed class DevelopmentFullDemoDataSeeder(
     private sealed record ProviderSlot(User Provider, DateOnly LocalDate, int StartMinuteOfDay, DateTime StartUtc);
     private sealed record ScheduledInterval(Ulid ProviderId, DateTime StartUtc, DateTime EndUtc);
     private sealed record WorkingDay(DayOfWeek DayOfWeek, bool IsWorkingDay, int StartMinuteOfDay, int EndMinuteOfDay);
-    private sealed record ProviderAvailability(IReadOnlyList<WorkingDay> WorkingHours, IReadOnlyList<UserVacation> Vacations);
+    private sealed record ProviderAvailability(IReadOnlyList<WorkingDay> WorkingHours, IReadOnlyList<Vacation> Vacations);
 }

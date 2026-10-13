@@ -838,9 +838,9 @@ internal sealed class RecurringTaskCandidateService(
         }
 
         var clientIds = clientCandidates.Select(candidate => candidate.ClientId!.Value).Distinct().ToList();
-        var vacations = await db.ClientVacations
+        var vacations = await db.Vacations
             .AsNoTracking()
-            .Where(vacation => clientIds.Contains(vacation.ClientId))
+            .Where(vacation => vacation.ClientId != null && clientIds.Contains(vacation.ClientId.Value))
             .Select(vacation => new { vacation.ClientId, vacation.StartDate, vacation.EndDate })
             .ToListAsync(ct);
         var nowUtc = UtcNow;

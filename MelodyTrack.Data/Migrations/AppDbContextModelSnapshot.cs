@@ -330,6 +330,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("ProviderId")
                         .HasColumnType("bytea");
 
+                    b.Property<long?>("RecurrenceOrdinal")
+                        .HasColumnType("bigint");
+
                     b.Property<byte[]>("RecurringRuleId")
                         .HasColumnType("bytea");
 
@@ -351,9 +354,10 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.HasIndex("ProviderId");
 
-                    b.HasIndex("RecurringRuleId");
-
                     b.HasIndex("ServiceId");
+
+                    b.HasIndex("RecurringRuleId", "RecurrenceOrdinal")
+                        .IsUnique();
 
                     b.ToTable("Appointments");
                 });
@@ -366,6 +370,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("ClientId")
                         .IsRequired()
                         .HasColumnType("bytea");
+
+                    b.Property<int>("DurationMinutes")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("EndDate")
                         .HasColumnType("timestamp with time zone");
@@ -386,6 +393,10 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.Property<DateTime>("StartDate")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.HasKey("Id");
 
@@ -589,28 +600,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("ClientSources");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<byte[]>("ClientId")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("ClientId");
-
-                    b.ToTable("ClientVacations");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Course", b =>
@@ -1621,6 +1610,58 @@ namespace MelodyTrack.Backend.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SchedulingInterruption", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("AppointmentId")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<long?>("RecurrenceOrdinal")
+                        .HasColumnType("bigint");
+
+                    b.Property<byte[]>("RecurringRuleId")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("RestoredAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("SubjectId")
+                        .IsRequired()
+                        .HasColumnType("bytea");
+
+                    b.Property<string>("SubjectType")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<DateTime?>("SupersededAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("VacationId")
+                        .HasColumnType("bytea");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AppointmentId");
+
+                    b.HasIndex("RecurringRuleId", "RecurrenceOrdinal");
+
+                    b.HasIndex("VacationId", "RestoredAtUtc");
+
+                    b.ToTable("SchedulingInterruptions");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Service", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -1822,6 +1863,10 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("bytea");
 
+                    b.Property<string>("ScheduleTimezone")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.Property<string>("Telegram")
                         .HasColumnType("text");
 
@@ -1891,28 +1936,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("UserOnboardingStates");
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.UserVacation", b =>
-                {
-                    b.Property<byte[]>("Id")
-                        .HasColumnType("bytea");
-
-                    b.Property<DateTime>("EndDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<DateTime>("StartDate")
-                        .HasColumnType("timestamp with time zone");
-
-                    b.Property<byte[]>("UserId")
-                        .IsRequired()
-                        .HasColumnType("bytea");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("UserVacations");
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.UserWorkingHoursDay", b =>
                 {
                     b.Property<byte[]>("Id")
@@ -1942,10 +1965,63 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.ToTable("UserWorkingHoursDays");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Vacation", b =>
+                {
+                    b.Property<byte[]>("Id")
+                        .HasColumnType("bytea");
+
+                    b.Property<byte[]>("ClientId")
+                        .HasColumnType("bytea");
+
+                    b.Property<DateTime?>("DeletedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("EndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EndedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsCancelled")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("OriginalEndDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("StartDate")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<byte[]>("UserId")
+                        .HasColumnType("bytea");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ClientId", "StartDate");
+
+                    b.HasIndex("UserId", "StartDate");
+
+                    b.ToTable("Vacations", t =>
+                        {
+                            t.HasCheckConstraint("CK_Vacations_Range", "\"StartDate\" < \"EndDate\"");
+
+                            t.HasCheckConstraint("CK_Vacations_Subject", "(\"UserId\" IS NULL) <> (\"ClientId\" IS NULL)");
+
+                            t.HasCheckConstraint("CK_Vacations_Version", "\"Version\" > 0");
+                        });
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.VacationRequest", b =>
                 {
                     b.Property<byte[]>("Id")
                         .HasColumnType("bytea");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<DateTime>("CreatedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1953,6 +2029,9 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<string>("DecisionMessage")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)");
+
+                    b.Property<int?>("ExpectedVacationVersion")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime?>("ProcessedAtUtc")
                         .HasColumnType("timestamp with time zone");
@@ -1993,10 +2072,17 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired()
                         .HasColumnType("text");
 
+                    b.Property<byte[]>("TargetVacationId")
+                        .HasColumnType("bytea");
+
                     b.Property<int>("Version")
                         .HasColumnType("integer");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("ResultingVacationId");
+
+                    b.HasIndex("TargetVacationId");
 
                     b.HasIndex("RequesterPrincipalType", "RequesterId", "CreatedAtUtc");
 
@@ -2043,6 +2129,10 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Property<byte[]>("SubjectUserId")
                         .IsRequired()
                         .HasColumnType("bytea");
+
+                    b.Property<string>("Timezone")
+                        .IsRequired()
+                        .HasColumnType("text");
 
                     b.Property<int>("Version")
                         .HasColumnType("integer");
@@ -2110,7 +2200,8 @@ namespace MelodyTrack.Backend.Data.Migrations
 
                     b.HasOne("MelodyTrack.Backend.Data.Models.AppointmentRecurrenceRule", "RecurringRule")
                         .WithMany()
-                        .HasForeignKey("RecurringRuleId");
+                        .HasForeignKey("RecurringRuleId")
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.HasOne("MelodyTrack.Backend.Data.Models.Service", "Service")
                         .WithMany()
@@ -2206,17 +2297,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
-                });
-
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ClientVacation", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
-                        .WithMany("Vacations")
-                        .HasForeignKey("ClientId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Client");
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.CourseBlock", b =>
@@ -2532,6 +2612,30 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("Teacher");
                 });
 
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.SchedulingInterruption", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Appointment", "Appointment")
+                        .WithMany()
+                        .HasForeignKey("AppointmentId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.AppointmentRecurrenceRule", "RecurringRule")
+                        .WithMany()
+                        .HasForeignKey("RecurringRuleId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Vacation", "Vacation")
+                        .WithMany()
+                        .HasForeignKey("VacationId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Appointment");
+
+                    b.Navigation("RecurringRule");
+
+                    b.Navigation("Vacation");
+                });
+
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.ServicePrice", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.Service", "Service")
@@ -2608,17 +2712,6 @@ namespace MelodyTrack.Backend.Data.Migrations
                     b.Navigation("User");
                 });
 
-            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.UserVacation", b =>
-                {
-                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
-                        .WithMany("Vacations")
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.UserWorkingHoursDay", b =>
                 {
                     b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
@@ -2628,6 +2721,36 @@ namespace MelodyTrack.Backend.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.Vacation", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Client", "Client")
+                        .WithMany("Vacations")
+                        .HasForeignKey("ClientId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.User", "User")
+                        .WithMany("Vacations")
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Client");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("MelodyTrack.Backend.Data.Models.VacationRequest", b =>
+                {
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Vacation", null)
+                        .WithMany()
+                        .HasForeignKey("ResultingVacationId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("MelodyTrack.Backend.Data.Models.Vacation", null)
+                        .WithMany()
+                        .HasForeignKey("TargetVacationId")
+                        .OnDelete(DeleteBehavior.SetNull);
                 });
 
             modelBuilder.Entity("MelodyTrack.Backend.Data.Models.WorkingHoursRequestDay", b =>

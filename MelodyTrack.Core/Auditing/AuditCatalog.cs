@@ -52,6 +52,11 @@ public static class AuditCatalog
 
     public static class Events
     {
+        public static readonly AuditEventDefinition VacationCreated = Define(Categories.Schedule, "vacation_created", "Отпуск создан");
+        public static readonly AuditEventDefinition VacationUpdated = Define(Categories.Schedule, "vacation_updated", "Отпуск изменён");
+        public static readonly AuditEventDefinition VacationDeleted = Define(Categories.Schedule, "vacation_deleted", "Отпуск удалён");
+        public static readonly AuditEventDefinition VacationEnded = Define(Categories.Schedule, "vacation_ended", "Отпуск завершён досрочно");
+        public static readonly AuditEventDefinition WorkingHoursChanged = Define(Categories.Schedule, "working_hours_changed", "Рабочий график изменён");
         public static readonly AuditEventDefinition InviteCreated = Define(Categories.Authentication, "invite_created", "Создано приглашение");
         public static readonly AuditEventDefinition UserRegistered = Define(Categories.Authentication, "user_registered", "Пользователь зарегистрирован");
         public static readonly AuditEventDefinition LoginSucceeded = Define(Categories.Authentication, "login_succeeded", "Вход выполнен");

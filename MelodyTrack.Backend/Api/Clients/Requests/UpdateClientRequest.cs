@@ -18,11 +18,14 @@ public class UpdateClientRequest : IValidatableRequest
     public string? Phone { get; set; }
     public Ulid? SourceId { get; set; }
     public List<ClientVacationRequest>? Vacations { get; set; }
+    public bool CancelConflictingAppointments { get; set; }
     public Ulid? ExpectedActivityId { get; set; }
 }
 
 public class ClientVacationRequest
 {
+    public Ulid? Id { get; set; }
+    public int? Version { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }
 }

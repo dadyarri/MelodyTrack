@@ -14,17 +14,22 @@ public sealed class VacationRequestSubjectLock(AppDbContext db) : IVacationReque
 {
     public async Task AcquireAsync(VacationRequestSubjectType subjectType, Ulid subjectId, CancellationToken ct)
     {
-        var lockKey = $"vacation-request:{subjectType}:{subjectId}";
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))",
-            ct);
+        await AcquireSchedulingAsync(ct);
     }
 
     public async Task AcquireWorkingHoursAsync(Ulid subjectUserId, CancellationToken ct)
     {
-        var lockKey = $"working-hours-request:{subjectUserId}";
-        await db.Database.ExecuteSqlInterpolatedAsync(
-            $"SELECT pg_advisory_xact_lock(hashtextextended({lockKey}, 0))",
-            ct);
+        await AcquireSchedulingAsync(ct);
     }
+
+    public static Task AcquireSchedulingAsync(AppDbContext context, CancellationToken ct)
+    {
+        if (context.Database.CurrentTransaction is null)
+        {
+            throw new InvalidOperationException("Scheduling mutations require a transaction.");
+        }
+        return context.Database.ExecuteSqlRawAsync("SELECT pg_advisory_xact_lock(41051)", ct);
+    }
+
+    private Task AcquireSchedulingAsync(CancellationToken ct) => AcquireSchedulingAsync(db, ct);
 }

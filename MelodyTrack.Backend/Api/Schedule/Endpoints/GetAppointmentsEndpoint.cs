@@ -47,8 +47,7 @@ public sealed class GetAppointmentsEndpoint
             .ThenInclude(e => e!.Course)
             .Include(e => e.RecurringRule)
             .ThenInclude(e => e!.RecurrenceType)
-            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc
-                && !e.Client.Vacations.Any(vacation => e.StartDate < vacation.EndDate && e.EndDate > vacation.StartDate));
+            .Where(e => !e.IsDeleted && e.StartDate >= startUtc && e.StartDate <= endUtc);
 
         if (!currentUser.Role.RoleName.IsAnyAdmin())
         {

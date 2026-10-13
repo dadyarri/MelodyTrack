@@ -40,10 +40,10 @@ public sealed class ClientsReportQueryService(
         var clientIds = visits.Select(appointment => appointment.ClientId).Distinct().ToList();
         var vacations = clientIds.Count == 0
             ? []
-            : await db.ClientVacations.AsNoTracking()
-                .Where(vacation => clientIds.Contains(vacation.ClientId)
+            : await db.Vacations.AsNoTracking()
+                .Where(vacation => vacation.ClientId != null && clientIds.Contains(vacation.ClientId.Value)
                                    && vacation.StartDate < context.EndExclusiveUtc)
-                .Select(vacation => new ClientVacationRow(vacation.ClientId, vacation.StartDate, vacation.EndDate))
+                .Select(vacation => new ClientVacationRow(vacation.ClientId!.Value, vacation.StartDate, vacation.EndDate))
                 .ToListAsync(ct);
         var vacationsByClient = vacations
             .GroupBy(vacation => vacation.ClientId)
@@ -159,20 +159,20 @@ public sealed class ClientsReportQueryService(
             return 0;
         }
 
-        var days = new HashSet<int>();
-        foreach (var vacation in vacations)
+        var days = 0;
+        for (var date = start; date <= end; date = date.AddDays(1))
         {
-            var vacationStart = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(vacation.StartDate, timezone));
-            var vacationEnd = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(vacation.EndDate.AddTicks(-1), timezone));
-            var overlapStart = vacationStart > start ? vacationStart : start;
-            var overlapEnd = vacationEnd < end ? vacationEnd : end;
-            for (var date = overlapStart; date <= overlapEnd; date = date.AddDays(1))
+            var startUtc = TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(TimeOnly.MinValue), timezone);
+            var endUtc = TimeZoneInfo.ConvertTimeToUtc(date.AddDays(1).ToDateTime(TimeOnly.MinValue), timezone);
+            var cursor = startUtc;
+            foreach (var vacation in vacations.Where(item => item.StartDate < endUtc && item.EndDate > startUtc).OrderBy(item => item.StartDate))
             {
-                days.Add(date.DayNumber);
+                if (vacation.StartDate > cursor) break;
+                if (vacation.EndDate > cursor) cursor = vacation.EndDate;
             }
+            if (cursor >= endUtc) days++;
         }
-
-        return days.Count;
+        return days;
     }
 
     private static List<ClientActivityTrendDto> BuildTrend(

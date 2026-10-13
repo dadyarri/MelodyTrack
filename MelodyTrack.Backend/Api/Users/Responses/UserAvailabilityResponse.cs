@@ -5,6 +5,7 @@ namespace MelodyTrack.Backend.Api.Users.Responses;
 public class UserAvailabilityResponse
 {
     public required Ulid UserId { get; set; }
+    public string Timezone { get; set; } = "Europe/Moscow";
     public required List<UserWorkingHoursDayDto> WorkingHours { get; set; }
     public required List<UserVacationDto> Vacations { get; set; }
     public RecordActivityDto? LastActivity { get; set; }
@@ -20,6 +21,7 @@ public class UserWorkingHoursDayDto
 
 public class UserVacationDto
 {
+    public int Version { get; set; } = 1;
     public required Ulid Id { get; set; }
     public required DateTime StartDate { get; set; }
     public required DateTime EndDate { get; set; }

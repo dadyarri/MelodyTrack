@@ -1,201 +1,126 @@
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Data.Models;
+using MelodyTrack.Backend.Utils;
+using MelodyTrack.Core.Scheduling;
 
 namespace MelodyTrack.Backend.Services;
 
-/// <summary>
-///     Service for generating recurring appointments based on recurrence rules.
-/// </summary>
 public interface IRecurringAppointmentService
 {
-    /// <summary>
-    ///     Generates appointment instances for the given recurrence rule based on the current date/time.
-    /// </summary>
-    /// <param name="rule">The recurrence rule to process</param>
-    /// <param name="now">The current date/time to check against</param>
-    /// <returns>A list of appointments to create for the current period</returns>
     IEnumerable<Appointment> GetAppointmentsForRule(AppointmentRecurrenceRule rule, DateTime now);
     IEnumerable<Appointment> GetAppointmentsForRule(AppointmentRecurrenceRule rule, DateTime rangeStart, DateTime rangeEnd);
+    long GetOrdinal(AppointmentRecurrenceRule rule, DateTime startUtc);
+    Appointment? GetOccurrence(AppointmentRecurrenceRule rule, long ordinal);
 }
 
-/// <inheritdoc />
-public class RecurringAppointmentService : IRecurringAppointmentService
+public sealed class RecurringAppointmentService : IRecurringAppointmentService
 {
-    /// <inheritdoc />
-    public IEnumerable<Appointment> GetAppointmentsForRule(AppointmentRecurrenceRule rule, DateTime now)
-    {
-        return rule.RecurrenceType.Type switch
-        {
-            AppointmentRecurrenceType.Daily => GetAppointmentsForRule(rule, now, GetEndOfDay(now.Date.AddDays(6))),
-            AppointmentRecurrenceType.Weekly => GetAppointmentsForRule(rule, now, GetEndOfDay(now.Date.AddDays(7))),
-            AppointmentRecurrenceType.Monthly => GetAppointmentsForRule(rule, now, GetEndOfDay(now.Date.AddDays(7))),
-            _ => []
-        };
-    }
+    public IEnumerable<Appointment> GetAppointmentsForRule(AppointmentRecurrenceRule rule, DateTime now) =>
+        GetAppointmentsForRule(rule, now, now.Date.AddDays(7).AddTicks(-1));
 
     public IEnumerable<Appointment> GetAppointmentsForRule(AppointmentRecurrenceRule rule, DateTime rangeStart, DateTime rangeEnd)
     {
+        if (rangeEnd < rangeStart || rule.DurationMinutes <= 0)
+        {
+            yield break;
+        }
+        var localRuleStart = DateTimeUtils.ConvertDateToTimezone(rule.StartDate, rule.Timezone);
+        var localRangeStart = DateTimeUtils.ConvertDateToTimezone(rangeStart, rule.Timezone);
+        var localRangeEnd = DateTimeUtils.ConvertDateToTimezone(rangeEnd, rule.Timezone);
+        var firstDate = localRangeStart.Date > localRuleStart.Date ? localRangeStart.Date : localRuleStart.Date;
+        for (var date = firstDate; date <= localRangeEnd.Date; date = date.AddDays(1))
+        {
+            if (!IsEnabled(rule, date))
+            {
+                continue;
+            }
+            var localStart = DateTime.SpecifyKind(date.Add(localRuleStart.TimeOfDay), DateTimeKind.Unspecified);
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(rule.Timezone);
+            var instants = SchedulingAvailability.GetUtcInstants(localStart, zone);
+            if (instants.Count == 0)
+            {
+                continue;
+            }
+            var startUtc = instants[^1];
+            if (startUtc < rule.StartDate || startUtc < rangeStart || startUtc > rangeEnd
+                || rule.EndDate is { } endUtc && startUtc > endUtc)
+            {
+                continue;
+            }
+            yield return Create(rule, startUtc, GetOrdinal(rule, startUtc));
+        }
+    }
+
+    public long GetOrdinal(AppointmentRecurrenceRule rule, DateTime startUtc)
+    {
+        var first = DateTimeUtils.ConvertDateToTimezone(rule.StartDate, rule.Timezone);
+        var local = DateTimeUtils.ConvertDateToTimezone(startUtc, rule.Timezone);
+        var days = (local.Date - first.Date).Days;
         return rule.RecurrenceType.Type switch
         {
-            AppointmentRecurrenceType.Daily => GenerateDailyAppointments(rule, rangeStart, rangeEnd),
-            AppointmentRecurrenceType.Weekly => GenerateWeeklyAppointments(rule, rangeStart, rangeEnd),
-            AppointmentRecurrenceType.Monthly => GenerateMonthlyAppointments(rule, rangeStart, rangeEnd),
-            _ => []
+            AppointmentRecurrenceType.Daily => days,
+            AppointmentRecurrenceType.Monthly => (local.Year - first.Year) * 12L + local.Month - first.Month,
+            AppointmentRecurrenceType.Weekly => days,
+            _ => throw new InvalidOperationException("Unsupported appointment recurrence type.")
         };
     }
 
-    /// <summary>
-    ///     Generates daily recurring appointments.
-    /// </summary>
-    /// <remarks>
-    ///     For daily recurrence, appointments are created every day at the same time as the start date,
-    ///     starting from the rule's start date until the end date (or one week from now if no end date).
-    /// </remarks>
-    private static IEnumerable<Appointment> GenerateDailyAppointments(AppointmentRecurrenceRule rule, DateTime rangeStart, DateTime rangeEnd)
+    public Appointment? GetOccurrence(AppointmentRecurrenceRule rule, long ordinal)
     {
-        var appointmentDate = rule.StartDate.Date > rangeStart.Date ? rule.StartDate.Date : rangeStart.Date;
-        var endDateLimit = GetRangeEndDate(rule, rangeEnd);
-
-        while (appointmentDate <= endDateLimit)
+        if (ordinal < 0 || rule.DurationMinutes <= 0)
         {
-            var appointmentStartTime = appointmentDate.Add(rule.StartDate.TimeOfDay);
-            if (appointmentStartTime < rangeStart || appointmentStartTime > rangeEnd)
-            {
-                appointmentDate = appointmentDate.AddDays(1);
-                continue;
-            }
-
-            yield return CreateAppointment(rule, appointmentStartTime);
-
-            appointmentDate = appointmentDate.AddDays(1);
+            return null;
         }
-    }
-
-    /// <summary>
-    ///     Generates weekly recurring appointments.
-    /// </summary>
-    /// <remarks>
-    ///     For weekly recurrence, the <see cref="AppointmentRecurrenceRule.RecurrencePattern" /> contains
-    ///     a bitwise value where each power of two represents a day of the week:
-    ///     - 1 (2^0) = Monday
-    ///     - 2 (2^1) = Tuesday
-    ///     - 4 (2^2) = Wednesday
-    ///     - 8 (2^3) = Thursday
-    ///     - 16 (2^4) = Friday
-    ///     - 32 (2^5) = Saturday
-    ///     - 64 (2^6) = Sunday
-    ///     Appointments are created for each selected day during the current week and next week,
-    ///     at the same time as the start date, up to the rule's end date or one week from now.
-    /// </remarks>
-    private static IEnumerable<Appointment> GenerateWeeklyAppointments(AppointmentRecurrenceRule rule, DateTime rangeStart, DateTime rangeEnd)
-    {
-        if (rule.RecurrencePattern == null || rule.RecurrencePattern == 0)
+        var first = DateTimeUtils.ConvertDateToTimezone(rule.StartDate, rule.Timezone);
+        DateTime date;
+        switch (rule.RecurrenceType.Type)
         {
-            yield break;
+            case AppointmentRecurrenceType.Daily:
+                date = first.Date.AddDays(ordinal);
+                break;
+            case AppointmentRecurrenceType.Monthly:
+                var month = new DateTime(first.Year, first.Month, 1).AddMonths(checked((int)ordinal));
+                var day = rule.RecurrencePattern ?? 0;
+                if (day < 1 || day > DateTime.DaysInMonth(month.Year, month.Month)) return null;
+                date = month.AddDays(day - 1);
+                break;
+            case AppointmentRecurrenceType.Weekly:
+                date = first.Date.AddDays(ordinal);
+                if (!IsEnabled(rule, date)) return null;
+                break;
+            default:
+                return null;
         }
-
-        var appointmentDate = rule.StartDate.Date > rangeStart.Date ? rule.StartDate.Date : rangeStart.Date;
-        var endDateLimit = GetRangeEndDate(rule, rangeEnd);
-
-        for (;
-             appointmentDate <= endDateLimit;
-             appointmentDate = appointmentDate.AddDays(1))
-        {
-            var dayOfWeek = appointmentDate.DayOfWeek;
-            var dayFlag = dayOfWeek == DayOfWeek.Sunday ? 64 : 1 << (int)dayOfWeek - 1;
-
-            // Check if this day is enabled in the recurrence pattern
-            if ((rule.RecurrencePattern & dayFlag) == 0)
-            {
-                continue;
-            }
-
-            var appointmentStartTime = appointmentDate.Add(rule.StartDate.TimeOfDay);
-            if (appointmentStartTime < rangeStart || appointmentStartTime > rangeEnd)
-            {
-                continue;
-            }
-
-            yield return CreateAppointment(rule, appointmentStartTime);
-        }
+        var localStart = DateTime.SpecifyKind(date.Add(first.TimeOfDay), DateTimeKind.Unspecified);
+        var zone = TimeZoneInfo.FindSystemTimeZoneById(rule.Timezone);
+        var instants = SchedulingAvailability.GetUtcInstants(localStart, zone);
+        if (instants.Count == 0) return null;
+        var utc = instants[^1];
+        return utc < rule.StartDate || rule.EndDate is { } endUtc && utc > endUtc ? null : Create(rule, utc, ordinal);
     }
 
-    /// <summary>
-    ///     Generates monthly recurring appointments.
-    /// </summary>
-    /// <remarks>
-    ///     For monthly recurrence, the <see cref="AppointmentRecurrenceRule.RecurrencePattern" /> contains
-    ///     the day of the month (1-31) on which the appointment should occur.
-    ///     Appointments are created for the current and next month on the specified day,
-    ///     at the same time as the start date, up to the rule's end date or one week from now.
-    ///     If the specified day doesn't exist in a month (e.g., the 31st in February),
-    ///     the appointment is skipped for that month.
-    /// </remarks>
-    private static IEnumerable<Appointment> GenerateMonthlyAppointments(AppointmentRecurrenceRule rule, DateTime rangeStart, DateTime rangeEnd)
+    public static int DayFlag(DayOfWeek day) => day == DayOfWeek.Sunday ? 64 : 1 << ((int)day - 1);
+
+    private static bool IsEnabled(AppointmentRecurrenceRule rule, DateTime date) => rule.RecurrenceType.Type switch
     {
-        if (rule.RecurrencePattern == null || rule.RecurrencePattern < 1 || rule.RecurrencePattern > 31)
-        {
-            yield break;
-        }
+        AppointmentRecurrenceType.Daily => true,
+        AppointmentRecurrenceType.Weekly => ((rule.RecurrencePattern ?? 0) & DayFlag(date.DayOfWeek)) != 0,
+        AppointmentRecurrenceType.Monthly => date.Day == rule.RecurrencePattern,
+        _ => false
+    };
 
-        var dayOfMonth = rule.RecurrencePattern.Value;
-        var startDate = rule.StartDate.Date;
-        var endDateLimit = GetRangeEndDate(rule, rangeEnd);
-        var monthCursor = new DateTime(rangeStart.Year, rangeStart.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-        var lastMonth = new DateTime(rangeEnd.Year, rangeEnd.Month, 1, 0, 0, 0, DateTimeKind.Utc);
-
-        while (monthCursor <= lastMonth)
-        {
-            if (dayOfMonth > DateTime.DaysInMonth(monthCursor.Year, monthCursor.Month))
-            {
-                monthCursor = monthCursor.AddMonths(1);
-                continue;
-            }
-
-            var appointmentDate = new DateTime(monthCursor.Year, monthCursor.Month, dayOfMonth, 0, 0, 0, DateTimeKind.Utc);
-            if (appointmentDate < startDate || appointmentDate > endDateLimit)
-            {
-                monthCursor = monthCursor.AddMonths(1);
-                continue;
-            }
-
-            var appointmentStartTime = appointmentDate.Add(rule.StartDate.TimeOfDay);
-            if (appointmentStartTime < rangeStart || appointmentStartTime > rangeEnd)
-            {
-                monthCursor = monthCursor.AddMonths(1);
-                continue;
-            }
-
-            yield return CreateAppointment(rule, appointmentStartTime);
-            monthCursor = monthCursor.AddMonths(1);
-        }
-    }
-
-    private static Appointment CreateAppointment(AppointmentRecurrenceRule rule, DateTime appointmentStartTime)
+    private static Appointment Create(AppointmentRecurrenceRule rule, DateTime startUtc, long ordinal) => new()
     {
-        return new Appointment
-        {
-            Id = Ulid.NewUlid(),
-            Client = rule.Client,
-            Service = rule.Service,
-            Provider = rule.Provider,
-            StartDate = appointmentStartTime,
-            EndDate = appointmentStartTime.AddHours(1),
-            Status = AppointmentStatus.Planned,
-            IsDeleted = false,
-            RecurringRule = rule
-        };
-    }
-
-    private static DateTime GetRangeEndDate(AppointmentRecurrenceRule rule, DateTime rangeEnd)
-    {
-        return rule.EndDate?.Date is { } ruleEndDate && ruleEndDate < rangeEnd.Date
-            ? ruleEndDate
-            : rangeEnd.Date;
-    }
-
-    private static DateTime GetEndOfDay(DateTime date)
-    {
-        return date.Date.AddDays(1).AddTicks(-1);
-    }
+        Id = Ulid.NewUlid(),
+        Client = rule.Client,
+        Service = rule.Service,
+        Provider = rule.Provider,
+        StartDate = startUtc,
+        EndDate = startUtc.AddMinutes(rule.DurationMinutes),
+        Status = AppointmentStatus.Planned,
+        IsDeleted = false,
+        RecurringRule = rule,
+        RecurringRuleId = rule.Id,
+        RecurrenceOrdinal = ordinal
+    };
 }

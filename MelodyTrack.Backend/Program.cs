@@ -250,6 +250,13 @@ try
     builder.Services.AddSingleton<IRecurringTaskTemplateRenderer, RecurringTaskTemplateRenderer>();
     builder.Services.AddScoped<ITeacherScheduleImageGenerator, TeacherScheduleImageGenerator>();
     builder.Services.AddScoped<IUserAvailabilityService, UserAvailabilityService>();
+    builder.Services.AddScoped<ISchedulingAvailabilityService, SchedulingAvailabilityService>();
+    builder.Services.AddScoped<SchedulingInterruptionService>();
+    builder.Services.AddScoped<VacationService>();
+    builder.Services.AddScoped<VacationCommandService>();
+    builder.Services.AddScoped<VacationRestorationService>();
+    builder.Services.AddScoped<WorkingHoursService>();
+builder.Services.AddScoped<RecurringAppointmentReschedulingService>();
     builder.Services.AddScoped<IVacationRequestWorkflowService, VacationRequestWorkflowService>();
     builder.Services.AddScoped<IVacationRequestQueryService, VacationRequestQueryService>();
     builder.Services.AddScoped<IVacationRequestSubjectLock, VacationRequestSubjectLock>();

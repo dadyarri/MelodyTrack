@@ -20,26 +20,26 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
         var rule = await TestDataFactory.CreateDailyRuleAsync(
             db,
-            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 16, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 16, 23, 59, 59, DateTimeKind.Utc),
             "Sofia",
             "Ivanova",
             "Piano",
             TestContext.Current.CancellationToken);
 
-        await db.ClientVacations.AddAsync(new ClientVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             ClientId = rule.Client.Id,
             Client = rule.Client,
-            StartDate = new DateTime(2025, 11, 15, 0, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2025, 11, 16, 0, 0, 0, DateTimeKind.Utc)
+            StartDate = new DateTime(2031, 11, 15, 0, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2031, 11, 16, 0, 0, 0, DateTimeKind.Utc)
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
         await materializer.EnsureAppointmentsGeneratedAsync(
-            new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 16, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 14, 0, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 16, 23, 59, 59, DateTimeKind.Utc),
             TestContext.Current.CancellationToken);
 
         var dates = await db.Appointments
@@ -47,7 +47,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Select(item => item.StartDate.Date)
             .ToListAsync(TestContext.Current.CancellationToken);
 
-        dates.ShouldNotContain(new DateTime(2025, 11, 15));
+        dates.ShouldNotContain(new DateTime(2031, 11, 15));
         dates.Count.ShouldBe(2);
     }
 
@@ -61,19 +61,19 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateDailyRuleAsync(
             db,
-            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 20, 23, 59, 59, DateTimeKind.Utc),
             "Sofia",
             "Ivanova",
             "Piano",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 14, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 20, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
         var occurrence = await db.Appointments
-            .Where(item => item.RecurringRule != null && item.RecurringRule.Id == rule.Id && item.StartDate == new DateTime(2025, 11, 16, 15, 0, 0, DateTimeKind.Utc))
+            .Where(item => item.RecurringRule != null && item.RecurringRule.Id == rule.Id && item.StartDate == new DateTime(2031, 11, 16, 15, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var result = await deletionService.DeleteAsync(occurrence.Id, AppointmentDeleteScope.Single, TestContext.Current.CancellationToken);
@@ -113,15 +113,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -129,7 +129,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var result = await deletionService.DeleteAsync(
@@ -161,7 +161,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
         var activeMondayOccurrences = await db.Appointments
             .CountAsync(item =>
                 item.RecurringRule != null &&
-                item.RecurringRule.Id == rule.Id &&
+                item.RecurringRule.Client.Id == rule.Client.Id &&
                 !item.IsDeleted &&
                 item.StartDate.DayOfWeek == DayOfWeek.Monday,
                 TestContext.Current.CancellationToken);
@@ -185,15 +185,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             arrangeDb,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -201,7 +201,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc))
             .Select(item => item.Id)
             .FirstAsync(TestContext.Current.CancellationToken);
 
@@ -226,15 +226,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 12, 10, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 12, 10, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -242,7 +242,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var result = await deletionService.DeleteAsync(
@@ -270,12 +270,13 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
         var activeMondayOccurrences = await db.Appointments
             .CountAsync(item =>
                 item.RecurringRule != null &&
-                item.RecurringRule.Id == rule.Id &&
+                item.RecurringRule.Client.Id == rule.Client.Id &&
                 !item.IsDeleted &&
                 item.StartDate.DayOfWeek == DayOfWeek.Monday,
                 TestContext.Current.CancellationToken);
 
-        updatedRule.RecurrencePattern.ShouldBe(1);
+        updatedRule.RecurrencePattern.ShouldBe(5);
+        (await db.RecurrenceRules.SingleAsync(item => item.Id != rule.Id, TestContext.Current.CancellationToken)).RecurrencePattern.ShouldBe(1);
         activeWednesdayOccurrences.ShouldBe(0);
         activeMondayOccurrences.ShouldBe(4);
     }
@@ -290,15 +291,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 12, 10, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 12, 10, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 12, 10, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -306,7 +307,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 26, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 26, 12, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var result = await deletionService.DeleteAsync(
@@ -322,7 +323,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
         var activeMondayStarts = await db.Appointments
             .Where(item =>
                 item.RecurringRule != null &&
-                item.RecurringRule.Id == rule.Id &&
+                item.RecurringRule.Client.Id == rule.Client.Id &&
                 !item.IsDeleted &&
                 item.StartDate.DayOfWeek == DayOfWeek.Monday)
             .OrderBy(item => item.StartDate)
@@ -334,17 +335,18 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var historicalWednesdayRule = await db.RecurrenceRules
-            .Where(item => item.Id != rule.Id && item.RecurrencePattern == 4)
+            .Where(item => item.Id != rule.Id && item.RecurrencePattern == 1)
             .FirstOrDefaultAsync(TestContext.Current.CancellationToken);
 
-        currentRule.RecurrencePattern.ShouldBe(1);
+        currentRule.RecurrencePattern.ShouldBe(5);
+        currentRule.EndDate.ShouldBe(new DateTime(2031, 11, 26, 12, 0, 0, DateTimeKind.Utc).AddTicks(-10));
         historicalWednesdayRule.ShouldNotBeNull();
-        historicalWednesdayRule.EndDate.ShouldBe(new DateTime(2025, 11, 25, 0, 0, 0, DateTimeKind.Utc));
+        historicalWednesdayRule.StartDate.ShouldBe(new DateTime(2031, 11, 26, 12, 0, 0, DateTimeKind.Utc));
 
         var activeWednesdayStarts = await db.Appointments
             .Where(item =>
                 item.RecurringRule != null &&
-                item.RecurringRule.Id == historicalWednesdayRule.Id &&
+                item.RecurringRule.Id == rule.Id &&
                 !item.IsDeleted &&
                 item.StartDate.DayOfWeek == DayOfWeek.Wednesday)
             .OrderBy(item => item.StartDate)
@@ -352,13 +354,13 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .ToListAsync(TestContext.Current.CancellationToken);
 
         activeWednesdayStarts.ShouldBe([
-            new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc)
+            new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc)
         ]);
         activeMondayStarts.ShouldBe([
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 24, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 12, 1, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 12, 8, 12, 0, 0, DateTimeKind.Utc)
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 24, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 12, 1, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 12, 8, 12, 0, 0, DateTimeKind.Utc)
         ]);
     }
 
@@ -372,19 +374,19 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateDailyRuleAsync(
             db,
-            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 20, 23, 59, 59, DateTimeKind.Utc),
             "Sofia",
             "Ivanova",
             "Piano",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 14, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 20, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 14, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 20, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
         var occurrence = await db.Appointments
-            .Where(item => item.RecurringRule != null && item.RecurringRule.Id == rule.Id && item.StartDate == new DateTime(2025, 11, 17, 15, 0, 0, DateTimeKind.Utc))
+            .Where(item => item.RecurringRule != null && item.RecurringRule.Id == rule.Id && item.StartDate == new DateTime(2031, 11, 17, 15, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var result = await deletionService.DeleteAsync(occurrence.Id, AppointmentDeleteScope.ThisAndFollowing, TestContext.Current.CancellationToken);
@@ -405,15 +407,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .FirstAsync(TestContext.Current.CancellationToken);
 
         activeStarts.ShouldBe([
-            new DateTime(2025, 11, 14, 15, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 15, 15, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 16, 15, 0, 0, DateTimeKind.Utc)
+            new DateTime(2031, 11, 14, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 15, 15, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 16, 15, 0, 0, DateTimeKind.Utc)
         ]);
-        updatedRule.EndDate.ShouldBe(new DateTime(2025, 11, 16, 0, 0, 0, DateTimeKind.Utc));
+        updatedRule.EndDate.ShouldBe(new DateTime(2031, 11, 17, 15, 0, 0, DateTimeKind.Utc).AddTicks(-10));
     }
 
     [Fact]
-    public async Task DeleteAsync_All_RemovesRuleAndDeletesAllOccurrences()
+    public async Task DeleteAsync_All_ClosesRuleAndDeletesFutureOccurrences()
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
@@ -422,15 +424,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 12, 31, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 12, 31, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 23, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 23, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -456,7 +458,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
                 !item.IsDeleted,
                 TestContext.Current.CancellationToken);
 
-        ruleExists.ShouldBeFalse();
+        ruleExists.ShouldBeTrue();
         activeOccurrences.ShouldBe(0);
     }
 
@@ -470,15 +472,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 23, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 23, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -486,7 +488,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var singleDeleteResult = await deletionService.DeleteAsync(
@@ -500,7 +502,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc) &&
+                item.StartDate == new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc) &&
                 !item.IsDeleted)
             .FirstAsync(TestContext.Current.CancellationToken);
 
@@ -522,8 +524,8 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
                 item.RecurringRule.Id == rule.Id,
                 TestContext.Current.CancellationToken);
 
-        ruleExists.ShouldBeFalse();
-        anyAppointmentsStillLinked.ShouldBeFalse();
+        ruleExists.ShouldBeTrue();
+        anyAppointmentsStillLinked.ShouldBeTrue();
     }
 
     [Fact]
@@ -536,15 +538,15 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
 
         var rule = await TestDataFactory.CreateWeeklyRuleAsync(
             db,
-            new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc),
-            new DateTime(2025, 11, 30, 23, 59, 59, DateTimeKind.Utc),
+            new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc),
+            new DateTime(2031, 11, 30, 23, 59, 59, DateTimeKind.Utc),
             1 + 4,
             "Artem",
             "Volkov",
             "Drums",
             TestContext.Current.CancellationToken);
-        var startUtc = new DateTime(2025, 11, 17, 0, 0, 0, DateTimeKind.Utc);
-        var endUtc = new DateTime(2025, 11, 23, 23, 59, 59, DateTimeKind.Utc);
+        var startUtc = new DateTime(2031, 11, 17, 0, 0, 0, DateTimeKind.Utc);
+        var endUtc = new DateTime(2031, 11, 23, 23, 59, 59, DateTimeKind.Utc);
 
         await materializer.EnsureAppointmentsGeneratedAsync(startUtc, endUtc, TestContext.Current.CancellationToken);
 
@@ -552,7 +554,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 19, 12, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2031, 11, 19, 12, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         var singleDeleteResult = await deletionService.DeleteAsync(
@@ -566,7 +568,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2025, 11, 17, 12, 0, 0, DateTimeKind.Utc) &&
+                item.StartDate == new DateTime(2031, 11, 17, 12, 0, 0, DateTimeKind.Utc) &&
                 !item.IsDeleted)
             .FirstAsync(TestContext.Current.CancellationToken);
 
@@ -588,7 +590,7 @@ public class AppointmentDeletionServiceTests(MelodyTrackFixture fixture)
                 item.RecurringRule.Id == rule.Id,
                 TestContext.Current.CancellationToken);
 
-        ruleExists.ShouldBeFalse();
-        anyAppointmentsStillLinked.ShouldBeFalse();
+        ruleExists.ShouldBeTrue();
+        anyAppointmentsStillLinked.ShouldBeTrue();
     }
 }

@@ -48,7 +48,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         monday.EndMinuteOfDay.ShouldBe(17 * 60 + 15);
         stored.Vacations.ShouldHaveSingleItem().StartDate.ShouldBe(new DateTime(2026, 8, 10, 9, 30, 0, DateTimeKind.Utc));
         (await db.AuditLogs.AnyAsync(
-            item => item.Action == "user_vacations_updated_directly" && item.EntityId == user.Id.ToString(),
+            item => item.Action == "vacation_created" && item.EntityId == user.Id.ToString(),
             TestContext.Current.CancellationToken)).ShouldBeTrue();
     }
 
@@ -71,7 +71,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await db.UserVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     [Fact]
@@ -114,7 +114,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         db.ChangeTracker.Clear();
         (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
             .ShouldBe(AppointmentStatus.Planned);
-        (await db.UserVacations.CountAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).ShouldBe(0);
 
         using var successResponse = await App.Client.PutAsJsonAsync(
             $"/users/{user.Id}/availability",
@@ -131,7 +131,7 @@ public class UsersAvailabilityEndpointTests(MelodyTrackFixture app) : Integratio
         db.ChangeTracker.Clear();
         (await db.Appointments.SingleAsync(item => item.Id == appointment.Id, TestContext.Current.CancellationToken)).Status
             .ShouldBe(AppointmentStatus.Cancelled);
-        (await db.UserVacations.SingleAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).EndDate
+        (await db.Vacations.SingleAsync(item => item.UserId == user.Id, TestContext.Current.CancellationToken)).EndDate
             .ShouldBe(new DateTime(2026, 8, 30, 18, 15, 0, DateTimeKind.Utc));
     }
 

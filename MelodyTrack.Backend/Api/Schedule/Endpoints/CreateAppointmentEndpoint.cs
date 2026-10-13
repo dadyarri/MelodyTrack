@@ -22,14 +22,16 @@ public sealed class CreateAppointmentEndpoint
         AppDbContext db,
         IAuditLogService auditLogService,
         IRequestReplayService requestReplayService,
-        IUserAvailabilityService userAvailabilityService,
+        ISchedulingAvailabilityService availabilityService,
+        IRecurringAppointmentService recurringAppointmentService,
         HttpContext httpContext,
         ApiValidationErrorCollection validationErrors,
         CancellationToken ct
     )
     {
         var replayKey = requestReplayService.GetReplayKey(httpContext.Request.Headers);
-        await using var transaction = replayKey is null ? null : await db.Database.BeginTransactionAsync(ct);
+        await using var transaction = await db.Database.BeginTransactionAsync(ct);
+        await VacationRequestSubjectLock.AcquireSchedulingAsync(db, ct);
         Ulid? reservationId = null;
         if (replayKey is not null)
         {
@@ -63,23 +65,31 @@ public sealed class CreateAppointmentEndpoint
 
         var provider = await db.Users.Where(e => e.Id == req.ProviderId).FirstOrDefaultAsync(ct);
 
-        if (provider is not null)
+        if (req.ProviderId is not null && provider is null)
         {
-            var isAvailable = await userAvailabilityService.IsAvailableAsync(
-                provider.Id,
-                req.StartDate.ToUniversalTime(),
-                req.StartDate.AddHours(1).ToUniversalTime(),
-                req.Timezone,
-                ct);
-
-            if (!isAvailable)
-            {
-                validationErrors.Add(nameof(req.StartDate), "Запись попадает в нерабочее время преподавателя или в отпуск.");
-                return new ApiProblemDetails(validationErrors);
-            }
+            validationErrors.Add(nameof(req.ProviderId), "Преподаватель не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
+        }
+        var blockers = await availabilityService.EvaluateAsync(client.Id, provider?.Id,
+            req.StartDate, req.StartDate.AddHours(1), null, ct);
+        if (blockers.Count > 0)
+        {
+            foreach (var blocker in blockers) validationErrors.Add(nameof(req.StartDate), blocker.Message);
+            return new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict);
         }
 
         var recurrenceType = await db.RecurrenceTypes.Where(e => e.Id == req.RecurrenceTypeId).FirstOrDefaultAsync(ct);
+        if (req.RecurrenceTypeId is not null && recurrenceType is null)
+        {
+            validationErrors.Add(nameof(req.RecurrenceTypeId), "Тип повторения не найден");
+            return TypedResults.NotFound(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status404NotFound));
+        }
+        if (recurrenceType is not null && (recurrenceType.Type == AppointmentRecurrenceType.Weekly && req.RecurrencePattern is not (>= 1 and <= 127)
+            || recurrenceType.Type == AppointmentRecurrenceType.Monthly && req.RecurrencePattern is not (>= 1 and <= 31)))
+        {
+            validationErrors.Add(nameof(req.RecurrencePattern), "Некорректный шаблон повторения");
+            return new ApiProblemDetails(validationErrors);
+        }
         CourseTheme? courseTheme = null;
 
         if (req.CourseThemeId is not null)
@@ -117,6 +127,7 @@ public sealed class CreateAppointmentEndpoint
                 Service = service,
                 Client = client,
                 Provider = provider,
+                Timezone = provider?.ScheduleTimezone ?? req.Timezone,
                 StartDate = req.StartDate,
                 EndDate = req.PatternEndDate,
                 RecurrenceType = recurrenceType,
@@ -137,7 +148,9 @@ public sealed class CreateAppointmentEndpoint
             EndDate = req.StartDate.AddHours(1).ToUniversalTime(),
             Status = AppointmentStatus.Planned,
             IsDeleted = false,
-            RecurringRule = recurrenceRule
+            RecurringRule = recurrenceRule,
+            RecurringRuleId = recurrenceRule?.Id,
+            RecurrenceOrdinal = recurrenceRule is null ? null : recurringAppointmentService.GetOrdinal(recurrenceRule, req.StartDate)
         };
 
         await db.AddAsync(appointment, ct);
@@ -164,10 +177,7 @@ public sealed class CreateAppointmentEndpoint
             await requestReplayService.CompleteAsync(reservationId.Value, appointment.Id, ct);
         }
 
-        if (transaction is not null)
-        {
-            await transaction.CommitAsync(ct);
-        }
+        await transaction.CommitAsync(ct);
 
         return TypedResults.Created($"/appointments/{appointment.Id}", new CreateEntityResponse { Id = appointment.Id });
     }

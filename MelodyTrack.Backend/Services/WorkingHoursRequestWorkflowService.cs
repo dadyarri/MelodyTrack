@@ -16,7 +16,7 @@ public sealed record WorkingHoursRequestWorkflowResult(
 public interface IWorkingHoursRequestWorkflowService
 {
     Task<WorkingHoursRequestWorkflowResult> CreateAsync(User requester, CreateWorkingHoursRequest input, CancellationToken ct);
-    Task<WorkingHoursRequestWorkflowResult> ApproveAsync(Ulid requestId, int expectedVersion, string? decisionMessage, User superuser, CancellationToken ct);
+    Task<WorkingHoursRequestWorkflowResult> ApproveAsync(Ulid requestId, int expectedVersion, string? decisionMessage, User superuser, bool cancelConflicts, CancellationToken ct);
     Task<WorkingHoursRequestWorkflowResult> DeclineAsync(Ulid requestId, int expectedVersion, string? decisionMessage, User superuser, CancellationToken ct);
     Task<WorkingHoursRequestWorkflowResult> CancelAsync(Ulid requestId, int expectedVersion, User requester, CancellationToken ct);
 }
@@ -26,6 +26,7 @@ public sealed class WorkingHoursRequestWorkflowService(
     INotificationService notificationService,
     IAuditLogService auditLogService,
     IVacationRequestSubjectLock subjectLock,
+    WorkingHoursService workingHoursService,
     TimeProvider timeProvider) : IWorkingHoursRequestWorkflowService
 {
     public async Task<WorkingHoursRequestWorkflowResult> CreateAsync(
@@ -42,6 +43,7 @@ public sealed class WorkingHoursRequestWorkflowService(
         }
 
         var requestedDays = MapInput(input.WorkingHours);
+        var timezone = input.Timezone ?? requester.ScheduleTimezone;
         await using var transaction = await db.Database.BeginTransactionAsync(ct);
         await subjectLock.AcquireWorkingHoursAsync(requester.Id, ct);
 
@@ -53,7 +55,7 @@ public sealed class WorkingHoursRequestWorkflowService(
         if (pending is not null)
         {
             if (pending.RequesterUserId == requester.Id &&
-                pending.RequestMessage == NormalizeMessage(input.Message) &&
+                pending.RequestMessage == NormalizeMessage(input.Message) && pending.Timezone == timezone &&
                 SchedulesEqual(pending.RequestedWorkingHours, requestedDays))
             {
                 return new WorkingHoursRequestWorkflowResult(VacationRequestWorkflowFailure.None, Request: pending);
@@ -77,7 +79,7 @@ public sealed class WorkingHoursRequestWorkflowService(
         {
             currentDays = UserAvailabilityService.GetDefaultWorkingHours();
         }
-        if (currentDays.OrderBy(day => day.DayOfWeek).Select(ToComparable).SequenceEqual(requestedDays.Select(ToComparable)))
+        if (timezone == requester.ScheduleTimezone && currentDays.OrderBy(day => day.DayOfWeek).Select(ToComparable).SequenceEqual(requestedDays.Select(ToComparable)))
         {
             return new WorkingHoursRequestWorkflowResult(
                 VacationRequestWorkflowFailure.Conflict,
@@ -89,6 +91,7 @@ public sealed class WorkingHoursRequestWorkflowService(
             Id = Ulid.NewUlid(),
             RequesterUserId = requester.Id,
             SubjectUserId = requester.Id,
+            Timezone = timezone,
             Status = VacationRequestStatus.Pending,
             RequestMessage = NormalizeMessage(input.Message),
             CreatedAtUtc = timeProvider.GetUtcNow().UtcDateTime,
@@ -118,6 +121,7 @@ public sealed class WorkingHoursRequestWorkflowService(
         int expectedVersion,
         string? decisionMessage,
         User superuser,
+        bool cancelConflicts,
         CancellationToken ct)
     {
         if (!superuser.Role.RoleName.IsSuperuser())
@@ -168,19 +172,15 @@ public sealed class WorkingHoursRequestWorkflowService(
             return new WorkingHoursRequestWorkflowResult(VacationRequestWorkflowFailure.Conflict, "Заявка уже была обработана другим пользователем.");
         }
 
-        db.UserWorkingHoursDays.RemoveRange(user.WorkingHours);
-        user.WorkingHours = request.RequestedWorkingHours.Select(day => new UserWorkingHoursDay
+        var error = await workingHoursService.ApplyAsync(user,
+            request.RequestedWorkingHours.Select(day => new UserWorkingHoursDaySnapshot(day.DayOfWeek,
+                day.IsWorkingDay, day.StartMinuteOfDay, day.EndMinuteOfDay)).ToList(),
+            request.Timezone, cancelConflicts, ct);
+        if (error is not null)
         {
-            Id = Ulid.NewUlid(),
-            UserId = user.Id,
-            User = user,
-            DayOfWeek = day.DayOfWeek,
-            IsWorkingDay = day.IsWorkingDay,
-            StartMinuteOfDay = day.StartMinuteOfDay,
-            EndMinuteOfDay = day.EndMinuteOfDay
-        }).ToList();
+            return new WorkingHoursRequestWorkflowResult(VacationRequestWorkflowFailure.Conflict, error);
+        }
 
-        await db.SaveChangesAsync(ct);
         await NotifyRequesterAsync(request, "working_hours_request.approved", "Рабочие дни согласованы", "Новый график уже действует.", ct);
         await WriteAuditAsync(request, MelodyTrack.Core.Auditing.AuditCatalog.Events.WorkingHoursRequestApproved, ct);
         await transaction.CommitAsync(ct);

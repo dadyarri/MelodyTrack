@@ -187,8 +187,8 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var user = await TestDataFactory.CreateSuperuserAsync(db, TestContext.Current.CancellationToken);
         var client = await TestDataFactory.CreateClientAsync(db, "Анна", "Иванова", TestContext.Current.CancellationToken);
-        await db.ClientVacations.AddAsync(
-            new ClientVacation
+        await db.Vacations.AddAsync(
+            new Vacation
             {
                 Id = Ulid.NewUlid(),
                 ClientId = client.Id,
@@ -221,7 +221,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             .FirstAsync(item => item.EntityId == client.Id.ToString(), TestContext.Current.CancellationToken);
         auditLog.Action.ShouldBe("client_vacations_updated_directly");
         auditLog.Details.ShouldBe(
-            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01 00:00–2026-08-11 00:00 UTC → 2026-09-02 09:00–2026-09-12 18:00 UTC");
+            "Клиент: Иванова Анна; Периоды отсутствия: 2026-08-01 00:00–2026-08-11 00:00 UTC → 2026-08-01 00:00–2026-08-11 00:00 UTC, 2026-09-02 09:00–2026-09-12 18:00 UTC");
     }
 
     [Fact]
@@ -244,7 +244,7 @@ public class ClientEndpointTests(MelodyTrackFixture app) : IntegrationTestBase(a
             TestContext.Current.CancellationToken);
 
         response.StatusCode.ShouldBe(HttpStatusCode.Forbidden);
-        (await db.ClientVacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
+        (await db.Vacations.CountAsync(TestContext.Current.CancellationToken)).ShouldBe(0);
     }
 
     private static void SetContact(ClientContacts contacts, string field, string value)

@@ -57,7 +57,8 @@ public partial class AppointmentDto
                     Id = provider.Id,
                     FirstName = provider.FirstName,
                     LastName = provider.LastName,
-                    RoleDisplayName = provider.Role.DisplayName
+                    RoleDisplayName = provider.Role.DisplayName,
+                    Timezone = provider.ScheduleTimezone
                 },
             CourseTheme = courseTheme is null
                 ? null
@@ -85,6 +86,7 @@ public partial class AppointmentDto
                         AppointmentRecurrenceType.Weekly => "weekly",
                         _ => "monthly"
                     },
+                    Timezone = recurringRule.Timezone,
                     RecurrencePattern = recurringRule.RecurrencePattern
                 },
             LastActivity = null
@@ -118,6 +120,7 @@ public class AppointmentServiceDto
 
 public class AppointmentProviderDto
 {
+    public string Timezone { get; set; } = "Europe/Moscow";
     public required Ulid Id { get; set; }
     public required string FirstName { get; set; }
     public required string LastName { get; set; }
@@ -134,6 +137,7 @@ public class AppointmentCourseThemeDto
 
 public class AppointmentRecurrenceRuleDto
 {
+    public string Timezone { get; set; } = "UTC";
     public required Ulid Id { get; set; }
     public required DateTime StartDate { get; set; }
     public DateTime? EndDate { get; set; }

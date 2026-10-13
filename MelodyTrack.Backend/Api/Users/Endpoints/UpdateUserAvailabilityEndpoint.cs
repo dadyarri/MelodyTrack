@@ -22,6 +22,8 @@ public sealed class UpdateUserAvailabilityEndpoint
         AppDbContext db,
         IEntityFreshnessService entityFreshnessService,
         IAuditLogService auditLogService,
+        VacationService vacations,
+        WorkingHoursService workingHours,
         IVacationRequestSubjectLock vacationRequestSubjectLock,
         ICurrentUserAccessor currentUserAccessor,
         HttpContext httpContext,
@@ -63,7 +65,7 @@ public sealed class UpdateUserAvailabilityEndpoint
         }
 
         var vacationsChanged = AreVacationsChanged(user, req);
-        var workingHoursChanged = AreWorkingHoursChanged(user, req);
+        var workingHoursChanged = AreWorkingHoursChanged(user, req) || req.Timezone is not null && req.Timezone != user.ScheduleTimezone;
         if ((vacationsChanged || workingHoursChanged) && !currentUser.Role.RoleName.IsSuperuser())
         {
             return TypedResults.Forbid();
@@ -87,135 +89,37 @@ public sealed class UpdateUserAvailabilityEndpoint
             return TypedResults.NoContent();
         }
 
-        List<Appointment> conflictingAppointments = vacationsChanged
-            ? await GetConflictingAppointmentsAsync(db, user.Id, req.Vacations, ct)
-            : [];
-        if (conflictingAppointments.Count > 0 && !req.CancelConflictingAppointments)
-        {
-            validationErrors.Add(
-                nameof(req.Vacations),
-                $"Выбранные отпуска пересекаются с запланированными занятиями: {conflictingAppointments.Count}. Разрешите их отмену или сначала измените расписание.",
-                "appointment_conflict");
-            ApiProblemDetails problem = new(validationErrors, httpContext, StatusCodes.Status409Conflict);
-            return TypedResults.Conflict(problem);
-        }
-
-        foreach (var appointment in conflictingAppointments)
-        {
-            appointment.Status = AppointmentStatus.Cancelled;
-        }
-
-        db.UserWorkingHoursDays.RemoveRange(user.WorkingHours);
-
-        user.WorkingHours = req.WorkingHours
-            .Select(item => new UserWorkingHoursDay
-            {
-                Id = Ulid.NewUlid(),
-                UserId = user.Id,
-                User = user,
-                DayOfWeek = ParseDayOfWeek(item.DayOfWeek),
-                IsWorkingDay = item.IsWorkingDay,
-                StartMinuteOfDay = item.IsWorkingDay && TimeOnly.TryParse(item.StartTime, out var startTime)
-                    ? startTime.Hour * 60 + startTime.Minute
-                    : 10 * 60,
-                EndMinuteOfDay = item.IsWorkingDay && TimeOnly.TryParse(item.EndTime, out var endTime)
-                    ? endTime.Hour * 60 + endTime.Minute
-                    : 20 * 60
-            })
-            .ToList();
-
         if (vacationsChanged)
         {
-            db.UserVacations.RemoveRange(user.Vacations);
-            user.Vacations = req.Vacations
-                .Select(item => new UserVacation
-                {
-                    Id = Ulid.NewUlid(),
-                    UserId = user.Id,
-                    User = user,
-                    StartDate = item.StartDate,
-                    EndDate = item.EndDate
-                })
-                .ToList();
+            var result = await vacations.ReplaceAsync(VacationRequestSubjectType.Staff, user.Id,
+                req.Vacations.Select(item => new VacationReplacement(item.Id, item.Version, item.StartDate, item.EndDate)).ToList(),
+                req.CancelConflictingAppointments, ct);
+            if (result.Failure != VacationRequestWorkflowFailure.None)
+            {
+                validationErrors.Add(nameof(req.Vacations), result.Detail ?? "Не удалось изменить отпуска.", "appointment_conflict");
+                return TypedResults.Conflict(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict));
+            }
         }
-
-        await db.SaveChangesAsync(ct);
-        await WriteCancelledAppointmentAuditsAsync(auditLogService, conflictingAppointments, ct);
         if (workingHoursChanged)
         {
-            await WriteDirectAuditAsync(
-                auditLogService,
-                user,
-                MelodyTrack.Core.Auditing.AuditCatalog.Events.UserWorkingHoursUpdatedDirectly,
-                ct);
-        }
-        if (vacationsChanged)
-        {
-            await WriteDirectAuditAsync(
-                auditLogService,
-                user,
-                MelodyTrack.Core.Auditing.AuditCatalog.Events.UserVacationsUpdatedDirectly,
-                ct);
+            var days = req.WorkingHours.Select(item => new UserWorkingHoursDaySnapshot(
+                ParseDayOfWeek(item.DayOfWeek), item.IsWorkingDay,
+                item.IsWorkingDay ? TimeOnly.Parse(item.StartTime!).Hour * 60 + TimeOnly.Parse(item.StartTime!).Minute : 600,
+                item.IsWorkingDay ? TimeOnly.Parse(item.EndTime!).Hour * 60 + TimeOnly.Parse(item.EndTime!).Minute : 1200)).ToList();
+            var error = await workingHours.ApplyAsync(user, days, req.Timezone ?? user.ScheduleTimezone, req.CancelConflictingAppointments, ct);
+            if (error is not null)
+            {
+                validationErrors.Add(nameof(req.WorkingHours), error, "appointment_conflict");
+                return TypedResults.Conflict(new ApiProblemDetails(validationErrors, httpContext, StatusCodes.Status409Conflict));
+            }
         }
         await transaction.CommitAsync(ct);
         return TypedResults.NoContent();
     }
 
-    private static async Task<List<Appointment>> GetConflictingAppointmentsAsync(
-        AppDbContext db,
-        Ulid userId,
-        IReadOnlyCollection<UserVacationItem> vacations,
-        CancellationToken ct)
-    {
-        if (vacations.Count == 0)
-        {
-            return [];
-        }
-
-        var earliestStart = vacations.Min(item => item.StartDate);
-        var latestEnd = vacations.Max(item => item.EndDate);
-        var candidates = await db.Appointments
-            .Include(item => item.Client)
-            .Include(item => item.Service)
-            .Where(item =>
-                !item.IsDeleted &&
-                item.Status == AppointmentStatus.Planned &&
-                item.Provider != null &&
-                item.Provider.Id == userId &&
-                item.StartDate < latestEnd &&
-                item.EndDate > earliestStart)
-            .ToListAsync(ct);
-
-        return candidates
-            .Where(item => vacations.Any(vacation => item.StartDate < vacation.EndDate && item.EndDate > vacation.StartDate))
-            .ToList();
-    }
-
-    private static async Task WriteCancelledAppointmentAuditsAsync(
-        IAuditLogService auditLogService,
-        IReadOnlyCollection<Appointment> appointments,
-        CancellationToken ct)
-    {
-        foreach (var appointment in appointments)
-        {
-            await auditLogService.WriteAsync(new AuditLogWriteRequest
-            {
-                Event = MelodyTrack.Core.Auditing.AuditCatalog.Events.AppointmentUpdated,
-                EntityType = "appointment",
-                EntityId = appointment.Id.ToString(),
-                Details = AuditDetailsFormatter.JoinChanges(
-                    AuditDetailsFormatter.DescribeContext("Клиент", $"{appointment.Client.LastName} {appointment.Client.FirstName}".Trim()),
-                    AuditDetailsFormatter.DescribeContext("Услуга", appointment.Service.Name),
-                    AuditDetailsFormatter.DescribeContext("Начало", appointment.StartDate),
-                    AuditDetailsFormatter.DescribeChange("Статус", AppointmentStatus.Planned.ToDisplayName(), AppointmentStatus.Cancelled.ToDisplayName()),
-                    AuditDetailsFormatter.DescribeContext("Причина", "Отпуск"))
-            }, ct);
-        }
-    }
-
     private static bool IsNoOp(User user, UpdateUserAvailabilityRequest req)
     {
-        var currentWorkingHours = user.WorkingHours
+        var currentWorkingHours = GetWorkingHours(user)
             .OrderBy(item => item.DayOfWeek)
             .Select(item => new
             {
@@ -227,7 +131,7 @@ public sealed class UpdateUserAvailabilityEndpoint
             .ToList();
 
         var requestedWorkingHours = req.WorkingHours
-            .OrderBy(item => item.DayOfWeek)
+            .OrderBy(item => ParseDayOfWeek(item.DayOfWeek))
             .Select(item => new
             {
                 DayOfWeek = item.DayOfWeek.Trim().ToLowerInvariant(),
@@ -249,7 +153,7 @@ public sealed class UpdateUserAvailabilityEndpoint
             .Select(item => new { item.StartDate, item.EndDate })
             .ToList();
 
-        return currentWorkingHours.SequenceEqual(requestedWorkingHours) && currentVacations.SequenceEqual(requestedVacations);
+        return (req.Timezone is null || req.Timezone == user.ScheduleTimezone) && currentWorkingHours.SequenceEqual(requestedWorkingHours) && currentVacations.SequenceEqual(requestedVacations);
     }
 
     private static bool AreVacationsChanged(User user, UpdateUserAvailabilityRequest req)
@@ -268,13 +172,13 @@ public sealed class UpdateUserAvailabilityEndpoint
 
     private static bool AreWorkingHoursChanged(User user, UpdateUserAvailabilityRequest req)
     {
-        var current = user.WorkingHours
+        var current = GetWorkingHours(user)
             .OrderBy(item => item.DayOfWeek)
             .Select(item => (MapDayOfWeek(item.DayOfWeek), item.IsWorkingDay,
                 item.IsWorkingDay ? FormatTime(item.StartMinuteOfDay) : null,
                 item.IsWorkingDay ? FormatTime(item.EndMinuteOfDay) : null));
         var requested = req.WorkingHours
-            .OrderBy(item => item.DayOfWeek)
+            .OrderBy(item => ParseDayOfWeek(item.DayOfWeek))
             .Select(item => (item.DayOfWeek.Trim().ToLowerInvariant(), item.IsWorkingDay,
                 item.IsWorkingDay ? item.StartTime : null,
                 item.IsWorkingDay ? item.EndTime : null));
@@ -282,23 +186,10 @@ public sealed class UpdateUserAvailabilityEndpoint
         return !current.SequenceEqual(requested);
     }
 
-    private static Task WriteDirectAuditAsync(
-        IAuditLogService auditLogService,
-        User user,
-        MelodyTrack.Core.Auditing.AuditEventDefinition auditEvent,
-        CancellationToken ct)
-    {
-        return auditLogService.WriteAsync(new AuditLogWriteRequest
-        {
-            Event = auditEvent,
-            EntityType = "user_availability",
-            EntityId = user.Id.ToString(),
-            Details = AuditDetailsFormatter.JoinChanges(
-                AuditDetailsFormatter.DescribeContext("Пользователь", $"{user.LastName} {user.FirstName}".Trim()),
-                AuditDetailsFormatter.DescribeContext("Рабочих дней", user.WorkingHours.Count(item => item.IsWorkingDay).ToString()),
-                AuditDetailsFormatter.DescribeContext("Отпусков", user.Vacations.Count.ToString()))
-        }, ct);
-    }
+    private static IReadOnlyList<UserWorkingHoursDaySnapshot> GetWorkingHours(User user) => user.WorkingHours.Count == 0
+        ? UserAvailabilityService.GetDefaultWorkingHours()
+        : user.WorkingHours.Select(item => new UserWorkingHoursDaySnapshot(item.DayOfWeek, item.IsWorkingDay,
+            item.StartMinuteOfDay, item.EndMinuteOfDay)).ToList();
 
     private static DayOfWeek ParseDayOfWeek(string value)
     {

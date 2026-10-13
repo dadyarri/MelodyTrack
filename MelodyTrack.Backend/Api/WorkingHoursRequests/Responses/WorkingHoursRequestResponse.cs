@@ -8,6 +8,8 @@ public sealed class WorkingHoursRequestResponse
     public required Ulid SubjectUserId { get; init; }
     public required string SubjectName { get; init; }
     public required string SubjectClassification { get; init; }
+    public string RequestedTimezone { get; init; } = "Europe/Moscow";
+    public string CurrentTimezone { get; init; } = "Europe/Moscow";
     public required string Status { get; init; }
     public string? RequestMessage { get; init; }
     public required DateTime CreatedAtUtc { get; init; }

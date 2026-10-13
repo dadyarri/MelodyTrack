@@ -3,6 +3,8 @@ namespace MelodyTrack.Backend.Api.VacationRequests.Responses;
 public sealed class VacationRequestResponse
 {
     public required Ulid Id { get; init; }
+    public string Action { get; init; } = "create";
+    public Ulid? TargetVacationId { get; init; }
     public required string RequesterType { get; init; }
     public required Ulid RequesterId { get; init; }
     public required string RequesterName { get; init; }

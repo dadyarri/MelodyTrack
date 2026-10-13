@@ -1,6 +1,7 @@
 using MelodyTrack.Backend.Api.Reports.Responses;
 using MelodyTrack.Backend.Data.Enums;
 using MelodyTrack.Backend.Services;
+using MelodyTrack.Core.Scheduling;
 
 namespace MelodyTrack.Backend.Api.Reports.Reporting;
 
@@ -130,7 +131,10 @@ public sealed class WorkReportQueryService(
         var result = new List<WorkingInterval>();
         foreach (var availability in availabilities)
         {
-            for (var date = context.StartLocal; date < context.EndExclusiveLocal; date = date.AddDays(1))
+            var zone = TimeZoneInfo.FindSystemTimeZoneById(availability.Timezone);
+            var first = TimeZoneInfo.ConvertTimeFromUtc(context.StartUtc, zone).Date;
+            var last = TimeZoneInfo.ConvertTimeFromUtc(context.EndExclusiveUtc, zone).Date;
+            for (var date = first; date <= last; date = date.AddDays(1))
             {
                 var workingDay = availability.WorkingHours.FirstOrDefault(day => day.DayOfWeek == date.DayOfWeek);
                 if (workingDay is null || !workingDay.IsWorkingDay || workingDay.EndMinuteOfDay <= workingDay.StartMinuteOfDay)
@@ -138,20 +142,27 @@ public sealed class WorkReportQueryService(
                     continue;
                 }
 
-                var localStart = date.Date.AddMinutes(workingDay.StartMinuteOfDay);
-                var localEnd = date.Date.AddMinutes(workingDay.EndMinuteOfDay);
-                var startUtc = ReportBuckets.ToUtc(localStart, context.Timezone);
-                var endUtc = ReportBuckets.ToUtc(localEnd, context.Timezone);
-                if (endUtc > startUtc)
+                foreach (var window in SchedulingAvailability.GetWorkingIntervals(date, workingDay.StartMinuteOfDay, workingDay.EndMinuteOfDay, zone))
                 {
+                    var startUtc = window.StartUtc < context.StartUtc ? context.StartUtc : window.StartUtc;
+                    var endUtc = window.EndUtc > context.EndExclusiveUtc ? context.EndExclusiveUtc : window.EndUtc;
+                    if (endUtc <= startUtc) continue;
                     var intervals = new List<(DateTime StartUtc, DateTime EndUtc)> { (startUtc, endUtc) };
                     foreach (var vacation in availability.Vacations.Where(vacation => vacation.StartDate < endUtc && vacation.EndDate > startUtc))
                     {
                         intervals = intervals.SelectMany(interval => Subtract(interval, vacation.StartDate, vacation.EndDate)).ToList();
                     }
-
-                    result.AddRange(intervals.Select(interval =>
-                        new WorkingInterval(availability.UserId, date.Date, interval.StartUtc, interval.EndUtc)));
+                    foreach (var interval in intervals)
+                    {
+                        for (var cursor = interval.StartUtc; cursor < interval.EndUtc;)
+                        {
+                            var reportDate = TimeZoneInfo.ConvertTimeFromUtc(cursor, context.Timezone).Date;
+                            var nextDay = ReportBuckets.ToUtc(reportDate.AddDays(1), context.Timezone);
+                            var end = nextDay < interval.EndUtc ? nextDay : interval.EndUtc;
+                            result.Add(new WorkingInterval(availability.UserId, reportDate, cursor, end));
+                            cursor = end;
+                        }
+                    }
                 }
             }
         }

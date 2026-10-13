@@ -60,6 +60,8 @@ import { type UsersRequestBuilder, UsersRequestBuilderNavigationMetadata, UsersR
 // @ts-ignore
 import { type VacationRequestsRequestBuilder, VacationRequestsRequestBuilderNavigationMetadata, VacationRequestsRequestBuilderRequestsMetadata } from './vacationRequests/index.js';
 // @ts-ignore
+import { type VacationsRequestBuilder, VacationsRequestBuilderNavigationMetadata, VacationsRequestBuilderRequestsMetadata } from './vacations/index.js';
+// @ts-ignore
 import { type WorkingHoursRequestsRequestBuilder, WorkingHoursRequestsRequestBuilderNavigationMetadata, WorkingHoursRequestsRequestBuilderRequestsMetadata } from './workingHoursRequests/index.js';
 // @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
@@ -185,6 +187,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
      */
     get vacationRequests(): VacationRequestsRequestBuilder;
     /**
+     * The vacations property
+     */
+    get vacations(): VacationsRequestBuilder;
+    /**
      * The workingHoursRequests property
      */
     get workingHoursRequests(): WorkingHoursRequestsRequestBuilder;
@@ -300,6 +306,10 @@ export const ApiRequestBuilderNavigationMetadata: Record<Exclude<keyof ApiReques
     vacationRequests: {
         requestsMetadata: VacationRequestsRequestBuilderRequestsMetadata,
         navigationMetadata: VacationRequestsRequestBuilderNavigationMetadata,
+    },
+    vacations: {
+        requestsMetadata: VacationsRequestBuilderRequestsMetadata,
+        navigationMetadata: VacationsRequestBuilderNavigationMetadata,
     },
     workingHoursRequests: {
         requestsMetadata: WorkingHoursRequestsRequestBuilderRequestsMetadata,

@@ -20,5 +20,6 @@ public sealed class WorkingHoursRequest : BaseModel
     public string? DecisionMessage { get; set; }
 
     public required int Version { get; set; }
+    public string Timezone { get; set; } = "Europe/Moscow";
     public List<WorkingHoursRequestDay> RequestedWorkingHours { get; set; } = [];
 }

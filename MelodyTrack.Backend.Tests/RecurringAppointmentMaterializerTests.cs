@@ -128,7 +128,7 @@ public class RecurringAppointmentMaterializerTests(MelodyTrackFixture fixture)
             "Voice",
             TestContext.Current.CancellationToken);
         rule.Provider = provider;
-        await db.UserVacations.AddAsync(new UserVacation
+        await db.Vacations.AddAsync(new Vacation
         {
             Id = Ulid.NewUlid(),
             UserId = provider.Id,

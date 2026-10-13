@@ -1,5 +1,12 @@
 namespace MelodyTrack.Backend.Data.Enums;
 
+public enum VacationRequestAction
+{
+    Create,
+    Update,
+    Delete
+}
+
 public enum VacationRequestStatus
 {
     Pending,

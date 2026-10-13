@@ -12,6 +12,7 @@ using MelodyTrack.Backend.Utils;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Shouldly;
 
 namespace MelodyTrack.Backend.Tests;
@@ -24,11 +25,11 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
     {
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
-        var originalStartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc);
-        var movedStartDate = new DateTime(2026, 05, 13, 17, 0, 0, DateTimeKind.Utc);
+        var originalStartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc);
+        var movedStartDate = new DateTime(2037, 05, 13, 17, 0, 0, DateTimeKind.Utc);
         var appointment = new Appointment
         {
             Id = Ulid.NewUlid(),
@@ -69,7 +70,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
 
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(type => type.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
@@ -80,8 +81,8 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             Client = client,
             Service = service,
             Provider = user,
-            StartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc),
+            StartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc),
             RecurrenceType = recurrenceType,
             RecurrencePattern = 1
         };
@@ -89,18 +90,18 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await db.RecurrenceRules.AddAsync(rule, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var rangeStart = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc);
-        var rangeEnd = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc);
+        var rangeStart = new DateTime(2037, 05, 12, 0, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc);
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd, TestContext.Current.CancellationToken);
 
         var occurrence = await db.Appointments
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2026, 05, 14, 14, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2037, 05, 14, 14, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
-        var movedStartDate = new DateTime(2026, 05, 14, 17, 0, 0, DateTimeKind.Utc);
+        var movedStartDate = new DateTime(2037, 05, 14, 17, 0, 0, DateTimeKind.Utc);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
@@ -155,7 +156,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
 
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(type => type.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
@@ -166,8 +167,8 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             Client = client,
             Service = service,
             Provider = user,
-            StartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc),
+            StartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc),
             RecurrenceType = recurrenceType,
             RecurrencePattern = 1
         };
@@ -175,20 +176,20 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await db.RecurrenceRules.AddAsync(rule, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var rangeStart = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc);
-        var rangeEnd = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc);
+        var rangeStart = new DateTime(2037, 05, 12, 0, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc);
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd, TestContext.Current.CancellationToken);
 
         var occurrence = await db.Appointments
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2026, 05, 14, 14, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2037, 05, 14, 14, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var movedStartDate = new DateTime(2026, 05, 14, 17, 0, 0, DateTimeKind.Utc);
+        var movedStartDate = new DateTime(2037, 05, 14, 17, 0, 0, DateTimeKind.Utc);
         var (rsp, _) = await App.Client.PATCHAsync<UpdateAppointmentEndpoint, UpdateAppointmentRequest, NoContent>(new UpdateAppointmentRequest
         {
             Id = occurrence.Id,
@@ -207,10 +208,10 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             .ToListAsync(TestContext.Current.CancellationToken);
 
         recurrenceRules.Count.ShouldBe(2);
-        recurrenceRules[0].StartDate.ShouldBe(new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc));
-        recurrenceRules[0].EndDate.ShouldBe(new DateTime(2026, 05, 13, 0, 0, 0, DateTimeKind.Utc));
+        recurrenceRules[0].StartDate.ShouldBe(new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc));
+        recurrenceRules[0].EndDate.ShouldBe(new DateTime(2037, 05, 14, 14, 0, 0, DateTimeKind.Utc).AddTicks(-10));
         recurrenceRules[1].StartDate.ShouldBe(movedStartDate);
-        recurrenceRules[1].EndDate.ShouldBe(new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc).AddHours(3));
+        recurrenceRules[1].EndDate.ShouldBe(new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc).AddHours(3));
 
         var activeAppointments = await db.Appointments
             .Where(item => !item.IsDeleted)
@@ -219,12 +220,12 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             .ToListAsync(TestContext.Current.CancellationToken);
 
         activeAppointments.ShouldBe([
-            new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 13, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 14, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 15, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 16, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 17, 17, 0, 0, DateTimeKind.Utc)
+            new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 13, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 14, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 15, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 16, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 17, 17, 0, 0, DateTimeKind.Utc)
         ]);
         await AssertClientCalendarMatchesActiveAppointmentsAsync(db, client.Id);
     }
@@ -236,7 +237,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
 
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(type => type.Type == AppointmentRecurrenceType.Daily, TestContext.Current.CancellationToken);
@@ -247,8 +248,8 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             Client = client,
             Service = service,
             Provider = user,
-            StartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
-            EndDate = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc),
+            StartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc),
+            EndDate = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc),
             RecurrenceType = recurrenceType,
             RecurrencePattern = 1
         };
@@ -256,20 +257,20 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await db.RecurrenceRules.AddAsync(rule, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var rangeStart = new DateTime(2026, 05, 12, 0, 0, 0, DateTimeKind.Utc);
-        var rangeEnd = new DateTime(2026, 05, 17, 23, 59, 59, DateTimeKind.Utc);
+        var rangeStart = new DateTime(2037, 05, 12, 0, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2037, 05, 17, 23, 59, 59, DateTimeKind.Utc);
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd, TestContext.Current.CancellationToken);
 
         var occurrence = await db.Appointments
             .Where(item =>
                 item.RecurringRule != null &&
                 item.RecurringRule.Id == rule.Id &&
-                item.StartDate == new DateTime(2026, 05, 14, 14, 0, 0, DateTimeKind.Utc))
+                item.StartDate == new DateTime(2037, 05, 14, 14, 0, 0, DateTimeKind.Utc))
             .FirstAsync(TestContext.Current.CancellationToken);
 
         App.Client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", UserUtils.CreateAccessToken(user));
 
-        var movedStartDate = new DateTime(2026, 05, 14, 17, 0, 0, DateTimeKind.Utc);
+        var movedStartDate = new DateTime(2037, 05, 14, 17, 0, 0, DateTimeKind.Utc);
         var (rsp, _) = await App.Client.PATCHAsync<UpdateAppointmentEndpoint, UpdateAppointmentRequest, NoContent>(new UpdateAppointmentRequest
         {
             Id = occurrence.Id,
@@ -283,9 +284,9 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         db.ChangeTracker.Clear();
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd.AddHours(3), TestContext.Current.CancellationToken);
 
-        var updatedRule = await db.RecurrenceRules.SingleAsync(TestContext.Current.CancellationToken);
-        updatedRule.StartDate.ShouldBe(new DateTime(2026, 05, 12, 17, 0, 0, DateTimeKind.Utc));
-        updatedRule.EndDate.ShouldBe(new DateTime(2026, 05, 18, 2, 59, 59, DateTimeKind.Utc));
+        var updatedRule = await db.RecurrenceRules.SingleAsync(item => item.Id != rule.Id, TestContext.Current.CancellationToken);
+        updatedRule.StartDate.ShouldBe(new DateTime(2037, 05, 12, 17, 0, 0, DateTimeKind.Utc));
+        updatedRule.EndDate.ShouldBe(new DateTime(2037, 05, 18, 2, 59, 59, DateTimeKind.Utc));
 
         var activeAppointments = await db.Appointments
             .Where(item => !item.IsDeleted)
@@ -294,12 +295,12 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             .ToListAsync(TestContext.Current.CancellationToken);
 
         activeAppointments.ShouldBe([
-            new DateTime(2026, 05, 12, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 13, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 14, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 15, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 16, 17, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 17, 17, 0, 0, DateTimeKind.Utc)
+            new DateTime(2037, 05, 12, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 13, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 14, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 15, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 16, 17, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 17, 17, 0, 0, DateTimeKind.Utc)
         ]);
         await AssertClientCalendarMatchesActiveAppointmentsAsync(db, client.Id);
     }
@@ -310,14 +311,14 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(
             type => type.Type == AppointmentRecurrenceType.Daily,
             TestContext.Current.CancellationToken);
-        var originalStartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc);
-        var originalEndDate = new DateTime(2026, 05, 14, 23, 59, 59, DateTimeKind.Utc);
+        var originalStartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc);
+        var originalEndDate = new DateTime(2037, 05, 14, 23, 59, 59, DateTimeKind.Utc);
         var movedStartDate = originalStartDate.AddHours(3);
         var rule = new AppointmentRecurrenceRule
         {
@@ -356,7 +357,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             originalStartDate.Date,
             originalEndDate.AddHours(3),
             TestContext.Current.CancellationToken);
-        var updatedRule = await db.RecurrenceRules.SingleAsync(TestContext.Current.CancellationToken);
+        var updatedRule = await db.RecurrenceRules.SingleAsync(item => item.Id != rule.Id, TestContext.Current.CancellationToken);
         updatedRule.StartDate.ShouldBe(movedStartDate);
         updatedRule.EndDate.ShouldBe(originalEndDate.AddHours(3));
         await AssertClientCalendarMatchesActiveAppointmentsAsync(db, client.Id);
@@ -368,20 +369,20 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(
             type => type.Type == AppointmentRecurrenceType.Weekly,
             TestContext.Current.CancellationToken);
-        var rangeStart = new DateTime(2026, 05, 11, 0, 0, 0, DateTimeKind.Utc);
-        var rangeEnd = new DateTime(2026, 05, 31, 23, 59, 59, DateTimeKind.Utc);
+        var rangeStart = new DateTime(2037, 05, 11, 0, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2037, 05, 31, 23, 59, 59, DateTimeKind.Utc);
         var rule = new AppointmentRecurrenceRule
         {
             Id = Ulid.NewUlid(),
             Client = client,
             Service = service,
-            StartDate = new DateTime(2026, 05, 12, 14, 0, 0, DateTimeKind.Utc),
+            StartDate = new DateTime(2037, 05, 12, 14, 0, 0, DateTimeKind.Utc),
             EndDate = rangeEnd,
             RecurrenceType = recurrenceType,
             RecurrencePattern = 2 + 8
@@ -393,7 +394,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var occurrence = await db.Appointments.FirstAsync(
             item => item.RecurringRule != null
                     && item.RecurringRule.Id == rule.Id
-                    && item.StartDate == new DateTime(2026, 05, 19, 14, 0, 0, DateTimeKind.Utc),
+                    && item.StartDate == new DateTime(2037, 05, 19, 14, 0, 0, DateTimeKind.Utc),
             TestContext.Current.CancellationToken);
         var movedStartDate = occurrence.StartDate.AddDays(-1);
 
@@ -410,8 +411,8 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
 
         db.ChangeTracker.Clear();
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd, TestContext.Current.CancellationToken);
-        var updatedRule = await db.RecurrenceRules.SingleAsync(TestContext.Current.CancellationToken);
-        updatedRule.StartDate.ShouldBe(new DateTime(2026, 05, 11, 14, 0, 0, DateTimeKind.Utc));
+        var updatedRule = await db.RecurrenceRules.SingleAsync(item => item.Id != rule.Id, TestContext.Current.CancellationToken);
+        updatedRule.StartDate.ShouldBe(new DateTime(2037, 05, 11, 14, 0, 0, DateTimeKind.Utc));
         updatedRule.EndDate.ShouldBe(rangeEnd.AddDays(-1));
         updatedRule.RecurrencePattern.ShouldBe(1 + 4);
         var activeStarts = await db.Appointments
@@ -420,12 +421,12 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             .Select(item => item.StartDate)
             .ToListAsync(TestContext.Current.CancellationToken);
         activeStarts.ShouldBe([
-            new DateTime(2026, 05, 11, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 13, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 18, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 20, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 25, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 05, 27, 14, 0, 0, DateTimeKind.Utc)
+            new DateTime(2037, 05, 11, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 13, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 18, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 20, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 25, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 05, 27, 14, 0, 0, DateTimeKind.Utc)
         ]);
         await AssertClientCalendarMatchesActiveAppointmentsAsync(db, client.Id);
     }
@@ -436,20 +437,20 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await using var scope = App.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
         var materializer = scope.ServiceProvider.GetRequiredService<IRecurringAppointmentMaterializer>();
-        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, TestContext.Current.CancellationToken);
+        var user = await CreateSeriesTeacherAsync(db);
         var client = await TestDataFactory.CreateClientAsync(db, "Anna", "Petrova", TestContext.Current.CancellationToken);
         var service = await TestDataFactory.CreateServiceAsync(db, "Vocal lesson", TestContext.Current.CancellationToken);
         var recurrenceType = await db.RecurrenceTypes.FirstAsync(
             type => type.Type == AppointmentRecurrenceType.Monthly,
             TestContext.Current.CancellationToken);
-        var rangeStart = new DateTime(2026, 01, 01, 0, 0, 0, DateTimeKind.Utc);
-        var rangeEnd = new DateTime(2026, 04, 30, 23, 59, 59, DateTimeKind.Utc);
+        var rangeStart = new DateTime(2037, 01, 01, 0, 0, 0, DateTimeKind.Utc);
+        var rangeEnd = new DateTime(2037, 04, 30, 23, 59, 59, DateTimeKind.Utc);
         var rule = new AppointmentRecurrenceRule
         {
             Id = Ulid.NewUlid(),
             Client = client,
             Service = service,
-            StartDate = new DateTime(2026, 01, 15, 14, 0, 0, DateTimeKind.Utc),
+            StartDate = new DateTime(2037, 01, 15, 14, 0, 0, DateTimeKind.Utc),
             EndDate = rangeEnd,
             RecurrenceType = recurrenceType,
             RecurrencePattern = 15
@@ -461,7 +462,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         var occurrence = await db.Appointments.FirstAsync(
             item => item.RecurringRule != null
                     && item.RecurringRule.Id == rule.Id
-                    && item.StartDate == new DateTime(2026, 02, 15, 14, 0, 0, DateTimeKind.Utc),
+                    && item.StartDate == new DateTime(2037, 02, 15, 14, 0, 0, DateTimeKind.Utc),
             TestContext.Current.CancellationToken);
         var movedStartDate = occurrence.StartDate.AddDays(5);
 
@@ -480,7 +481,7 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         await materializer.EnsureAppointmentsGeneratedAsync(rangeStart, rangeEnd.AddDays(5), TestContext.Current.CancellationToken);
         var rules = await db.RecurrenceRules.OrderBy(item => item.StartDate).ToListAsync(TestContext.Current.CancellationToken);
         rules.Count.ShouldBe(2);
-        rules[0].EndDate.ShouldBe(new DateTime(2026, 02, 14, 0, 0, 0, DateTimeKind.Utc));
+        rules[0].EndDate.ShouldBe(new DateTime(2037, 02, 15, 14, 0, 0, DateTimeKind.Utc).AddTicks(-10));
         rules[1].StartDate.ShouldBe(movedStartDate);
         rules[1].EndDate.ShouldBe(rangeEnd.AddDays(5));
         rules[1].RecurrencePattern.ShouldBe(20);
@@ -490,10 +491,10 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
             .Select(item => item.StartDate)
             .ToListAsync(TestContext.Current.CancellationToken);
         activeStarts.ShouldBe([
-            new DateTime(2026, 01, 15, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 02, 20, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 03, 20, 14, 0, 0, DateTimeKind.Utc),
-            new DateTime(2026, 04, 20, 14, 0, 0, DateTimeKind.Utc)
+            new DateTime(2037, 01, 15, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 02, 20, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 03, 20, 14, 0, 0, DateTimeKind.Utc),
+            new DateTime(2037, 04, 20, 14, 0, 0, DateTimeKind.Utc)
         ]);
         await AssertClientCalendarMatchesActiveAppointmentsAsync(db, client.Id);
     }
@@ -510,7 +511,14 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         }, TestContext.Current.CancellationToken);
         await db.SaveChangesAsync(TestContext.Current.CancellationToken);
 
-        var calendar = await (await App.Client.GetAsync($"/calendar-subscriptions/{token}.ics", TestContext.Current.CancellationToken))
+        var lastStart = await db.Appointments.Where(item => item.Client.Id == clientId).MaxAsync(item => item.StartDate, TestContext.Current.CancellationToken);
+        using var calendarApp = App.WithWebHostBuilder(builder => builder.ConfigureServices(services =>
+        {
+            services.RemoveAll<TimeProvider>();
+            services.AddSingleton<TimeProvider>(new CalendarClock(lastStart));
+        }));
+        using var calendarClient = calendarApp.CreateClient();
+        var calendar = await (await calendarClient.GetAsync($"/calendar-subscriptions/{token}.ics", TestContext.Current.CancellationToken))
             .Content.ReadAsStringAsync(TestContext.Current.CancellationToken);
         var expectedStarts = await db.Appointments
             .Where(item => item.Client.Id == clientId && !item.IsDeleted && item.Status != AppointmentStatus.Cancelled)
@@ -532,4 +540,23 @@ public class RecurringAppointmentUpdateTests(MelodyTrackFixture app) : Integrati
         actualStarts.ShouldBe(expectedStarts);
         calendar.ShouldNotContain("RRULE:");
     }
+    private static async Task<User> CreateSeriesTeacherAsync(AppDbContext db)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var user = await TestDataFactory.CreateAuthorizedScheduleUserAsync(db, ct);
+        user.ScheduleTimezone = "UTC";
+        db.UserWorkingHoursDays.AddRange(Enum.GetValues<DayOfWeek>().Select(day => new UserWorkingHoursDay
+        {
+            Id = Ulid.NewUlid(), UserId = user.Id, User = user, DayOfWeek = day,
+            IsWorkingDay = true, StartMinuteOfDay = 600, EndMinuteOfDay = 1200
+        }));
+        await db.SaveChangesAsync(ct);
+        return user;
+    }
+
+    private sealed class CalendarClock(DateTime now) : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() => new(now);
+    }
+
 }

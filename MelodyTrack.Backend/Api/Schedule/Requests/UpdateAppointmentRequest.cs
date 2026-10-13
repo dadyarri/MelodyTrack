@@ -1,10 +1,11 @@
 
 using System.Text.Json.Serialization;
+using MelodyTrack.Backend.Validation;
 using Microsoft.AspNetCore.Mvc;
 
 namespace MelodyTrack.Backend.Api.Schedule.Requests;
 
-public class UpdateAppointmentRequest
+public class UpdateAppointmentRequest : IValidatableRequest
 {
     [JsonIgnore]
     public Ulid Id { get; set; }

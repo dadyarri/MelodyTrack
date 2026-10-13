@@ -276,7 +276,7 @@ public class DashboardEndpointTests(MelodyTrackFixture app) : IntegrationTestBas
             Service = service,
             Provider = user,
             StartDate = appointmentStart,
-            EndDate = appointmentStart.Date,
+            EndDate = appointmentStart,
             RecurrenceType = recurrenceType,
             RecurrencePattern = null
         }, TestContext.Current.CancellationToken);

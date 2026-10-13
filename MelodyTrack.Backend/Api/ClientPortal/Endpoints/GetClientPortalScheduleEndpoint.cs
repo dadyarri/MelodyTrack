@@ -56,8 +56,7 @@ public sealed class GetClientPortalScheduleEndpoint
                 !item.IsDeleted &&
                 item.Client.Id == clientId &&
                 item.Status == AppointmentStatus.Planned &&
-                item.EndDate >= nowUtc &&
-                !item.Client.Vacations.Any(vacation => item.StartDate < vacation.EndDate && item.EndDate > vacation.StartDate))
+                item.EndDate >= nowUtc)
             .OrderBy(item => item.StartDate)
             .Take(1)
             .SingleOrDefaultAsync(ct);

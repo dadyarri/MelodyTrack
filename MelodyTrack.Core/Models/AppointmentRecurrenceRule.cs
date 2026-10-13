@@ -5,6 +5,8 @@ namespace MelodyTrack.Backend.Data.Models;
 /// </summary>
 public class AppointmentRecurrenceRule : BaseModel
 {
+    public string Timezone { get; set; } = "UTC";
+    public int DurationMinutes { get; set; } = 60;
     /// <summary>
     ///     The service that this recurrence rule applies to
     /// </summary>
