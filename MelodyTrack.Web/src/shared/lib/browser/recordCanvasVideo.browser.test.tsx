@@ -1,21 +1,32 @@
 import { describe, expect, it } from "vitest";
-import { recordCanvasVideo } from "./recordCanvasVideo";
+
+import { getSupportedWebmMimeType, recordCanvasVideo } from "./recordCanvasVideo";
+
+const supportsWebm = getSupportedWebmMimeType() !== null;
 
 function nextVideoFrame(video: HTMLVideoElement) {
-  return new Promise<void>(resolve => video.requestVideoFrameCallback(() => resolve()));
+  return new Promise<void>((resolve) =>
+    video.requestVideoFrameCallback(() => {
+      resolve();
+    }),
+  );
 }
 describe("canvas video export", () => {
-  it("records a painted first frame and changing images", async () => {
+  it.runIf(supportsWebm)("records a painted first frame and changing images", async () => {
     const canvas = document.createElement("canvas");
     canvas.width = 64;
     canvas.height = 64;
     const context = canvas.getContext("2d");
     if (!context) throw new Error("Canvas context is unavailable");
     let frames = 0;
-    const { blob } = await recordCanvasVideo({ canvas, durationSeconds: 1, drawFrame: () => {
-      context.fillStyle = frames++ < 15 ? "#ff0000" : "#00ff00";
-      context.fillRect(0, 0, canvas.width, canvas.height);
-    } });
+    const { blob } = await recordCanvasVideo({
+      canvas,
+      durationSeconds: 1,
+      drawFrame: () => {
+        context.fillStyle = frames++ < 15 ? "#ff0000" : "#00ff00";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      },
+    });
     const video = document.createElement("video");
     video.muted = true;
     video.playsInline = true;
@@ -47,5 +58,11 @@ describe("canvas video export", () => {
       video.remove();
       URL.revokeObjectURL(url);
     }
+  });
+
+  it.runIf(!supportsWebm)("explains when this browser cannot record WebM", async () => {
+    const canvas = document.createElement("canvas");
+
+    await expect(recordCanvasVideo({ canvas, durationSeconds: 1 })).rejects.toThrow("В этом браузере запись WebM недоступна");
   });
 });

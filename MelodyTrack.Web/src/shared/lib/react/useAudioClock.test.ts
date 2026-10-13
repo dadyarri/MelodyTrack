@@ -1,5 +1,6 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { useAudioClock } from "./useAudioClock";
 
 function mockAudioContext(state: "running" | "suspended" = "running") {
@@ -25,8 +26,13 @@ function mockAudioContext(state: "running" | "suspended" = "running") {
       return oscillator;
     },
   };
-  resume.mockImplementation(async () => { context.state = "running"; });
-  vi.stubGlobal("AudioContext", class { constructor() { return context; } });
+  resume.mockImplementation(() => {
+    context.state = "running";
+    return Promise.resolve();
+  });
+  vi.stubGlobal("AudioContext", function MockAudioContext() {
+    return context;
+  });
   return { context, oscillators, resume, gains, recordingDestination };
 }
 afterEach(() => vi.unstubAllGlobals());
@@ -35,10 +41,14 @@ describe("audio clock", () => {
   it("cancels scheduled sounds when stopping playback", async () => {
     const { oscillators } = mockAudioContext();
     const { result } = renderHook(useAudioClock);
-    await act(async () => { await result.current.start(); });
+    await act(async () => {
+      await result.current.start();
+    });
     result.current.scheduleMetronomeClick({ time: 2, accented: false, volume: 0.6 });
 
-    act(() => result.current.stop());
+    act(() => {
+      result.current.stop();
+    });
 
     expect(oscillators[0].stop).toHaveBeenLastCalledWith();
     expect(oscillators[0].disconnect).toHaveBeenCalled();
@@ -48,7 +58,9 @@ describe("audio clock", () => {
     const { context, gains, recordingDestination } = mockAudioContext();
     const { result } = renderHook(useAudioClock);
     const audioStream = result.current.getAudioStream();
-    await act(async () => { await result.current.start(); });
+    await act(async () => {
+      await result.current.start();
+    });
 
     result.current.scheduleMetronomeClick({ time: 1, accented: true, volume: 0.6 });
 
@@ -59,13 +71,28 @@ describe("audio clock", () => {
   it("does not restart after stop while audio permission is pending", async () => {
     const { resume, context } = mockAudioContext("suspended");
     let resolveResume: (() => void) | undefined;
-    resume.mockImplementation(() => new Promise<void>(resolve => { resolveResume = () => { context.state = "running"; resolve(); }; }));
+    resume.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveResume = () => {
+            context.state = "running";
+            resolve();
+          };
+        }),
+    );
     const { result } = renderHook(useAudioClock);
     let starting: Promise<boolean> | undefined;
-    act(() => { starting = result.current.start(); });
+    act(() => {
+      starting = result.current.start();
+    });
 
-    act(() => result.current.stop());
-    await act(async () => { resolveResume?.(); await starting; });
+    act(() => {
+      result.current.stop();
+    });
+    await act(async () => {
+      resolveResume?.();
+      await starting;
+    });
 
     expect(await starting).toBe(false);
     expect(result.current.isRunning).toBe(false);
@@ -73,7 +100,9 @@ describe("audio clock", () => {
   it("closes audio and cancels future clicks on unmount", async () => {
     const { context, oscillators } = mockAudioContext();
     const { result, unmount } = renderHook(useAudioClock);
-    await act(async () => { await result.current.start(); });
+    await act(async () => {
+      await result.current.start();
+    });
     result.current.scheduleMetronomeClick({ time: 3, accented: true, volume: 0.6 });
 
     unmount();

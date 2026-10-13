@@ -1,12 +1,25 @@
 import { describe, expect, it } from "vitest";
-import { changeStrummingGrid, createDefaultStrummingBar, createDefaultStrummingConfiguration, getCountInBeats, getCountInDurationSeconds, getStrummingCountLabels, getStrummingDurationSeconds, getStrummingPlaybackDurationSeconds, isCompleteStrummingBar, parseStrummingConfiguration, shouldIncreaseTempo } from "./practiceExercise";
+
 import { createExerciseTimingCursor } from "./exerciseTiming";
+import {
+  changeStrummingGrid,
+  createDefaultStrummingBar,
+  createDefaultStrummingConfiguration,
+  getCountInBeats,
+  getCountInDurationSeconds,
+  getStrummingCountLabels,
+  getStrummingDurationSeconds,
+  getStrummingPlaybackDurationSeconds,
+  isCompleteStrummingBar,
+  parseStrummingConfiguration,
+  shouldIncreaseTempo,
+} from "./practiceExercise";
 
 describe("strumming configuration", () => {
   it("creates complete rows on the same fixed grid", () => {
     const configuration = createDefaultStrummingConfiguration();
 
-    expect(configuration.bars[0].strokes.map(stroke => stroke.action)).toEqual(["down", "up", "down", "up"]);
+    expect(configuration.bars[0].strokes.map((stroke) => stroke.action)).toEqual(["down", "up", "down", "up"]);
     expect(configuration.bars[0].handMotions).toEqual(["down", "up", "down", "up"]);
     expect(parseStrummingConfiguration(configuration)).toEqual(configuration);
   });
@@ -29,10 +42,25 @@ describe("strumming configuration", () => {
   });
   it("keeps later actions at the same time when an earlier action becomes a rest", () => {
     const bar = createDefaultStrummingBar("4/4");
-    const cleared = { ...bar, strokes: bar.strokes.map((stroke, index) => index === 1 ? { action: "rest" as const, accent: false } : stroke) };
+    const cleared = {
+      ...bar,
+      strokes: bar.strokes.map((stroke, index) => (index === 1 ? { action: "rest" as const, accent: false } : stroke)),
+    };
 
     const defaults = createDefaultStrummingConfiguration();
-    const cursor = createExerciseTimingCursor({ bpm: 80, beatsPerBar: 4, quarterNotesPerBeat: 1, slotsPerBar: [cleared.strokes.length], repetitions: 1, loop: false, metronome: defaults.metronome, tempoProgression: defaults.tempoProgression }, 0);
+    const cursor = createExerciseTimingCursor(
+      {
+        bpm: 80,
+        beatsPerBar: 4,
+        quarterNotesPerBeat: 1,
+        slotsPerBar: [cleared.strokes.length],
+        repetitions: 1,
+        loop: false,
+        metronome: defaults.metronome,
+        tempoProgression: defaults.tempoProgression,
+      },
+      0,
+    );
     for (let index = 0; index < 4; index += 1) cursor.next();
     expect(Array.from({ length: 4 }, () => cursor.next()?.position.time)).toEqual([3, 3.75, 4.5, 5.25]);
     expect(cleared.strokes[2]).toEqual(bar.strokes[2]);
@@ -42,7 +70,7 @@ describe("strumming configuration", () => {
 
     const finer = changeStrummingGrid(bar, "4/4", "eighth");
 
-    expect(finer?.strokes.map(stroke => stroke.action)).toEqual(["down", "rest", "up", "rest", "down", "rest", "up", "rest"]);
+    expect(finer?.strokes.map((stroke) => stroke.action)).toEqual(["down", "rest", "up", "rest", "down", "rest", "up", "rest"]);
     expect(finer?.handMotions).toEqual(["down", "rest", "up", "rest", "down", "rest", "up", "rest"]);
   });
   it("requires confirmation before a coarser grid discards actions", () => {
@@ -63,14 +91,19 @@ describe("strumming configuration", () => {
     expect(shouldIncreaseTempo({ ...progression, unit: "repetitions" }, 2, 2)).toBe(true);
   });
   it("includes tempo increases in the default recording duration", () => {
-    const configuration = { ...createDefaultStrummingConfiguration(), bpm: 60, repetitions: 2, tempoProgression: { enabled: true, every: 1, increment: 60, unit: "repetitions" as const } };
+    const configuration = {
+      ...createDefaultStrummingConfiguration(),
+      bpm: 60,
+      repetitions: 2,
+      tempoProgression: { enabled: true, every: 1, increment: 60, unit: "repetitions" as const },
+    };
 
     expect(getStrummingPlaybackDurationSeconds(configuration)).toBe(6);
   });
-  it.each([0, -1, 29, 241, Infinity, NaN])("rejects an unsafe tempo of %s", bpm => {
+  it.each([0, -1, 29, 241, Infinity, NaN])("rejects an unsafe tempo of %s", (bpm) => {
     expect(parseStrummingConfiguration({ ...createDefaultStrummingConfiguration(), bpm })).toBeNull();
   });
-  it.each([0, 1.5, 101])("rejects an invalid repeat count of %s", repetitions => {
+  it.each([0, 1.5, 101])("rejects an invalid repeat count of %s", (repetitions) => {
     expect(parseStrummingConfiguration({ ...createDefaultStrummingConfiguration(), repetitions })).toBeNull();
   });
   it("rejects unknown configuration versions and missing fields", () => {
@@ -79,6 +112,8 @@ describe("strumming configuration", () => {
     expect(parseStrummingConfiguration(null)).toBeNull();
   });
   it("rejects an unsupported grid in six-eight", () => {
-    expect(parseStrummingConfiguration({ ...createDefaultStrummingConfiguration("6/8"), bars: [createDefaultStrummingBar("6/8", "quarter")] })).toBeNull();
+    expect(
+      parseStrummingConfiguration({ ...createDefaultStrummingConfiguration("6/8"), bars: [createDefaultStrummingBar("6/8", "quarter")] }),
+    ).toBeNull();
   });
 });

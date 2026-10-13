@@ -1,12 +1,17 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
-import { createDefaultStrummingConfiguration } from "../model/practiceExercise";
-import { TrainerTimingHost } from "./TrainerTimingHost";
-import { StrummingTrainer } from "./StrummingTrainer";
 
-beforeEach(async () => { await page.viewport(1280, 900); });
-afterEach(async () => { await page.viewport(1280, 900); });
+import { createDefaultStrummingConfiguration, type StrummingConfiguration } from "../model/practiceExercise";
+import { StrummingTrainer } from "./StrummingTrainer";
+import { TrainerTimingHost } from "./TrainerTimingHost";
+
+beforeEach(async () => {
+  await page.viewport(1280, 900);
+});
+afterEach(async () => {
+  await page.viewport(1280, 900);
+});
 
 describe("guitar strumming trainer", () => {
   it("shows the unsupported-screen message below 768 pixels", async () => {
@@ -17,7 +22,7 @@ describe("guitar strumming trainer", () => {
     expect(document.querySelector("canvas")).toBeNull();
   });
   it("stops playback when the window becomes too narrow", async () => {
-    const onPlaybackChange = vi.fn();
+    const onPlaybackChange = vi.fn<(running: boolean) => void>();
     const screen = await render(<StrummingTrainer onPlaybackChange={onPlaybackChange} />);
     await screen.getByRole("button", { name: "Старт", exact: true }).click();
     await expect.poll(() => onPlaybackChange.mock.lastCall?.[0]).toBe(true);
@@ -36,19 +41,23 @@ describe("guitar strumming trainer", () => {
     expect(document.documentElement.scrollWidth).toBeLessThanOrEqual(window.innerWidth);
   });
   it("replaces an action with a rest without removing its time slot", async () => {
-    const onChange = vi.fn();
-    const screen = await render(<StrummingTrainer configuration={createDefaultStrummingConfiguration()} onConfigurationChange={onChange} />);
+    const onChange = vi.fn<(configuration: StrummingConfiguration) => void>();
+    const screen = await render(
+      <StrummingTrainer configuration={createDefaultStrummingConfiguration()} onConfigurationChange={onChange} />,
+    );
 
     await screen.getByRole("button", { name: "Такт 1, позиция 2: убрать удар", exact: true }).click();
 
     const updated = onChange.mock.lastCall?.[0];
-    expect(updated.bars[0].strokes).toHaveLength(4);
-    expect(updated.bars[0].strokes.map((stroke: { action: string }) => stroke.action)).toEqual(["down", "rest", "down", "up"]);
+    expect(updated?.bars[0].strokes).toHaveLength(4);
+    expect(updated?.bars[0].strokes.map((stroke: { action: string }) => stroke.action)).toEqual(["down", "rest", "down", "up"]);
   });
   it("keeps course exercise settings fixed for students", async () => {
     const configuration = createDefaultStrummingConfiguration();
-    const onChange = vi.fn();
-    const screen = await render(<StrummingTrainer configuration={configuration} showConfiguration={false} onConfigurationChange={onChange} />);
+    const onChange = vi.fn<(configuration: StrummingConfiguration) => void>();
+    const screen = await render(
+      <StrummingTrainer configuration={configuration} showConfiguration={false} onConfigurationChange={onChange} />,
+    );
 
     await expect.element(screen.getByText(/Упражнение настроено преподавателем/)).toBeVisible();
     expect(document.querySelector('input[type="number"]')).toBeNull();
@@ -57,12 +66,18 @@ describe("guitar strumming trainer", () => {
     expect(onChange).not.toHaveBeenCalled();
   });
   it("hands the shared clock to the next exercise and stops the previous one", async () => {
-    const firstPlayback = vi.fn();
-    const secondPlayback = vi.fn();
-    const screen = await render(<TrainerTimingHost>
-      <section aria-label="Первое упражнение"><StrummingTrainer onPlaybackChange={firstPlayback} /></section>
-      <section aria-label="Второе упражнение"><StrummingTrainer onPlaybackChange={secondPlayback} /></section>
-    </TrainerTimingHost>);
+    const firstPlayback = vi.fn<(running: boolean) => void>();
+    const secondPlayback = vi.fn<(running: boolean) => void>();
+    const screen = await render(
+      <TrainerTimingHost>
+        <section aria-label="Первое упражнение">
+          <StrummingTrainer onPlaybackChange={firstPlayback} />
+        </section>
+        <section aria-label="Второе упражнение">
+          <StrummingTrainer onPlaybackChange={secondPlayback} />
+        </section>
+      </TrainerTimingHost>,
+    );
     await screen.getByRole("region", { name: "Первое упражнение" }).getByRole("button", { name: "Старт", exact: true }).click();
     await expect.poll(() => firstPlayback.mock.lastCall?.[0]).toBe(true);
 
@@ -88,8 +103,10 @@ describe("guitar strumming trainer", () => {
     expect(document.querySelector("canvas")).toBeNull();
   });
   it("asks before resetting the pattern for a different time signature", async () => {
-    const onChange = vi.fn();
-    const screen = await render(<StrummingTrainer configuration={createDefaultStrummingConfiguration()} onConfigurationChange={onChange} />);
+    const onChange = vi.fn<(configuration: StrummingConfiguration) => void>();
+    const screen = await render(
+      <StrummingTrainer configuration={createDefaultStrummingConfiguration()} onConfigurationChange={onChange} />,
+    );
 
     await screen.getByText("3/4", { exact: true }).click();
 

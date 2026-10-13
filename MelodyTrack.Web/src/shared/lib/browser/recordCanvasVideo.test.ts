@@ -1,22 +1,31 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { canvasVideoBitrate, estimateVideoBytes, recordCanvasVideo } from "./recordCanvasVideo";
 
 function mockRecording() {
   const videoTrack = { stop: vi.fn(), requestFrame: vi.fn() };
   const audioTrack = { stop: vi.fn() };
   class CanvasMock {
-    captureStream() { return { getVideoTracks: () => [videoTrack], getTracks: () => [videoTrack] }; }
+    captureStream() {
+      return { getVideoTracks: () => [videoTrack], getTracks: () => [videoTrack] };
+    }
   }
   const recorders: RecorderMock[] = [];
   const streams: Array<{ tracks: unknown[] }> = [];
   class RecorderMock {
-    static isTypeSupported() { return true; }
+    static isTypeSupported() {
+      return true;
+    }
     state = "inactive";
     ondataavailable: ((event: { data: Blob }) => void) | null = null;
     onstop: (() => void) | null = null;
     onerror: (() => void) | null = null;
-    constructor() { recorders.push(this); }
-    start() { this.state = "recording"; }
+    constructor() {
+      recorders.push(this);
+    }
+    start() {
+      this.state = "recording";
+    }
     stop() {
       this.state = "inactive";
       queueMicrotask(() => {
@@ -27,10 +36,27 @@ function mockRecording() {
   }
   vi.stubGlobal("HTMLCanvasElement", CanvasMock);
   vi.stubGlobal("MediaRecorder", RecorderMock);
-  vi.stubGlobal("MediaStream", class { constructor(public tracks: unknown[]) { streams.push(this); } });
-  return { streams, canvas: new CanvasMock() as unknown as HTMLCanvasElement, videoTrack, audioTrack, audioStream: { getAudioTracks: () => [audioTrack] } as unknown as MediaStream, recorders };
+  vi.stubGlobal(
+    "MediaStream",
+    class {
+      constructor(public tracks: unknown[]) {
+        streams.push(this);
+      }
+    },
+  );
+  return {
+    streams,
+    canvas: new CanvasMock() as unknown as HTMLCanvasElement,
+    videoTrack,
+    audioTrack,
+    audioStream: { getAudioTracks: () => [audioTrack] } as unknown as MediaStream,
+    recorders,
+  };
 }
-afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
 describe("canvas video recording", () => {
   it("estimates the encoded size from duration and bitrate", () => {
@@ -86,10 +112,15 @@ describe("canvas video recording", () => {
   });
   it("releases the canvas stream if recorder construction fails", async () => {
     const { canvas, videoTrack } = mockRecording();
-    vi.stubGlobal("MediaRecorder", class {
-      static isTypeSupported() { return true; }
-      constructor() { throw new Error("unsupported codec"); }
-    });
+    vi.stubGlobal(
+      "MediaRecorder",
+      Object.assign(
+        function MockMediaRecorder() {
+          throw new Error("unsupported codec");
+        },
+        { isTypeSupported: () => true },
+      ),
+    );
 
     await expect(recordCanvasVideo({ canvas, durationSeconds: 2 })).rejects.toThrow("Не удалось начать запись видео");
     expect(videoTrack.stop).toHaveBeenCalledOnce();

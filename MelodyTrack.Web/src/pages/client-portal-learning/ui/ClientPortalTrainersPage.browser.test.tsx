@@ -1,9 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { page } from "vitest/browser";
 import { render } from "vitest-browser-react";
+
 import { ClientPortalTrainersPage } from "./ClientPortalLearningPages";
 
-afterEach(async () => { await page.viewport(1280, 900); });
+afterEach(async () => {
+  await page.viewport(1280, 900);
+});
 
 describe("portal independent practice", () => {
   it("offers editable trainer settings outside course assignments", async () => {

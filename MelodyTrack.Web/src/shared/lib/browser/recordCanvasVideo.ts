@@ -5,12 +5,26 @@ export const maximumCanvasVideoSeconds = 180;
 const maximumCanvasVideoBytes = 128 * 1024 * 1024;
 export type CanvasVideoRecording = Readonly<{ blob: Blob; mimeType: string }>;
 export function getSupportedWebmMimeType() {
-  if (typeof MediaRecorder === "undefined" || typeof HTMLCanvasElement === "undefined" || typeof HTMLCanvasElement.prototype.captureStream !== "function") return null;
+  if (
+    typeof MediaRecorder === "undefined" ||
+    typeof HTMLCanvasElement === "undefined" ||
+    typeof HTMLCanvasElement.prototype.captureStream !== "function"
+  )
+    return null;
   return webmMimeTypes.find((mimeType) => MediaRecorder.isTypeSupported(mimeType)) ?? null;
 }
-export function estimateVideoBytes(durationSeconds: number, bitrate = canvasVideoBitrate) { return Math.ceil(durationSeconds * bitrate / 8); }
+export function estimateVideoBytes(durationSeconds: number, bitrate = canvasVideoBitrate) {
+  return Math.ceil((durationSeconds * bitrate) / 8);
+}
 /** Abort with reason "finish" to keep the partial video; any other abort discards it. */
-export function recordCanvasVideo({ canvas, durationSeconds, audioStream, signal, onChunk, drawFrame }: {
+export function recordCanvasVideo({
+  canvas,
+  durationSeconds,
+  audioStream,
+  signal,
+  onChunk,
+  drawFrame,
+}: {
   canvas: HTMLCanvasElement;
   durationSeconds: number;
   audioStream?: MediaStream | null;
@@ -18,7 +32,8 @@ export function recordCanvasVideo({ canvas, durationSeconds, audioStream, signal
   onChunk?: (totalBytes: number) => void;
   drawFrame?: () => void;
 }): Promise<CanvasVideoRecording> {
-  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > maximumCanvasVideoSeconds) return Promise.reject(new Error("Длительность записи должна быть от 1 до 180 секунд."));
+  if (!Number.isFinite(durationSeconds) || durationSeconds <= 0 || durationSeconds > maximumCanvasVideoSeconds)
+    return Promise.reject(new Error("Длительность записи должна быть от 1 до 180 секунд."));
   const mimeType = getSupportedWebmMimeType();
   if (!mimeType) return Promise.reject(new Error("В этом браузере запись WebM недоступна. Попробуйте другой браузер."));
   if (signal?.aborted) return Promise.reject(new DOMException("Запись отменена.", "AbortError"));
@@ -35,17 +50,24 @@ export function recordCanvasVideo({ canvas, durationSeconds, audioStream, signal
       if (stopTimer !== undefined) window.clearTimeout(stopTimer);
       if (frame !== undefined) cancelAnimationFrame(frame);
       signal?.removeEventListener("abort", onAbort);
-      canvasStream?.getTracks().forEach((track) => track.stop());
+      canvasStream?.getTracks().forEach((track) => {
+        track.stop();
+      });
     };
     const fail = (error: Error) => {
       if (completed) return;
       failure = error;
       if (recorder && recorder.state !== "inactive") recorder.stop();
-      else { completed = true; cleanUp(); reject(error); }
+      else {
+        completed = true;
+        cleanUp();
+        reject(error);
+      }
     };
     const onAbort = () => {
-      if (signal?.reason === "finish") { if (recorder?.state === "recording") recorder.stop(); }
-      else fail(new DOMException("Запись отменена.", "AbortError"));
+      if (signal?.reason === "finish") {
+        if (recorder?.state === "recording") recorder.stop();
+      } else fail(new DOMException("Запись отменена.", "AbortError"));
     };
     try {
       drawFrame?.();
@@ -55,11 +77,16 @@ export function recordCanvasVideo({ canvas, durationSeconds, audioStream, signal
       recorder.ondataavailable = (event) => {
         if (!event.data.size || failure) return;
         totalBytes += event.data.size;
-        if (totalBytes > maximumCanvasVideoBytes) { fail(new Error("Видео получилось слишком большим. Уменьшите длительность записи.")); return; }
+        if (totalBytes > maximumCanvasVideoBytes) {
+          fail(new Error("Видео получилось слишком большим. Уменьшите длительность записи."));
+          return;
+        }
         chunks.push(event.data);
         onChunk?.(totalBytes);
       };
-      recorder.onerror = () => fail(new Error("Браузер не смог завершить запись. Попробуйте записать более короткое видео."));
+      recorder.onerror = () => {
+        fail(new Error("Браузер не смог завершить запись. Попробуйте записать более короткое видео."));
+      };
       recorder.onstop = () => {
         if (completed) return;
         completed = true;
@@ -77,7 +104,9 @@ export function recordCanvasVideo({ canvas, durationSeconds, audioStream, signal
         frame = requestAnimationFrame(captureFrame);
       };
       captureFrame();
-      stopTimer = window.setTimeout(() => { if (recorder?.state === "recording") recorder.stop(); }, durationSeconds * 1_000);
+      stopTimer = window.setTimeout(() => {
+        if (recorder?.state === "recording") recorder.stop();
+      }, durationSeconds * 1_000);
     } catch {
       completed = true;
       cleanUp();

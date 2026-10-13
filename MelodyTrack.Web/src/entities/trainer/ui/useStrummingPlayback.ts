@@ -1,23 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { getSupportedWebmMimeType, maximumCanvasVideoSeconds, recordCanvasVideo } from "@/shared/lib";
-import { useTrainerTiming } from "./TrainerTimingHost";
+
+import {
+  getCountInBeats,
+  getCountInDurationSeconds,
+  isCompleteStrummingConfiguration,
+  type StrummingConfiguration,
+} from "../model/practiceExercise";
 import { drawStrummingTrainer, type TrainerPosition } from "./drawStrummingTrainer";
-import { getCountInBeats, getCountInDurationSeconds, isCompleteStrummingConfiguration, type StrummingConfiguration } from "../model/practiceExercise";
+import { useTrainerTiming } from "./TrainerTimingHost";
 
 const startDelaySeconds = 0.06;
 export function useStrummingPlayback(configuration: StrummingConfiguration, onPlaybackChange?: (running: boolean) => void, previewBar = 0) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const onTimingReleaseRef = useRef<() => void>(() => {});
-  const presentationRef = useRef<{ configuration: StrummingConfiguration; position: TrainerPosition }>({ configuration, position: { bar: 0, slot: null, countIn: null, repetition: 1, bpm: configuration.bpm } });
+  const presentationRef = useRef<{ configuration: StrummingConfiguration; position: TrainerPosition }>({
+    configuration,
+    position: { bar: 0, slot: null, countIn: null, repetition: 1, bpm: configuration.bpm },
+  });
   const drawFrame = useCallback(() => {
     const canvas = canvasRef.current;
     if (canvas) drawStrummingTrainer(canvas, presentationRef.current.configuration, presentationRef.current.position);
   }, []);
-  const { getAudioStream, isRunning, position, start, stop } = useTrainerTiming(() => onTimingReleaseRef.current(), next => {
-    presentationRef.current.position = next;
-    drawFrame();
-  });
+  const { getAudioStream, isRunning, position, start, stop } = useTrainerTiming(
+    () => {
+      onTimingReleaseRef.current();
+    },
+    (next) => {
+      presentationRef.current.position = next;
+      drawFrame();
+    },
+  );
   const [activeConfiguration, setActiveConfiguration] = useState(configuration);
   const [isStarting, setIsStarting] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -35,9 +49,18 @@ export function useStrummingPlayback(configuration: StrummingConfiguration, onPl
     setIsStarting(false);
     recordingRef.current?.abort("finish");
   }, [stop]);
-  useEffect(() => { onTimingReleaseRef.current = stopPlayback; }, [stopPlayback]);
-  useEffect(() => { onPlaybackChange?.(isBusy); }, [isBusy, onPlaybackChange]);
-  useEffect(() => () => { onPlaybackChange?.(false); }, [onPlaybackChange]);
+  useEffect(() => {
+    onTimingReleaseRef.current = stopPlayback;
+  }, [stopPlayback]);
+  useEffect(() => {
+    onPlaybackChange?.(isBusy);
+  }, [isBusy, onPlaybackChange]);
+  useEffect(
+    () => () => {
+      onPlaybackChange?.(false);
+    },
+    [onPlaybackChange],
+  );
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -49,10 +72,15 @@ export function useStrummingPlayback(configuration: StrummingConfiguration, onPl
   }, []);
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (document.hidden && busyRef.current) { stopPlayback(); setError("Проигрывание остановлено: вкладка скрыта. Вернитесь и нажмите «Старт»."); }
+      if (document.hidden && busyRef.current) {
+        stopPlayback();
+        setError("Проигрывание остановлено: вкладка скрыта. Вернитесь и нажмите «Старт».");
+      }
     };
     document.addEventListener("visibilitychange", onVisibilityChange);
-    return () => document.removeEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [stopPlayback]);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -72,7 +100,10 @@ export function useStrummingPlayback(configuration: StrummingConfiguration, onPl
     setIsStarting(true);
     const sessionConfiguration = recordWholeExercise ? { ...configuration, loop: false } : configuration;
     setActiveConfiguration(sessionConfiguration);
-    presentationRef.current = { configuration: sessionConfiguration, position: { bar: null, slot: null, countIn: 1, repetition: 1, bpm: sessionConfiguration.bpm } };
+    presentationRef.current = {
+      configuration: sessionConfiguration,
+      position: { bar: null, slot: null, countIn: 1, repetition: 1, bpm: sessionConfiguration.bpm },
+    };
     drawFrame();
     let audioStream: MediaStream | null = null;
     let starting: Promise<boolean>;
@@ -82,7 +113,7 @@ export function useStrummingPlayback(configuration: StrummingConfiguration, onPl
         bpm: sessionConfiguration.bpm,
         beatsPerBar: getCountInBeats(sessionConfiguration.timeSignature),
         quarterNotesPerBeat: 4 / Number(sessionConfiguration.timeSignature.split("/")[1]),
-        slotsPerBar: sessionConfiguration.bars.map(bar => bar.strokes.length),
+        slotsPerBar: sessionConfiguration.bars.map((bar) => bar.strokes.length),
         repetitions: sessionConfiguration.repetitions,
         loop: sessionConfiguration.loop,
         metronome: sessionConfiguration.metronome,
@@ -94,36 +125,66 @@ export function useStrummingPlayback(configuration: StrummingConfiguration, onPl
       setError("Не удалось включить звук. Проверьте настройки браузера и попробуйте снова.");
       return;
     }
-    void starting.then((started) => {
-      if (generation !== generationRef.current) return;
-      setIsStarting(false);
-      if (!started) { busyRef.current = false; setError("Не удалось включить звук. Нажмите «Старт», чтобы попробовать снова."); return; }
-      if (recordingSeconds === undefined) return;
-      const canvas = canvasRef.current;
-      if (!canvas) { stopPlayback(); return; }
-      const controller = new AbortController();
-      recordingRef.current = controller;
-      setIsRecording(true);
-      setVideo(null);
-      const durationSeconds = recordWholeExercise ? maximumCanvasVideoSeconds : Math.min(maximumCanvasVideoSeconds, startDelaySeconds + getCountInDurationSeconds(configuration.timeSignature, configuration.bpm) + recordingSeconds);
-      void recordCanvasVideo({ canvas, audioStream, durationSeconds, signal: controller.signal, drawFrame })
-        .then(({ blob }) => { if (mountedRef.current && (generation === generationRef.current || controller.signal.reason === "finish")) setVideo(blob); })
-        .catch((reason: unknown) => {
-          if (mountedRef.current && !controller.signal.aborted) setError(reason instanceof Error ? reason.message : "Не удалось записать видео.");
-        })
-        .finally(() => {
-          if (!mountedRef.current || recordingRef.current !== controller) return;
-          recordingRef.current = null;
-          if (controller.signal.aborted && controller.signal.reason !== "finish") return;
-          stop();
+    void starting
+      .then((started) => {
+        if (generation !== generationRef.current) return;
+        setIsStarting(false);
+        if (!started) {
           busyRef.current = false;
-          setIsRecording(false);
-        });
-    }).catch(() => {
-      if (generation !== generationRef.current) return;
-      stopPlayback();
-      setError("Не удалось включить звук. Проверьте настройки браузера и попробуйте снова.");
-    });
+          setError("Не удалось включить звук. Нажмите «Старт», чтобы попробовать снова.");
+          return;
+        }
+        if (recordingSeconds === undefined) return;
+        const canvas = canvasRef.current;
+        if (!canvas) {
+          stopPlayback();
+          return;
+        }
+        const controller = new AbortController();
+        recordingRef.current = controller;
+        setIsRecording(true);
+        setVideo(null);
+        const durationSeconds = recordWholeExercise
+          ? maximumCanvasVideoSeconds
+          : Math.min(
+              maximumCanvasVideoSeconds,
+              startDelaySeconds + getCountInDurationSeconds(configuration.timeSignature, configuration.bpm) + recordingSeconds,
+            );
+        void recordCanvasVideo({ canvas, audioStream, durationSeconds, signal: controller.signal, drawFrame })
+          .then(({ blob }) => {
+            if (mountedRef.current && (generation === generationRef.current || controller.signal.reason === "finish")) setVideo(blob);
+          })
+          .catch((reason: unknown) => {
+            if (mountedRef.current && !controller.signal.aborted)
+              setError(reason instanceof Error ? reason.message : "Не удалось записать видео.");
+          })
+          .finally(() => {
+            if (!mountedRef.current || recordingRef.current !== controller) return;
+            recordingRef.current = null;
+            if (controller.signal.aborted && controller.signal.reason !== "finish") return;
+            stop();
+            busyRef.current = false;
+            setIsRecording(false);
+          });
+      })
+      .catch(() => {
+        if (generation !== generationRef.current) return;
+        stopPlayback();
+        setError("Не удалось включить звук. Проверьте настройки браузера и попробуйте снова.");
+      });
   };
-  return { activeConfiguration, canvasRef, isBusy, isRecording, isStarting, isRunning, position, video, error, startPlayback, stopPlayback, canRecordVideo: getSupportedWebmMimeType() !== null };
+  return {
+    activeConfiguration,
+    canvasRef,
+    isBusy,
+    isRecording,
+    isStarting,
+    isRunning,
+    position,
+    video,
+    error,
+    startPlayback,
+    stopPlayback,
+    canRecordVideo: getSupportedWebmMimeType() !== null,
+  };
 }

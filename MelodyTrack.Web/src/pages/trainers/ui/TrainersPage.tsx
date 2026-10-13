@@ -2,19 +2,35 @@ import { Alert, Typography } from "antd";
 import { useState } from "react";
 
 import { createDefaultStrummingConfiguration, type StrummingConfiguration, StrummingTrainer, TrainerTimingHost } from "@/entities/trainer";
-import { parseStrummingTrainerConfiguration, readTrainerConfiguration, strummingTrainerConfigurationId, writeTrainerConfiguration } from "../model/trainerConfigurationsStorage";
+
+import {
+  parseStrummingTrainerConfiguration,
+  readTrainerConfiguration,
+  strummingTrainerConfigurationId,
+  writeTrainerConfiguration,
+} from "../model/trainerConfigurationsStorage";
 import styles from "./TrainersPage.module.css";
 
 export function TrainersPage() {
-  const [configuration, setConfiguration] = useState(() => readTrainerConfiguration(strummingTrainerConfigurationId, parseStrummingTrainerConfiguration) ?? createDefaultStrummingConfiguration());
+  const [configuration, setConfiguration] = useState(
+    () =>
+      readTrainerConfiguration(strummingTrainerConfigurationId, parseStrummingTrainerConfiguration) ??
+      createDefaultStrummingConfiguration(),
+  );
   const [storageError, setStorageError] = useState(false);
   const updateConfiguration = (next: StrummingConfiguration) => {
     setConfiguration(next);
     setStorageError(!writeTrainerConfiguration(strummingTrainerConfigurationId, next));
   };
-  return <TrainerTimingHost><section className={styles.page} aria-labelledby="trainers-page-title">
-    <Typography.Title id="trainers-page-title" level={1}>Тренажёры</Typography.Title>
-    <StrummingTrainer configuration={configuration} onConfigurationChange={updateConfiguration} />
-    {storageError ? <Alert type="warning" title="Настройки тренажёра изменены, но браузер не смог их сохранить." /> : null}
-  </section></TrainerTimingHost>;
+  return (
+    <TrainerTimingHost>
+      <section className={styles.page} aria-labelledby="trainers-page-title">
+        <Typography.Title id="trainers-page-title" level={1}>
+          Тренажёры
+        </Typography.Title>
+        <StrummingTrainer configuration={configuration} onConfigurationChange={updateConfiguration} />
+        {storageError ? <Alert type="warning" title="Настройки тренажёра изменены, но браузер не смог их сохранить." /> : null}
+      </section>
+    </TrainerTimingHost>
+  );
 }

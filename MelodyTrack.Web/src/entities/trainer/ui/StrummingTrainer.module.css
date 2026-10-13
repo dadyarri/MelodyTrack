@@ -1,25 +1,127 @@
-.trainerCard { min-width: 0; overflow: hidden; }
-.trainerCard :global(.ant-card-body) { display: grid; gap: 20px; padding: 20px; }
-.trainerCard :global(.ant-typography) { margin: 0; }
-.presentation { display: grid; gap: 12px; }
-.trainerCanvas { display: block; width: 100%; height: auto; border-radius: 12px; background: #172033; }
-.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; align-items: end; padding: 16px; border: 1px solid var(--ant-color-border-secondary); border-radius: 12px; }
-.control { display: grid; gap: 8px; min-width: 0; }
-.switchControl { display: flex; align-items: center; gap: 12px; }
-.progressionControls { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
-.progressionControls > :global(.ant-typography) { flex-basis: 100%; }
-.patternSection { display: grid; gap: 16px; min-width: 0; }
-.patternSection > :global(.ant-segmented) { max-width: 100%; overflow-x: auto; }
-.barGroup { display: grid; gap: 12px; padding: 16px; border: 1px solid var(--ant-color-border-secondary); border-radius: 12px; min-width: 0; }
-.barHeading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; }
-.gridScroller { overflow-x: auto; min-width: 0; padding-bottom: 8px; }
-.editorRow { display: grid; grid-template-columns: 120px max-content; gap: 12px; padding: 8px 0; }
-.rowLabel { padding-top: 18px; color: var(--ant-color-text-secondary); }
-.barCells { display: grid; gap: 8px; }
-.rhythmColumn { display: grid; grid-template-rows: 64px 20px 36px 36px; gap: 4px; }
-.rhythmCell { width: 64px; height: 64px; padding: 0; font-size: 28px; }
-.countLabel { text-align: center; color: var(--ant-color-text-secondary); }
-.slotTool, .slotToolSpacer { width: 64px; height: 36px; }
-.picker { display: grid; grid-template-columns: repeat(3, minmax(64px, 1fr)); gap: 8px; }
-.picker :global(.ant-btn) { min-width: 64px; height: 44px; }
-.legend { display: grid; gap: 8px; }
+.trainerCard {
+  min-width: 0;
+  overflow: hidden;
+}
+.trainerCard :global(.ant-card-body) {
+  display: grid;
+  gap: 20px;
+  padding: 20px;
+}
+.trainerCard :global(.ant-typography) {
+  margin: 0;
+}
+.presentation {
+  display: grid;
+  gap: 12px;
+}
+.trainerCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 12px;
+  background: #172033;
+}
+.controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 16px;
+  align-items: end;
+  padding: 16px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+}
+.control {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+.switchControl {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.progressionControls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  align-items: center;
+}
+.progressionControls > :global(.ant-typography) {
+  flex-basis: 100%;
+}
+.patternSection {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.patternSection > :global(.ant-segmented) {
+  max-width: 100%;
+  overflow-x: auto;
+}
+.barGroup {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--ant-color-border-secondary);
+  border-radius: 12px;
+  min-width: 0;
+}
+.barHeading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.gridScroller {
+  overflow-x: auto;
+  min-width: 0;
+  padding-bottom: 8px;
+}
+.editorRow {
+  display: grid;
+  grid-template-columns: 120px max-content;
+  gap: 12px;
+  padding: 8px 0;
+}
+.rowLabel {
+  padding-top: 18px;
+  color: var(--ant-color-text-secondary);
+}
+.barCells {
+  display: grid;
+  gap: 8px;
+}
+.rhythmColumn {
+  display: grid;
+  grid-template-rows: 64px 20px 36px 36px;
+  gap: 4px;
+}
+.rhythmCell {
+  width: 64px;
+  height: 64px;
+  padding: 0;
+  font-size: 28px;
+}
+.countLabel {
+  text-align: center;
+  color: var(--ant-color-text-secondary);
+}
+.slotTool,
+.slotToolSpacer {
+  width: 64px;
+  height: 36px;
+}
+.picker {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(64px, 1fr));
+  gap: 8px;
+}
+.picker :global(.ant-btn) {
+  min-width: 64px;
+  height: 44px;
+}
+.legend {
+  display: grid;
+  gap: 8px;
+}

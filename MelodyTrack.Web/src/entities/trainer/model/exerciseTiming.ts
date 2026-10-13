@@ -11,20 +11,48 @@ export type ExerciseTimingConfiguration = Readonly<{
   metronome: MetronomeConfiguration;
   tempoProgression: TempoProgression;
 }>;
-export type ExerciseTimingPosition = Readonly<{ bar: number | null; slot: number | null; countIn: number | null; repetition: number; bpm: number; time: number }>;
+export type ExerciseTimingPosition = Readonly<{
+  bar: number | null;
+  slot: number | null;
+  countIn: number | null;
+  repetition: number;
+  bpm: number;
+  time: number;
+}>;
 
 /** Shared musical cursor; trainer-specific actions do not participate in timing. */
 export function createExerciseTimingCursor(configuration: ExerciseTimingConfiguration, startedAt = 0.06) {
-  if (!Number.isFinite(configuration.bpm) || configuration.bpm < 30 || configuration.bpm > 240 ||
-      !Number.isInteger(configuration.beatsPerBar) || configuration.beatsPerBar < 1 || configuration.beatsPerBar > 12 ||
-      !Number.isFinite(configuration.quarterNotesPerBeat) || configuration.quarterNotesPerBeat <= 0 || configuration.quarterNotesPerBeat > 4 ||
-      !Number.isInteger(configuration.repetitions) || configuration.repetitions < 1 || configuration.repetitions > 100 ||
-      configuration.slotsPerBar.length < 1 || configuration.slotsPerBar.length > 16 ||
-      configuration.slotsPerBar.some(slots => !Number.isInteger(slots) || slots < 1 || slots > 64 || slots % configuration.beatsPerBar !== 0) ||
-      !Number.isFinite(configuration.metronome.volume) || configuration.metronome.volume < 0 || configuration.metronome.volume > 1 ||
-      !Number.isInteger(configuration.tempoProgression.every) || configuration.tempoProgression.every < 1 || configuration.tempoProgression.every > 100 ||
-      !Number.isInteger(configuration.tempoProgression.increment) || configuration.tempoProgression.increment < 1 || configuration.tempoProgression.increment > 60 ||
-      !Number.isFinite(startedAt) || startedAt < 0) throw new Error("Некорректные параметры ритма упражнения.");
+  if (
+    !Number.isFinite(configuration.bpm) ||
+    configuration.bpm < 30 ||
+    configuration.bpm > 240 ||
+    !Number.isInteger(configuration.beatsPerBar) ||
+    configuration.beatsPerBar < 1 ||
+    configuration.beatsPerBar > 12 ||
+    !Number.isFinite(configuration.quarterNotesPerBeat) ||
+    configuration.quarterNotesPerBeat <= 0 ||
+    configuration.quarterNotesPerBeat > 4 ||
+    !Number.isInteger(configuration.repetitions) ||
+    configuration.repetitions < 1 ||
+    configuration.repetitions > 100 ||
+    configuration.slotsPerBar.length < 1 ||
+    configuration.slotsPerBar.length > 16 ||
+    configuration.slotsPerBar.some(
+      (slots) => !Number.isInteger(slots) || slots < 1 || slots > 64 || slots % configuration.beatsPerBar !== 0,
+    ) ||
+    !Number.isFinite(configuration.metronome.volume) ||
+    configuration.metronome.volume < 0 ||
+    configuration.metronome.volume > 1 ||
+    !Number.isInteger(configuration.tempoProgression.every) ||
+    configuration.tempoProgression.every < 1 ||
+    configuration.tempoProgression.every > 100 ||
+    !Number.isInteger(configuration.tempoProgression.increment) ||
+    configuration.tempoProgression.increment < 1 ||
+    configuration.tempoProgression.increment > 60 ||
+    !Number.isFinite(startedAt) ||
+    startedAt < 0
+  )
+    throw new Error("Некорректные параметры ритма упражнения.");
   let time = startedAt;
   let countIn = 1;
   let bar = 0;
@@ -34,11 +62,15 @@ export function createExerciseTimingCursor(configuration: ExerciseTimingConfigur
   let bpm = configuration.bpm;
   let complete = false;
   return {
-    get nextTime() { return time; },
-    get complete() { return complete; },
+    get nextTime() {
+      return time;
+    },
+    get complete() {
+      return complete;
+    },
     next() {
       if (complete) return null;
-      const beatDuration = configuration.quarterNotesPerBeat * 60 / bpm;
+      const beatDuration = (configuration.quarterNotesPerBeat * 60) / bpm;
       if (countIn <= configuration.beatsPerBar) {
         const position: ExerciseTimingPosition = { time, countIn, bar: null, slot: null, repetition: 1, bpm };
         time += beatDuration;
@@ -49,7 +81,7 @@ export function createExerciseTimingCursor(configuration: ExerciseTimingConfigur
       const slotsPerBeat = configuration.slotsPerBar[bar] / configuration.beatsPerBar;
       const click = slot % slotsPerBeat === 0;
       const accented = slot === 0;
-      time += configuration.beatsPerBar * beatDuration / configuration.slotsPerBar[bar];
+      time += (configuration.beatsPerBar * beatDuration) / configuration.slotsPerBar[bar];
       slot += 1;
       if (slot === configuration.slotsPerBar[bar]) {
         slot = 0;
@@ -75,9 +107,15 @@ export function getExerciseTimingDurationSeconds(configuration: ExerciseTimingCo
   let completedBars = 0;
   for (let repetition = 1; repetition <= configuration.repetitions; repetition += 1) {
     for (let bar = 0; bar < configuration.slotsPerBar.length; bar += 1) {
-      duration += configuration.beatsPerBar * configuration.quarterNotesPerBeat * 60 / bpm;
+      duration += (configuration.beatsPerBar * configuration.quarterNotesPerBeat * 60) / bpm;
       completedBars += 1;
-      bpm = advanceExerciseTempo(configuration.tempoProgression, bpm, completedBars, repetition, bar === configuration.slotsPerBar.length - 1);
+      bpm = advanceExerciseTempo(
+        configuration.tempoProgression,
+        bpm,
+        completedBars,
+        repetition,
+        bar === configuration.slotsPerBar.length - 1,
+      );
     }
   }
   return duration;
