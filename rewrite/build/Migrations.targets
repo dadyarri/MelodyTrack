@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <MigrationDirectory Condition="'$(MigrationDirectory)' == ''">$(MSBuildProjectDirectory)/Migrations</MigrationDirectory>
+    <MigrationNamespace Condition="'$(MigrationNamespace)' == ''">$(RootNamespace)</MigrationNamespace>
+    <MigrationGeneratorScript>$(MSBuildThisFileDirectory)GenerateMigrations.fsx</MigrationGeneratorScript>
+    <MigrationDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</MigrationDotNetHost>
+    <MigrationDotNetHost Condition="'$(MigrationDotNetHost)' == ''">dotnet</MigrationDotNetHost>
+  </PropertyGroup>
+
+  <Target Name="GenerateMigrationRegistry" BeforeTargets="BeforeCompile">
+    <PropertyGroup>
+      <GeneratedMigrationRegistry>$(IntermediateOutputPath)GeneratedMigrations.fs</GeneratedMigrationRegistry>
+    </PropertyGroup>
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="&quot;$(MigrationDotNetHost)&quot; fsi --exec &quot;$(MigrationGeneratorScript)&quot; &quot;$(MigrationDirectory)&quot; &quot;$(GeneratedMigrationRegistry)&quot; &quot;$(MigrationNamespace)&quot;" />
+    <ReadLinesFromFile File="$(GeneratedMigrationRegistry).sources">
+      <Output TaskParameter="Lines" ItemName="_FSharpMigrationSources" />
+    </ReadLinesFromFile>
+    <ItemGroup>
+      <Compile Include="@(_FSharpMigrationSources)" />
+      <Compile Include="$(GeneratedMigrationRegistry)" />
+      <FileWrites Include="$(GeneratedMigrationRegistry);$(GeneratedMigrationRegistry).sources" />
+    </ItemGroup>
+  </Target>
+</Project>

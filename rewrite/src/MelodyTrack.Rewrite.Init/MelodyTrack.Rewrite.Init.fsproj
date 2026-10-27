@@ -3,17 +3,19 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
+    <MigrationNamespace>MelodyTrack.Rewrite.Init</MigrationNamespace>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="MigrationContext.fs" />
     <Compile Include="Migration.fs" />
     <Compile Include="MigrationHistory.fs" />
     <Compile Include="MigrationRunner.fs" />
-    <Compile Include="Program.fs" />
+    <Compile Include="Program.fs" CompileOrder="CompileLast" />
   </ItemGroup>
 
   <ItemGroup>
-    <None Include="Migrations/*.sql;Migrations/README.md"
+    <None Include="Migrations/*.sql;Migrations/*.fs;Migrations/README.md"
           CopyToOutputDirectory="PreserveNewest"
           CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
@@ -31,4 +33,5 @@
     <ProjectReference Include="..\MelodyTrack.Rewrite.Persistence\MelodyTrack.Rewrite.Persistence.fsproj" />
   </ItemGroup>
 
+  <Import Project="../../build/Migrations.targets" />
 </Project>

@@ -2,6 +2,7 @@ namespace MelodyTrack.Rewrite.Init
 
 open System
 open System.Threading
+open Microsoft.Extensions.Logging
 open Npgsql
 
 exception MigrationLockUnavailable
@@ -40,12 +41,17 @@ module MigrationRunner =
             return ()
         }
 
-    let apply (connection: NpgsqlConnection) (migration: Migration) (cancellationToken: CancellationToken) =
+    let apply (connection: NpgsqlConnection) (migration: Migration) (logger: ILogger) (cancellationToken: CancellationToken) =
         task {
             try
                 use! transaction = connection.BeginTransactionAsync(cancellationToken)
-                use sqlCommand = new NpgsqlCommand(migration.Sql, connection, transaction)
-                let! _ = sqlCommand.ExecuteNonQueryAsync(cancellationToken)
+                let context =
+                    { Connection = connection
+                      Transaction = transaction
+                      CancellationToken = cancellationToken
+                      Logger = logger }
+
+                do! migration.Run context
 
                 use historyCommand =
                     new NpgsqlCommand(

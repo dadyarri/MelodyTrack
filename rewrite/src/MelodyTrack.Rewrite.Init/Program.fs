@@ -1,7 +1,6 @@
 module MelodyTrack.Rewrite.Init.Program
 
 open System
-open System.IO
 open Microsoft.Extensions.Configuration
 open Microsoft.Extensions.DependencyInjection
 open Microsoft.Extensions.Hosting
@@ -22,8 +21,8 @@ let private run args =
                 try
                     do! host.StartAsync()
                     lifetime.ApplicationStopping.ThrowIfCancellationRequested()
-                    let migrations = Migration.load (Path.Combine(AppContext.BaseDirectory, "Migrations"))
-                    logger.LogInformation("Загружено SQL-миграций: {MigrationCount}.", migrations.Length)
+                    let migrations = GeneratedMigrations.all
+                    logger.LogInformation("Загружено миграций: {MigrationCount}.", migrations.Length)
                     let connectionString = builder.Configuration.GetConnectionString("Database")
 
                     if String.IsNullOrWhiteSpace(connectionString) then
@@ -43,7 +42,7 @@ let private run args =
                         for migration in pending do
                             lifetime.ApplicationStopping.ThrowIfCancellationRequested()
                             logger.LogInformation("Применяется миграция {MigrationName}.", migration.Name)
-                            do! MigrationRunner.apply connection migration lifetime.ApplicationStopping
+                            do! MigrationRunner.apply connection migration logger lifetime.ApplicationStopping
                             logger.LogInformation("Миграция {MigrationName} применена.", migration.Name)
 
                         logger.LogInformation("Инициализация завершена. Применено миграций: {MigrationCount}.", pending.Length)
@@ -53,7 +52,7 @@ let private run args =
                     logger.LogError("Другой Init уже выполняет инициализацию этой базы данных.")
                     return 1
                 | InvalidMigration message ->
-                    logger.LogError("Ошибка SQL-миграций: {Reason}", message)
+                    logger.LogError("Ошибка миграций: {Reason}", message)
                     return 1
                 | :? MigrationFailedException as error ->
                     match error.InnerException with

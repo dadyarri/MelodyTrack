@@ -5,6 +5,8 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>net10.0</TargetFramework>
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
+    <MigrationDirectory>$(MSBuildProjectDirectory)/Fixtures/Migrations</MigrationDirectory>
+    <MigrationNamespace>MelodyTrack.Rewrite.Init.Tests.Fixtures</MigrationNamespace>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,11 +14,16 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../build/MigrationGeneration.fs" Link="Build/MigrationGeneration.fs" />
+    <Compile Include="PostgreSqlFixture.fs" />
+    <Compile Include="Fixtures/Helpers.fs" />
     <Compile Include="MigrationTests.fs" />
+    <Compile Include="MigrationRunnerTests.fs" CompileOrder="CompileAfter" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
     <PackageReference Include="xunit.v3.mtp-v2" />
   </ItemGroup>
 
@@ -24,4 +31,5 @@
     <ProjectReference Include="..\..\src\MelodyTrack.Rewrite.Init\MelodyTrack.Rewrite.Init.fsproj" />
   </ItemGroup>
 
+  <Import Project="../../build/Migrations.targets" />
 </Project>
