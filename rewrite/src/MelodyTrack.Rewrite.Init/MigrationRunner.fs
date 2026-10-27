@@ -1,9 +1,14 @@
 namespace MelodyTrack.Rewrite.Init
 
+open System
 open System.Threading
 open Npgsql
 
 exception MigrationLockUnavailable
+
+type MigrationFailedException(migrationName: string, innerException: exn) =
+    inherit Exception($"Не удалось применить миграцию {migrationName}.", innerException)
+    member _.MigrationName = migrationName
 
 module MigrationRunner =
     // Stable session lock key: ASCII "MTRACKIN". All Init versions must use the same key.
@@ -37,20 +42,24 @@ module MigrationRunner =
 
     let apply (connection: NpgsqlConnection) (migration: Migration) (cancellationToken: CancellationToken) =
         task {
-            use! transaction = connection.BeginTransactionAsync(cancellationToken)
-            use sqlCommand = new NpgsqlCommand(migration.Sql, connection, transaction)
-            let! _ = sqlCommand.ExecuteNonQueryAsync(cancellationToken)
+            try
+                use! transaction = connection.BeginTransactionAsync(cancellationToken)
+                use sqlCommand = new NpgsqlCommand(migration.Sql, connection, transaction)
+                let! _ = sqlCommand.ExecuteNonQueryAsync(cancellationToken)
 
-            use historyCommand =
-                new NpgsqlCommand(
-                    "INSERT INTO public.schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
-                    connection,
-                    transaction
-                )
+                use historyCommand =
+                    new NpgsqlCommand(
+                        "INSERT INTO public.schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
+                        connection,
+                        transaction
+                    )
 
-            historyCommand.Parameters.AddWithValue(migration.Version) |> ignore
-            historyCommand.Parameters.AddWithValue(migration.Name) |> ignore
-            historyCommand.Parameters.AddWithValue(migration.Checksum) |> ignore
-            let! _ = historyCommand.ExecuteNonQueryAsync(cancellationToken)
-            do! transaction.CommitAsync(cancellationToken)
+                historyCommand.Parameters.AddWithValue(migration.Version) |> ignore
+                historyCommand.Parameters.AddWithValue(migration.Name) |> ignore
+                historyCommand.Parameters.AddWithValue(migration.Checksum) |> ignore
+                let! _ = historyCommand.ExecuteNonQueryAsync(cancellationToken)
+                do! transaction.CommitAsync(cancellationToken)
+            with
+            | :? OperationCanceledException as error -> return raise error
+            | error -> return raise (MigrationFailedException(migration.Name, error))
         }

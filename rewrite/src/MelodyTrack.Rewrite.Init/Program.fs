@@ -55,6 +55,14 @@ let private run args =
                 | InvalidMigration message ->
                     logger.LogError("Ошибка SQL-миграций: {Reason}", message)
                     return 1
+                | :? MigrationFailedException as error ->
+                    match error.InnerException with
+                    | :? PostgresException as postgresError ->
+                        logger.LogError("Ошибка миграции {MigrationName}. PostgreSQL SQLSTATE: {SqlState}.", error.MigrationName, postgresError.SqlState)
+                    | cause ->
+                        logger.LogError("Ошибка миграции {MigrationName} ({ErrorType}).", error.MigrationName, cause.GetType().Name)
+
+                    return 1
                 | :? OperationCanceledException when lifetime.ApplicationStopping.IsCancellationRequested ->
                     logger.LogInformation("Инициализация отменена.")
                     return 130
