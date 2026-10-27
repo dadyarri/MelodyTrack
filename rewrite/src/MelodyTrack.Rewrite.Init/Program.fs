@@ -1,4 +1,67 @@
 module MelodyTrack.Rewrite.Init.Program
 
+open System
+open System.IO
+open Microsoft.Extensions.Configuration
+open Microsoft.Extensions.DependencyInjection
+open Microsoft.Extensions.Hosting
+open Microsoft.Extensions.Logging
+open MelodyTrack.Rewrite.Persistence
+open Npgsql
+
+let private run args =
+    task {
+        let settings = HostApplicationBuilderSettings(Args = args, ContentRootPath = AppContext.BaseDirectory)
+        let builder = Host.CreateApplicationBuilder(settings)
+        use host = builder.Build()
+        let logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Init")
+        let lifetime = host.Services.GetRequiredService<IHostApplicationLifetime>()
+
+        let! exitCode =
+            task {
+                try
+                    do! host.StartAsync()
+                    lifetime.ApplicationStopping.ThrowIfCancellationRequested()
+                    let migrations = Migration.load (Path.Combine(AppContext.BaseDirectory, "Migrations"))
+                    logger.LogInformation("Загружено SQL-миграций: {MigrationCount}.", migrations.Length)
+                    let connectionString = builder.Configuration.GetConnectionString("Database")
+
+                    if String.IsNullOrWhiteSpace(connectionString) then
+                        logger.LogError("Не задана строка подключения ConnectionStrings:Database.")
+                        return 1
+                    else
+                        let databaseSettings = NpgsqlConnectionStringBuilder(connectionString)
+                        databaseSettings.Pooling <- false
+                        databaseSettings.Multiplexing <- false
+                        use dataSource = NpgsqlDataSource.Create(databaseSettings.ConnectionString)
+                        use! connection = dataSource.OpenConnectionAsync(lifetime.ApplicationStopping)
+                        do! Database.checkConnection connection lifetime.ApplicationStopping
+                        do! MigrationRunner.prepare connection lifetime.ApplicationStopping
+                        logger.LogInformation("Таблица истории миграций подготовлена. SQL-миграции пока не выполняются.")
+                        return 0
+                with
+                | MigrationLockUnavailable ->
+                    logger.LogError("Другой Init уже выполняет инициализацию этой базы данных.")
+                    return 1
+                | InvalidMigration message ->
+                    logger.LogError("Не удалось загрузить SQL-миграции: {Reason}", message)
+                    return 1
+                | :? OperationCanceledException when lifetime.ApplicationStopping.IsCancellationRequested ->
+                    logger.LogInformation("Инициализация отменена.")
+                    return 130
+                | error ->
+                    logger.LogError("Не удалось выполнить Init ({ErrorType}).", error.GetType().Name)
+                    return 1
+            }
+
+        do! host.StopAsync()
+        return exitCode
+    }
+
 [<EntryPoint>]
-let main _ = 0
+let main args =
+    try
+        (run args).GetAwaiter().GetResult()
+    with error ->
+        Console.Error.WriteLine("Не удалось выполнить Init ({0}).", error.GetType().Name)
+        1
