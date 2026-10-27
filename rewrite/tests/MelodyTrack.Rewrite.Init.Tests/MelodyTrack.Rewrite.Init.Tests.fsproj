@@ -7,6 +7,7 @@
     <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
     <MigrationDirectory>$(MSBuildProjectDirectory)/Fixtures/Migrations</MigrationDirectory>
     <MigrationNamespace>MelodyTrack.Rewrite.Init.Tests.Fixtures</MigrationNamespace>
+    <EnableMigrationGeneration>true</EnableMigrationGeneration>
   </PropertyGroup>
 
   <ItemGroup>
@@ -31,5 +32,4 @@
     <ProjectReference Include="..\..\src\MelodyTrack.Rewrite.Init\MelodyTrack.Rewrite.Init.fsproj" />
   </ItemGroup>
 
-  <Import Project="../../build/Migrations.targets" />
 </Project>
