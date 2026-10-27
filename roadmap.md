@@ -1,5 +1,9 @@
 # MelodyTrack Roadmap
 
+## New-version specification
+
+The replacement version is being designed on `design/melodytrack-v2`; its specification starts at [specification/README.md](specification/README.md). The historical baseline and stages below remain sources for that work. Target v2 decisions and open questions are recorded separately; the replacement's first-release boundary has not yet been selected.
+
 This document is the implementation contract and staged product roadmap for MelodyTrack. Completed stages are retained as the verified architectural/product baseline and are marked with `✅`; detailed implementation history still belongs in Git.
 
 The roadmap is ordered by dependency where a dependency is known. Deliberately deferred stages may be reprioritized when they are independent of the active workstream.
