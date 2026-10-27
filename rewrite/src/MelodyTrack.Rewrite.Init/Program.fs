@@ -37,14 +37,15 @@ let private run args =
                         use! connection = dataSource.OpenConnectionAsync(lifetime.ApplicationStopping)
                         do! Database.checkConnection connection lifetime.ApplicationStopping
                         do! MigrationRunner.prepare connection lifetime.ApplicationStopping
-                        logger.LogInformation("Таблица истории миграций подготовлена. SQL-миграции пока не выполняются.")
+                        let! pending = MigrationHistory.getPending connection migrations lifetime.ApplicationStopping
+                        logger.LogInformation("История миграций проверена. Ожидают применения: {MigrationCount}. SQL-миграции пока не выполняются.", pending.Length)
                         return 0
                 with
                 | MigrationLockUnavailable ->
                     logger.LogError("Другой Init уже выполняет инициализацию этой базы данных.")
                     return 1
                 | InvalidMigration message ->
-                    logger.LogError("Не удалось загрузить SQL-миграции: {Reason}", message)
+                    logger.LogError("Ошибка SQL-миграций: {Reason}", message)
                     return 1
                 | :? OperationCanceledException when lifetime.ApplicationStopping.IsCancellationRequested ->
                     logger.LogInformation("Инициализация отменена.")

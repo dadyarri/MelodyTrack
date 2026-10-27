@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Compile Include="Migration.fs" />
+    <Compile Include="MigrationHistory.fs" />
     <Compile Include="MigrationRunner.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
