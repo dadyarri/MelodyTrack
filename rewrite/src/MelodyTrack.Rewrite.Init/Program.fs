@@ -38,7 +38,15 @@ let private run args =
                         do! Database.checkConnection connection lifetime.ApplicationStopping
                         do! MigrationRunner.prepare connection lifetime.ApplicationStopping
                         let! pending = MigrationHistory.getPending connection migrations lifetime.ApplicationStopping
-                        logger.LogInformation("История миграций проверена. Ожидают применения: {MigrationCount}. SQL-миграции пока не выполняются.", pending.Length)
+                        logger.LogInformation("История миграций проверена. Ожидают применения: {MigrationCount}.", pending.Length)
+
+                        for migration in pending do
+                            lifetime.ApplicationStopping.ThrowIfCancellationRequested()
+                            logger.LogInformation("Применяется миграция {MigrationName}.", migration.Name)
+                            do! MigrationRunner.apply connection migration lifetime.ApplicationStopping
+                            logger.LogInformation("Миграция {MigrationName} применена.", migration.Name)
+
+                        logger.LogInformation("Инициализация завершена. Применено миграций: {MigrationCount}.", pending.Length)
                         return 0
                 with
                 | MigrationLockUnavailable ->

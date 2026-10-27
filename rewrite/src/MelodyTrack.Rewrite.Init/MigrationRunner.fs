@@ -34,3 +34,23 @@ module MigrationRunner =
             let! _ = historyCommand.ExecuteNonQueryAsync(cancellationToken)
             return ()
         }
+
+    let apply (connection: NpgsqlConnection) (migration: Migration) (cancellationToken: CancellationToken) =
+        task {
+            use! transaction = connection.BeginTransactionAsync(cancellationToken)
+            use sqlCommand = new NpgsqlCommand(migration.Sql, connection, transaction)
+            let! _ = sqlCommand.ExecuteNonQueryAsync(cancellationToken)
+
+            use historyCommand =
+                new NpgsqlCommand(
+                    "INSERT INTO public.schema_migrations (version, name, checksum) VALUES ($1, $2, $3)",
+                    connection,
+                    transaction
+                )
+
+            historyCommand.Parameters.AddWithValue(migration.Version) |> ignore
+            historyCommand.Parameters.AddWithValue(migration.Name) |> ignore
+            historyCommand.Parameters.AddWithValue(migration.Checksum) |> ignore
+            let! _ = historyCommand.ExecuteNonQueryAsync(cancellationToken)
+            do! transaction.CommitAsync(cancellationToken)
+        }
