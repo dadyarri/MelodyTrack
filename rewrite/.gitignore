@@ -1,0 +1,8 @@
+# Build output and editor files inherit the repository's root .gitignore.
+
+# Local environment and configuration overrides.
+.env
+.env.*
+!.env.example
+appsettings.Local.json
+appsettings.*.local.json

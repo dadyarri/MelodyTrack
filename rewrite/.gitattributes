@@ -1,0 +1,18 @@
+* text=auto
+
+*.cs text eol=lf
+*.fs text eol=lf
+*.fsi text eol=lf
+*.fsx text eol=lf
+*.csproj text eol=lf
+*.fsproj text eol=lf
+*.props text eol=lf
+*.targets text eol=lf
+*.slnx text eol=lf
+*.json text eol=lf
+*.config text eol=lf
+*.sql text eol=lf
+*.md text eol=lf
+.editorconfig text eol=lf
+.gitattributes text eol=lf
+.gitignore text eol=lf
