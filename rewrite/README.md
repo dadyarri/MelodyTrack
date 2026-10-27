@@ -12,6 +12,8 @@ Solution: [MelodyTrack.Rewrite.slnx](MelodyTrack.Rewrite.slnx). Использу
 | `src/MelodyTrack.Rewrite.Api` | C# | Web API и host |
 | `src/MelodyTrack.Rewrite.Init` | F# | Будущая инициализация БД |
 
+В `tests/MelodyTrack.Rewrite.Init.Tests` находится отдельный F#-проект xUnit v3 с Microsoft.Testing.Platform v2. В `rewrite/global.json` выбран runner Microsoft.Testing.Platform; настройки исходной solution не меняются. Первые три теста проверяют порядок загрузки, повторяющиеся номера и контрольную сумму исходных байтов SQL с BOM и CRLF. Они работают с изолированными временными каталогами и не требуют PostgreSQL или Docker. Проект создан без restore; его сборка и запуск тестов пока не выполнялись.
+
 Ссылки проектов соответствуют согласованному каркасу: `Application → Domain`, `Persistence → Application/Domain`, `Api → Application/Persistence`, `Init → Persistence`.
 
 Проекты и сборки имеют префикс `MelodyTrack.Rewrite`, поэтому не совпадают со сборками исходной версии, включая `MelodyTrack.Init`. В корневую `MelodyTrack.slnx` они не включены. Собственные `Directory.Build.props`, `Directory.Packages.props` и `global.json` отделяют настройки новой версии от старой; корневой `.gitignore` применяется и к этому каталогу.
