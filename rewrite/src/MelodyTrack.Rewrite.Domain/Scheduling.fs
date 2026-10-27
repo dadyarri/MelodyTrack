@@ -1,6 +1,7 @@
 namespace MelodyTrack.Rewrite.Domain.Scheduling
 
 open System
+open MelodyTrack.Rewrite.Domain
 
 [<RequireQualifiedAccess>]
 type Weekday =
@@ -14,7 +15,6 @@ type Weekday =
 
 [<RequireQualifiedAccess>]
 type SchedulingError =
-    | EmptyIdentifier of identifier: string
     | InvalidSequenceNumber of value: int64
     | InvalidLessonDuration of minutes: int
     | InvalidStartHour of hour: int
@@ -22,71 +22,6 @@ type SchedulingError =
     | DuplicateWeekday of weekday: Weekday
     | InvalidAppointmentCount of value: int
     | SeriesEndBeforeStart of startDate: DateOnly * endDate: DateOnly
-
-[<Struct>]
-type SeriesId = private SeriesId of Guid
-
-[<RequireQualifiedAccess>]
-module SeriesId =
-    let create value =
-        if value = Guid.Empty then
-            Error(SchedulingError.EmptyIdentifier "series")
-        else
-            Ok(SeriesId value)
-
-    let value (SeriesId value) = value
-
-[<Struct>]
-type ClientId = private ClientId of Guid
-
-[<RequireQualifiedAccess>]
-module ClientId =
-    let create value =
-        if value = Guid.Empty then
-            Error(SchedulingError.EmptyIdentifier "client")
-        else
-            Ok(ClientId value)
-
-    let value (ClientId value) = value
-
-[<Struct>]
-type ServiceId = private ServiceId of Guid
-
-[<RequireQualifiedAccess>]
-module ServiceId =
-    let create value =
-        if value = Guid.Empty then
-            Error(SchedulingError.EmptyIdentifier "service")
-        else
-            Ok(ServiceId value)
-
-    let value (ServiceId value) = value
-
-[<Struct>]
-type StaffId = private StaffId of Guid
-
-[<RequireQualifiedAccess>]
-module StaffId =
-    let create value =
-        if value = Guid.Empty then
-            Error(SchedulingError.EmptyIdentifier "staff")
-        else
-            Ok(StaffId value)
-
-    let value (StaffId value) = value
-
-[<Struct>]
-type RoomId = private RoomId of Guid
-
-[<RequireQualifiedAccess>]
-module RoomId =
-    let create value =
-        if value = Guid.Empty then
-            Error(SchedulingError.EmptyIdentifier "room")
-        else
-            Ok(RoomId value)
-
-    let value (RoomId value) = value
 
 [<Struct>]
 type SequenceNumber = private SequenceNumber of int64
@@ -185,6 +120,7 @@ type SeriesRule =
       StaffId: StaffId
       RoomId: RoomId option }
 
+[<GenerateIdentifier(typeof<Guid>)>]
 type Series =
     private
         { Id: SeriesId

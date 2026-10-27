@@ -1,0 +1,27 @@
+<Project>
+  <PropertyGroup>
+    <IdentifierGeneratorScript>$(MSBuildThisFileDirectory)GenerateIdentifiers.fsx</IdentifierGeneratorScript>
+    <IdentifierDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</IdentifierDotNetHost>
+    <IdentifierDotNetHost Condition="'$(IdentifierDotNetHost)' == ''">dotnet</IdentifierDotNetHost>
+    <GeneratedIdentifiers>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'GeneratedIdentifiers.fs'))</GeneratedIdentifiers>
+  </PropertyGroup>
+
+  <!-- Declare generated types before their consumers during evaluation so IDEs see the same order. -->
+  <ItemGroup>
+    <_IdentifierPreludeSources Include="@(Compile->WithMetadataValue('CompileOrder', 'CompileBefore'))" />
+    <_IdentifierConsumerSources Include="@(Compile)" />
+    <_IdentifierConsumerSources Remove="@(_IdentifierPreludeSources)" />
+    <_IdentifierGenerationSources Include="@(_IdentifierPreludeSources);@(_IdentifierConsumerSources)" />
+    <Compile Remove="@(Compile)" />
+    <Compile Include="@(_IdentifierPreludeSources)" />
+    <Compile Include="$(GeneratedIdentifiers)" CompileOrder="CompileBefore" Link="Generated/GeneratedIdentifiers.fs" />
+    <Compile Include="@(_IdentifierConsumerSources)" />
+  </ItemGroup>
+
+  <Target Name="GenerateIdentifierTypes" BeforeTargets="BeforeCompile">
+    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="&quot;$(IdentifierDotNetHost)&quot; fsi --reference:&quot;$(MSBuildToolsPath)/FSharp/FSharp.Compiler.Service.dll&quot; --exec &quot;$(IdentifierGeneratorScript)&quot; &quot;$(GeneratedIdentifiers)&quot; @(_IdentifierGenerationSources->'&quot;%(FullPath)&quot;', ' ')" />
+    <ItemGroup>
+      <FileWrites Include="$(GeneratedIdentifiers)" />
+    </ItemGroup>
+  </Target>
+</Project>

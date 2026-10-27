@@ -16,9 +16,11 @@
 
   <ItemGroup>
     <Compile Include="../../build/MigrationGeneration.fs" Link="Build/MigrationGeneration.fs" />
+    <Compile Include="../../build/IdentifierGeneration.fs" Link="Build/IdentifierGeneration.fs" />
     <Compile Include="PostgreSqlFixture.fs" />
     <Compile Include="Fixtures/Helpers.fs" />
     <Compile Include="MigrationTests.fs" />
+    <Compile Include="IdentifierGenerationTests.fs" />
     <Compile Include="MigrationRunnerTests.fs" CompileOrder="CompileAfter" />
   </ItemGroup>
 
@@ -29,7 +31,11 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Reference Include="FSharp.Compiler.Service">
+      <HintPath>$(MSBuildToolsPath)/FSharp/FSharp.Compiler.Service.dll</HintPath>
+    </Reference>
     <ProjectReference Include="..\..\src\MelodyTrack.Rewrite.Init\MelodyTrack.Rewrite.Init.fsproj" />
+    <ProjectReference Include="..\..\src\MelodyTrack.Rewrite.Domain\MelodyTrack.Rewrite.Domain.fsproj" />
   </ItemGroup>
 
 </Project>
