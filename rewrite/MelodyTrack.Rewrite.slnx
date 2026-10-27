@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/MelodyTrack.Rewrite.Api/MelodyTrack.Rewrite.Api.csproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.fsproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Domain/MelodyTrack.Rewrite.Domain.fsproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Init/MelodyTrack.Rewrite.Init.fsproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Persistence/MelodyTrack.Rewrite.Persistence.fsproj" />
+  </Folder>
+</Solution>
