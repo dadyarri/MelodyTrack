@@ -1,4 +1,4 @@
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public closed record DomainError(string Code);
 

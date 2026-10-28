@@ -1,6 +1,6 @@
 using StronglyTypedIds;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 [StronglyTypedId]
 public partial struct ClientId { }

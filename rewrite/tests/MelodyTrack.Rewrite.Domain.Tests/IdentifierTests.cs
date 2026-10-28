@@ -1,5 +1,5 @@
 using System.Text.Json;
-using MelodyTrack.Rewrite.Domain.Scheduling;
+
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -24,7 +24,7 @@ public sealed class IdentifierTests
         Assert.Equal(id, JsonSerializer.Deserialize<ClientId>(json));
     }
     [Fact]
-    public void Parse_ClientIdentifier_RoundTripsValue() => Assert.Equal(TestData.ClientId, global::MelodyTrack.Rewrite.Domain.Scheduling.ClientId.Parse(TestData.ClientId.Value.ToString()));
+    public void Parse_ClientIdentifier_RoundTripsValue() => Assert.Equal(TestData.ClientId, global::MelodyTrack.Rewrite.Domain.ClientId.Parse(TestData.ClientId.Value.ToString()));
     [Fact]
     public void Create_DefaultClientIdentifier_RejectsEntity() => AssertError(new IdentifierError.Empty(), Client.Create(default, Profile, [Contact(30, true)]));
     [Fact]

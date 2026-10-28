@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public sealed record DomainIssue(DomainError Error, string? Field = null);
 

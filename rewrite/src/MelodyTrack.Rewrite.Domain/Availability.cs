@@ -1,6 +1,6 @@
 using System.Collections.Immutable;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public sealed record BusySlot(AppointmentId AppointmentId, ClientId ClientId, StaffId StaffId, RoomId? RoomId, TimeInterval Period)
 {
@@ -39,7 +39,7 @@ public static class Availability
             conflicts.Add(new AvailabilityConflict.Vacation(vacation.Id));
         foreach (var closure in snapshot.Closures.Where(value => !value.IsDeleted && period.Overlaps(value.Period)))
             conflicts.Add(new AvailabilityConflict.SchoolClosure(closure.Id));
-        foreach (var busy in snapshot.BusySlots.Where(value => value.AppointmentId != appointment.Id && period.Overlaps(value.Period)))
+        foreach (var busy in ImmutableArrayExtensions.Where(snapshot.BusySlots, value => value.AppointmentId != appointment.Id && period.Overlaps(value.Period)))
         {
             if (busy.ClientId == appointment.ClientId) conflicts.Add(new AvailabilityConflict.ClientBusy(busy.AppointmentId));
             if (busy.StaffId == appointment.StaffId) conflicts.Add(new AvailabilityConflict.StaffBusy(busy.AppointmentId));

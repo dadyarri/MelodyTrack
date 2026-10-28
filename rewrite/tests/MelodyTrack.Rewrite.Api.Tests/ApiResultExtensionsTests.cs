@@ -2,7 +2,8 @@ using System.Text.Json;
 using CSharpFunctionalExtensions;
 using MelodyTrack.Rewrite.Api;
 using MelodyTrack.Rewrite.Application;
-using MelodyTrack.Rewrite.Domain.Scheduling;
+using MelodyTrack.Rewrite.Domain;
+
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.Extensions.DependencyInjection;

@@ -1,4 +1,4 @@
-using MelodyTrack.Rewrite.Domain.Scheduling;
+
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 

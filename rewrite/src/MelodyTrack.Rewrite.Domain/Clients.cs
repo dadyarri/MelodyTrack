@@ -2,7 +2,7 @@ using System.Collections.Immutable;
 using System.Net.Mail;
 using CSharpFunctionalExtensions;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public sealed record PersonName
 {
@@ -163,28 +163,28 @@ public sealed record Client
 
     public Result<Client, ErrorList> SelectPrimary(ClientContactId contactId)
     {
-        var selected = Contacts.FirstOrDefault(contact => contact.Id == contactId);
+        var selected = ImmutableArrayExtensions.FirstOrDefault(Contacts, contact => contact.Id == contactId);
         if (selected is null) return ErrorList.Of(new ClientError.UnknownContact());
         if (selected.IsPrimary) return this;
 
-        var contacts = Contacts.Select(contact => contact.KindId == selected.KindId
+        var contacts = ImmutableArrayExtensions.Select(Contacts, contact => contact.KindId == selected.KindId
             ? contact.SetPrimary(contact.Id == contactId) : contact);
         return ReplaceContacts(contacts);
     }
 
     public Result<Client, ErrorList> RemoveContact(ClientContactId contactId, ClientContactId? replacementId)
     {
-        var selected = Contacts.FirstOrDefault(contact => contact.Id == contactId);
+        var selected = ImmutableArrayExtensions.FirstOrDefault(Contacts, contact => contact.Id == contactId);
         if (selected is null) return ErrorList.Of(new ClientError.UnknownContact());
 
-        var remaining = Contacts.Where(contact => contact.Id != contactId).ToImmutableArray();
-        var sameKind = remaining.Where(contact => contact.KindId == selected.KindId).ToArray();
+        var remaining = ImmutableArrayExtensions.Where(Contacts, contact => contact.Id != contactId).ToImmutableArray();
+        var sameKind = ImmutableArrayExtensions.Where(remaining, contact => contact.KindId == selected.KindId).ToArray();
         if (!selected.IsPrimary || sameKind.Length == 0) return ReplaceContacts(remaining);
 
         var replacement = sameKind.FirstOrDefault(contact => contact.Id == replacementId);
         if (replacement is null) return ErrorList.Of(new ClientError.PrimaryContactRequired(selected.KindId), "contacts");
 
-        var updated = remaining.Select(contact => contact.KindId == selected.KindId
+        var updated = ImmutableArrayExtensions.Select(remaining, contact => contact.KindId == selected.KindId
             ? contact.SetPrimary(contact.Id == replacement.Id) : contact);
         return ReplaceContacts(updated);
     }

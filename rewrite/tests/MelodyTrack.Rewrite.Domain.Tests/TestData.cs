@@ -1,5 +1,5 @@
 using CSharpFunctionalExtensions;
-using MelodyTrack.Rewrite.Domain.Scheduling;
+
 using Xunit;
 
 namespace MelodyTrack.Rewrite.Domain.Tests;

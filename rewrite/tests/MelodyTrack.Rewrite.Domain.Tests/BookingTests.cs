@@ -1,4 +1,4 @@
-using MelodyTrack.Rewrite.Domain.Scheduling;
+
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -7,7 +7,7 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 public sealed class BookingTests
 {
     private static Service Service() => MakeService().ChangeDuration(Duration(45));
-    private static Room Room() => Ok(global::MelodyTrack.Rewrite.Domain.Scheduling.Room.Create(TestData.RoomId, "Зал", null));
+    private static Room Room() => Ok(global::MelodyTrack.Rewrite.Domain.Room.Create(TestData.RoomId, "Зал", null));
     [Fact]
     public void CreateAppointment_ActiveCatalogue_UsesServiceDuration()
     {

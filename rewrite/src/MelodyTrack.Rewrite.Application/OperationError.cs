@@ -1,4 +1,5 @@
-using MelodyTrack.Rewrite.Domain.Scheduling;
+using MelodyTrack.Rewrite.Domain;
+
 
 namespace MelodyTrack.Rewrite.Application;
 

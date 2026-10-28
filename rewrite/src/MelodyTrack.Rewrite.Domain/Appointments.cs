@@ -1,7 +1,7 @@
 using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public enum AppointmentStatus { Scheduled, Completed, Burned, Cancelled }
 public enum AppointmentOverride { StartTime, Staff, Room }

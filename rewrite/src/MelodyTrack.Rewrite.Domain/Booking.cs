@@ -1,6 +1,6 @@
 using CSharpFunctionalExtensions;
 
-namespace MelodyTrack.Rewrite.Domain.Scheduling;
+namespace MelodyTrack.Rewrite.Domain;
 
 public static class Booking
 {

@@ -1,6 +1,7 @@
 using CSharpFunctionalExtensions;
 using MelodyTrack.Rewrite.Application;
-using MelodyTrack.Rewrite.Domain.Scheduling;
+using MelodyTrack.Rewrite.Domain;
+
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
 
