@@ -7,9 +7,9 @@ Solution: [MelodyTrack.Rewrite.slnx](MelodyTrack.Rewrite.slnx). SDK зафикс
 | Проект | Назначение |
 | --- | --- |
 | `src/MelodyTrack.Rewrite.Domain` | Чистые предметные модели, ограничения и расчёты |
-| `src/MelodyTrack.Rewrite.Application` | Прикладные операции и порты |
+| `src/MelodyTrack.Rewrite.Application` | Прикладные операции и порты; категории результата операции |
 | `src/MelodyTrack.Rewrite.Persistence` | Npgsql и реализации прикладных портов |
-| `src/MelodyTrack.Rewrite.Api` | Web API и host |
+| `src/MelodyTrack.Rewrite.Api` | HTTP DTO, маршруты, host и преобразование результата в HTTP |
 | `src/MelodyTrack.Rewrite.Init` | SQL/C#-миграции и инициализация БД |
 
 Все проекты написаны на C#. Зависимости: `Application → Domain`, `Persistence → Application → Domain`, `Api → Application/Persistence`, `Init → Persistence`. В корневую `MelodyTrack.slnx` проекты не включены.
@@ -33,6 +33,10 @@ public partial struct ClientId { }
 
 Модели используют `CSharpFunctionalExtensions.Result<T, ErrorList>`. `ErrorList` содержит непустой неизменяемый список `DomainIssue`: типизированную причину и необязательную предметную привязку к полю. Независимые проверки собирают ошибки вместе; зависимая операция прекращается при отказе предыдущей. Локализованные сообщения и пути HTTP DTO формируются в API. Необязательные значения представлены nullable-типами.
 
+Application возвращает `Result<T, OperationError>` или `UnitResult<OperationError>`. Категории операции: валидация, конфликт состояния, отсутствие объекта и запрет доступа. Domain и Application не зависят от HTTP. Прикладные команды ещё предстоит реализовать; автоматическое преобразование любой доменной ошибки в одну HTTP-категорию не вводится.
+
+`ApiResultExtensions.ToHttpResult` получает функцию успешного ответа и функцию отображения ошибки. Они определяют DTO, сообщения, внешние коды и пути полей. Успех может возвращать типизированный `Ok`, `Created` и другие ответы; `UnitResult` преобразуется в `204`. Ошибки становятся `ProblemDetails` со статусами 400/409/404/403 и массивом `errors` при наличии предметных причин. Сам `Result` в JSON не сериализуется. Для `traceId` endpoint передаёт канонический trace ID запроса.
+
 ## Запуск и миграции
 
 `Api` пока запускает host без маршрутов на `http://localhost:5280`; старая версия сохраняет порт 5000. Реальные команды, HTTP DTO и контракты маршрутов будут добавлены вместе со сценариями. Предметная схема БД, авторизация, Quartz и frontend ещё не реализованы. Прикладные SQL-запросы ещё не реализованы.
@@ -44,6 +48,7 @@ API и Init имеют собственные настройки и профил
 ## Тесты и проверка
 
 - `tests/MelodyTrack.Rewrite.Domain.Tests`: сценарии моделей, накопление ошибок, StronglyTypedId и защита от пустых идентификаторов; без Docker.
+- `tests/MelodyTrack.Rewrite.Api.Tests`: преобразование результата, успешные ответы, статусы и JSON Problem Details; без Docker.
 - `tests/MelodyTrack.Rewrite.Init.Tests`: генерация реестра и миграционный runner на PostgreSQL/Testcontainers; один контейнер на тестовый класс и отдельная база на сценарий, нужен Docker.
 
 Используются xUnit v3 и Microsoft.Testing.Platform v2. Сценарии прежних 166 доменных тестов перенесены на C#, проверки собственного генератора идентификаторов заменены проверками выбранной библиотеки и фабрик. 29.10.2026 пользователь подтвердил успешный прогон тестов после переноса на C#. Ассистент перед созданием коммитов повторно тесты не запускал.

@@ -16,6 +16,7 @@
     <Project Path="src/MelodyTrack.Rewrite.Persistence/MelodyTrack.Rewrite.Persistence.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/MelodyTrack.Rewrite.Api.Tests/MelodyTrack.Rewrite.Api.Tests.csproj" />
     <Project Path="tests/MelodyTrack.Rewrite.Domain.Tests/MelodyTrack.Rewrite.Domain.Tests.csproj" />
     <Project Path="tests/MelodyTrack.Rewrite.Init.Tests/MelodyTrack.Rewrite.Init.Tests.csproj" />
   </Folder>
