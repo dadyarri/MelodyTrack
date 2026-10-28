@@ -1,11 +1,7 @@
 * text=auto
 
 *.cs text eol=lf
-*.fs text eol=lf
-*.fsi text eol=lf
-*.fsx text eol=lf
 *.csproj text eol=lf
-*.fsproj text eol=lf
 *.props text eol=lf
 *.targets text eol=lf
 *.slnx text eol=lf

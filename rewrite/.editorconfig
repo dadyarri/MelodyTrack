@@ -18,11 +18,7 @@ csharp_style_var_when_type_is_apparent = true:suggestion
 csharp_style_var_elsewhere = true:suggestion
 csharp_new_line_before_open_brace = all
 
-[*.{fs,fsi,fsx}]
-indent_size = 4
-fsharp_multiline_bracket_style = aligned
-
-[*.{json,jsonc,xml,props,targets,csproj,fsproj,slnx,yml,yaml}]
+[*.{json,jsonc,xml,props,targets,csproj,slnx,yml,yaml}]
 indent_size = 2
 
 [*.md]

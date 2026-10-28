@@ -2,40 +2,22 @@
   <PropertyGroup>
     <MigrationDirectory Condition="'$(MigrationDirectory)' == ''">$(MSBuildProjectDirectory)/Migrations</MigrationDirectory>
     <MigrationNamespace Condition="'$(MigrationNamespace)' == ''">$(RootNamespace)</MigrationNamespace>
-    <MigrationGeneratorScript>$(MSBuildThisFileDirectory)GenerateMigrations.fsx</MigrationGeneratorScript>
-    <MigrationDotNetHost Condition="'$(DotNetHostPath)' != ''">$(DotNetHostPath)</MigrationDotNetHost>
-    <MigrationDotNetHost Condition="'$(MigrationDotNetHost)' == ''">dotnet</MigrationDotNetHost>
-    <GeneratedMigrationRegistry>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'GeneratedMigrations.fs'))</GeneratedMigrationRegistry>
+    <GeneratedMigrationRegistry>$([MSBuild]::NormalizePath('$(MSBuildProjectDirectory)', '$(IntermediateOutputPath)', 'GeneratedMigrations.cs'))</GeneratedMigrationRegistry>
   </PropertyGroup>
-
-  <!-- Keep compiler inputs visible to IDEs during project evaluation, not only during a build. -->
+  <UsingTask TaskName="MelodyTrack.Rewrite.Build.GenerateMigrationRegistry"
+             TaskFactory="RoslynCodeTaskFactory"
+             AssemblyFile="$(MSBuildToolsPath)/Microsoft.Build.Tasks.Core.dll">
+    <Task>
+      <Code Type="Class" Language="cs" Source="$(MSBuildThisFileDirectory)MigrationGeneration.cs" />
+    </Task>
+  </UsingTask>
   <ItemGroup>
-    <_MigrationConsumerSources Include="@(Compile->WithMetadataValue('CompileOrder', 'CompileAfter'))" />
-    <Compile Remove="@(_MigrationConsumerSources)" />
-    <_FSharpMigrationSources Include="$([System.Text.RegularExpressions.Regex]::Split($([System.IO.File]::ReadAllText('$(GeneratedMigrationRegistry).sources')), '\r?\n'))"
-                            Condition="Exists('$(GeneratedMigrationRegistry).sources')" />
-    <Compile Include="@(_FSharpMigrationSources)" CompileOrder="CompileAfter" MigrationGeneratedInput="true" />
-    <Compile Include="$(GeneratedMigrationRegistry)" CompileOrder="CompileAfter" MigrationGeneratedInput="true"
-             Link="Generated/GeneratedMigrations.fs" />
-    <Compile Include="@(_MigrationConsumerSources)" CompileOrder="CompileAfter" MigrationGeneratedInput="true" />
+    <Compile Include="$(GeneratedMigrationRegistry)" Link="Generated/GeneratedMigrations.cs" />
   </ItemGroup>
-
-  <Target Name="GenerateMigrationRegistry" BeforeTargets="BeforeCompile">
-    <Exec WorkingDirectory="$(MSBuildProjectDirectory)" Command="&quot;$(MigrationDotNetHost)&quot; fsi --exec &quot;$(MigrationGeneratorScript)&quot; &quot;$(MigrationDirectory)&quot; &quot;$(GeneratedMigrationRegistry)&quot; &quot;$(MigrationNamespace)&quot;" />
-    <!-- Refresh evaluation-time inputs after generation, including added or removed migrations. -->
+  <Target Name="GenerateMigrationRegistry" BeforeTargets="BeforeCompile" Condition="'$(DesignTimeBuild)' != 'true'">
+    <GenerateMigrationRegistry Directory="$(MigrationDirectory)" Output="$(GeneratedMigrationRegistry)" Namespace="$(MigrationNamespace)" />
     <ItemGroup>
-      <Compile Remove="@(Compile->WithMetadataValue('MigrationGeneratedInput', 'true'))" />
-      <_FSharpMigrationSources Remove="@(_FSharpMigrationSources)" />
-    </ItemGroup>
-    <ReadLinesFromFile File="$(GeneratedMigrationRegistry).sources">
-      <Output TaskParameter="Lines" ItemName="_FSharpMigrationSources" />
-    </ReadLinesFromFile>
-    <ItemGroup>
-      <Compile Include="@(_FSharpMigrationSources)" CompileOrder="CompileAfter" MigrationGeneratedInput="true" />
-      <Compile Include="$(GeneratedMigrationRegistry)" CompileOrder="CompileAfter" MigrationGeneratedInput="true"
-               Link="Generated/GeneratedMigrations.fs" />
-      <Compile Include="@(_MigrationConsumerSources)" CompileOrder="CompileAfter" MigrationGeneratedInput="true" />
-      <FileWrites Include="$(GeneratedMigrationRegistry);$(GeneratedMigrationRegistry).sources" />
+      <FileWrites Include="$(GeneratedMigrationRegistry)" />
     </ItemGroup>
   </Target>
 </Project>

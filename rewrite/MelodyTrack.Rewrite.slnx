@@ -10,12 +10,13 @@
   </Folder>
   <Folder Name="/src/">
     <Project Path="src/MelodyTrack.Rewrite.Api/MelodyTrack.Rewrite.Api.csproj" />
-    <Project Path="src/MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.fsproj" />
-    <Project Path="src/MelodyTrack.Rewrite.Domain/MelodyTrack.Rewrite.Domain.fsproj" />
-    <Project Path="src/MelodyTrack.Rewrite.Init/MelodyTrack.Rewrite.Init.fsproj" />
-    <Project Path="src/MelodyTrack.Rewrite.Persistence/MelodyTrack.Rewrite.Persistence.fsproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.csproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Domain/MelodyTrack.Rewrite.Domain.csproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Init/MelodyTrack.Rewrite.Init.csproj" />
+    <Project Path="src/MelodyTrack.Rewrite.Persistence/MelodyTrack.Rewrite.Persistence.csproj" />
   </Folder>
   <Folder Name="/tests/">
-    <Project Path="tests/MelodyTrack.Rewrite.Init.Tests/MelodyTrack.Rewrite.Init.Tests.fsproj" />
+    <Project Path="tests/MelodyTrack.Rewrite.Domain.Tests/MelodyTrack.Rewrite.Domain.Tests.csproj" />
+    <Project Path="tests/MelodyTrack.Rewrite.Init.Tests/MelodyTrack.Rewrite.Init.Tests.csproj" />
   </Folder>
 </Solution>

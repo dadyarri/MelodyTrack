@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../MelodyTrack.Rewrite.Domain/MelodyTrack.Rewrite.Domain.csproj" />
+  </ItemGroup>
+</Project>
