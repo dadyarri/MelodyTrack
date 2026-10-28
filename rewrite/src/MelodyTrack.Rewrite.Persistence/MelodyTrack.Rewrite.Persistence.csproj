@@ -3,6 +3,7 @@
     <ProjectReference Include="../MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="Dapper" />
     <PackageReference Include="Npgsql" />
   </ItemGroup>
 </Project>

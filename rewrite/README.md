@@ -8,7 +8,7 @@ Solution: [MelodyTrack.Rewrite.slnx](MelodyTrack.Rewrite.slnx). SDK зафикс
 | --- | --- |
 | `src/MelodyTrack.Rewrite.Domain` | Чистые предметные модели, ограничения и расчёты |
 | `src/MelodyTrack.Rewrite.Application` | Прикладные операции и порты; категории результата операции |
-| `src/MelodyTrack.Rewrite.Persistence` | Npgsql и реализации прикладных портов |
+| `src/MelodyTrack.Rewrite.Persistence` | Npgsql/Dapper и реализации прикладных портов |
 | `src/MelodyTrack.Rewrite.Api` | HTTP DTO, маршруты, host и преобразование результата в HTTP |
 | `src/MelodyTrack.Rewrite.Init` | SQL/C#-миграции и инициализация БД |
 
@@ -37,9 +37,64 @@ Application возвращает `Result<T, OperationError>` или `UnitResult<
 
 `ApiResultExtensions.ToHttpResult` получает функцию успешного ответа и функцию отображения ошибки. Они определяют DTO, сообщения, внешние коды и пути полей. Успех может возвращать типизированный `Ok`, `Created` и другие ответы; `UnitResult` преобразуется в `204`. Ошибки становятся `ProblemDetails` со статусами 400/409/404/403 и массивом `errors` при наличии предметных причин. Сам `Result` в JSON не сериализуется. Для `traceId` endpoint передаёт канонический trace ID запроса.
 
+## Доступ к БД
+
+Используются Npgsql и Dapper. API регистрирует долгоживущий `NpgsqlDataSource` в DI из `ConnectionStrings:Database` и вызывает `services.AddDatabase()`. Обёртка `Database` получает источник через конструктор и регистрируется как singleton. Источником данных владеет host; отдельное соединение между запросами не разделяется. Пока строка подключения пуста, получить `Database` из DI нельзя; сама регистрация не открывает соединений.
+
+```csharp
+var rows = await database.Query(sql)
+    .WithParameter("clientId", clientId.Value)
+    .WithParameter("archived", false)
+    .GetAllAsync<ClientRow>(cancellationToken);
+
+await database.Query(updateSql)
+    .WithParameter("id", clientId.Value)
+    .WithParameter("notes", notes)
+    .ExecuteAsync(cancellationToken);
+```
+
+`Query(sql)` создаёт неизменяемый объект `DatabaseQuery`; каждый `WithParameter` возвращает новую ветку с собственным набором привязок. Повторное имя заменяет привязку только в этой ветке. Имена задаются без префикса или с `@`, необязательный аргумент `type` позволяет указать `DbType`, например для `null`. Значения передаются через `DynamicParameters`, без подстановки в SQL. На каждое выполнение создаётся отдельный набор Dapper-параметров.
+
+| Метод | Результат |
+| --- | --- |
+| `ExecuteAsync(token)` | `Task` без количества изменённых строк |
+| `GetAllAsync<T>(token)` | Полностью прочитанный `IReadOnlyList<T>`, пустой при отсутствии строк |
+| `GetSingleAsync<T>(token)` | Ровно одна строка; отсутствие и несколько строк вызывают исключение |
+| `GetSingleOrDefaultAsync<T>(token)` | Строка или `default(T)` при отсутствии; несколько строк вызывают исключение |
+
+Столбцы сопоставляются свойствам/конструктору модели стандартными средствами Dapper; имена при необходимости задаются через SQL aliases. Для простых значений можно использовать `GetSingleAsync<int>`, `GetSingleAsync<Guid>` и другие типы. В `GetSingleOrDefaultAsync<T>` отсутствие модели ссылочного типа означает `null`; для необязательного скалярного значения следует указать nullable-тип, например `int?`, чтобы отличать отсутствие строки от нуля. `ClientRow` обозначает проекцию SQL-строки; сложные доменные агрегаты создаются через свои фабрики, Guid преобразуется в типизированный ID на этой границе.
+
+Обычный запрос автоматически открывает соединение из источника DI перед выполнением; отмена передаётся в открытие и `CommandDefinition`, результат читается до освобождения соединения. Исключения не подавляются.
+
+Для нескольких запросов одной транзакции используется `Database.BeginTransactionAsync` и `await using`:
+
+```csharp
+await using (var transaction = await database.BeginTransactionAsync(cancellationToken))
+{
+    await transaction.Query(updateSql)
+        .WithParameter("id", clientId.Value)
+        .WithParameter("notes", notes)
+        .ExecuteAsync(cancellationToken);
+
+    var client = await transaction.Query(selectSql)
+        .WithParameter("id", clientId.Value)
+        .GetSingleAsync<ClientRow>(cancellationToken);
+
+    await transaction.CommitAsync(cancellationToken);
+}
+```
+
+`DatabaseTransaction` реализует `IAsyncDisposable` и владеет одним соединением и одной транзакцией. `transaction.Query(...)` использует тот же fluent-builder и передаёт транзакцию в Dapper. Все запросы такого scope, включая ветки `WithParameter`, выполняются на общем соединении последовательно. Независимые scope могут работать параллельно; `Database` не хранит текущую транзакцию в общем состоянии.
+
+Commit выполняется только явным вызовом `CommitAsync(token)`. Можно явно вызвать `RollbackAsync(token)`; выход из scope без commit, в том числе через исключение, отмену или возврат ошибки `Result`, откатывает незавершённую транзакцию. Очистка не зависит от отменённого токена запроса. Соединение освобождается при `DisposeAsync`, даже если освобождение транзакции завершилось ошибкой. Повторное освобождение безопасно. После commit/rollback/dispose нельзя создавать или выполнять связанные запросы, включая созданные ранее builder-объекты.
+
+`database.Query(...)` вне scope остаётся обычным запросом с отдельным соединением и не присоединяется к транзакции автоматически. `WithConnectionAsync` — внутренний механизм управления соединением; прикладной код использует публичные builder и транзакционные scope.
+
+Init использует выделенное соединение без pooling для сессионной advisory-блокировки. Самописный runner и поддержка SQL/C#-миграций сохраняются. C#-обработчики компилируются вместе с Init, как прежние обработчики `.fs`; исполнения `.fsx`/`.csx` во время запуска не было и сейчас нет.
+
 ## Запуск и миграции
 
-`Api` пока запускает host без маршрутов на `http://localhost:5280`; старая версия сохраняет порт 5000. Реальные команды, HTTP DTO и контракты маршрутов будут добавлены вместе со сценариями. Предметная схема БД, авторизация, Quartz и frontend ещё не реализованы. Прикладные SQL-запросы ещё не реализованы.
+`Api` пока запускает host без маршрутов на `http://localhost:5280`; старая версия сохраняет порт 5000. Реальные команды, HTTP DTO и контракты маршрутов будут добавлены вместе со сценариями. Предметная схема БД, авторизация, Quartz и frontend ещё не реализованы. SQL-запросы пишутся вручную и выполняются через Dapper.
 
 `Init` исполняет сгенерированный при сборке реестр SQL/C# без поиска файлов, рефлексии и скриптов во время запуска. Он получает advisory lock на выделенном соединении, проверяет историю и применяет каждый шаг вместе с записью истории одной транзакцией. Обработчик получает подключение, транзакцию, отмену и логгер. Коды выхода: 0 — успех, 1 — ошибка, 130 — отмена. Подробности — [README миграций](src/MelodyTrack.Rewrite.Init/Migrations/README.md).
 
@@ -49,6 +104,6 @@ API и Init имеют собственные настройки и профил
 
 - `tests/MelodyTrack.Rewrite.Domain.Tests`: сценарии моделей, накопление ошибок, StronglyTypedId и защита от пустых идентификаторов; без Docker.
 - `tests/MelodyTrack.Rewrite.Api.Tests`: преобразование результата, успешные ответы, статусы и JSON Problem Details; без Docker.
-- `tests/MelodyTrack.Rewrite.Init.Tests`: генерация реестра и миграционный runner на PostgreSQL/Testcontainers; один контейнер на тестовый класс и отдельная база на сценарий, нужен Docker.
+- `tests/MelodyTrack.Rewrite.Init.Tests`: генерация реестра, миграционный runner, жизненный цикл соединения, fluent-запросы и транзакционные scope Dapper на PostgreSQL/Testcontainers; один контейнер на тестовый класс и отдельная база на сценарий, нужен Docker. Проверки входа builder не используют БД.
 
-Используются xUnit v3 и Microsoft.Testing.Platform v2. Сценарии прежних 166 доменных тестов перенесены на C#, проверки собственного генератора идентификаторов заменены проверками выбранной библиотеки и фабрик. 29.10.2026 пользователь подтвердил успешный прогон тестов после переноса на C#. Ассистент перед созданием коммитов повторно тесты не запускал.
+Используются xUnit v3 и Microsoft.Testing.Platform v2. Сценарии прежних 166 доменных тестов перенесены на C#, проверки собственного генератора идентификаторов заменены проверками выбранной библиотеки и фабрик. 29.10.2026 пользователь подтвердил успешный прогон тестов после переноса, добавления fluent-запросов, DI-регистрации, транзакций и обновления проверок публичного API. Ассистент перед созданием коммитов повторно тесты не запускал.
