@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -56,7 +57,7 @@ public sealed class ServiceTests
         var usage = NoUsage with { HasHistoricalUse = true };
         var service = Ok(MakeService().Archive(usage));
         Assert.True(service.IsArchived);
-        Assert.False(usage.CanDelete);
+        Assert.False(usage.CanDelete());
         Assert.False(service.Unarchive().IsArchived);
     }
     [Fact]

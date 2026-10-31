@@ -1,3 +1,4 @@
+using MelodyTrack.Rewrite.Application;
 
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;

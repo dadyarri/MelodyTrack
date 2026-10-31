@@ -1,4 +1,6 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Application.Operations;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -33,7 +35,7 @@ public sealed class AbsenceEffectsTests
     public void ApplyClosure_OverlappingVacation_PreservesBothReasons()
     {
         var vacation = MakeVacation(81, new VacationSubject.Staff(TestData.StaffId), Utc(5, 14), Utc(6, 15));
-        var closure = Ok(SchoolClosure.Create(new(Guid(83)), Period(Utc(5, 14), Utc(6, 15)), "Ремонт"));
+        var closure = Ok(SchoolClosureRules.Create(new(Guid(83)), Period(Utc(5, 14), Utc(6, 15)), "Ремонт"));
         var cancelled = Assert.Single(AbsenceEffects.ApplyClosure(closure, AbsenceEffects.ApplyVacation(vacation, [MakeAppointment(80, Utc(5, 15))])));
         Assert.Equal(2, cancelled.CancellationReasons.Count);
     }

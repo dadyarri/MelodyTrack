@@ -1,4 +1,6 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Application.Operations;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -8,7 +10,7 @@ public sealed class WorkingScheduleTests
 {
     private static WeeklyWorkingSlot[] Hours => [new(Weekday.Monday, Window(17, 21))];
     private static WorkingSchedule Schedule(IEnumerable<WeeklyWorkingSlot>? hours = null, IEnumerable<WeeklyWorkingSlot>? breaks = null, IEnumerable<DatedBreak>? dated = null) =>
-        Ok(WorkingSchedule.Create(new(Guid(60)), TestData.StaffId, Date(5), hours ?? Hours, breaks ?? [], dated ?? []));
+        Ok(WorkingScheduleRules.Create(new(Guid(60)), TestData.StaffId, Date(5), hours ?? Hours, breaks ?? [], dated ?? []));
     private static WorkingSchedule Approve(WorkingSchedule schedule) => Ok(Ok(schedule.Submit()).Approve(StaffRole.Superuser, false, false));
     [Fact]
     public void PeriodsOn_DraftSchedule_DoesNotApplyUnapprovedHours()

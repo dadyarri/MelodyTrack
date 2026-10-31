@@ -37,7 +37,10 @@ public sealed class ApiResultExtensionsTests
     [Fact]
     public void ToHttpResult_ValidationFailure_PreservesAllIssuesAndMapsFields()
     {
-        var errors = ErrorList.From([new(new CatalogueError.Required("firstName"), "firstName"), new(new CatalogueError.Required("lastName"), "lastName")]);
+        var errors = new ErrorListBuilder()
+            .Add(new CatalogueError.Required("firstName"), "firstName")
+            .Add(new CatalogueError.Required("lastName"), "lastName")
+            .ToResult().Error;
         var result = Result.Failure<int, OperationError>(new OperationError.Validation(errors));
         var response = result.ToHttpResult<int, Ok<int>>(_ => throw new InvalidOperationException(), MapIssue, "test-trace");
         var problem = Assert.IsType<ProblemHttpResult>(response.Result).ProblemDetails;
@@ -64,7 +67,7 @@ public sealed class ApiResultExtensionsTests
     [Fact]
     public void ToHttpResult_StateConflict_UsesConflictStatus()
     {
-        var result = Result.Failure<int, OperationError>(new OperationError.Conflict(ErrorList.Of(new ClientError.UnknownContact())));
+        var result = Result.Failure<int, OperationError>(new OperationError.Conflict(ErrorList.Single(new ClientError.UnknownContact())));
         var response = result.ToHttpResult(value => TypedResults.Ok(value), MapIssue);
         Assert.Equal(409, Assert.IsType<ProblemHttpResult>(response.Result).StatusCode);
     }
@@ -79,14 +82,14 @@ public sealed class ApiResultExtensionsTests
     [Fact]
     public void ToHttpResult_UnitFailure_UsesSameErrorMapping()
     {
-        var response = UnitResult.Failure<OperationError>(new OperationError.Validation(ErrorList.Of(new ClientError.InvalidContactValue(), "value"))).ToHttpResult(MapIssue);
+        var response = UnitResult.Failure<OperationError>(new OperationError.Validation(ErrorList.Single(new ClientError.InvalidContactValue(), "value"))).ToHttpResult(MapIssue);
         Assert.Equal(400, Assert.IsType<ProblemHttpResult>(response.Result).StatusCode);
     }
 
     [Fact]
     public async Task ToHttpResult_ValidationFailure_WritesProblemJsonWithoutResultEnvelope()
     {
-        var result = Result.Failure<int, OperationError>(new OperationError.Validation(ErrorList.Of(new CatalogueError.Required("name"), "name")));
+        var result = Result.Failure<int, OperationError>(new OperationError.Validation(ErrorList.Single(new CatalogueError.Required("name"), "name")));
         var response = result.ToHttpResult(value => TypedResults.Ok(new ResponseDto(value)), MapIssue);
         using var services = new ServiceCollection().AddLogging().AddProblemDetails().BuildServiceProvider();
         var context = new DefaultHttpContext { RequestServices = services };

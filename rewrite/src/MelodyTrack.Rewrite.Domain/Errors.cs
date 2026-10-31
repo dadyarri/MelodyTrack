@@ -59,6 +59,7 @@ public closed record VacationError(string Code) : DomainError(Code)
     public sealed record RequestAlreadyDecided() : VacationError("vacation.request_already_decided");
     public sealed record VacationDeleted() : VacationError("vacation.vacation_deleted");
     public sealed record WrongVacation() : VacationError("vacation.wrong_vacation");
+    public sealed record CurrentVacationRequired() : VacationError("vacation.current_vacation_required");
 }
 
 public closed record SchoolClosureError(string Code) : DomainError(Code)

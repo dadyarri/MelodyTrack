@@ -1,5 +1,6 @@
 using CSharpFunctionalExtensions;
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 
 namespace MelodyTrack.Rewrite.Domain.Tests;
@@ -32,16 +33,16 @@ internal static class TestData
     internal static DateTimeOffset Now => Utc(1, 0);
     internal static WeeklyRule Weekly => Ok(WeeklyRule.Create([new(Weekday.Monday, Ok(StartHour.Create(18))), new(Weekday.Thursday, Ok(StartHour.Create(19)))]));
 
-    internal static Series MakeSeries(SeriesEnd? end = null) => Ok(Series.Create(new(Guid(5)), ClientId, ServiceId, Duration(60), Date(5), end ?? new SeriesEnd.OpenEnded(), new(Weekly, StaffId, RoomId)));
-    internal static Appointment MakeAppointment(int number, DateTimeOffset startsAt) => Ok(Appointment.Create(new(Guid(number)), ClientId, ServiceId, StaffId, RoomId, startsAt, Duration(60)));
-    internal static Appointment SeriesAppointment(int number, long sequence, DateTimeOffset startsAt) => Ok(Appointment.CreateFromSeries(new(Guid(number)), MakeSeries(), Number(sequence), startsAt));
-    internal static Vacation MakeVacation(int number, VacationSubject subject, DateTimeOffset start, DateTimeOffset end) => Ok(Vacation.Create(new(Guid(number)), subject, Period(start, end), null));
+    internal static Series MakeSeries(SeriesEnd? end = null) => Ok(SeriesRules.Create(new(Guid(5)), ClientId, ServiceId, Duration(60), Date(5), end ?? new SeriesEnd.OpenEnded(), new(Weekly, StaffId, RoomId)));
+    internal static Appointment MakeAppointment(int number, DateTimeOffset startsAt) => Ok(AppointmentRules.Create(new(Guid(number)), ClientId, ServiceId, StaffId, RoomId, startsAt, Duration(60)));
+    internal static Appointment SeriesAppointment(int number, long sequence, DateTimeOffset startsAt) => Ok(AppointmentRules.CreateFromSeries(new(Guid(number)), MakeSeries(), Number(sequence), startsAt));
+    internal static Vacation MakeVacation(int number, VacationSubject subject, DateTimeOffset start, DateTimeOffset end) => Ok(VacationRules.Create(new(Guid(number)), subject, Period(start, end), null));
     internal static LocalTimeWindow Window(int start, int end) => Ok(LocalTimeWindow.Create(new(start, 0), new(end, 0)));
     internal static AvailabilitySnapshot Available(Appointment appointment) => new([appointment.Interval], [], [], [], []);
-    internal static ContactKind PhoneKind => Ok(ContactKind.Create(new(Guid(21)), "Телефон", ContactFormat.Phone));
-    internal static ClientContact Contact(int number, bool primary) => Ok(ClientContact.Create(new(Guid(number)), PhoneKind, "+44 20 1234 5678", null, primary));
+    internal static ContactKind PhoneKind => Ok(ContactKindRules.Create(new(Guid(21)), "Телефон", ContactFormat.Phone));
+    internal static ClientContact Contact(int number, bool primary) => Ok(ClientContactRules.Create(new(Guid(number)), PhoneKind, "+44 20 1234 5678", null, primary));
     internal static ClientProfile Profile => new(Ok(PersonName.Create("Иван", "Иванов", null)), null, new(Guid(22)), "Служебные заметки");
-    internal static Client MakeClient() => Ok(Client.Create(ClientId, Profile, [Contact(30, true)]));
-    internal static Service MakeService(decimal amount = 1000m, bool consultation = false) => Ok(Service.Create(ServiceId, "Гитара", Duration(60), consultation, Ok(ServicePrice.Create(Now, amount))));
-    internal static Staff MakeStaff() => Ok(Staff.Create(StaffId, "Преподаватель", StaffRole.Teacher, true));
+    internal static Client MakeClient() => Ok(ClientRules.Create(ClientId, Profile, [Contact(30, true)]));
+    internal static Service MakeService(decimal amount = 1000m, bool consultation = false) => Ok(ServiceRules.Create(ServiceId, "Гитара", Duration(60), consultation, Ok(ServicePrice.Create(Now, amount))));
+    internal static Staff MakeStaff() => Ok(StaffRules.Create(StaffId, "Преподаватель", StaffRole.Teacher, true));
 }

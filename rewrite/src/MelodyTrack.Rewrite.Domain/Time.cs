@@ -14,15 +14,15 @@ public static class SchoolTime
     public static Result<DateTimeOffset, ErrorList> At(DateOnly date, TimeOnly time)
     {
         var local = date.ToDateTime(time, DateTimeKind.Unspecified);
-        if (Zone.Value.IsInvalidTime(local)) return ErrorList.Of(new TimeError.InvalidLocalTime());
-        if (Zone.Value.IsAmbiguousTime(local)) return ErrorList.Of(new TimeError.AmbiguousLocalTime());
+        if (Zone.Value.IsInvalidTime(local)) return ErrorList.Single(new TimeError.InvalidLocalTime());
+        if (Zone.Value.IsAmbiguousTime(local)) return ErrorList.Single(new TimeError.AmbiguousLocalTime());
         try
         {
             return new DateTimeOffset(TimeZoneInfo.ConvertTimeToUtc(local, Zone.Value));
         }
         catch (ArgumentException)
         {
-            return ErrorList.Of(new TimeError.OutOfRange());
+            return ErrorList.Single(new TimeError.OutOfRange());
         }
     }
 }
@@ -41,7 +41,7 @@ public sealed record TimeInterval
 
     public static Result<TimeInterval, ErrorList> Create(DateTimeOffset startsAt, DateTimeOffset endsAt)
     {
-        if (endsAt <= startsAt) return ErrorList.Of(new TimeError.EmptyOrReversedInterval());
+        if (endsAt <= startsAt) return ErrorList.Single(new TimeError.EmptyOrReversedInterval());
         return new TimeInterval(startsAt.ToUniversalTime(), endsAt.ToUniversalTime());
     }
 

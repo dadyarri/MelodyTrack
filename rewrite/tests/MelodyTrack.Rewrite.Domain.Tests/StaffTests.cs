@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -11,14 +12,14 @@ public sealed class StaffTests
     {
         var blocked = MakeStaff().Block();
         Assert.True(blocked.IsBlocked);
-        Assert.True(blocked.ParticipatesInScheduling);
+        Assert.True(blocked.ParticipatesInScheduling());
         Assert.Equal(TestData.StaffId, blocked.Id);
     }
     [Fact]
     public void SetParticipation_Superuser_DoesNotChangeRoleOrBlockAccount()
     {
-        var staff = Ok(Staff.Create(TestData.StaffId, "Супер", StaffRole.Superuser, true)).SetParticipation(false);
-        Assert.False(staff.ParticipatesInScheduling);
+        var staff = Ok(StaffRules.Create(TestData.StaffId, "Супер", StaffRole.Superuser, true)).SetParticipation(false);
+        Assert.False(staff.ParticipatesInScheduling());
         Assert.False(staff.IsBlocked);
         Assert.Equal(StaffRole.Superuser, staff.Role);
     }
@@ -32,8 +33,8 @@ public sealed class StaffTests
         var archived = Ok(MakeStaff().Archive(NoUsage, false));
         Assert.Equal(TestData.StaffId, archived.Id);
         Assert.True(archived.IsArchived);
-        Assert.False(archived.ParticipatesInScheduling);
+        Assert.False(archived.ParticipatesInScheduling());
     }
     [Fact]
-    public void Create_BlankName_RejectsStaff() => AssertError(new CatalogueError.Required("name"), Staff.Create(TestData.StaffId, "  ", StaffRole.Teacher, true));
+    public void Create_BlankName_RejectsStaff() => AssertError(new CatalogueError.Required("name"), StaffRules.Create(TestData.StaffId, "  ", StaffRole.Teacher, true));
 }

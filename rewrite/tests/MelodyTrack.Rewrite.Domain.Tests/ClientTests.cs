@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -6,18 +7,18 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 
 public sealed class ClientTests
 {
-    private static ClientContact Email() => Ok(ClientContact.Create(new(Guid(33)), Ok(ContactKind.Create(new(Guid(32)), "Email", ContactFormat.Email)), "test@example.com", null, true));
+    private static ClientContact Email() => Ok(ClientContactRules.Create(new(Guid(33)), Ok(ContactKindRules.Create(new(Guid(32)), "Email", ContactFormat.Email)), "test@example.com", null, true));
     [Fact]
-    public void Create_NoContacts_RejectsClient() => AssertError(new ClientError.ContactsRequired(), Client.Create(TestData.ClientId, Profile, []));
+    public void Create_NoContacts_RejectsClient() => AssertError(new ClientError.ContactsRequired(), ClientRules.Create(TestData.ClientId, Profile, []));
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void Create_ZeroOrTwoPrimaryContacts_RejectsClient(bool primary) => AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), Client.Create(TestData.ClientId, Profile, [Contact(30, primary), Contact(31, primary)]));
+    public void Create_ZeroOrTwoPrimaryContacts_RejectsClient(bool primary) => AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), ClientRules.Create(TestData.ClientId, Profile, [Contact(30, primary), Contact(31, primary)]));
     [Fact]
     public void Create_DuplicateContactIdentity_RejectsClient()
     {
         var contact = Contact(30, true);
-        AssertError(new ClientError.DuplicateContact(), Client.Create(TestData.ClientId, Profile, [contact, contact]));
+        AssertError(new ClientError.DuplicateContact(), ClientRules.Create(TestData.ClientId, Profile, [contact, contact]));
     }
     [Fact]
     public void SelectPrimary_ExistingContact_ChangesOnlyItsKindAndPreservesOriginalClient()
@@ -25,7 +26,7 @@ public sealed class ClientTests
         var first = Contact(30, true);
         var second = Contact(31, false);
         var email = Email();
-        var original = Ok(Client.Create(TestData.ClientId, Profile, [first, second, email]));
+        var original = Ok(ClientRules.Create(TestData.ClientId, Profile, [first, second, email]));
 
         var updated = Ok(original.SelectPrimary(second.Id));
 
@@ -40,19 +41,19 @@ public sealed class ClientTests
     [Fact]
     public void SelectPrimary_AlreadyPrimary_IsIdempotent()
     {
-        var original = Ok(Client.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
+        var original = Ok(ClientRules.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
         Assert.Equal(original, Ok(original.SelectPrimary(original.Contacts[0].Id)));
     }
     [Fact]
     public void RemoveContact_PrimaryWithRemainingKind_RequiresExplicitReplacement()
     {
-        var client = Ok(Client.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
+        var client = Ok(ClientRules.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
         AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), client.RemoveContact(new(Guid(30)), null));
     }
     [Fact]
     public void RemoveContact_ExplicitReplacement_PromotesChosenContact()
     {
-        var client = Ok(Client.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
+        var client = Ok(ClientRules.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false)]));
         var updated = Ok(client.RemoveContact(new(Guid(30)), new(Guid(31))));
         var remaining = Assert.Single(updated.Contacts);
         Assert.Equal(new ClientContactId(Guid(31)), remaining.Id);
@@ -62,7 +63,7 @@ public sealed class ClientTests
     public void RemoveContact_ReplacementFromAnotherKind_RejectsChoice()
     {
         var email = Email();
-        var client = Ok(Client.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false), email]));
+        var client = Ok(ClientRules.Create(TestData.ClientId, Profile, [Contact(30, true), Contact(31, false), email]));
         AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), client.RemoveContact(new(Guid(30)), email.Id));
     }
     [Fact]
@@ -71,7 +72,7 @@ public sealed class ClientTests
     public void Create_SamePhoneForDifferentClients_AllowsBoth()
     {
         var first = MakeClient();
-        var second = Ok(Client.Create(new(Guid(2)), Profile, [Contact(31, true)]));
+        var second = Ok(ClientRules.Create(new(Guid(2)), Profile, [Contact(31, true)]));
         Assert.NotEqual(first.Id, second.Id);
     }
     [Fact]

@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -7,7 +8,7 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 public sealed class BookingTests
 {
     private static Service Service() => MakeService().ChangeDuration(Duration(45));
-    private static Room Room() => Ok(global::MelodyTrack.Rewrite.Domain.Room.Create(TestData.RoomId, "Зал", null));
+    private static Room Room() => Ok(RoomRules.Create(TestData.RoomId, "Зал", null));
     [Fact]
     public void CreateAppointment_ActiveCatalogue_UsesServiceDuration()
     {
@@ -22,7 +23,7 @@ public sealed class BookingTests
         var service = Service();
         var series = Ok(Booking.CreateSeries(new(Guid(104)), MakeClient(), service, MakeStaff(), null, Date(5), new SeriesEnd.OpenEnded(), Weekly));
         var changed = service.ChangeDuration(Duration(90));
-        var appointment = Ok(Appointment.CreateFromSeries(new(Guid(103)), series, SequenceNumber.First, Utc(5, 15)));
+        var appointment = Ok(AppointmentRules.CreateFromSeries(new(Guid(103)), series, SequenceNumber.First, Utc(5, 15)));
         Assert.Equal(90, changed.Duration.Minutes);
         Assert.Equal(45, series.Duration.Minutes);
         Assert.Equal(45, appointment.Duration.Minutes);

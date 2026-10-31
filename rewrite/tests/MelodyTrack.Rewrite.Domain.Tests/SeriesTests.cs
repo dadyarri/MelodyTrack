@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -8,7 +9,7 @@ public sealed class SeriesTests
 {
     [Fact]
     public void Create_EndBeforeStart_RejectsSeries() => AssertError(new SchedulingError.SeriesEndBeforeStart(Date(5), Date(4)),
-        Series.Create(new(Guid(10)), TestData.ClientId, TestData.ServiceId, Duration(60), Date(5), new SeriesEnd.OnDateInclusive(Date(4)), new(Weekly, TestData.StaffId, null)));
+        SeriesRules.Create(new(Guid(10)), TestData.ClientId, TestData.ServiceId, Duration(60), Date(5), new SeriesEnd.OnDateInclusive(Date(4)), new(Weekly, TestData.StaffId, null)));
     [Fact]
     public void NextCandidate_EndDateIsInclusive_EmitsFinalDateThenStops()
     {

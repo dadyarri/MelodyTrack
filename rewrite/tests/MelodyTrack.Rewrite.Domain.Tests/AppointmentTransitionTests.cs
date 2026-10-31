@@ -1,4 +1,6 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Application.Operations;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -87,7 +89,7 @@ public sealed class AppointmentTransitionTests
     {
         var cancelled = Ok(SeriesAppointment(30, 1, Utc(5, 15)).Cancel(StaffRole.Administrator, Now));
         Assert.Equal(AppointmentStatus.Cancelled, cancelled.Status);
-        Assert.True(cancelled.CountsTowardSeriesTarget);
+        Assert.True(cancelled.CountsTowardSeriesTarget());
         Assert.IsType<CancellationReason.Manual>(Assert.Single(cancelled.CancellationReasons));
     }
     [Fact]
@@ -96,7 +98,7 @@ public sealed class AppointmentTransitionTests
         var second = new AbsenceCause.SchoolClosure(new(Guid(41)));
         var cancelled = SeriesAppointment(30, 1, Utc(5, 15)).CancelForAbsence(Cause).CancelForAbsence(second).CancelForAbsence(Cause);
         Assert.Equal(2, cancelled.CancellationReasons.Count);
-        Assert.False(cancelled.CountsTowardSeriesTarget);
+        Assert.False(cancelled.CountsTowardSeriesTarget());
         Assert.Equal(0, SeriesEffects.CountedAppointments(MakeSeries(), [cancelled]));
     }
     [Fact]
@@ -122,7 +124,7 @@ public sealed class AppointmentTransitionTests
     {
         var burned = Ok(MakeAppointment(30, Utc(5, 15)).Burn(StaffRole.Superuser, Utc(5, 16)));
         AssertError(new AppointmentError.ClearResultFirst(), burned.Delete(StaffRole.Superuser, Utc(5, 16)));
-        Assert.True(burned.CountsTowardSeriesTarget);
+        Assert.True(burned.CountsTowardSeriesTarget());
     }
     [Fact]
     public void Delete_UnbilledAppointment_PreservesIdentityAndExcludesFromSeriesCount()
@@ -131,7 +133,7 @@ public sealed class AppointmentTransitionTests
         var deleted = Ok(planned.Delete(StaffRole.Superuser, Now));
         Assert.True(deleted.IsDeleted);
         Assert.Equal(planned.Id, deleted.Id);
-        Assert.False(deleted.CountsTowardSeriesTarget);
+        Assert.False(deleted.CountsTowardSeriesTarget());
         AssertError(new AppointmentError.Deleted(), deleted.Move(StaffRole.Superuser, Now, Utc(6, 15)));
     }
     [Fact]

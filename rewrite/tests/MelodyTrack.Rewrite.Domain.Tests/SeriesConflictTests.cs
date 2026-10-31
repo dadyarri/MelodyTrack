@@ -1,4 +1,6 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Application.Operations;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -10,7 +12,7 @@ public sealed class SeriesConflictTests
     {
         var series = MakeSeries();
         var step = Assert.IsType<SeriesStep>(Ok(series.NextCandidate(0)));
-        return (SeriesConflict.Create(series, step.Candidate), Ok(Appointment.CreateFromSeries(new(Guid(90)), series, step.Candidate.SequenceNumber, step.Candidate.StartsAt)));
+        return (SeriesConflictRules.Create(series, step.Candidate), Ok(AppointmentRules.CreateFromSeries(new(Guid(90)), series, step.Candidate.SequenceNumber, step.Candidate.StartsAt)));
     }
     [Fact]
     public void Create_Conflict_CreatesProblemWithoutAppointmentOrResolution()
@@ -59,8 +61,8 @@ public sealed class SeriesConflictTests
         var series = MakeSeries();
         var advanced = Assert.IsType<SeriesStep>(Ok(series.NextCandidate(0))).Series;
         var candidate = Assert.IsType<SeriesStep>(Ok(advanced.NextCandidate(1))).Candidate;
-        var second = SeriesConflict.Create(series, candidate);
-        var group = Assert.Single(SeriesConflict.Outstanding([first, first, second]));
+        var second = SeriesConflictRules.Create(series, candidate);
+        var group = Assert.Single(SeriesConflictRules.Outstanding([first, first, second]));
         Assert.Equal(2, group.Value.Length);
     }
     [Fact]

@@ -9,21 +9,44 @@ public sealed class ErrorList
 {
     private ErrorList(ImmutableArray<DomainIssue> issues) => Issues = issues;
 
+    internal ErrorList(DomainIssue first, IEnumerable<DomainIssue> remaining) : this([first, .. remaining]) { }
+
     public ImmutableArray<DomainIssue> Issues { get; }
 
-    public static ErrorList Of(DomainError error, string? field = null) => new([new(error, field)]);
+    public static ErrorList Single(DomainError error, string? field = null) => new([new(error, field)]);
+}
 
-    public static ErrorList From(IEnumerable<DomainIssue> issues)
+public sealed class ErrorListBuilder
+{
+    private readonly List<DomainIssue> _issues = [];
+
+    public ErrorListBuilder Add(DomainError error, string? field = null)
     {
-        var values = issues.ToImmutableArray();
-        if (values.IsEmpty)
-        {
-            throw new ArgumentException("Список ошибок должен быть непустым.", nameof(issues));
-        }
-        return new(values);
+        _issues.Add(new DomainIssue(error, field));
+        return this;
     }
 
-    public static ErrorList Combine(IEnumerable<ErrorList> errors) => From(errors.SelectMany(error => error.Issues));
+    public ErrorListBuilder AddIf(bool condition, DomainError error, string? field = null)
+    {
+        if (condition) Add(error, field);
+        return this;
+    }
+
+    public ErrorListBuilder AddRange(IEnumerable<DomainIssue> issues)
+    {
+        _issues.AddRange(issues);
+        return this;
+    }
+
+    public ErrorListBuilder Add(UnitResult<ErrorList> check)
+    {
+        if (check.IsFailure) AddRange(check.Error.Issues);
+        return this;
+    }
+
+    public UnitResult<ErrorList> ToResult() => _issues.Count == 0
+        ? UnitResult.Success<ErrorList>()
+        : UnitResult.Failure(new ErrorList(_issues[0], _issues.Skip(1)));
 }
 
 internal static class Validation
@@ -32,7 +55,7 @@ internal static class Validation
     {
         if (string.IsNullOrWhiteSpace(value))
         {
-            return ErrorList.Of(new CatalogueError.Required(field), field);
+            return ErrorList.Single(new CatalogueError.Required(field), field);
         }
         return value.Trim();
     }
@@ -40,10 +63,15 @@ internal static class Validation
     internal static string? OptionalText(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     internal static UnitResult<ErrorList> Identifier(Guid value, string field = "id") => value == Guid.Empty
-        ? UnitResult.Failure(ErrorList.Of(new IdentifierError.Empty(), field))
+        ? UnitResult.Failure(ErrorList.Single(new IdentifierError.Empty(), field))
         : UnitResult.Success<ErrorList>();
 
-    internal static UnitResult<ErrorList> Collect(params UnitResult<ErrorList>[] checks) => Result.Combine<ErrorList>(checks, ErrorList.Combine);
+    internal static UnitResult<ErrorList> Collect(params UnitResult<ErrorList>[] checks)
+    {
+        var errors = new ErrorListBuilder();
+        foreach (var check in checks) errors.Add(check);
+        return errors.ToResult();
+    }
 
     internal static UnitResult<ErrorList> Check<T>(Result<T, ErrorList> result) => result.IsFailure
         ? UnitResult.Failure(result.Error)
@@ -51,9 +79,9 @@ internal static class Validation
 
     internal static UnitResult<ErrorList> Archive(SchedulingUsage usage)
     {
-        var errors = new List<DomainIssue>();
-        if (usage.HasFutureAppointments) errors.Add(new(new CatalogueError.FutureAppointmentsExist()));
-        if (usage.HasActiveSeries) errors.Add(new(new CatalogueError.ActiveSeriesExist()));
-        return errors.Count == 0 ? UnitResult.Success<ErrorList>() : UnitResult.Failure(ErrorList.From(errors));
+        return new ErrorListBuilder()
+            .AddIf(usage.HasFutureAppointments, new CatalogueError.FutureAppointmentsExist())
+            .AddIf(usage.HasActiveSeries, new CatalogueError.ActiveSeriesExist())
+            .ToResult();
     }
 }

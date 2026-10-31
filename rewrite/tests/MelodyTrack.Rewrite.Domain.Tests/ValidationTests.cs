@@ -1,4 +1,6 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Application.Operations;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -19,7 +21,7 @@ public sealed class ValidationTests
     [Fact]
     public void Create_ArchivedKindAndInvalidContact_ReturnsBothIndependentErrors()
     {
-        var result = ClientContact.Create(new(Guid(30)), PhoneKind.Archive(), "wrong", null, true);
+        var result = ClientContactRules.Create(new(Guid(30)), PhoneKind.Archive(), "wrong", null, true);
         AssertError(new ClientError.ContactKindArchived(), result);
         AssertError(new ClientError.InvalidContactValue(), result);
         Assert.Equal(2, result.Error.Issues.Length);
@@ -28,8 +30,8 @@ public sealed class ValidationTests
     [Fact]
     public void Create_MissingPrimaryInSeveralKinds_ReturnsEachKind()
     {
-        var email = Ok(ClientContact.Create(new(Guid(33)), Ok(ContactKind.Create(new(Guid(32)), "Email", ContactFormat.Email)), "test@example.com", null, false));
-        var result = Client.Create(TestData.ClientId, Profile, [Contact(30, false), email]);
+        var email = Ok(ClientContactRules.Create(new(Guid(33)), Ok(ContactKindRules.Create(new(Guid(32)), "Email", ContactFormat.Email)), "test@example.com", null, false));
+        var result = ClientRules.Create(TestData.ClientId, Profile, [Contact(30, false), email]);
         AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), result);
         AssertError(new ClientError.PrimaryContactRequired(email.KindId), result);
         Assert.Equal(2, result.Error.Issues.Length);
@@ -48,7 +50,7 @@ public sealed class ValidationTests
     [Fact]
     public void CreateAppointment_SeveralUnavailableReferences_ReturnsAllBlockers()
     {
-        var room = Ok(Room.Create(TestData.RoomId, "Зал", null)).Archive();
+        var room = Ok(RoomRules.Create(TestData.RoomId, "Зал", null)).Archive();
         var result = Booking.CreateAppointment(new(Guid(103)), Ok(MakeClient().Archive(NoUsage)), Ok(MakeService().Archive(NoUsage)),
             MakeStaff().SetParticipation(false), room, Utc(5, 15));
         Assert.Equal(4, result.Error.Issues.Length);
@@ -61,7 +63,7 @@ public sealed class ValidationTests
     [Fact]
     public void Approve_ConflictingAppointmentsAndSeries_ReturnsBothBlockers()
     {
-        var schedule = Ok(WorkingSchedule.Create(new(Guid(60)), TestData.StaffId, Date(5), [], [], []));
+        var schedule = Ok(WorkingScheduleRules.Create(new(Guid(60)), TestData.StaffId, Date(5), [], [], []));
         var result = Ok(schedule.Submit()).Approve(StaffRole.Superuser, true, true);
         AssertError(new WorkingScheduleError.ConflictingAppointments(), result);
         AssertError(new WorkingScheduleError.ConflictingSeries(), result);
@@ -78,13 +80,4 @@ public sealed class ValidationTests
         Assert.True(Assert.Single(client.Contacts).IsPrimary);
     }
 
-    [Fact]
-    public void From_EmptyErrorSequence_RejectsInvalidFailure() => Assert.Throws<ArgumentException>(() => ErrorList.From([]));
-
-    [Fact]
-    public void Combine_MultipleLists_PreservesErrorsAndFieldPaths()
-    {
-        var combined = ErrorList.Combine([ErrorList.Of(new CatalogueError.Required("name"), "name"), ErrorList.Of(new ClientError.InvalidContactValue(), "contacts[2].value")]);
-        Assert.Equal(new[] { "name", "contacts[2].value" }, combined.Issues.Select(issue => issue.Field));
-    }
 }

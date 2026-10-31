@@ -1,5 +1,6 @@
 using System.Text.Json;
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -26,11 +27,11 @@ public sealed class IdentifierTests
     [Fact]
     public void Parse_ClientIdentifier_RoundTripsValue() => Assert.Equal(TestData.ClientId, global::MelodyTrack.Rewrite.Domain.ClientId.Parse(TestData.ClientId.Value.ToString()));
     [Fact]
-    public void Create_DefaultClientIdentifier_RejectsEntity() => AssertError(new IdentifierError.Empty(), Client.Create(default, Profile, [Contact(30, true)]));
+    public void Create_DefaultClientIdentifier_RejectsEntity() => AssertError(new IdentifierError.Empty(), ClientRules.Create(default, Profile, [Contact(30, true)]));
     [Fact]
     public void Create_DefaultReferences_ReturnsEachInvalidField()
     {
-        var result = Appointment.Create(default, default, default, default, new RoomId(System.Guid.Empty), Utc(5, 15), Duration(60));
+        var result = AppointmentRules.Create(default, default, default, default, new RoomId(System.Guid.Empty), Utc(5, 15), Duration(60));
         Assert.True(result.IsFailure);
         Assert.Equal(new[] { "id", "clientId", "serviceId", "staffId", "roomId" }, result.Error.Issues.Select(issue => issue.Field));
         Assert.All(result.Error.Issues, issue => Assert.IsType<IdentifierError.Empty>(issue.Error));

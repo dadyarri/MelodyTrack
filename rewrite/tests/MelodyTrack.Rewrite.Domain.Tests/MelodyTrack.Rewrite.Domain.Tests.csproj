@@ -5,6 +5,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../../src/MelodyTrack.Rewrite.Domain/MelodyTrack.Rewrite.Domain.csproj" />
+    <ProjectReference Include="../../src/MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="xunit.v3.mtp-v2" />

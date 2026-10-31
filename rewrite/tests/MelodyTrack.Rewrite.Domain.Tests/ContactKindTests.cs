@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -16,12 +17,12 @@ public sealed class ContactKindTests
         Assert.Equal(original.Id, renamed.Id);
         Assert.Equal(ContactFormat.Phone, renamed.Format);
         Assert.Equal("Мобильный", renamed.Name);
-        Assert.False(ContactKind.CanDelete(true));
+        Assert.False(ContactKindRules.CanDelete(true));
     }
     [Fact]
     public void ChangeFormat_UnusedKind_AllowsChange()
     {
         Assert.Equal(ContactFormat.Link, Ok(PhoneKind.ChangeFormat(false, ContactFormat.Link)).Format);
-        Assert.True(ContactKind.CanDelete(false));
+        Assert.True(ContactKindRules.CanDelete(false));
     }
 }

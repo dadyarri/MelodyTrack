@@ -1,4 +1,5 @@
-
+using MelodyTrack.Rewrite.Application;
+using MelodyTrack.Rewrite.Domain.Rules;
 using Xunit;
 using static MelodyTrack.Rewrite.Domain.Tests.TestData;
 
@@ -6,7 +7,7 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 
 public sealed class AvailabilityTests
 {
-    private static SchoolClosure Closure() => Ok(SchoolClosure.Create(new(Guid(73)), Period(Utc(5, 14), Utc(5, 17)), "Закрыто"));
+    private static SchoolClosure Closure() => Ok(SchoolClosureRules.Create(new(Guid(73)), Period(Utc(5, 14), Utc(5, 17)), "Закрыто"));
     [Fact]
     public void Check_ExactWorkingWindowWithoutConflicts_ReturnsNoReasons()
     {
@@ -64,7 +65,7 @@ public sealed class AvailabilityTests
     [Fact]
     public void Check_NoAssignedRoom_DoesNotInventRoomConflict()
     {
-        var appointment = Ok(Appointment.Create(new(Guid(70)), TestData.ClientId, TestData.ServiceId, TestData.StaffId, null, Utc(5, 15), Duration(60)));
+        var appointment = Ok(AppointmentRules.Create(new(Guid(70)), TestData.ClientId, TestData.ServiceId, TestData.StaffId, null, Utc(5, 15), Duration(60)));
         var busy = BusySlot.FromAppointment(MakeAppointment(71, Utc(5, 15)));
         Assert.DoesNotContain(new AvailabilityConflict.RoomBusy(busy.AppointmentId), Availability.Check(Available(appointment) with { BusySlots = [busy] }, appointment));
     }
