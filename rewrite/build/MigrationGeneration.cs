@@ -54,7 +54,8 @@ namespace MelodyTrack.Rewrite.Build
             {
                 return new MigrationSource
                 {
-                    Version = long.Parse(match.Groups["version"].Value), Name = name,
+                    Version = long.Parse(match.Groups["version"].Value),
+                    Name = name,
                     Checksum = BitConverter.ToString(hash.ComputeHash(bytes)).Replace("-", ""),
                     Sql = match.Groups["kind"].Value == "sql" ? content : "",
                     Handler = match.Groups["kind"].Value == "cs" ? match.Groups["handler"].Value : ""

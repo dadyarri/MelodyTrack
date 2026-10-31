@@ -10,7 +10,9 @@ public sealed class PostgreSqlFixture : IAsyncLifetime
 
     public string ConnectionString(string database) => new NpgsqlConnectionStringBuilder(container.GetConnectionString())
     {
-        Database = database, Pooling = false, Multiplexing = false
+        Database = database,
+        Pooling = false,
+        Multiplexing = false
     }.ConnectionString;
 
     public async Task<string> CreateDatabaseAsync(CancellationToken cancellationToken)
