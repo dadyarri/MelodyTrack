@@ -31,7 +31,7 @@ public sealed class ValidationTests
     public void Create_MissingPrimaryInSeveralKinds_ReturnsEachKind()
     {
         var email = Ok(ClientContactRules.Create(new(Guid(33)), Ok(ContactKindRules.Create(new(Guid(32)), "Email", ContactFormat.Email)), "test@example.com", null, false));
-        var result = ClientRules.Create(TestData.ClientId, Profile, [Contact(30, false), email]);
+        var result = ClientRules.Create(TestData.ClientId, Profile, [Contact(30, false), email], TestData.Now);
         AssertError(new ClientError.PrimaryContactRequired(PhoneKind.Id), result);
         AssertError(new ClientError.PrimaryContactRequired(email.KindId), result);
         Assert.Equal(2, result.Error.Issues.Length);

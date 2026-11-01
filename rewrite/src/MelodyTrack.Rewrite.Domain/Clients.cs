@@ -63,13 +63,17 @@ public sealed record ClientContact
     public bool IsPrimary { get; internal init; }
 }
 
-public sealed record ClientProfile(PersonName Name, DateOnly? Birthday, ClientSourceId SourceId, string? Notes);
+public sealed record ClientProfile(PersonName Name, DateOnly? Birthdate, ClientSourceId? SourceId, string? Notes);
 
 public sealed record Client
 {
     internal Client(ClientId id, ClientProfile profile, ImmutableArray<ClientContact> contacts) { Id = id; Profile = profile; Contacts = contacts; }
 
     public ClientId Id { get; }
+
+    public DateTimeOffset CreatedAt { get; internal init; }
+
+    public bool IsLeadClosed { get; internal init; }
 
     public ClientProfile Profile { get; internal init; }
 

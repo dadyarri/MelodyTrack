@@ -45,7 +45,6 @@ public closed record CatalogueError(string Code) : DomainError(Code)
 
 public closed record ClientError(string Code) : DomainError(Code)
 {
-    public sealed record ContactsRequired() : ClientError("client.contacts_required");
     public sealed record DuplicateContact() : ClientError("client.duplicate_contact");
     public sealed record PrimaryContactRequired(ContactKindId KindId) : ClientError("client.primary_contact_required");
     public sealed record UnknownContact() : ClientError("client.unknown_contact");

@@ -8,6 +8,23 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 public sealed class ContactKindTests
 {
     [Fact]
+    public void Create_UnknownFormat_RejectsUnsupportedStorageValue()
+    {
+        var result = ContactKindRules.Create(new(Guid(21)), "Контакт", (ContactFormat)99);
+
+        AssertError(new ModelError.InvalidValue(), result);
+        Assert.Contains(result.Error.Issues, issue => issue.Field == "format");
+    }
+
+    [Fact]
+    public void ChangeFormat_UnknownFormat_RejectsUnsupportedStorageValue()
+    {
+        var result = PhoneKind.ChangeFormat(false, (ContactFormat)99);
+
+        AssertError(new ModelError.InvalidValue(), result);
+    }
+
+    [Fact]
     public void ChangeFormat_UsedKind_RejectsFormatChange() => AssertError(new ClientError.UsedContactFormat(), PhoneKind.ChangeFormat(true, ContactFormat.Email));
     [Fact]
     public void Rename_UsedKind_PreservesIdentityAndFormat()

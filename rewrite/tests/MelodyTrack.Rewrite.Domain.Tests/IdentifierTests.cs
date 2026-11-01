@@ -27,7 +27,7 @@ public sealed class IdentifierTests
     [Fact]
     public void Parse_ClientIdentifier_RoundTripsValue() => Assert.Equal(TestData.ClientId, global::MelodyTrack.Rewrite.Domain.ClientId.Parse(TestData.ClientId.Value.ToString()));
     [Fact]
-    public void Create_DefaultClientIdentifier_RejectsEntity() => AssertError(new IdentifierError.Empty(), ClientRules.Create(default, Profile, [Contact(30, true)]));
+    public void Create_DefaultClientIdentifier_RejectsEntity() => AssertError(new IdentifierError.Empty(), ClientRules.Create(default, Profile, [Contact(30, true)], TestData.Now));
     [Fact]
     public void Create_DefaultReferences_ReturnsEachInvalidField()
     {

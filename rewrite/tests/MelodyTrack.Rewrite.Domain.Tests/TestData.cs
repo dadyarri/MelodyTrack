@@ -41,8 +41,8 @@ internal static class TestData
     internal static AvailabilitySnapshot Available(Appointment appointment) => new([appointment.Interval], [], [], [], []);
     internal static ContactKind PhoneKind => Ok(ContactKindRules.Create(new(Guid(21)), "Телефон", ContactFormat.Phone));
     internal static ClientContact Contact(int number, bool primary) => Ok(ClientContactRules.Create(new(Guid(number)), PhoneKind, "+44 20 1234 5678", null, primary));
-    internal static ClientProfile Profile => new(Ok(PersonName.Create("Иван", "Иванов", null)), null, new(Guid(22)), "Служебные заметки");
-    internal static Client MakeClient() => Ok(ClientRules.Create(ClientId, Profile, [Contact(30, true)]));
+    internal static ClientProfile Profile => new(Ok(PersonName.Create("Иван", "Иванов", null)), null, new ClientSourceId(Guid(22)), "Служебные заметки");
+    internal static Client MakeClient() => Ok(ClientRules.Create(ClientId, Profile, [Contact(30, true)], TestData.Now));
     internal static Service MakeService(decimal amount = 1000m, bool consultation = false) => Ok(ServiceRules.Create(ServiceId, "Гитара", Duration(60), consultation, Ok(ServicePrice.Create(Now, amount))));
     internal static Staff MakeStaff() => Ok(StaffRules.Create(StaffId, "Преподаватель", StaffRole.Teacher, true));
 }

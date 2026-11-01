@@ -20,7 +20,11 @@ public static class ContactKindRules
     public static Result<ContactKind, ErrorList> Create(ContactKindId id, string? name, ContactFormat format)
     {
         var validName = Validation.Required("name", name);
-        var validation = Validation.Collect(Validation.Identifier(id.Value), Validation.Check(validName));
+        var validation = new ErrorListBuilder()
+            .Add(Validation.Identifier(id.Value))
+            .Add(Validation.Check(validName))
+            .AddIf(!Enum.IsDefined(format), new ModelError.InvalidValue(), "format")
+            .ToResult();
         if (validation.IsFailure) return validation.Error;
         return new ContactKind(id, validName.Value, format);
     }
@@ -38,6 +42,7 @@ public static class ContactKindRules
 
     public static Result<ContactKind, ErrorList> ChangeFormat(this ContactKind model, bool hasBeenUsed, ContactFormat format)
     {
+        if (!Enum.IsDefined(format)) return ErrorList.Single(new ModelError.InvalidValue(), "format");
         if (hasBeenUsed && format != model.Format) return ErrorList.Single(new ClientError.UsedContactFormat());
         return model with { Format = format };
     }
@@ -48,6 +53,20 @@ public static class ClientContactRules
     public static Result<ClientContact, ErrorList> Create(ClientContactId id, ContactKind kind, string? value, string? comment, bool isPrimary)
     {
         value = value?.Trim() ?? "";
+        var validation = Validate(id, kind, value, requireActiveKind: true);
+        if (validation.IsFailure) return validation.Error;
+        return new ClientContact(id, kind.Id, value, Validation.OptionalText(comment), isPrimary);
+    }
+
+    public static Result<ClientContact, ErrorList> Restore(ClientContactId id, ContactKind kind, string? value, string? comment, bool isPrimary)
+    {
+        var validation = Validate(id, kind, value?.Trim() ?? "", requireActiveKind: false);
+        if (validation.IsFailure) return validation.Error;
+        return new ClientContact(id, kind.Id, value!, comment, isPrimary);
+    }
+
+    private static UnitResult<ErrorList> Validate(ClientContactId id, ContactKind kind, string value, bool requireActiveKind)
+    {
         var valid = kind.Format switch
         {
             ContactFormat.Phone => !string.IsNullOrWhiteSpace(value) && value.Any(char.IsDigit)
@@ -57,11 +76,9 @@ public static class ClientContactRules
             ContactFormat.Link => Uri.IsWellFormedUriString(value, UriKind.Absolute),
             _ => false
         };
-        var validation = Validation.Collect(Validation.Identifier(id.Value),
-            kind.IsArchived ? UnitResult.Failure(ErrorList.Single(new ClientError.ContactKindArchived(), "kindId")) : UnitResult.Success<ErrorList>(),
+        return Validation.Collect(Validation.Identifier(id.Value), Validation.Identifier(kind.Id.Value, "kindId"),
+            requireActiveKind && kind.IsArchived ? UnitResult.Failure(ErrorList.Single(new ClientError.ContactKindArchived(), "kindId")) : UnitResult.Success<ErrorList>(),
             valid ? UnitResult.Success<ErrorList>() : UnitResult.Failure(ErrorList.Single(new ClientError.InvalidContactValue(), "value")));
-        if (validation.IsFailure) return validation.Error;
-        return new ClientContact(id, kind.Id, value, Validation.OptionalText(comment), isPrimary);
     }
 
     internal static ClientContact SetPrimary(this ClientContact model, bool primary) => model with { IsPrimary = primary };
@@ -71,7 +88,6 @@ public static class ClientRules
 {
     private static UnitResult<ErrorList> ValidateContacts(ImmutableArray<ClientContact> contacts)
     {
-        if (contacts.IsEmpty) return UnitResult.Failure(ErrorList.Single(new ClientError.ContactsRequired(), "contacts"));
         var errors = new ErrorListBuilder();
         if (contacts.Select(contact => contact.Id).Distinct().Count() != contacts.Length)
             errors.Add(new ClientError.DuplicateContact(), "contacts");
@@ -83,17 +99,35 @@ public static class ClientRules
         return errors.ToResult();
     }
 
-    public static Result<Client, ErrorList> Create(ClientId id, ClientProfile profile, IEnumerable<ClientContact> contacts)
+    public static Result<Client, ErrorList> Create(ClientId id, ClientProfile profile,
+        IEnumerable<ClientContact> contacts, DateTimeOffset createdAt)
     {
         var values = contacts.ToImmutableArray();
-        var validation = Validation.Collect(Validation.Identifier(id.Value), Validation.Identifier(profile.SourceId.Value, "sourceId"), ValidateContacts(values));
+        var validation = Validation.Collect(Validation.Identifier(id.Value), Validation.Identifier(profile.SourceId?.Value ?? Guid.Empty, "sourceId"), ValidateContacts(values));
         if (validation.IsFailure) return validation.Error;
-        return new Client(id, profile, values);
+        return new Client(id, profile, values) { CreatedAt = createdAt.ToUniversalTime() };
+    }
+
+    public static Result<Client, ErrorList> Restore(ClientId id, ClientProfile profile, IEnumerable<ClientContact> contacts,
+        DateTimeOffset createdAt, bool isLeadClosed, bool isArchived)
+    {
+        var values = contacts.ToImmutableArray();
+        var source = profile.SourceId is { } sourceId
+            ? Validation.Identifier(sourceId.Value, "sourceId")
+            : UnitResult.Success<ErrorList>();
+        var validation = Validation.Collect(Validation.Identifier(id.Value), source, ValidateContacts(values));
+        if (validation.IsFailure) return validation.Error;
+        return new Client(id, profile, values)
+        {
+            CreatedAt = createdAt.ToUniversalTime(),
+            IsLeadClosed = isLeadClosed,
+            IsArchived = isArchived
+        };
     }
 
     public static Result<Client, ErrorList> UpdateProfile(this Client model, ClientProfile profile)
     {
-        var validation = Validation.Identifier(profile.SourceId.Value, "sourceId");
+        var validation = Validation.Identifier(profile.SourceId?.Value ?? Guid.Empty, "sourceId");
         if (validation.IsFailure) return validation.Error;
         return model with { Profile = profile };
     }
