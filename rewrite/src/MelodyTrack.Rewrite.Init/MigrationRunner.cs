@@ -10,6 +10,10 @@ public static class MigrationRunner
 
     public static async Task PrepareAsync(NpgsqlConnection connection, CancellationToken cancellationToken)
     {
+        await using var sourceCommand = new NpgsqlCommand("SELECT to_regclass('public.\"__EFMigrationsHistory\"') IS NOT NULL", connection);
+        if (await sourceCommand.ExecuteScalarAsync(cancellationToken) is true)
+            throw new InvalidMigrationException("База содержит историю старого EF-приложения. Для rewrite требуется отдельная целевая база.");
+
         await using var lockCommand = new NpgsqlCommand("SELECT pg_try_advisory_lock($1)", connection);
         lockCommand.Parameters.AddWithValue(LockKey);
         if (await lockCommand.ExecuteScalarAsync(cancellationToken) is not true) throw new MigrationLockUnavailableException();

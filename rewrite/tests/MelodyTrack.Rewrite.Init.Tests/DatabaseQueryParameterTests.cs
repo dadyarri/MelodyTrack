@@ -1,3 +1,5 @@
+using System.Data;
+using MelodyTrack.Rewrite.Domain;
 using MelodyTrack.Rewrite.Persistence;
 using Npgsql;
 using Xunit;
@@ -6,6 +8,27 @@ namespace MelodyTrack.Rewrite.Init.Tests;
 
 public sealed class DatabaseQueryParameterTests
 {
+    [Fact]
+    public async Task WithParameter_UnknownContactFormat_RejectsBeforeOpeningConnection()
+    {
+        await using var source = NpgsqlDataSource.Create("Host=localhost;Database=builder_tests;Username=builder_tests");
+        var query = new Database(source).Query("SELECT @format");
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => query.WithParameter("format", (ContactFormat)99));
+    }
+
+    [Theory]
+    [InlineData(DbType.Int32)]
+    [InlineData(DbType.String)]
+    [InlineData(DbType.Object)]
+    public async Task WithParameter_ExplicitDbTypeForMappedEnum_RejectsBeforeOpeningConnection(DbType type)
+    {
+        await using var source = NpgsqlDataSource.Create("Host=localhost;Database=builder_tests;Username=builder_tests");
+        var query = new Database(source).Query("SELECT @format");
+
+        Assert.Throws<ArgumentException>(() => query.WithParameter("format", ContactFormat.Phone, type));
+    }
+
     [Theory]
     [InlineData("")]
     [InlineData(" ")]

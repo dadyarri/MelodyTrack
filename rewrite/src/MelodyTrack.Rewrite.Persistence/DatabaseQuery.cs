@@ -71,7 +71,8 @@ public sealed class DatabaseQuery
     /// <param name="value">Значение параметра, включая <see langword="null"/> для SQL NULL.</param>
     /// <param name="type">
     /// Необязательный тип ADO.NET. Если не задан, тип определяет Dapper; явный тип полезен
-    /// для значений <see langword="null"/>.
+    /// для значений <see langword="null"/>. Для отображаемого PostgreSQL enum оставьте null:
+    /// его тип и метки определяются через <see cref="DatabaseEnums.MapDomainEnums"/>.
     /// </param>
     /// <returns>Новый builder; исходный набор привязок не изменяется.</returns>
     /// <remarks>
@@ -80,7 +81,8 @@ public sealed class DatabaseQuery
     /// как параметры значений. Для типизированного идентификатора передавайте его <c>Value</c>.
     /// </remarks>
     /// <exception cref="ArgumentNullException"><paramref name="name"/> равен <see langword="null"/>.</exception>
-    /// <exception cref="ArgumentException">Имя параметра пусто или имеет недопустимый формат.</exception>
+    /// <exception cref="ArgumentException">Имя параметра пусто/недопустимо либо для PostgreSQL enum задан DbType.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Значение отображаемого enum не определено.</exception>
     /// <example>
     /// <code>
     /// await database.Query(updateSql)
@@ -99,7 +101,7 @@ public sealed class DatabaseQuery
             throw new ArgumentException("Имя параметра должно содержать буквы, цифры и подчёркивания и не начинаться с цифры.", nameof(name));
         }
 
-        return new DatabaseQuery(database, sql, parameters.SetItem(key, new(value, type)), transaction);
+        return new DatabaseQuery(database, sql, parameters.SetItem(key, new(DatabaseEnums.ParameterValue(value, type), type)), transaction);
     }
 
     /// <summary>

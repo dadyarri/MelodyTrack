@@ -12,6 +12,8 @@
     <Reference Include="Microsoft.Build.Utilities.Core" HintPath="$(MSBuildToolsPath)/Microsoft.Build.Utilities.Core.dll" />
     <ProjectReference Include="../../src/MelodyTrack.Rewrite.Init/MelodyTrack.Rewrite.Init.csproj" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0001_CreateClients.sql"
+          Link="Schema/0001_CreateClients.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />

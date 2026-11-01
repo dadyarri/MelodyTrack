@@ -31,6 +31,21 @@ public sealed class MigrationRunnerTests(PostgreSqlFixture fixture) : IClassFixt
     }
 
     [Fact]
+    public async Task Prepare_LegacyDatabase_RejectsBeforeCreatingTargetHistory()
+    {
+        var connectionString = await fixture.CreateDatabaseAsync(Token);
+        await using var connection = new NpgsqlConnection(connectionString);
+        await connection.OpenAsync(Token);
+        await using (var command = new NpgsqlCommand("CREATE TABLE public.\"__EFMigrationsHistory\" (\"MigrationId\" text PRIMARY KEY)", connection))
+            await command.ExecuteNonQueryAsync(Token);
+
+        await Assert.ThrowsAsync<InvalidMigrationException>(() => MigrationRunner.PrepareAsync(connection, Token));
+
+        Assert.True(await Scalar<bool>(connection, "SELECT to_regclass('public.schema_migrations') IS NULL"));
+        Assert.True(await Scalar<bool>(connection, "SELECT to_regclass('public.\"__EFMigrationsHistory\"') IS NOT NULL"));
+    }
+
+    [Fact]
     public Task Apply_ValidSql_CommitsDataAndHistory() => WithDatabase(async connection =>
     {
         var step = Migration(1, "CREATE TABLE probe (value integer); INSERT INTO probe VALUES (42);");

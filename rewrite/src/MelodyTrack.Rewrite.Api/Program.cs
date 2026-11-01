@@ -11,7 +11,7 @@ builder.Services.AddSingleton<NpgsqlDataSource>(services =>
         throw new InvalidOperationException("Не задана строка подключения ConnectionStrings:Database.");
     }
 
-    return NpgsqlDataSource.Create(connectionString);
+    return new NpgsqlDataSourceBuilder(connectionString).MapDomainEnums().Build();
 });
 builder.Services.AddDatabase();
 var app = builder.Build();

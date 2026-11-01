@@ -6,7 +6,7 @@ namespace MelodyTrack.Rewrite.Init.Tests;
 
 public sealed class PostgreSqlFixture : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:16-alpine@sha256:4e6e670bb069649261c9c18031f0aded7bb249a5b6664ddec29c013a89310d50").Build();
+    private readonly PostgreSqlContainer container = new PostgreSqlBuilder("postgres:17-alpine@sha256:266d3c257594e195b309ae9d1805e54c788f1d7b375f56bf6c367aac6c917e7b").Build();
 
     public string ConnectionString(string database) => new NpgsqlConnectionStringBuilder(container.GetConnectionString())
     {

@@ -29,7 +29,7 @@ public static class ServiceCollectionExtensions
     /// <example>
     /// <code>
     /// builder.Services.AddSingleton&lt;NpgsqlDataSource&gt;(_ =&gt;
-    ///     NpgsqlDataSource.Create(connectionString));
+    ///     new NpgsqlDataSourceBuilder(connectionString).MapDomainEnums().Build());
     /// builder.Services.AddDatabase();
     ///
     /// var app = builder.Build();
