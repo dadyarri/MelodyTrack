@@ -1,3 +1,4 @@
+using MelodyTrack.Rewrite.Api;
 using MelodyTrack.Rewrite.Persistence;
 using Npgsql;
 
@@ -14,6 +15,7 @@ builder.Services.AddSingleton<NpgsqlDataSource>(services =>
     return new NpgsqlDataSourceBuilder(connectionString).MapDomainEnums().Build();
 });
 builder.Services.AddDatabase();
+builder.Services.AddPersonalDataProtection();
 var app = builder.Build();
 
 app.Run();
