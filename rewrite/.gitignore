@@ -6,3 +6,8 @@
 !.env.example
 appsettings.Local.json
 appsettings.*.local.json
+
+# Local verification artifacts (may contain detailed diagnostics).
+.artifacts/
+scripts/__pycache__/
+scripts/tests/__pycache__/
