@@ -1,3 +1,4 @@
+using MelodyTrack.Rewrite.Init.Import;
 using MelodyTrack.Rewrite.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -55,7 +56,9 @@ internal static class Program
                     logger.LogInformation("Миграция {MigrationName} применена.", migration.Name);
                 }
                 logger.LogInformation("Инициализация завершена. Применено миграций: {MigrationCount}.", pending.Length);
-                exitCode = 0;
+                exitCode = builder.Configuration.GetValue<bool>("Import:Clients")
+                    ? await ClientImportCommand.RunAsync(builder.Configuration, connection, logger, cancellationToken)
+                    : 0;
             }
         }
         catch (MigrationLockUnavailableException) { logger.LogError("Другой Init уже выполняет инициализацию этой базы данных."); }
