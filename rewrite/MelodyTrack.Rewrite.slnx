@@ -56,6 +56,7 @@
   </Folder>
   <Folder Name="/Solution Items/specification/Interface/">
     <File Path="../specification/design-guide.md" />
+    <File Path="../specification/employee-training.md" />
   </Folder>
   <Folder Name="/Solution Items/specification/Technical/">
     <File Path="../specification/architecture.md" />
