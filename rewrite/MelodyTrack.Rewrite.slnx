@@ -9,6 +9,58 @@
     <File Path="global.json" />
     <File Path="README.md" />
   </Folder>
+  <Folder Name="/Solution Items/docs/">
+    <File Path="docs/agent-infrastructure-audit.md" />
+    <File Path="docs/agent-validation.md" />
+    <File Path="docs/agent-workflow.md" />
+    <File Path="docs/client-import.md" />
+    <File Path="docs/client-storage.md" />
+    <File Path="docs/data-migration.md" />
+    <File Path="docs/domain-models.md" />
+    <File Path="docs/migration-map.md" />
+    <File Path="docs/open-questions.md" />
+    <File Path="docs/personal-data-storage.md" />
+    <File Path="docs/source-schema.md" />
+    <File Path="docs/specification-audit-2026-11-07.md" />
+    <File Path="docs/specification-audit.md" />
+    <File Path="docs/specification-consistency-audit.md" />
+    <File Path="docs/specification-inventory-2026-11-07.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/">
+    <File Path="../specification/AGENTS.md" />
+    <File Path="../specification/README.md" />
+    <File Path="../specification/decisions.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/Product/">
+    <File Path="../specification/product.md" />
+    <File Path="../specification/capabilities.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/Access/">
+    <File Path="../specification/access.md" />
+    <File Path="../specification/access-questions.md" />
+    <File Path="../specification/authentication.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/School/">
+    <File Path="../specification/domain.md" />
+    <File Path="../specification/clients.md" />
+    <File Path="../specification/appointments.md" />
+    <File Path="../specification/scheduling.md" />
+    <File Path="../specification/finances.md" />
+    <File Path="../specification/subscriptions.md" />
+    <File Path="../specification/tasks.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/Learning/">
+    <File Path="../specification/courses.md" />
+    <File Path="../specification/documents-and-widgets.md" />
+    <File Path="../specification/practice-and-gamification.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/Interface/">
+    <File Path="../specification/design-guide.md" />
+  </Folder>
+  <Folder Name="/Solution Items/specification/Technical/">
+    <File Path="../specification/architecture.md" />
+    <File Path="../specification/migration-and-acceptance.md" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/MelodyTrack.Rewrite.Api/MelodyTrack.Rewrite.Api.csproj" />
     <Project Path="src/MelodyTrack.Rewrite.Application/MelodyTrack.Rewrite.Application.csproj" />
