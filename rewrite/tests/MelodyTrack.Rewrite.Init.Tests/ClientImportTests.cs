@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text;
+using MelodyTrack.Rewrite.Domain;
 using MelodyTrack.Rewrite.Init.Import;
 using MelodyTrack.Rewrite.Persistence.Clients;
 using MelodyTrack.Rewrite.Persistence.Import;
@@ -12,16 +13,16 @@ namespace MelodyTrack.Rewrite.Init.Tests;
 
 public sealed class ClientImportTests(PostgreSqlFixture fixture) : IClassFixture<PostgreSqlFixture>
 {
-    internal const string LegacyKey = "legacy-test-only-master-key-32-characters";
-    internal const string EncryptedPhone = "enc:old:AAECAwQFBgcICQoL:x0b/a+KghRvLCsiTyTbRBzRd98w=:G1Y95tIjCIKiQMqMq5VLxw==";
+    private const string LegacyKey = "legacy-test-only-master-key-32-characters";
+    private const string EncryptedPhone = "enc:old:AAECAwQFBgcICQoL:x0b/a+KghRvLCsiTyTbRBzRd98w=:G1Y95tIjCIKiQMqMq5VLxw==";
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
-    internal static PersonalDataProtector Protector() => new("test", new Dictionary<string, string>
+    private static PersonalDataProtector Protector() => new("test", new Dictionary<string, string>
     {
         ["test"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
     });
 
-    internal static async Task ApplySchema(NpgsqlConnection connection)
+    private static async Task ApplySchema(NpgsqlConnection connection)
     {
         await MigrationRunner.PrepareAsync(connection, Token);
         var names = new[] { "0001_CreateClients.sql", "0002_CreateImportMappings.sql" };
@@ -65,31 +66,65 @@ public sealed class ClientImportTests(PostgreSqlFixture fixture) : IClassFixture
     }
 
     [Fact]
-    public Task Run_SharedContactsAndEmptyClient_PreservesStateAndRepeatsWithoutDuplicates() => WithDatabases(async (source, target) =>
+    public Task Run_ReadOnlySource_ReconcilesImportedClientsAndReplaysWithoutDuplicates() => WithDatabases(async (source, target) =>
     {
+        await Execute(source, "SET default_transaction_read_only=on");
+        const string sourceSnapshotSql = """
+            SELECT jsonb_build_object(
+                'sources', (SELECT jsonb_agg(row_to_json(s) ORDER BY "Id") FROM public."ClientSources" s),
+                'clients', (SELECT jsonb_agg(row_to_json(c) ORDER BY "Id") FROM public."Clients" c),
+                'contacts', (SELECT jsonb_agg(row_to_json(c) ORDER BY "Id") FROM public."ClientContacts" c))::text
+            """;
+        var sourceBefore = await Scalar<string>(source, sourceSnapshotSql);
         using var legacy = new LegacyPersonalDataReader(new Dictionary<string, string> { ["old"] = LegacyKey });
         using var protector = Protector();
         var fields = new ClientDataProtection(protector);
 
         var first = await ClientImport.RunAsync(source, target, legacy, fields, Token);
+        var mappedIds = await Scalar<Guid[]>(target, "SELECT ARRAY(SELECT target_id FROM public.import_id_map ORDER BY target_id)");
         var second = await ClientImport.RunAsync(source, target, legacy, fields, Token);
 
         Assert.True(first.Complete);
+        Assert.Equal(1, first.SourceRows);
+        Assert.Equal(3, first.ClientRows);
+        Assert.Equal(2, first.ContactRows);
+        Assert.Equal(1, first.SourcesInserted);
         Assert.Equal(3, first.ClientsInserted);
         Assert.Equal(4, first.ContactsInserted);
         Assert.True(second.Complete);
+        Assert.Equal(0, second.SourcesInserted);
         Assert.Equal(0, second.ClientsInserted);
         Assert.Equal(0, second.ContactsInserted);
         Assert.Equal(3, second.ClientsMatched);
         Assert.Equal(1, second.SourcesMatched);
         Assert.Equal(8L, await Scalar<long>(target, "SELECT count(*) FROM public.import_id_map"));
+        Assert.Equal(mappedIds, await Scalar<Guid[]>(target, "SELECT ARRAY(SELECT target_id FROM public.import_id_map ORDER BY target_id)"));
+        Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.client_sources"));
+        Assert.Equal(3L, await Scalar<long>(target, "SELECT count(*) FROM public.clients"));
+        Assert.Equal(4L, await Scalar<long>(target, "SELECT count(*) FROM public.client_contacts"));
         Assert.Equal(2L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE source_id IS NULL"));
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE created_at='-infinity'::timestamptz"));
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE birthdate='2000-02-29'"));
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE is_lead_closed"));
         Assert.Equal(0L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE is_archived"));
         Assert.Equal(0L, await Scalar<long>(target, "SELECT count(*) FROM public.client_contacts WHERE protected_value NOT LIKE 'mtpii:1:%'"));
-        Assert.Equal(3L, await Scalar<long>(source, "SELECT count(*) FROM public.\"Clients\""));
+        await using (var command = new NpgsqlCommand("SELECT client_id,id,protected_value,protected_comment,is_primary FROM public.client_contacts", target))
+        await using (var reader = await command.ExecuteReaderAsync(Token))
+        {
+            var values = new List<string>();
+            while (await reader.ReadAsync(Token))
+            {
+                values.Add(fields.UnprotectValue(new ClientId(reader.GetGuid(0)), new ClientContactId(reader.GetGuid(1)), reader.GetString(2)));
+                Assert.True(reader.IsDBNull(3));
+                Assert.True(reader.GetBoolean(4));
+            }
+            Assert.Equal(new[] { "  +44 20 1234 5678  ", "  +44 20 1234 5678  ", "parent@example.test", "parent@example.test" },
+                values.Order(StringComparer.Ordinal));
+        }
+        Assert.Equal(sourceBefore, await Scalar<string>(source, sourceSnapshotSql));
+        Assert.Equal("on", await Scalar<string>(source, "SHOW default_transaction_read_only"));
+        var writeError = await Assert.ThrowsAsync<PostgresException>(() => Execute(source, "DELETE FROM public.\"Clients\""));
+        Assert.Equal(PostgresErrorCodes.ReadOnlySqlTransaction, writeError.SqlState);
     });
 
     [Fact]

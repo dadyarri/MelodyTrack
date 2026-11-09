@@ -13,6 +13,22 @@ public sealed class ClientDataProtection(PersonalDataProtector protector)
     /// <summary>Читает заметки только в контексте исходного клиента.</summary>
     public string? UnprotectNotes(ClientId clientId, string? notes) => protector.Unprotect(notes, NotesContext(clientId));
 
+    /// <summary>Защищает предыдущее значение в отдельном контексте записи истории.</summary>
+    public string? ProtectNotesBefore(ClientId clientId, Guid entryId, string? notes) =>
+        protector.Protect(notes, NotesHistoryContext(clientId, entryId) + "/before");
+
+    /// <summary>Читает предыдущее значение только для исходной записи истории.</summary>
+    public string? UnprotectNotesBefore(ClientId clientId, Guid entryId, string? notes) =>
+        protector.Unprotect(notes, NotesHistoryContext(clientId, entryId) + "/before");
+
+    /// <summary>Защищает новое значение независимо от предыдущего и текущего поля.</summary>
+    public string? ProtectNotesAfter(ClientId clientId, Guid entryId, string? notes) =>
+        protector.Protect(notes, NotesHistoryContext(clientId, entryId) + "/after");
+
+    /// <summary>Читает новое значение только для исходной записи истории.</summary>
+    public string? UnprotectNotesAfter(ClientId clientId, Guid entryId, string? notes) =>
+        protector.Unprotect(notes, NotesHistoryContext(clientId, entryId) + "/after");
+
     /// <summary>Защищает значение контакта с привязкой к клиенту, контакту и полю.</summary>
     public string ProtectValue(ClientId clientId, ClientContactId contactId, string value)
     {
@@ -46,5 +62,12 @@ public sealed class ClientDataProtection(PersonalDataProtector protector)
         if (clientId.Value == Guid.Empty) throw new ArgumentException("Требуется непустой ID клиента.", nameof(clientId));
         if (contactId.Value == Guid.Empty) throw new ArgumentException("Требуется непустой ID контакта.", nameof(contactId));
         return $"clients/{clientId.Value:N}/contacts/{contactId.Value:N}";
+    }
+
+    private static string NotesHistoryContext(ClientId clientId, Guid entryId)
+    {
+        if (clientId.Value == Guid.Empty) throw new ArgumentException("Требуется непустой ID клиента.", nameof(clientId));
+        if (entryId == Guid.Empty) throw new ArgumentException("Требуется непустой ID записи истории.", nameof(entryId));
+        return $"clients/{clientId.Value:N}/notes-history/{entryId:N}";
     }
 }

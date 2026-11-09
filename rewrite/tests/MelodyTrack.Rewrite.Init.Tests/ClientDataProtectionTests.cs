@@ -108,4 +108,51 @@ public sealed class ClientDataProtectionTests
 
         Assert.Throws<ArgumentException>(() => fields.ProtectValue(Owner, default, "value"));
     }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("  history text  ")]
+    public void ProtectAndUnprotectNotesHistory_OptionalText_PreservesValue(string? value)
+    {
+        using var protector = Create();
+        var fields = new ClientDataProtection(protector);
+        var entryId = Contact.Value;
+
+        var before = fields.ProtectNotesBefore(Owner, entryId, value);
+        var after = fields.ProtectNotesAfter(Owner, entryId, value);
+
+        Assert.Equal(value, fields.UnprotectNotesBefore(Owner, entryId, before));
+        Assert.Equal(value, fields.UnprotectNotesAfter(Owner, entryId, after));
+        if (value is not null)
+        {
+            Assert.NotEqual(value, before);
+            Assert.NotEqual(value, after);
+        }
+    }
+
+    [Fact]
+    public void UnprotectNotesHistory_DifferentContext_RejectsSubstitution()
+    {
+        using var protector = Create();
+        var fields = new ClientDataProtection(protector);
+        var entryId = Contact.Value;
+        var before = fields.ProtectNotesBefore(Owner, entryId, "private text");
+        var after = fields.ProtectNotesAfter(Owner, entryId, "replacement");
+
+        Assert.Throws<CryptographicException>(() => fields.UnprotectNotesBefore(OtherOwner, entryId, before));
+        Assert.Throws<CryptographicException>(() => fields.UnprotectNotesBefore(Owner, OtherContact.Value, before));
+        Assert.Throws<CryptographicException>(() => fields.UnprotectNotesAfter(Owner, entryId, before));
+        Assert.Throws<CryptographicException>(() => fields.UnprotectNotesBefore(Owner, entryId, after));
+        Assert.Throws<CryptographicException>(() => fields.UnprotectNotes(Owner, before));
+    }
+
+    [Fact]
+    public void ProtectNotesHistory_EmptyEntryId_RejectsUnboundData()
+    {
+        using var protector = Create();
+        var fields = new ClientDataProtection(protector);
+
+        Assert.Throws<ArgumentException>(() => fields.ProtectNotesBefore(Owner, Guid.Empty, "text"));
+    }
 }

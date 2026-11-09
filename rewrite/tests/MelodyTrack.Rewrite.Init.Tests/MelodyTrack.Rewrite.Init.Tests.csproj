@@ -16,6 +16,20 @@
           Link="Schema/0001_CreateClients.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0002_CreateImportMappings.sql"
           Link="Schema/0002_CreateImportMappings.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0003_CreateClientNotesHistory.sql"
+          Link="Schema/0003_CreateClientNotesHistory.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0005_CreateMarketingCampaigns.sql"
+          Link="Schema/0005_CreateMarketingCampaigns.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0006_CreateExpenses.sql"
+          Link="Schema/0006_CreateExpenses.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0004_CreateEmployeeTrainingProgress.sql"
+          Link="Schema/0004_CreateEmployeeTrainingProgress.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0008_CreateStaffPermissions.sql"
+          Link="Schema/0008_CreateStaffPermissions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0009_CreateExpenseAuditMarkers.sql"
+          Link="Schema/0009_CreateExpenseAuditMarkers.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0010_CreateStaffAccessTokens.sql"
+          Link="Schema/0010_CreateStaffAccessTokens.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />
