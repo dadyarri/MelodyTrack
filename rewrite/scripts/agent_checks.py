@@ -133,8 +133,8 @@ def plan(scope, directory, filters=None):
                          ['dotnet', 'build', 'MelodyTrack.Rewrite.slnx', '--verbosity', 'minimal']})
     for item in PROJECTS if scope == 'all' else ([scope] if scope in PROJECTS else []):
         report_dir = directory / item
-        command = ['dotnet', 'test', '--project', PROJECTS[item], '--report-xunit',
-                   '--report-xunit-filename', 'result.xunit.xml', '--results-directory', str(report_dir),
+        command = ['dotnet', 'test', '--project', PROJECTS[item], '--report-xunit-xml',
+                   '--report-xunit-xml-filename', 'result.xunit.xml', '--results-directory', str(report_dir),
                    '--explicit', 'off']
         if scope == 'all':
             command += ['--no-build', '--no-restore']
