@@ -9,4 +9,5 @@ public closed record OperationError
     public sealed record Conflict(ErrorList Errors) : OperationError;
     public sealed record NotFound : OperationError;
     public sealed record Forbidden : OperationError;
+    public sealed record Unauthorized : OperationError;
 }

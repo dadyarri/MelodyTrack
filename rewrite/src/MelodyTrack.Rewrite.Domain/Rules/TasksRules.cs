@@ -55,13 +55,45 @@ public static class WorkItemRules
         return model with { Status = WorkItemStatus.Postponed, PostponedUntil = until.ToUniversalTime() };
     }
 
-    public static Result<WorkItem, ErrorList> Reopen(this WorkItem model, IEnumerable<WorkItem> others)
+    public static Result<WorkItem, ErrorList> Reopen(this WorkItem model, IEnumerable<WorkItem> others, WorkItemReopenContext current)
     {
         if (model.IsPending) return ErrorList.Single(new ModelError.InvalidState());
+        var problems = System.Collections.Immutable.ImmutableHashSet<WorkItemProblem>.Empty;
         if (model.Source is WorkItemSource.Calendar calendar && others.Any(item => item.Id != model.Id && item.IsPending &&
             item.Source is WorkItemSource.Calendar other && other.RuleId == calendar.RuleId))
-            return ErrorList.Single(new ModelError.DecisionRequired(), "existingOpenTask");
-        return model with { Status = WorkItemStatus.Open, CancellationReason = null, PostponedUntil = null };
+            problems = problems.Add(WorkItemProblem.AnotherCalendarTaskPending);
+        var relevance = RelevanceProblem(model.Source, current);
+        if (relevance is { } problem) problems = problems.Add(problem);
+        return model with { Status = WorkItemStatus.Open, CancellationReason = null, PostponedUntil = null, Problems = problems };
+    }
+
+    private static WorkItemProblem? RelevanceProblem(WorkItemSource source, WorkItemReopenContext current)
+    {
+        bool? relevant = source switch
+        {
+            WorkItemSource.OneOff => true,
+            WorkItemSource.Calendar calendar => current.CalendarRules.FirstOrDefault(rule => rule.Id == calendar.RuleId)?.IsEnabled,
+            WorkItemSource.LessonReminder reminder => current.Appointments.FirstOrDefault(item => item.Id == reminder.AppointmentId) is { } appointment
+                ? !appointment.IsDeleted && appointment.Status == AppointmentStatus.Scheduled : null,
+            WorkItemSource.Debt debt => current.ServiceBalances.TryGetValue((debt.ClientId, debt.ServiceId), out var balance) ? balance < 0 : null,
+            WorkItemSource.MissingResults results => results.Appointments.All(id => current.Appointments.Any(item => item.Id == id))
+                ? current.Appointments.Any(item => results.Appointments.Contains(item.Id) && !item.IsDeleted && item.Status == AppointmentStatus.Scheduled) : null,
+            WorkItemSource.VacationFollowUp followUp => current.Vacations.FirstOrDefault(item => item.Id == followUp.VacationId && item.Subject is VacationSubject.Client client && client.Id == followUp.ClientId) is { } vacation
+                ? !vacation.IsDeleted : null,
+            WorkItemSource.Birthday birthday => current.Clients.FirstOrDefault(item => item.Id == birthday.ClientId) is { } client
+                ? client.Profile.Birthdate is { } birthdate && birthdate.Month == birthday.Date.Month && birthdate.Day == birthday.Date.Day : null,
+            WorkItemSource.TeacherSchedule schedule => current.Staff.Any(item => item.Id == schedule.StaffId)
+                ? current.Appointments.Any(item => item.StaffId == schedule.StaffId && SchoolTime.Date(item.StartsAt) == schedule.Date && !item.IsDeleted && item.Status != AppointmentStatus.Cancelled) : null,
+            WorkItemSource.Absence absence => absence.Cause switch
+            {
+                AbsenceCause.Vacation cause => current.Vacations.FirstOrDefault(item => item.Id == cause.Id) is { } vacation ? !vacation.IsDeleted : null,
+                AbsenceCause.SchoolClosure cause => current.Closures.FirstOrDefault(item => item.Id == cause.Id) is { } closure ? !closure.IsDeleted : null
+            },
+            WorkItemSource.Reschedule moves => moves.Moves.Keys.All(id => current.Appointments.Any(item => item.Id == id))
+                ? current.Appointments.Any(item => moves.Moves.ContainsKey(item.Id) && !item.IsDeleted && item.Status == AppointmentStatus.Scheduled) : null,
+            WorkItemSource.SeriesConflict conflict => current.SeriesConflicts.Any(item => item.SeriesId == conflict.SeriesId && conflict.Occurrences.Contains(item.SequenceNumber) && item.Resolution is ConflictResolution.Pending)
+        };
+        return relevant switch { true => null, false => WorkItemProblem.SourceNoLongerRelevant, null => WorkItemProblem.SourceUnavailable };
     }
 
     public static WorkItem RefreshTemplate(this WorkItem model, TaskTemplate template, TaskTemplateScope scope) => !model.IsPending || model.TemplateId != template.Id || scope == TaskTemplateScope.NewOnly
@@ -72,7 +104,7 @@ public static class WorkItemRules
             Message = model.IndividualOverrides.Contains("message") ? model.Message : template.Message
         };
 
-    public static WorkItem CancelAutomatically(this WorkItem model, string reason) => model.IsPending
+    public static WorkItem CancelAutomatically(this WorkItem model, string reason) => model.IsPending && !model.IsProblematic
         ? model with { Status = WorkItemStatus.Cancelled, CancellationReason = reason, PostponedUntil = null } : model;
 
     public static Result<WorkItem, ErrorList> RecalculateReminder(this WorkItem model, Appointment appointment, TimeSpan lead, DateTimeOffset now)
@@ -88,7 +120,8 @@ public static class WorkItemRules
         catch (ArgumentOutOfRangeException) { return ErrorList.Single(new TimeError.OutOfRange()); }
     }
 
-    public static WorkItem RefreshDebt(this WorkItem model, decimal balance) => model.Source is WorkItemSource.Debt && balance >= 0
+    public static WorkItem RefreshDebt(this WorkItem model, ClientId clientId, ServiceId serviceId, decimal balance) =>
+        model.Source is WorkItemSource.Debt debt && debt.ClientId == clientId && debt.ServiceId == serviceId && balance >= 0
         ? model.CancelAutomatically("debt.repaid") : model;
 
     public static Result<WorkItem, ErrorList> AddMoves(this WorkItem model, ClientId clientId, IEnumerable<KeyValuePair<AppointmentId, AppointmentMove>> moves)

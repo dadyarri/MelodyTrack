@@ -51,10 +51,10 @@ public static class WorkItemOperations
         return WorkItemRules.Postpone(model, until, now);
     }
 
-    public static Result<WorkItem, ErrorList> Reopen(this WorkItem model, Actor actor, IEnumerable<WorkItem> others)
+    public static Result<WorkItem, ErrorList> Reopen(this WorkItem model, Actor actor, IEnumerable<WorkItem> others, WorkItemReopenContext current)
     {
         if (!actor.IsReception()) return ErrorList.Single(new ModelError.Forbidden());
-        return WorkItemRules.Reopen(model, others);
+        return WorkItemRules.Reopen(model, others, current);
     }
 }
 

@@ -16,9 +16,9 @@ public closed record VacationSubject
 
 public sealed record Vacation
 {
-    internal Vacation(VacationId id, VacationSubject subject, TimeInterval period, VacationRequestId? requestId)
+    internal Vacation(VacationId id, VacationSubject subject, TimeInterval period, VacationRequestId? requestId, string? comment)
     {
-        Id = id; Subject = subject; Period = period; RequestId = requestId;
+        Id = id; Subject = subject; Period = period; RequestId = requestId; Comment = comment;
     }
 
     public VacationId Id { get; }
@@ -28,6 +28,8 @@ public sealed record Vacation
     public TimeInterval Period { get; internal init; }
 
     public VacationRequestId? RequestId { get; }
+
+    public string? Comment { get; }
 
     public bool IsDeleted { get; internal init; }
 }

@@ -19,6 +19,7 @@ public closed record Discount
 
 public closed record DiscountTerms
 {
+    public sealed record Payment : DiscountTerms;
     public sealed record Lessons : DiscountTerms
     {
         private Lessons(int count) => Count = count;

@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using CSharpFunctionalExtensions;
 using MelodyTrack.Rewrite.Domain.Rules;
 
 namespace MelodyTrack.Rewrite.Domain;
@@ -52,11 +53,21 @@ public static class Availability
 
 public static class AbsenceEffects
 {
-    public static ImmutableArray<Appointment> ApplyVacation(Vacation vacation, IEnumerable<Appointment> appointments) => appointments.Select(appointment =>
-        !vacation.IsDeleted && Availability.MatchesSubject(appointment, vacation.Subject) && appointment.Interval.Overlaps(vacation.Period)
-            ? appointment.CancelForAbsence(new AbsenceCause.Vacation(vacation.Id)) : appointment).ToImmutableArray();
+    public static Result<ImmutableArray<Appointment>, ErrorList> ApplyVacation(Vacation vacation, IEnumerable<Appointment> appointments)
+    {
+        var current = appointments.ToImmutableArray();
+        return current.Any(appointment => !vacation.IsDeleted && IsConflict(appointment) && Availability.MatchesSubject(appointment, vacation.Subject)
+            && appointment.Interval.Overlaps(vacation.Period))
+            ? ErrorList.Single(new AbsenceError.ConflictingAppointments()) : current;
+    }
 
-    public static ImmutableArray<Appointment> ApplyClosure(SchoolClosure closure, IEnumerable<Appointment> appointments) => appointments.Select(appointment =>
-        !closure.IsDeleted && appointment.Interval.Overlaps(closure.Period)
-            ? appointment.CancelForAbsence(new AbsenceCause.SchoolClosure(closure.Id)) : appointment).ToImmutableArray();
+    public static Result<ImmutableArray<Appointment>, ErrorList> ApplyClosure(SchoolClosure closure, IEnumerable<Appointment> appointments)
+    {
+        var current = appointments.ToImmutableArray();
+        return current.Any(appointment => !closure.IsDeleted && IsConflict(appointment) && appointment.Interval.Overlaps(closure.Period))
+            ? ErrorList.Single(new AbsenceError.ConflictingAppointments()) : current;
+    }
+
+    private static bool IsConflict(Appointment appointment) => !appointment.IsDeleted
+        && appointment.Status is AppointmentStatus.Scheduled or AppointmentStatus.Completed;
 }

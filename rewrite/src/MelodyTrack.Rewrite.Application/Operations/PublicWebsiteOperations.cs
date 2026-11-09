@@ -4,6 +4,15 @@ using MelodyTrack.Rewrite.Domain.Rules;
 
 namespace MelodyTrack.Rewrite.Application.Operations;
 
+public static class PublicServiceOperations
+{
+    public static Result<Service, ErrorList> SetPublicPrice(this Service service, decimal amount, Actor actor)
+    {
+        if (!actor.IsSuperuser()) return ErrorList.Single(new ModelError.Forbidden());
+        return ServiceRules.SetPublicPrice(service, amount);
+    }
+}
+
 public static class SchoolPublicContentOperations
 {
     public static Result<SchoolPublicContent, ErrorList> Create(string? name, string? description, string? callNumber, ExternalLink messenger, Actor actor)

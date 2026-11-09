@@ -22,25 +22,32 @@ public static class AppointmentOperations
         return UnitResult.Success<ErrorList>();
     }
 
-    public static Result<Appointment, ErrorList> Complete(this Appointment model, StaffRole role, DateTimeOffset now)
+    private static Result<Appointment, ErrorList> RecordPastChange(Appointment model, Result<Appointment, ErrorList> changed,
+        DateTimeOffset now, string? comment, StaffId? authorId)
     {
-        var permission = Permission(model, role, now);
-        if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.Complete(model, now);
+        if (changed.IsFailure) return changed.Error;
+        return AppointmentRules.RecordPastStateChange(model, changed.Value, now, comment, authorId);
     }
 
-    public static Result<Appointment, ErrorList> Burn(this Appointment model, StaffRole role, DateTimeOffset now)
+    public static Result<Appointment, ErrorList> Complete(this Appointment model, StaffRole role, DateTimeOffset now, string? comment = null, StaffId? authorId = null)
     {
         var permission = Permission(model, role, now);
         if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.Burn(model, now);
+        return RecordPastChange(model, AppointmentRules.Complete(model, now), now, comment, authorId);
     }
 
-    public static Result<Appointment, ErrorList> ClearResult(this Appointment model, StaffRole role, DateTimeOffset now)
+    public static Result<Appointment, ErrorList> Burn(this Appointment model, StaffRole role, DateTimeOffset now, string? comment = null, StaffId? authorId = null)
     {
         var permission = Permission(model, role, now);
         if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.ClearResult(model);
+        return RecordPastChange(model, AppointmentRules.Burn(model, now), now, comment, authorId);
+    }
+
+    public static Result<Appointment, ErrorList> ClearResult(this Appointment model, StaffRole role, DateTimeOffset now, string? comment = null, StaffId? authorId = null)
+    {
+        var permission = Permission(model, role, now);
+        if (permission.IsFailure) return permission.Error;
+        return RecordPastChange(model, AppointmentRules.ClearResult(model), now, comment, authorId);
     }
 
     public static Result<Appointment, ErrorList> Move(this Appointment model, StaffRole role, DateTimeOffset now, DateTimeOffset startsAt)
@@ -85,31 +92,17 @@ public static class AppointmentOperations
         return targetPermission.IsFailure ? targetPermission.Error : changed.Value;
     }
 
-    public static Result<Appointment, ErrorList> Cancel(this Appointment model, StaffRole role, DateTimeOffset now)
+    public static Result<Appointment, ErrorList> Cancel(this Appointment model, StaffRole role, DateTimeOffset now, string? comment = null, StaffId? authorId = null)
     {
         var permission = Permission(model, role, now);
         if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.Cancel(model);
+        return RecordPastChange(model, AppointmentRules.Cancel(model), now, comment, authorId);
     }
 
-    public static Result<Appointment, ErrorList> RestoreAfterAbsence(this Appointment model, StaffRole role, DateTimeOffset now, bool hasBlockers)
+    public static Result<Appointment, ErrorList> Delete(this Appointment model, StaffRole role, DateTimeOffset now, string? comment = null, StaffId? authorId = null)
     {
         var permission = Permission(model, role, now);
         if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.RestoreAfterAbsence(model, hasBlockers);
-    }
-
-    public static Result<Appointment, ErrorList> Delete(this Appointment model, StaffRole role, DateTimeOffset now)
-    {
-        var permission = Permission(model, role, now);
-        if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.Delete(model);
-    }
-
-    internal static Result<Appointment, ErrorList> CancelAsCompensationReplacement(this Appointment model, StaffRole role, DateTimeOffset now)
-    {
-        var permission = Permission(model, role, now);
-        if (permission.IsFailure) return permission.Error;
-        return AppointmentRules.CancelAsCompensationReplacement(model);
+        return RecordPastChange(model, AppointmentRules.Delete(model), now, comment, authorId);
     }
 }

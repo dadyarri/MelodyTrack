@@ -3,7 +3,7 @@ using CSharpFunctionalExtensions;
 
 namespace MelodyTrack.Rewrite.Domain;
 
-public enum ForecastUncertainty { SubscriptionValuation, PastAppointmentWithoutResult, MissingPrice, ReportingDateBoundary }
+public enum ForecastUncertainty { SubscriptionValuation, PastAppointmentWithoutResult, MissingPrice, ReportingDateBoundary, PaidReserveValuation }
 public sealed record ForecastLine(AppointmentId AppointmentId, Money? Value, ForecastUncertainty? Uncertainty);
 public sealed record MonthlyForecast
 {

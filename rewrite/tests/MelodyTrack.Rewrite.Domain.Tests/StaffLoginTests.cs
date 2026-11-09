@@ -9,6 +9,15 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 public sealed class StaffLoginTests
 {
     [Fact]
+    public void Create_PasskeyOnlyWithEnabledSecondFactorWithoutAuthenticator_RejectsCredentials()
+    {
+        var result = StaffLoginRules.Create(TestData.StaffId, "teacher", false, false, ["credential-id"], true);
+
+        AssertError(new ModelError.InvalidValue(), result);
+        Assert.Contains(result.Error.Issues, issue => issue.Field == "secondFactor");
+    }
+
+    [Fact]
     public void RequiredFactor_PasskeyPrimaryForAdministrator_RequiresAuthenticator()
     {
         var staff = MakeStaff().ChangeRole(StaffRole.Administrator);

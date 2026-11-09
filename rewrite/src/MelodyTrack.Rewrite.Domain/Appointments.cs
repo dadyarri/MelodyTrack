@@ -22,6 +22,8 @@ public closed record RoomChange
 
 public sealed record AppointmentPlanChange(DateTimeOffset? StartsAt, StaffId? StaffId, RoomChange Room);
 public sealed record SeriesMembership(SeriesId SeriesId, SequenceNumber SequenceNumber, ImmutableHashSet<AppointmentOverride> Overrides, SequenceNumber? Compensates);
+public sealed record AppointmentStateChange(StaffId AuthorId, DateTimeOffset OccurredAt, AppointmentStatus Before,
+    AppointmentStatus After, bool WasDeleted, bool IsDeleted, string Comment);
 
 public sealed record Appointment
 {
@@ -58,4 +60,6 @@ public sealed record Appointment
     public bool IsDeleted { get; internal init; }
 
     public LessonTopic? Topic { get; internal init; }
+
+    public ImmutableArray<AppointmentStateChange> StateHistory { get; internal init; } = [];
 }

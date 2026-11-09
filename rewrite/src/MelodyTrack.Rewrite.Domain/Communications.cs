@@ -66,18 +66,38 @@ public sealed record CalendarSubscription
     public bool IsRevoked { get; internal init; }
 }
 
-// Announcement audiences, lifetime and public display are still unspecified. Management belongs exclusively to server God Mode (D-294).
+public sealed record AnnouncementAudience(bool AllStaff, bool AllClients, bool BeforeSignIn,
+    ImmutableHashSet<StaffId> StaffIds, ImmutableHashSet<ClientId> ClientIds);
+
+// Management belongs exclusively to server God Mode (D-294), never to the ordinary superuser role.
 public sealed record Announcement
 {
-    internal Announcement(AnnouncementId id, LearningDocument content) { Id = id; Content = content; }
+    internal Announcement(AnnouncementId id, LearningDocument content, AnnouncementAudience audience,
+        DateTimeOffset endsAt, bool canDismiss)
+    { Id = id; Content = content; Audience = audience; EndsAt = endsAt.ToUniversalTime(); CanDismiss = canDismiss; }
 
     public AnnouncementId Id { get; }
 
     public LearningDocument Content { get; }
+
+    public AnnouncementAudience Audience { get; }
+
+    public DateTimeOffset EndsAt { get; }
+
+    public bool CanDismiss { get; }
 }
 
 public sealed record AuditLink(string Kind, Guid Id);
-public sealed record AuditChange(string Field, string? Before, string? After);
+// Values in the general journal are typed; personal text belongs to protected subject history.
+public closed record AuditChange
+{
+    public sealed record NotesChanged() : AuditChange;
+    public sealed record AppointmentStateChanged(AppointmentStatus Before, AppointmentStatus After, bool WasDeleted, bool IsDeleted) : AuditChange;
+    public sealed record ExpenseAmountChanged(Money? Before, Money? After) : AuditChange;
+    public sealed record ExpenseDateChanged(DateOnly? Before, DateOnly? After) : AuditChange;
+    public sealed record ExpenseCategoryChanged(ExpenseCategoryId? Before, ExpenseCategoryId? After) : AuditChange;
+    public sealed record ExpenseDescriptionChanged() : AuditChange;
+}
 public sealed record AuditFinancialEffect(string Description, decimal CashDelta, SubscriptionId? SubscriptionId, int UnitDelta);
 public sealed record AuditEntry
 {

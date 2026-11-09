@@ -93,11 +93,14 @@ public sealed class ClientRestorationTests
         var client = Ok(ClientRules.Restore(TestData.ClientId, Profile, [Contact(30, true)], Now,
             isLeadClosed: true, isArchived: true));
 
-        var updated = Ok(client.UpdateProfile(Profile with { Notes = "Новые заметки" }));
+        var birthdate = new DateOnly(2000, 2, 29);
+
+        var updated = Ok(client.UpdateProfile(Profile with { Birthdate = birthdate }));
 
         Assert.Equal(client.CreatedAt, updated.CreatedAt);
         Assert.True(updated.IsLeadClosed);
         Assert.True(updated.IsArchived);
-        Assert.Equal("Новые заметки", updated.Profile.Notes);
+        Assert.Equal(birthdate, updated.Profile.Birthdate);
+        Assert.Equal(client.Profile.Notes, updated.Profile.Notes);
     }
 }

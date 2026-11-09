@@ -51,7 +51,7 @@ public sealed class ValidationTests
     public void CreateAppointment_SeveralUnavailableReferences_ReturnsAllBlockers()
     {
         var room = Ok(RoomRules.Create(TestData.RoomId, "Зал", null)).Archive();
-        var result = Booking.CreateAppointment(new(Guid(103)), Ok(MakeClient().Archive(NoUsage)), Ok(MakeService().Archive(NoUsage)),
+        var result = Booking.CreateAppointment(new(Guid(103)), Ok(MakeClient().Archive(NoUsage)), Ok(MakeService().Archive(NoUsage, [], [])),
             MakeStaff().SetParticipation(false), room, Utc(5, 15));
         Assert.Equal(4, result.Error.Issues.Length);
         AssertError(new BookingError.ClientArchived(), result);
@@ -64,7 +64,7 @@ public sealed class ValidationTests
     public void Approve_ConflictingAppointmentsAndSeries_ReturnsBothBlockers()
     {
         var schedule = Ok(WorkingScheduleRules.Create(new(Guid(60)), TestData.StaffId, Date(5), [], [], []));
-        var result = Ok(schedule.Submit()).Approve(StaffRole.Superuser, true, true);
+        var result = Ok(schedule.Submit()).Approve(StaffRole.Superuser, Now, true, true);
         AssertError(new WorkingScheduleError.ConflictingAppointments(), result);
         AssertError(new WorkingScheduleError.ConflictingSeries(), result);
         Assert.Equal(2, result.Error.Issues.Length);

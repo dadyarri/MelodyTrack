@@ -33,7 +33,7 @@ public sealed class BookingTests
         Booking.CreateAppointment(new(Guid(103)), Ok(MakeClient().Archive(NoUsage)), Service(), MakeStaff(), null, Utc(5, 15)));
     [Fact]
     public void CreateSeries_ArchivedService_RejectsNewSeries() => AssertError(new BookingError.ServiceArchived(),
-        Booking.CreateSeries(new(Guid(104)), MakeClient(), Ok(Service().Archive(NoUsage)), MakeStaff(), null, Date(5), new SeriesEnd.OpenEnded(), Weekly));
+        Booking.CreateSeries(new(Guid(104)), MakeClient(), Ok(Service().Archive(NoUsage, [], [])), MakeStaff(), null, Date(5), new SeriesEnd.OpenEnded(), Weekly));
     [Fact]
     public void CreateAppointment_ArchivedRoom_RejectsAssignment() => AssertError(new BookingError.RoomArchived(),
         Booking.CreateAppointment(new(Guid(103)), MakeClient(), Service(), MakeStaff(), Room().Archive(), Utc(5, 15)));

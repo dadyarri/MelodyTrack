@@ -13,7 +13,8 @@ public static class StaffLoginRules
         var keys = passkeyIds.ToImmutableHashSet();
         if (keys.Any(string.IsNullOrWhiteSpace) || !hasPassword && keys.IsEmpty)
             return ErrorList.Single(new ModelError.InvalidValue(), "credentials");
-        if (secondFactorEnabled && !authenticatorEnabled && keys.IsEmpty) return ErrorList.Single(new ModelError.InvalidValue(), "secondFactor");
+        if (secondFactorEnabled && !authenticatorEnabled && (keys.IsEmpty || !hasPassword))
+            return ErrorList.Single(new ModelError.InvalidValue(), "secondFactor");
         return new StaffLogin(staffId, name.Value, hasPassword, authenticatorEnabled, keys, secondFactorEnabled || authenticatorEnabled);
     }
 }

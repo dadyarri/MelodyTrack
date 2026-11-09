@@ -57,7 +57,6 @@ public sealed record SeriesConflict
 }
 
 public sealed record SeriesFinish(Series Series, ImmutableArray<Appointment> Appointments);
-public sealed record CompensationRestoration(Appointment Original, Appointment Replacement);
 
 public static class SeriesEffects
 {

@@ -52,4 +52,6 @@ public sealed record WorkingSchedule
     public ImmutableArray<DatedBreak> DatedBreaks { get; internal init; }
 
     public WorkingScheduleStatus Status { get; internal init; } = WorkingScheduleStatus.Draft;
+
+    public DateTimeOffset? ApprovedAt { get; internal init; }
 }

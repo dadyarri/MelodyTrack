@@ -8,12 +8,11 @@ namespace MelodyTrack.Rewrite.Domain.Tests;
 
 public sealed class AppointmentTransitionTests
 {
-    private static AbsenceCause Cause => new AbsenceCause.Vacation(new(Guid(40)));
     [Fact]
     public void Complete_AtEndBoundary_SetsResultIdempotently()
     {
         var planned = MakeAppointment(30, Utc(5, 15));
-        var completed = Ok(planned.Complete(StaffRole.Administrator, Utc(5, 16)));
+        var completed = Ok(planned.Complete(StaffRole.Administrator, Utc(5, 16), "Проведено", TestData.StaffId));
         var repeated = Ok(completed.Complete(StaffRole.Administrator, Utc(5, 16)));
         Assert.Equal(AppointmentStatus.Completed, repeated.Status);
         Assert.Equal(planned.Id, repeated.Id);
@@ -29,18 +28,18 @@ public sealed class AppointmentTransitionTests
         var planned = MakeAppointment(30, Utc(5, 15));
         var february = new DateTimeOffset(2026, 2, 1, 0, 0, 0, TimeSpan.Zero);
         AssertError(new AppointmentError.OutsideEditableMonth(), planned.Complete(StaffRole.Administrator, february));
-        Assert.True(planned.Complete(StaffRole.Superuser, february).IsSuccess);
+        Assert.True(planned.Complete(StaffRole.Superuser, february, "Поздняя отметка", TestData.StaffId).IsSuccess);
     }
     [Fact]
-    public void Complete_UtcPreviousMonthButSameMoscowMonth_AllowsAdministrator() => Assert.True(MakeAppointment(30, Utc(31, 22)).Complete(StaffRole.Administrator, new(2026, 2, 1, 1, 0, 0, TimeSpan.Zero)).IsSuccess);
+    public void Complete_UtcPreviousMonthButSameMoscowMonth_AllowsAdministrator() => Assert.True(MakeAppointment(30, Utc(31, 22)).Complete(StaffRole.Administrator, new(2026, 2, 1, 1, 0, 0, TimeSpan.Zero), "Проведено", TestData.StaffId).IsSuccess);
     [Fact]
-    public void Burn_CompletedAppointment_RequiresClearingResult() => AssertError(new AppointmentError.InvalidState(), Ok(MakeAppointment(30, Utc(5, 15)).Complete(StaffRole.Superuser, Utc(5, 16))).Burn(StaffRole.Superuser, Utc(5, 16)));
+    public void Burn_CompletedAppointment_RequiresClearingResult() => AssertError(new AppointmentError.InvalidState(), Ok(MakeAppointment(30, Utc(5, 15)).Complete(StaffRole.Superuser, Utc(5, 16), "Проведено", TestData.StaffId)).Burn(StaffRole.Superuser, Utc(5, 16)));
     [Fact]
     public void Move_CompletedAppointment_RequiresClearingResult()
     {
-        var completed = Ok(MakeAppointment(30, Utc(5, 15)).Complete(StaffRole.Superuser, Utc(5, 16)));
+        var completed = Ok(MakeAppointment(30, Utc(5, 15)).Complete(StaffRole.Superuser, Utc(5, 16), "Проведено", TestData.StaffId));
         AssertError(new AppointmentError.ClearResultFirst(), completed.Move(StaffRole.Superuser, Utc(5, 16), Utc(6, 15)));
-        var moved = Ok(Ok(completed.ClearResult(StaffRole.Superuser, Utc(5, 16))).Move(StaffRole.Superuser, Utc(5, 16), Utc(6, 15)));
+        var moved = Ok(Ok(completed.ClearResult(StaffRole.Superuser, Utc(5, 16), "Ошибка даты", TestData.StaffId)).Move(StaffRole.Superuser, Utc(5, 16), Utc(6, 15)));
         Assert.Equal(completed.Id, moved.Id);
         Assert.Equal(AppointmentStatus.Scheduled, moved.Status);
     }
@@ -93,36 +92,9 @@ public sealed class AppointmentTransitionTests
         Assert.IsType<CancellationReason.Manual>(Assert.Single(cancelled.CancellationReasons));
     }
     [Fact]
-    public void CancelForAbsence_OverlappingCauses_PreservesBothAndCompensatesOnlyOneAppointment()
-    {
-        var second = new AbsenceCause.SchoolClosure(new(Guid(41)));
-        var cancelled = SeriesAppointment(30, 1, Utc(5, 15)).CancelForAbsence(Cause).CancelForAbsence(second).CancelForAbsence(Cause);
-        Assert.Equal(2, cancelled.CancellationReasons.Count);
-        Assert.False(cancelled.CountsTowardSeriesTarget());
-        Assert.Equal(0, SeriesEffects.CountedAppointments(MakeSeries(), [cancelled]));
-    }
-    [Fact]
-    public void CancelForAbsence_ManuallyCancelledAppointment_DoesNotReclassifyCancellation()
-    {
-        var manual = Ok(MakeAppointment(30, Utc(5, 15)).Cancel(StaffRole.Superuser, Now));
-        Assert.Equal(manual, manual.CancelForAbsence(Cause));
-    }
-    [Fact]
-    public void RestoreAfterAbsence_RemainingBlocker_RequiresResolution()
-    {
-        var cancelled = MakeAppointment(30, Utc(5, 15)).CancelForAbsence(Cause);
-        AssertError(new AppointmentError.RestorationBlocked(), cancelled.RestoreAfterAbsence(StaffRole.Superuser, Now, true));
-        var restored = Ok(cancelled.RestoreAfterAbsence(StaffRole.Superuser, Now, false));
-        Assert.Equal(AppointmentStatus.Scheduled, restored.Status);
-        Assert.Equal(cancelled.Id, restored.Id);
-    }
-    [Fact]
-    public void RestoreAfterAbsence_ManualCancellation_IsNotAutomaticallyRestorable() => AssertError(new AppointmentError.InvalidState(),
-        Ok(MakeAppointment(30, Utc(5, 15)).Cancel(StaffRole.Superuser, Now)).RestoreAfterAbsence(StaffRole.Superuser, Now, false));
-    [Fact]
     public void Delete_BurnedAppointment_RequiresClearingFinancialResult()
     {
-        var burned = Ok(MakeAppointment(30, Utc(5, 15)).Burn(StaffRole.Superuser, Utc(5, 16)));
+        var burned = Ok(MakeAppointment(30, Utc(5, 15)).Burn(StaffRole.Superuser, Utc(5, 16), "Неявка", TestData.StaffId));
         AssertError(new AppointmentError.ClearResultFirst(), burned.Delete(StaffRole.Superuser, Utc(5, 16)));
         Assert.True(burned.CountsTowardSeriesTarget());
     }

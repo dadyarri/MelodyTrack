@@ -33,9 +33,9 @@ public static class StaffInvitationOperations
         var accepted = StaffInvitationRules.Accept(model, staff, login, now);
         if (accepted.IsFailure) return accepted.Error;
         if (staff.IsBlocked || staff.IsArchived) return ErrorList.Single(new ModelError.InvalidValue(), "staff");
-        if (model.Role is StaffRole.Superuser or StaffRole.Administrator &&
-            (!login.AuthenticatorEnabled && login.PasskeyIds.IsEmpty || !login.HasPassword && !login.AuthenticatorEnabled))
-            return ErrorList.Single(new ModelError.InvalidState());
+        var method = login.HasPassword ? StaffSignInMethod.Password : StaffSignInMethod.Passkey;
+        var factor = login.RequiredFactor(staff, method);
+        if (factor.IsFailure) return factor.Error;
         return accepted;
     }
 }

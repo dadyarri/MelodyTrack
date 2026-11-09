@@ -4,6 +4,18 @@ namespace MelodyTrack.Rewrite.Domain.Rules;
 
 public static class AppointmentRules
 {
+    public static Result<Appointment, ErrorList> RecordPastStateChange(Appointment previous, Appointment changed,
+        DateTimeOffset now, string? comment, StaffId? authorId)
+    {
+        if (previous.Id != changed.Id) return ErrorList.Single(new ModelError.WrongOwner());
+        if (previous.StartsAt >= now || previous.Status == changed.Status && previous.IsDeleted == changed.IsDeleted) return changed;
+        var text = Validation.Required("comment", comment);
+        if (text.IsFailure) return text.Error;
+        if (authorId is not { } author || author.Value == Guid.Empty) return ErrorList.Single(new ModelError.InvalidValue(), "authorId");
+        return changed with { StateHistory = changed.StateHistory.Add(new(author, now.ToUniversalTime(), previous.Status,
+            changed.Status, previous.IsDeleted, changed.IsDeleted, text.Value)) };
+    }
+
     public static Result<Appointment, ErrorList> SelectTopic(this Appointment model, CourseEnrollment enrollment, Course course, TopicId? topicId)
     {
 
@@ -36,20 +48,6 @@ public static class AppointmentRules
     {
         var membership = new SeriesMembership(series.Id, sequenceNumber, [], null);
         return CreateScheduled(id, series.ClientId, series.ServiceId, series.Rule.StaffId, series.Rule.RoomId, startsAt, series.Duration, membership);
-    }
-
-    public static Result<Appointment, ErrorList> CreateCompensation(AppointmentId id, Series series, SequenceNumber sequenceNumber, DateTimeOffset startsAt, Appointment original)
-    {
-        if (series.End is not SeriesEnd.AfterAppointments || original.Series is not { } membership || membership.SeriesId != series.Id
-            || sequenceNumber.Value <= membership.SequenceNumber.Value || original.Status != AppointmentStatus.Cancelled
-            || !original.HasOnlyAbsenceReasons() || original.IsDeleted || original.ClientId != series.ClientId
-            || original.ServiceId != series.ServiceId || original.Duration != series.Duration)
-            return ErrorList.Single(new AppointmentError.CompensationNotNeeded());
-
-        var result = CreateFromSeries(id, series, sequenceNumber, startsAt);
-        if (result.IsFailure) return result.Error;
-        var appointment = result.Value;
-        return appointment with { Series = appointment.Series! with { Compensates = membership.SequenceNumber } };
     }
 
     private static Result<Appointment, ErrorList> SetResult(this Appointment model, DateTimeOffset now, AppointmentStatus result)
@@ -124,20 +122,6 @@ public static class AppointmentRules
         return model with { Status = AppointmentStatus.Cancelled, CancellationReasons = [new CancellationReason.Manual()] };
     }
 
-    public static Appointment CancelForAbsence(this Appointment model, AbsenceCause cause)
-    {
-        if (model.IsDeleted || model.Status is AppointmentStatus.Completed or AppointmentStatus.Burned || model.CancellationReasons.Any(reason => reason is not CancellationReason.Absence)) return model;
-        return model with { Status = AppointmentStatus.Cancelled, CancellationReasons = model.CancellationReasons.Add(new CancellationReason.Absence(cause)) };
-    }
-
-    public static Result<Appointment, ErrorList> RestoreAfterAbsence(this Appointment model, bool hasBlockers)
-    {
-        if (model.IsDeleted) return ErrorList.Single(new AppointmentError.Deleted());
-        if (model.Status != AppointmentStatus.Cancelled || !model.HasOnlyAbsenceReasons()) return ErrorList.Single(new AppointmentError.InvalidState());
-        if (hasBlockers) return ErrorList.Single(new AppointmentError.RestorationBlocked());
-        return model with { Status = AppointmentStatus.Scheduled, CancellationReasons = [] };
-    }
-
     public static Appointment CancelForSeriesEnd(this Appointment model, SeriesId seriesId, DateOnly fromDate)
     {
         if (model.Series?.SeriesId != seriesId || model.IsDeleted || model.Status != AppointmentStatus.Scheduled || SchoolTime.Date(model.StartsAt) < fromDate) return model;
@@ -150,16 +134,6 @@ public static class AppointmentRules
         if (model.Status is AppointmentStatus.Completed or AppointmentStatus.Burned) return ErrorList.Single(new AppointmentError.ClearResultFirst());
         return model with { IsDeleted = true };
     }
-
-    public static Result<Appointment, ErrorList> CancelAsCompensationReplacement(this Appointment model)
-    {
-        if (model.IsDeleted) return ErrorList.Single(new AppointmentError.Deleted());
-        if (model.Status != AppointmentStatus.Scheduled || model.Series?.Compensates is null || model.Series.Overrides.Count > 0)
-            return ErrorList.Single(new AppointmentError.ReplacementRequiresReview());
-        return model with { Status = AppointmentStatus.Cancelled, CancellationReasons = [new CancellationReason.CompensationReplaced()] };
-    }
-
-    internal static bool HasOnlyAbsenceReasons(this Appointment model) => model.CancellationReasons.Count > 0 && model.CancellationReasons.All(reason => reason is CancellationReason.Absence);
 
     public static bool CountsTowardSeriesTarget(this Appointment model) => !model.IsDeleted && (model.Status != AppointmentStatus.Cancelled
         || model.CancellationReasons.SetEquals([new CancellationReason.Manual()]));

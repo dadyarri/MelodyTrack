@@ -129,6 +129,8 @@ public static class ClientRules
     {
         var validation = Validation.Identifier(profile.SourceId?.Value ?? Guid.Empty, "sourceId");
         if (validation.IsFailure) return validation.Error;
+        if (!string.Equals(model.Profile.Notes, profile.Notes, StringComparison.Ordinal))
+            return ErrorList.Single(new ModelError.InvalidState(), "notes");
         return model with { Profile = profile };
     }
 

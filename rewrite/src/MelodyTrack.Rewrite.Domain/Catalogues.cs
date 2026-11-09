@@ -78,6 +78,8 @@ public sealed record Service
 
     public bool IsPublic { get; internal init; }
 
+    public decimal? PublicPrice { get; internal init; }
+
     public bool IsArchived { get; internal init; }
 
     public ImmutableArray<ServicePrice> Prices { get; internal init; }

@@ -36,7 +36,7 @@ internal static class TestData
     internal static Series MakeSeries(SeriesEnd? end = null) => Ok(SeriesRules.Create(new(Guid(5)), ClientId, ServiceId, Duration(60), Date(5), end ?? new SeriesEnd.OpenEnded(), new(Weekly, StaffId, RoomId)));
     internal static Appointment MakeAppointment(int number, DateTimeOffset startsAt) => Ok(AppointmentRules.Create(new(Guid(number)), ClientId, ServiceId, StaffId, RoomId, startsAt, Duration(60)));
     internal static Appointment SeriesAppointment(int number, long sequence, DateTimeOffset startsAt) => Ok(AppointmentRules.CreateFromSeries(new(Guid(number)), MakeSeries(), Number(sequence), startsAt));
-    internal static Vacation MakeVacation(int number, VacationSubject subject, DateTimeOffset start, DateTimeOffset end) => Ok(VacationRules.Create(new(Guid(number)), subject, Period(start, end), null));
+    internal static Vacation MakeVacation(int number, VacationSubject subject, DateTimeOffset start, DateTimeOffset end) => Ok(VacationRules.Create(new(Guid(number)), subject, Period(start, end), null, "Плановый отпуск"));
     internal static LocalTimeWindow Window(int start, int end) => Ok(LocalTimeWindow.Create(new(start, 0), new(end, 0)));
     internal static AvailabilitySnapshot Available(Appointment appointment) => new([appointment.Interval], [], [], [], []);
     internal static ContactKind PhoneKind => Ok(ContactKindRules.Create(new(Guid(21)), "Телефон", ContactFormat.Phone));

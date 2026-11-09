@@ -31,7 +31,7 @@ public static class WorkingScheduleRules
         };
     }
 
-    public static Result<WorkingSchedule, ErrorList> Approve(this WorkingSchedule model, bool hasConflictingAppointments, bool hasConflictingSeries)
+    public static Result<WorkingSchedule, ErrorList> Approve(this WorkingSchedule model, DateTimeOffset now, bool hasConflictingAppointments, bool hasConflictingSeries)
     {
 
         if (model.Status != WorkingScheduleStatus.Submitted) return ErrorList.Single(new WorkingScheduleError.InvalidState());
@@ -40,7 +40,7 @@ public static class WorkingScheduleRules
             .AddIf(hasConflictingSeries, new WorkingScheduleError.ConflictingSeries())
             .ToResult();
         if (validation.IsFailure) return validation.Error;
-        return model with { Status = WorkingScheduleStatus.Approved };
+        return model with { Status = WorkingScheduleStatus.Approved, ApprovedAt = now.ToUniversalTime(), EffectiveFrom = SchoolTime.Date(now) };
     }
 
     public static Result<WorkingSchedule, ErrorList> Reject(this WorkingSchedule model)
@@ -53,7 +53,7 @@ public static class WorkingScheduleRules
     public static Result<WorkingPeriods, ErrorList> PeriodsOn(this WorkingSchedule model, DateOnly date)
     {
         if (model.Status != WorkingScheduleStatus.Approved || date < model.EffectiveFrom) return new WorkingPeriods([], []);
-        DateOnly[] dates = date > model.EffectiveFrom ? [date.AddDays(-1), date] : [date];
+        DateOnly[] dates = date > DateOnly.MinValue ? [date.AddDays(-1), date] : [date];
         var hours = new List<TimeInterval>();
         var breaks = new List<TimeInterval>();
         var errors = new ErrorListBuilder();
@@ -61,7 +61,11 @@ public static class WorkingScheduleRules
         void Add(DateOnly day, LocalTimeWindow window, List<TimeInterval> destination)
         {
             var period = window.OnDate(day);
-            if (period.IsSuccess) destination.Add(period.Value);
+            if (period.IsSuccess)
+            {
+                if (day < date && SchoolTime.ToLocal(period.Value.EndsAt).DateTime <= date.ToDateTime(TimeOnly.MinValue)) return;
+                destination.Add(period.Value);
+            }
             else errors.AddRange(period.Error.Issues.Select(issue => new DomainIssue(new WorkingScheduleError.InvalidTime((TimeError)issue.Error))));
         }
 

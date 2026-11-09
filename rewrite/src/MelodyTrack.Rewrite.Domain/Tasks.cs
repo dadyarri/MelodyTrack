@@ -4,9 +4,10 @@ using CSharpFunctionalExtensions;
 namespace MelodyTrack.Rewrite.Domain;
 
 public enum WorkItemStatus { Open, Postponed, Completed, Cancelled }
+public enum WorkItemProblem { AnotherCalendarTaskPending, SourceNoLongerRelevant, SourceUnavailable }
 public enum TaskTemplateScope { NewOnly, OpenAndPostponed }
 public enum ReminderKind { Consultation, Homework, Appointment }
-public enum SystemTaskKind { ConsultationReminder, HomeworkReminder, DebtReminder, AbsenceNotification, RescheduleNotification, SeriesConflict }
+public enum SystemTaskKind { ConsultationReminder, HomeworkReminder, DebtReminder, AbsenceNotification, RescheduleNotification, SeriesConflict, AppointmentReminder, BirthdayGreeting, TeacherDailySchedule, MissingResults, VacationFollowUp }
 public sealed record AppointmentMove(DateTimeOffset OriginalStart, DateTimeOffset CurrentStart);
 
 public closed record WorkItemSource
@@ -14,7 +15,11 @@ public closed record WorkItemSource
     public sealed record OneOff : WorkItemSource;
     public sealed record Calendar(TaskRuleId RuleId, DateTimeOffset ScheduledFor) : WorkItemSource;
     public sealed record LessonReminder(AppointmentId AppointmentId, ReminderKind Kind) : WorkItemSource;
-    public sealed record Debt(ClientId ClientId) : WorkItemSource;
+    public sealed record Debt(ClientId ClientId, ServiceId ServiceId) : WorkItemSource;
+    public sealed record MissingResults(DateOnly Date, ImmutableHashSet<AppointmentId> Appointments) : WorkItemSource;
+    public sealed record VacationFollowUp(ClientId ClientId, VacationId VacationId) : WorkItemSource;
+    public sealed record Birthday(ClientId ClientId, DateOnly Date) : WorkItemSource;
+    public sealed record TeacherSchedule(StaffId StaffId, DateOnly Date, ImmutableHashSet<AppointmentId> Appointments) : WorkItemSource;
     public sealed record Absence(ClientId ClientId, AbsenceCause Cause) : WorkItemSource;
     public sealed record Reschedule(ClientId ClientId, ImmutableDictionary<AppointmentId, AppointmentMove> Moves) : WorkItemSource;
     public sealed record SeriesConflict(SeriesId SeriesId, ImmutableHashSet<SequenceNumber> Occurrences) : WorkItemSource;
@@ -25,7 +30,14 @@ public closed record WorkItemSource
         Calendar calendar => Validation.Identifier(calendar.RuleId.Value, "ruleId"),
         LessonReminder reminder => Validation.Collect(Validation.Identifier(reminder.AppointmentId.Value, "appointmentId"),
             Enum.IsDefined(reminder.Kind) ? UnitResult.Success<ErrorList>() : UnitResult.Failure(ErrorList.Single(new ModelError.InvalidValue(), "kind"))),
-        Debt debt => Validation.Identifier(debt.ClientId.Value, "clientId"),
+        Debt debt => Validation.Collect(Validation.Identifier(debt.ClientId.Value, "clientId"), Validation.Identifier(debt.ServiceId.Value, "serviceId")),
+        MissingResults results => results.Appointments.IsEmpty
+            ? UnitResult.Failure(ErrorList.Single(new ModelError.InvalidValue(), "appointments"))
+            : Validation.Collect(results.Appointments.Select(id => Validation.Identifier(id.Value, "appointmentId")).ToArray()),
+        VacationFollowUp followUp => Validation.Collect(Validation.Identifier(followUp.ClientId.Value, "clientId"), Validation.Identifier(followUp.VacationId.Value, "vacationId")),
+        Birthday birthday => Validation.Identifier(birthday.ClientId.Value, "clientId"),
+        TeacherSchedule schedule => Validation.Collect(Validation.Identifier(schedule.StaffId.Value, "staffId"),
+            Validation.Collect(schedule.Appointments.Select(id => Validation.Identifier(id.Value, "appointmentId")).ToArray())),
         Absence absence => Validation.Collect(Validation.Identifier(absence.ClientId.Value, "clientId"), absence.Cause switch
         {
             AbsenceCause.Vacation vacation => Validation.Identifier(vacation.Id.Value, "vacationId"),
@@ -83,7 +95,26 @@ public sealed record WorkItem
 
     public string? CancellationReason { get; internal init; }
 
+    public string? SubjectComment { get; internal init; }
+
+    public ImmutableHashSet<WorkItemProblem> Problems { get; internal init; } = [];
+
+    public bool IsProblematic => !Problems.IsEmpty;
+
     public ImmutableHashSet<string> IndividualOverrides { get; internal init; } = [];
+}
+
+/// <summary>Current facts for evaluating a manually reopened task; missing facts remain explicit problems.</summary>
+public sealed record WorkItemReopenContext
+{
+    public ImmutableArray<CalendarTaskRule> CalendarRules { get; init; } = [];
+    public ImmutableArray<Appointment> Appointments { get; init; } = [];
+    public ImmutableArray<Vacation> Vacations { get; init; } = [];
+    public ImmutableArray<SchoolClosure> Closures { get; init; } = [];
+    public ImmutableArray<Client> Clients { get; init; } = [];
+    public ImmutableArray<Staff> Staff { get; init; } = [];
+    public ImmutableArray<SeriesConflict> SeriesConflicts { get; init; } = [];
+    public ImmutableDictionary<(ClientId ClientId, ServiceId ServiceId), decimal> ServiceBalances { get; init; } = ImmutableDictionary<(ClientId, ServiceId), decimal>.Empty;
 }
 
 public closed record CalendarTaskPattern

@@ -32,6 +32,6 @@ public static class TeacherPublicProfileRules
 
 public static class PublicServiceRules
 {
-    public static PublicService? At(Service service, DateTimeOffset now) => service.IsPublic && !service.IsArchived && service.PriceAt(now) is { } price
+    public static PublicService? At(Service service, DateTimeOffset now) => service.IsPublic && !service.IsArchived && service.PublicPrice is { } price
         ? new(service.Id, service.PublicName, service.Duration, price) : null;
 }
