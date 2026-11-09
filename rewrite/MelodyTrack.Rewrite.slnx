@@ -13,6 +13,7 @@
     <File Path="docs/agent-infrastructure-audit.md" />
     <File Path="docs/agent-validation.md" />
     <File Path="docs/agent-workflow.md" />
+    <File Path="docs/backend-consistency-audit.md" />
     <File Path="docs/client-import.md" />
     <File Path="docs/client-storage.md" />
     <File Path="docs/data-migration.md" />
