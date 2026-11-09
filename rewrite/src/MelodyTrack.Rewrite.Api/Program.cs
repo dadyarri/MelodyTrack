@@ -1,5 +1,10 @@
 using MelodyTrack.Rewrite.Api;
+using MelodyTrack.Rewrite.Application;
 using MelodyTrack.Rewrite.Persistence;
+using MelodyTrack.Rewrite.Persistence.Access;
+using MelodyTrack.Rewrite.Persistence.Clients;
+using MelodyTrack.Rewrite.Persistence.Finance;
+using MelodyTrack.Rewrite.Persistence.Marketing;
 using Npgsql;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +21,22 @@ builder.Services.AddSingleton<NpgsqlDataSource>(services =>
 });
 builder.Services.AddDatabase();
 builder.Services.AddPersonalDataProtection();
+builder.Services.AddSingleton<IClientNotesStore, ClientNotesStore>();
+builder.Services.AddSingleton<ClientNotesService>();
+builder.Services.AddSingleton<IExpenseStore, ExpenseStore>();
+builder.Services.AddSingleton<ExpenseService>();
+builder.Services.AddSingleton<IMarketingCampaignStore, MarketingCampaignStore>();
+builder.Services.AddSingleton<MarketingCampaignService>();
+builder.Services.AddCurrentStaffAccess();
+builder.Services.AddSingleton<IStaffAccessTokenStore, StaffAccessTokenStore>();
+builder.Services.AddStaffAuthentication();
+builder.Services.AddSingleton<StaffPolicies>();
 var app = builder.Build();
 
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapStaffSessionEndpoints();
+app.MapStaffPoliciesEndpoints();
+app.MapClientNotesEndpoints();
+app.MapExpensesEndpoints();
 app.Run();

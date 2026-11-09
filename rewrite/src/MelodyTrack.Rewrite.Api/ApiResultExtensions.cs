@@ -29,7 +29,8 @@ public static class ApiResultExtensions
             OperationError.Validation validation => (400, "Ошибка проверки данных", validation.Errors),
             OperationError.Conflict conflict => (409, "Операция конфликтует с текущим состоянием", conflict.Errors),
             OperationError.NotFound => (404, "Объект не найден", (ErrorList?)null),
-            OperationError.Forbidden => (403, "Доступ запрещён", (ErrorList?)null)
+            OperationError.Forbidden => (403, "Доступ запрещён", (ErrorList?)null),
+            OperationError.Unauthorized => (401, "Требуется вход", (ErrorList?)null)
         };
         var problem = new ProblemDetails { Status = status, Title = title };
         if (errors is not null) problem.Extensions["errors"] = errors.Issues.Select(mapIssue).ToArray();
