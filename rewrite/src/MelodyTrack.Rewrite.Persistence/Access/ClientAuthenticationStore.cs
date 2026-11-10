@@ -8,7 +8,7 @@ namespace MelodyTrack.Rewrite.Persistence.Access;
 public sealed class ClientAuthenticationStore(Database database, IBrowserAccessContext browser) : IClientAuthenticationStore
 {
     /// <summary>Replaces or revokes a link and all its sessions after locking the current staff role and client.</summary>
-    public async Task<Result<bool, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, StaffId authorId, string? linkHash, CancellationToken cancellationToken)
+    public async Task<Result<ClientLinkWriteResult, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, StaffId authorId, string? linkHash, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (clientId.Value == Guid.Empty || commandId == Guid.Empty || authorId.Value == Guid.Empty || linkHash is not null && !OpaqueTokens.IsValid(linkHash))
@@ -32,7 +32,7 @@ public sealed class ClientAuthenticationStore(Database database, IBrowserAccessC
             """).WithParameter("id", commandId).GetSingleOrDefaultAsync<ReceiptRow>(cancellationToken);
         if (previous is not null)
             return previous.ClientId == clientId.Value && previous.AuthorId == authorId.Value && previous.Operation == operation
-                ? false : ErrorList.Single(new ModelError.InvalidState(), "commandId");
+                ? new ClientLinkWriteResult.AlreadyApplied() : ErrorList.Single(new ModelError.InvalidState(), "commandId");
         await transaction.Query("""
             UPDATE public.client_access_links SET revoked_at=COALESCE(revoked_at, clock_timestamp()) WHERE client_id=@id;
             UPDATE public.client_access_sessions s SET revoked_at=COALESCE(s.revoked_at, clock_timestamp())
@@ -47,7 +47,7 @@ public sealed class ClientAuthenticationStore(Database database, IBrowserAccessC
             """).WithParameter("id", commandId).WithParameter("client", clientId.Value).WithParameter("author", authorId.Value)
             .WithParameter("operation", operation).ExecuteAsync(cancellationToken);
         await transaction.CommitAsync(cancellationToken);
-        return true;
+        return new ClientLinkWriteResult.Applied();
     }
 
     /// <summary>Creates an independent remembered device session from an active personal link.</summary>

@@ -429,7 +429,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         var inactive = await RegisterTeacherAsync(host, "remembered-teacher");
         var current = await RegisterTeacherAsync(host, "current-teacher");
         using var foreignBrowser = host.CreateBrowser(cookies: establishedForeignBrowser);
-        StaffCredentialResult? foreignAccount = null;
+        StaffCredentialResponse? foreignAccount = null;
         if (establishedForeignBrowser)
             foreignAccount = await RegisterTeacherAsync(host, "foreign-browser-teacher", foreignBrowser);
 
@@ -494,14 +494,14 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         Assert.NotNull((await PostClientAsync(host, "/api/client-auth/sign-in", await ClientLinkAsync(host))).AccessToken);
     }
 
-    private static async Task<StaffCredentialResult> RegisterTeacherAsync(TestHost host, string login, HttpClient? browser = null)
+    private static async Task<StaffCredentialResponse> RegisterTeacherAsync(TestHost host, string login, HttpClient? browser = null)
     {
         var invitation = await InviteAsync(host, "teacher");
         var options = await BeginRegistrationAsync(host, invitation, login, browser: browser);
         return await PostStaffAsync(host, "/api/auth/staff/register/complete", new { challenge = options.Challenge }, browser: browser);
     }
 
-    private static async Task<StaffCredentialResult> RegisterPasskeyTeacherAsync(TestHost host, string login, WebAuthnTestAuthenticator authenticator)
+    private static async Task<StaffCredentialResponse> RegisterPasskeyTeacherAsync(TestHost host, string login, WebAuthnTestAuthenticator authenticator)
     {
         var invitation = await InviteAsync(host, "teacher");
         var options = await PostStaffAsync(host, "/api/auth/staff/register/options", new
@@ -519,15 +519,15 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     private static async Task<string> InviteAsync(TestHost host, string role) =>
         (await PostStaffAsync(host, "/api/auth/staff/invitations", new { role }, host.SuperToken)).Challenge!;
 
-    private static Task<StaffCredentialResult> BeginRegistrationAsync(TestHost host, string invitation, string login, bool authenticator = false,
+    private static Task<StaffCredentialResponse> BeginRegistrationAsync(TestHost host, string invitation, string login, bool authenticator = false,
         HttpClient? browser = null) => PostStaffAsync(host, "/api/auth/staff/register/options",
             new { link = invitation, login, password = Password, authenticator, secondFactor = authenticator }, browser: browser);
 
-    private static async Task<StaffCredentialResult> PostStaffAsync(TestHost host, string path, object body, string? access = null, HttpClient? browser = null)
+    private static async Task<StaffCredentialResponse> PostStaffAsync(TestHost host, string path, object body, string? access = null, HttpClient? browser = null)
     {
         using var response = await host.SendAsync(HttpMethod.Post, path, body, access, browser);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<StaffCredentialResult>(Token))!;
+        return (await response.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!;
     }
 
     private static async Task<string> ClientLinkAsync(TestHost host)

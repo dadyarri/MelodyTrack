@@ -75,26 +75,26 @@ public static class StaffCredentialEndpoints
         });
 
         Public(routes.MapPost("/register/options", async (StaffRegistrationRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Link) || !Present(request.Login) ? Unauthorized<StaffCredentialResult>()
+            !Present(request.Link) || !Present(request.Login) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.BeginRegistrationAsync(request.Link!, request.Login!, request.Password, request.Authenticator, request.SecondFactor, ct), true)));
         Public(routes.MapPost("/register/complete", async (StaffRegistrationCompleteRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Challenge) ? Unauthorized<StaffCredentialResult>()
+            !Present(request.Challenge) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.CompleteRegistrationAsync(request.Challenge!, request.AuthenticatorCode, Json(request.PasskeyResponse), ct), true)));
         Public(routes.MapPost("/password", async (StaffPasswordRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Login) || !Present(request.Password) ? Unauthorized<StaffCredentialResult>()
+            !Present(request.Login) || !Present(request.Password) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.PasswordAsync(request.Login!, request.Password!, ct), true)));
         Public(routes.MapPost("/passkey/options", async (StaffPasskeyOptionsRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Login) ? Unauthorized<StaffCredentialResult>() : Map(await flows.BeginPasskeyAsync(request.Login!, ct), true)));
+            !Present(request.Login) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.BeginPasskeyAsync(request.Login!, ct), true)));
         Public(routes.MapPost("/passkey/complete", async (StaffPasskeyCompleteRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Challenge) || Json(request.Response) is not { } response ? Unauthorized<StaffCredentialResult>()
+            !Present(request.Challenge) || Json(request.Response) is not { } response ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.CompletePasskeyAsync(request.Challenge!, response, ct), true)));
         Public(routes.MapPost("/factor", async (StaffFactorRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Challenge) ? Unauthorized<StaffCredentialResult>()
+            !Present(request.Challenge) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.FactorAsync(request.Challenge!, request.Code, Json(request.PasskeyResponse), ct), true)));
         Public(routes.MapPost("/refresh", async (StaffRefreshRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResult>() : Map(await flows.RefreshAsync(request.RefreshToken!, false, ct), true)));
+            !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.RefreshAsync(request.RefreshToken!, false, ct), true)));
         Public(routes.MapPost("/resume", async (StaffRefreshRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResult>() : Map(await flows.RefreshAsync(request.RefreshToken!, true, ct), true)));
+            !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.RefreshAsync(request.RefreshToken!, true, ct), true)));
 
         var own = routes.MapGroup("").RequireAuthorization();
         Describe(own.MapGet("/security", async (CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
@@ -107,37 +107,37 @@ public static class StaffCredentialEndpoints
                     session.Id, session.CreatedAt, session.RefreshExpiresAt, session.Id == current.SessionId, session.Revoked)).ToArray())));
         }));
         Describe(own.MapPut("/security/password", async (StaffPasswordChangeRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.NewPassword) ? Invalid<StaffCredentialResult>()
+            !Present(request.NewPassword) ? Invalid<StaffCredentialResponse>()
                 : Map(await flows.ChangePasswordAsync(current.Actor.Id, request.OldPassword, request.NewPassword!, ct))));
         Describe(own.MapPost("/security/authenticator/options", async (CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
             Map(await flows.BeginAuthenticatorAsync(current.Actor.Id, ct))));
         Describe(own.MapPost("/security/authenticator/confirm", async (StaffAuthenticatorConfirmationRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Challenge) || !Present(request.Code) ? Invalid<StaffCredentialResult>()
+            !Present(request.Challenge) || !Present(request.Code) ? Invalid<StaffCredentialResponse>()
                 : Map(await flows.ConfirmAuthenticatorAsync(current.Actor.Id, request.Challenge!, request.Code!, ct))));
         Describe(own.MapDelete("/security/authenticator", async ([Microsoft.AspNetCore.Mvc.FromBody] StaffAuthenticatorCodeRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Code) ? Invalid<StaffCredentialResult>() : Map(await flows.DisableAuthenticatorAsync(current.Actor.Id, request.Code!, ct))));
+            !Present(request.Code) ? Invalid<StaffCredentialResponse>() : Map(await flows.DisableAuthenticatorAsync(current.Actor.Id, request.Code!, ct))));
         Describe(own.MapPut("/security/second-factor", async (StaffSecondFactorRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
             Map(await flows.SetSecondFactorAsync(current.Actor.Id, request.Enabled, ct))));
         Describe(own.MapPost("/security/passkeys/options", async (CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
             Map(await flows.BeginAddPasskeyAsync(current.Actor.Id, ct))));
         Describe(own.MapPost("/security/passkeys/complete", async (StaffPasskeyCompleteRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Challenge) || Json(request.Response) is not { } response ? Invalid<StaffCredentialResult>()
+            !Present(request.Challenge) || Json(request.Response) is not { } response ? Invalid<StaffCredentialResponse>()
                 : Map(await flows.CompleteAddPasskeyAsync(current.Actor.Id, request.Challenge!, response, ct))));
         Describe(own.MapDelete("/security/passkeys/{credentialId}", async (string credentialId, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
             Map(await flows.RemovePasskeyAsync(current.Actor.Id, credentialId, ct))));
         Describe(own.MapDelete("/sessions", async (CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
             Map(await flows.RevokeAsync(current.Actor.Id, null, ct))));
         Describe(own.MapDelete("/sessions/{sessionId:guid}", async (Guid sessionId, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            sessionId == Guid.Empty ? Invalid<StaffCredentialResult>() : Map(await flows.RevokeAsync(current.Actor.Id, sessionId, ct))));
+            sessionId == Guid.Empty ? Invalid<StaffCredentialResponse>() : Map(await flows.RevokeAsync(current.Actor.Id, sessionId, ct))));
 
         var manage = routes.MapGroup("").RequireAuthorization(StaffAuthorizationExtensions.Policy(StaffPermission.PoliciesManage));
         Describe(manage.MapPost("/invitations", async (StaffInvitationRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            !TryRole(request.Role, out var role) ? Invalid<StaffCredentialResult>() : Map(await flows.InviteAsync(current.Actor, role, null, ct))));
+            !TryRole(request.Role, out var role) ? Invalid<StaffCredentialResponse>() : Map(await flows.InviteAsync(current.Actor, role, null, ct))));
         Describe(manage.MapPost("/{staffId:guid}/recovery", async (Guid staffId, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
-            staffId == Guid.Empty ? Invalid<StaffCredentialResult>() : Map(await flows.InviteAsync(current.Actor, StaffRole.Teacher, staffId, ct))));
+            staffId == Guid.Empty ? Invalid<StaffCredentialResponse>() : Map(await flows.InviteAsync(current.Actor, StaffRole.Teacher, staffId, ct))));
         Describe(manage.MapPut("/{staffId:guid}/access", async (Guid staffId, StaffAccessChangeRequest request, CurrentStaff current, StaffCredentialFlows flows, CancellationToken ct) =>
         {
-            if (staffId == Guid.Empty || request.Role is not null && !TryRole(request.Role, out _)) return Invalid<StaffCredentialResult>();
+            if (staffId == Guid.Empty || request.Role is not null && !TryRole(request.Role, out _)) return Invalid<StaffCredentialResponse>();
             StaffRole? role = request.Role is null ? null : Enum.Parse<StaffRole>(request.Role, true);
             return Map(await flows.SetAccessAsync(current.Actor, new(staffId), role, request.Blocked, ct));
         }));
@@ -160,6 +160,11 @@ public static class StaffCredentialEndpoints
     private static Results<Ok<T>, ProblemHttpResult> Unauthorized<T>() => Failure<T>(new OperationError.Unauthorized());
     private static Results<Ok<T>, ProblemHttpResult> Failure<T>(OperationError error) => Result.Failure<T, OperationError>(error)
         .ToHttpResult(TypedResults.Ok, issue => new ApiIssue(issue.Error.Code, "Операция аутентификации не выполнена", issue.Field));
+    private static Results<Ok<StaffCredentialResponse>, ProblemHttpResult> Map(Result<StaffCredentialResult, ErrorList> result,
+        bool credentials = false) => Map(result.IsSuccess
+            ? Result.Success<StaffCredentialResponse, ErrorList>(StaffCredentialResponse.From(result.Value))
+            : Result.Failure<StaffCredentialResponse, ErrorList>(result.Error), credentials);
+
     private static Results<Ok<T>, ProblemHttpResult> Map<T>(Result<T, ErrorList> result, bool credentials = false)
     {
         if (result.IsSuccess) return TypedResults.Ok(result.Value);

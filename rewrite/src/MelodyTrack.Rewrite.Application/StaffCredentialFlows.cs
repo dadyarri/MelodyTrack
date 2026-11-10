@@ -20,11 +20,17 @@ public sealed record StaffCredentialChallenge(string Hash, string Purpose, Guid?
 }
 public sealed record StaffCredentialSession(Guid Id, Guid StaffId, DateTimeOffset CreatedAt, DateTimeOffset RefreshExpiresAt,
     bool FactorVerified, bool Revoked);
-public sealed record StaffCredentialResult(string? AccessToken = null, string? RefreshToken = null,
-    string? Challenge = null, string? Factor = null, string? OptionsJson = null, string? AuthenticatorSecret = null,
-    Guid? StaffId = null, int ExpiresIn = 300)
+public closed record StaffCredentialResult
 {
-    public override string ToString() => nameof(StaffCredentialResult);
+    public sealed override string ToString() => nameof(StaffCredentialResult);
+
+    public sealed record Tokens(string AccessToken, string RefreshToken, Guid StaffId) : StaffCredentialResult;
+    public sealed record LinkIssued(string Challenge) : StaffCredentialResult;
+    public sealed record RegistrationOptions(string Challenge, string OptionsJson, string? AuthenticatorSecret) : StaffCredentialResult;
+    public sealed record PasskeyOptions(string Challenge, string OptionsJson) : StaffCredentialResult;
+    public sealed record AuthenticatorSetup(string Challenge, string AuthenticatorSecret) : StaffCredentialResult;
+    public sealed record FactorRequired(string Challenge, string Factor, string? OptionsJson) : StaffCredentialResult;
+    public sealed record Completed : StaffCredentialResult;
 }
 public sealed record StaffSecurityProfile(bool HasPassword, bool AuthenticatorEnabled, bool SecondFactorEnabled,
     IReadOnlyList<string> Passkeys, IReadOnlyList<StaffCredentialSession> Sessions);
@@ -83,7 +89,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         await tx.AddLinkAsync(new(Guid.CreateVersion7(), Hash(secret), role, recoveryStaff, tx.Now.AddHours(24), false), ct);
         await tx.AuditAsync(author.Id.Value, recoveryStaff, recoveryStaff is null ? StaffSecurityOperation.InvitationCreated
             : StaffSecurityOperation.RecoveryStarted, null, ct);
-        return new StaffCredentialResult(Challenge: secret);
+        return new StaffCredentialResult.LinkIssued(secret);
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> BeginRegistrationAsync(string link, string login, string? password,
@@ -102,7 +108,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         var options = security.CreatePasskeyRegistration(new(staffId), login.Trim(), []);
         var payload = JsonSerializer.Serialize(new RegistrationPayload(invitation.Id, account, options, invitation.Hash));
         var challenge = await ChallengeAsync(tx, "register", staffId, 0, payload, ct);
-        return new StaffCredentialResult(Challenge: challenge, OptionsJson: options, AuthenticatorSecret: rawSecret);
+        return new StaffCredentialResult.RegistrationOptions(challenge, options, rawSecret);
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> CompleteRegistrationAsync(string challenge, string? authenticatorCode,
@@ -159,8 +165,8 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         var account = await tx.AccountAsync(null, Normalize(login), ct);
         if (!Active(account) || account!.Passkeys.Length == 0) return Invalid<StaffCredentialResult>();
         var options = security.CreatePasskeyAssertion(account.Passkeys);
-        return new StaffCredentialResult(Challenge: await ChallengeAsync(tx, "primary-passkey", account.Id,
-            account.Revision, options, ct), OptionsJson: options);
+        return new StaffCredentialResult.PasskeyOptions(await ChallengeAsync(tx, "primary-passkey", account.Id,
+            account.Revision, options, ct), options);
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> CompletePasskeyAsync(string challenge, string response,
@@ -226,7 +232,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
             || newPassword.Length is < 8 or > 1024) return Invalid<StaffCredentialResult>();
         await tx.SaveAccountAsync(account with { PasswordHash = security.HashPassword(newPassword), Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.PasswordChanged, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> SetSecondFactorAsync(StaffId staff, bool enabled,
@@ -239,7 +245,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
             return Denied<StaffCredentialResult>();
         await tx.SaveAccountAsync(account! with { SecondFactorEnabled = enabled, Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.SecondFactorChanged, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> BeginAuthenticatorAsync(StaffId staff, CancellationToken cancellationToken) =>
@@ -250,7 +256,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         var secret = security.CreateAuthenticatorSecret();
         var challenge = await ChallengeAsync(tx, "enroll-totp", account!.Id, account.Revision,
             security.ProtectAuthenticator(staff, secret), ct);
-        return new StaffCredentialResult(Challenge: challenge, AuthenticatorSecret: secret);
+        return new StaffCredentialResult.AuthenticatorSetup(challenge, secret);
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> ConfirmAuthenticatorAsync(StaffId staff, string challenge, string code,
@@ -265,7 +271,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         await tx.SaveAccountAsync(account with { Authenticator = pending.Payload, SecondFactorEnabled = true,
             LastAuthenticatorStep = step.Value, Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.AuthenticatorEnabled, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> DisableAuthenticatorAsync(StaffId staff, string code,
@@ -279,7 +285,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         await tx.SaveAccountAsync(account with { Authenticator = null, LastAuthenticatorStep = -1,
             SecondFactorEnabled = account.Role != StaffRole.Teacher, Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.AuthenticatorDisabled, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> BeginAddPasskeyAsync(StaffId staff, CancellationToken cancellationToken) =>
@@ -288,7 +294,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         var account = await tx.AccountAsync(staff.Value, null, ct);
         if (!Active(account)) return Denied<StaffCredentialResult>();
         var options = security.CreatePasskeyRegistration(staff, account!.Login, account.Passkeys);
-        return new StaffCredentialResult(Challenge: await ChallengeAsync(tx, "enroll-passkey", account.Id, account.Revision, options, ct), OptionsJson: options);
+        return new StaffCredentialResult.PasskeyOptions(await ChallengeAsync(tx, "enroll-passkey", account.Id, account.Revision, options, ct), options);
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> CompleteAddPasskeyAsync(StaffId staff, string challenge, string response,
@@ -301,7 +307,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         if (key is null || account.Passkeys.Any(old => old.CredentialId == key.CredentialId)) return Invalid<StaffCredentialResult>();
         await tx.SaveAccountAsync(account with { Passkeys = [.. account.Passkeys, key], Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.PasskeyAdded, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> RemovePasskeyAsync(StaffId staff, string credentialId,
@@ -314,7 +320,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
             return Denied<StaffCredentialResult>();
         await tx.SaveAccountAsync(account with { Passkeys = keys, Revision = account.Revision + 1 }, false, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.PasskeyRemoved, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> RevokeAsync(StaffId staff, Guid? session, CancellationToken cancellationToken) =>
@@ -325,7 +331,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
             return Missing<StaffCredentialResult>();
         await tx.RevokeAsync(staff.Value, session, ct);
         await tx.AuditAsync(staff.Value, staff.Value, StaffSecurityOperation.SessionsRevoked, session, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     public Task<Result<StaffCredentialResult, ErrorList>> SetAccessAsync(Actor.Staff author, StaffId target, StaffRole? role,
@@ -337,7 +343,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         await tx.SetAccessAsync(target.Value, role, blocked, ct);
         if (blocked == true) await tx.RevokeAsync(target.Value, null, ct);
         await tx.AuditAsync(author.Id.Value, target.Value, StaffSecurityOperation.AccountAccessChanged, null, ct);
-        return new StaffCredentialResult();
+        return new StaffCredentialResult.Completed();
     }, cancellationToken);
 
     private async Task<StaffCredentialResult> IssueAsync(IStaffCredentialTransaction tx, StaffCredentialAccount account, bool verified, CancellationToken ct)
@@ -346,7 +352,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         var refresh = NewSecret();
         var session = await tx.CreateSessionAsync(account.Id, Hash(access), Hash(refresh), verified, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.SessionStarted, session.Id, ct);
-        return new(access, refresh, StaffId: account.Id);
+        return new StaffCredentialResult.Tokens(access, refresh, account.Id);
     }
     private async Task<Result<StaffCredentialResult, ErrorList>> AfterPrimaryAsync(IStaffCredentialTransaction tx,
         StaffCredentialAccount account, string method, bool verified, CancellationToken ct, string? resumeHash = null)
@@ -354,8 +360,8 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         if (!RequiresFactor(account) || verified) return await IssueAsync(tx, account, verified, ct);
         var options = method == "passkey" || account.Passkeys.Length == 0 ? null : security.CreatePasskeyAssertion(account.Passkeys);
         var payload = JsonSerializer.Serialize(new FactorPayload(method, options, resumeHash));
-        return new StaffCredentialResult(Challenge: await ChallengeAsync(tx, "factor", account.Id, account.Revision, payload, ct),
-            Factor: method == "passkey" ? "authenticator" : "authenticatorOrPasskey", OptionsJson: options);
+        return new StaffCredentialResult.FactorRequired(await ChallengeAsync(tx, "factor", account.Id, account.Revision, payload, ct),
+            method == "passkey" ? "authenticator" : "authenticatorOrPasskey", options);
     }
     private static async Task<StaffCredentialResult> RenewAsync(IStaffCredentialTransaction tx, StaffCredentialAccount account,
         StaffCredentialSession session, CancellationToken ct, bool activate = false)
@@ -366,7 +372,7 @@ public sealed class StaffCredentialFlows(IStaffCredentialStore store, ICredentia
         await tx.AddAccessAsync(session.Id, Hash(access), ct);
         if (activate) await tx.ActivateSessionAsync(session.Id, ct);
         await tx.AuditAsync(account.Id, account.Id, StaffSecurityOperation.SessionRefreshed, session.Id, ct);
-        return new(access, refresh, StaffId: account.Id);
+        return new StaffCredentialResult.Tokens(access, refresh, account.Id);
     }
     private long? VerifyAuthenticator(StaffCredentialAccount account, string? code, DateTimeOffset now)
     {

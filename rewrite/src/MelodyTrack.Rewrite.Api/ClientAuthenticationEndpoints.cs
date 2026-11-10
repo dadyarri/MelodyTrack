@@ -70,7 +70,11 @@ public static class ClientAuthenticationEndpoints
     {
         PreventCaching(context);
         var result = await authentication.ReplaceLinkAsync(new(clientId), request.CommandId, current.Actor, cancellationToken);
-        if (result.IsSuccess) return result.Value is { } secret ? TypedResults.Ok(secret) : TypedResults.NoContent();
+        if (result.IsSuccess) return result.Value switch
+        {
+            ClientLinkReplacement.Issued issued => TypedResults.Ok(issued.Link),
+            ClientLinkReplacement.AlreadyApplied => TypedResults.NoContent()
+        };
         return Result.Failure<ClientLinkSecret, OperationError>(MapError(result.Error)).ToHttpResult(TypedResults.Ok, MapIssue).Result;
     }
 

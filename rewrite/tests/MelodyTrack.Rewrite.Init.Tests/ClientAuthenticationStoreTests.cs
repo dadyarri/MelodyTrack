@@ -125,7 +125,7 @@ public sealed class ClientAuthenticationStoreTests(PostgreSqlFixture fixture) : 
         var replay = await authentication.ReplaceLinkAsync(Client, command, Administrator, Token);
 
         Assert.True(replay.IsSuccess);
-        Assert.Null(replay.Value);
+        Assert.IsType<ClientLinkReplacement.AlreadyApplied>(replay.Value);
         Assert.Null(await authentication.SignInAsync(original.Secret, Token));
         Assert.NotNull(await authentication.AuthenticateAsync(current.AccessToken, Token));
         Assert.NotNull(await authentication.SignInAsync(replacement.Secret, Token));
@@ -158,9 +158,9 @@ public sealed class ClientAuthenticationStoreTests(PostgreSqlFixture fixture) : 
             authentication.ReplaceLinkAsync(Client, command, Administrator, Token));
 
         Assert.All(results, result => Assert.True(result.IsSuccess));
-        var issued = Assert.IsType<ClientLinkSecret>(Assert.Single(results, result => result.Value is not null).Value);
-        Assert.Single(results, result => result.Value is null);
-        Assert.NotNull(await authentication.SignInAsync(issued.Secret, Token));
+        var issued = Assert.IsType<ClientLinkReplacement.Issued>(Assert.Single(results, result => result.Value is ClientLinkReplacement.Issued).Value);
+        Assert.Single(results, result => result.Value is ClientLinkReplacement.AlreadyApplied);
+        Assert.NotNull(await authentication.SignInAsync(issued.Link.Secret, Token));
         Assert.Equal(1, await database.Query("SELECT count(*)::integer FROM public.client_access_links").GetSingleAsync<int>(Token));
         Assert.Equal(1, await database.Query("SELECT count(*)::integer FROM public.client_access_commands").GetSingleAsync<int>(Token));
     });
@@ -224,9 +224,9 @@ public sealed class ClientAuthenticationStoreTests(PostgreSqlFixture fixture) : 
         await scenario(new(store), store, database);
     }
 
-    private static ClientLinkSecret Ok(Result<ClientLinkSecret?, ErrorList> result)
+    private static ClientLinkSecret Ok(Result<ClientLinkReplacement, ErrorList> result)
     {
         Assert.True(result.IsSuccess);
-        return Assert.IsType<ClientLinkSecret>(result.Value);
+        return Assert.IsType<ClientLinkReplacement.Issued>(result.Value).Link;
     }
 }

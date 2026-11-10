@@ -5,10 +5,23 @@ namespace MelodyTrack.Rewrite.Application;
 
 public sealed record ClientSessionIdentity(ClientId ClientId, Guid SessionId);
 
+public closed record ClientLinkWriteResult
+{
+    public sealed record Applied : ClientLinkWriteResult;
+    public sealed record AlreadyApplied : ClientLinkWriteResult;
+}
+
+public closed record ClientLinkReplacement
+{
+    public sealed override string ToString() => nameof(ClientLinkReplacement);
+
+    public sealed record Issued(ClientLinkSecret Link) : ClientLinkReplacement;
+    public sealed record AlreadyApplied : ClientLinkReplacement;
+}
+
 public interface IClientAuthenticationStore
 {
-    // true means applied; false means an identical command already completed without exposing its secret again.
-    Task<Result<bool, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, StaffId authorId, string? linkHash, CancellationToken cancellationToken);
+    Task<Result<ClientLinkWriteResult, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, StaffId authorId, string? linkHash, CancellationToken cancellationToken);
     Task<ClientSessionIdentity?> OpenSessionAsync(string linkHash, Guid sessionId, string refreshHash, string accessHash, CancellationToken cancellationToken);
     Task<ClientSessionIdentity?> RefreshAsync(string refreshHash, string accessHash, CancellationToken cancellationToken);
     Task<ClientSessionIdentity?> ActivateAsync(string refreshHash, string accessHash, CancellationToken cancellationToken);
@@ -32,7 +45,7 @@ public sealed class ClientSessionCredentials(string accessToken, string refreshT
 
 public sealed class ClientAuthentication(IClientAuthenticationStore store)
 {
-    public async Task<Result<ClientLinkSecret?, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, Actor actor, CancellationToken cancellationToken)
+    public async Task<Result<ClientLinkReplacement, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId, Actor actor, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         if (actor is not Actor.Staff { Role: StaffRole.Superuser or StaffRole.Administrator } author)
@@ -40,7 +53,12 @@ public sealed class ClientAuthentication(IClientAuthenticationStore store)
         if (clientId.Value == Guid.Empty || commandId == Guid.Empty || author.Id.Value == Guid.Empty) return ErrorList.Single(new IdentifierError.Empty());
         var secret = OpaqueTokens.Create();
         var result = await store.ReplaceLinkAsync(clientId, commandId, author.Id, OpaqueTokens.Hash(secret), cancellationToken);
-        return result.IsFailure ? result.Error : result.Value ? new ClientLinkSecret(secret) : (ClientLinkSecret?)null;
+        if (result.IsFailure) return result.Error;
+        return result.Value switch
+        {
+            ClientLinkWriteResult.Applied => new ClientLinkReplacement.Issued(new ClientLinkSecret(secret)),
+            ClientLinkWriteResult.AlreadyApplied => new ClientLinkReplacement.AlreadyApplied()
+        };
     }
 
     public async Task<UnitResult<ErrorList>> RevokeLinkAsync(ClientId clientId, Guid commandId, Actor actor, CancellationToken cancellationToken)
