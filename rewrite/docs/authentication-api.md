@@ -1,0 +1,88 @@
+# Контракт входа и сессий
+
+Нормативные правила — [authentication.md](../../specification/authentication.md), D-420/D-529–D-533 и [матрица доступа](../../specification/access.md). Этот документ описывает HTTP/SQL-реализацию; он не задаёт новые права. Frontend rewrite отсутствует.
+
+## Браузер и идентичность
+
+Клиент передаёт access token заголовком `Authorization: Bearer <token>` и сохраняет cookie `mt.browser`. Cookie — HttpOnly, SameSite=Strict, с хешем секрета в allowlist БД. Для запросов из отдельного origin нужен режим передачи credentials; допустимые origin WebAuthn задаются явно оператором. Роль и права в токен не входят.
+
+Один браузерный контекст имеет один активный аккаунт сотрудника или клиента. Вход и завершённая активация переключают его; незавершённое подтверждение фактора и ошибки сохраняют прежний активный аккаунт. Токены неактивного аккаунта не разрешают новые запросы. Background refresh не активирует аккаунт. Вкладки используют общую cookie, другие устройства — отдельные контексты. Уже выполняющийся запрос сохраняет исходную предметную принадлежность; мгновенная отмена всех начатых транзакций не обещается.
+
+Публичные credential-маршруты ограничены rate limiter; успешные ответы с идентичностью или секретами имеют `Cache-Control: no-store`. Все секреты передаются в JSON или заголовке, не в query string. В БД сохраняются хеши токенов/challenge, хеш пароля, публичные ключи WebAuthn и защищённый TOTP-секрет. Сырые секреты и содержимое credential-запросов не должны попадать в технические логи.
+
+## Сотрудники
+
+Основной prefix — `/api/auth/staff`. Поля JSON используют camelCase. `optionsJson` в ответе — сериализованные WebAuthn options; браузер передаёт соответствующий ответ как JSON-объект. Наличие challenge без access token означает незавершённый вход, а не рабочую сессию.
+
+| Метод и путь после prefix | Поля запроса / назначение |
+| --- | --- |
+| `POST /register/options` | `link`, `login`, `password?`, `authenticator`, `secondFactor`; возвращает challenge, WebAuthn options и, при настройке TOTP, секрет |
+| `POST /register/complete` | `challenge`, `authenticatorCode?`, `passkeyResponse?`; одноразовая регистрация или восстановление |
+| `POST /password` | `login`, `password`; рабочие токены либо challenge второго фактора |
+| `POST /passkey/options` | `login`; options и challenge первичной проверки passkey |
+| `POST /passkey/complete` | `challenge`, `response`; после passkey при обязательном/включённом факторе требуется TOTP |
+| `POST /factor` | `challenge`, `code?`, `passkeyResponse?`; завершает необходимую проверку |
+| `POST /refresh` | `refreshToken`; только продолжение активного аккаунта, ротация refresh и скользящие 14 дней |
+| `POST /resume` | `refreshToken`; активация запомненного аккаунта с необходимым фактором |
+| `GET /security` | Собственные средства входа и сессии, включая `isCurrent` |
+| `PUT /security/password` | `oldPassword?`, `newPassword` |
+| `POST /security/authenticator/options` | Начало подключения TOTP |
+| `POST /security/authenticator/confirm` | `challenge`, `code` |
+| `DELETE /security/authenticator` | JSON body `{ code }`; безопасное отключение аутентификатора |
+| `PUT /security/second-factor` | `enabled`; обязательность текущей роли сохраняется |
+| `POST /security/passkeys/options` | Options добавления passkey |
+| `POST /security/passkeys/complete` | `challenge`, `response` |
+| `DELETE /security/passkeys/{credentialId}` | Удаление passkey с сохранением пригодного набора средств входа |
+| `DELETE /sessions/{sessionId}` | Отзыв собственной отдельной сессии |
+| `DELETE /sessions` | Отзыв всех собственных сессий |
+
+Общие маршруты `GET /api/auth/me` и `POST /api/auth/logout` сохранены. Logout отзывает предъявленную сессию, не принимает её ID из тела и не затрагивает другие устройства. Для нового рабочего access token после истечения refresh нужен полный вход. Уже выданный access token сохраняет собственные пять минут только при отсутствии других оснований отказа — отзыва, блокировки, неактивного контекста или несоответствия текущим требованиям защиты.
+
+Административные маршруты используют prefix `/api/auth/staff`:
+
+| Метод и путь после prefix | Запрос |
+| --- | --- |
+| `POST /invitations` | `{ role }`; только супер, одноразовый секрет на 24 часа |
+| `POST /{staffId}/recovery` | Только супер; отзыв прежних сессий и средств входа, новый одноразовый секрет на 24 часа |
+| `PUT /{staffId}/access` | `{ role?, blocked? }`; только супер, блокировка немедленно прекращает доступ |
+
+Роль супера и границы изменения политик не становятся произвольно выдаваемыми разрешениями. `PUT /api/access/roles/{role}/permissions/{permission}` и `PUT /api/access/staff/{staffId}/permissions/{permission}` сохраняют SQL-авторизацию, аудит и ключи повторов.
+
+## Клиенты
+
+| Метод и путь | Запрос / результат |
+| --- | --- |
+| `PUT /api/clients/{clientId}/access-link` | `{ commandId }`; только администратор/супер. Первый ответ `200 { secret }`, идентичный повтор `204` без повторной ротации или выдачи секрета |
+| `DELETE /api/clients/{clientId}/access-link` | `{ commandId }`; `204`, повтор не отзывает более новую ссылку |
+| `POST /api/client-auth/sign-in` | `{ secret }` персональной ссылки; создаёт отдельную сессию устройства и активирует клиента |
+| `POST /api/client-auth/refresh` | `{ secret }` сохранённой сессии; только фоновое продолжение активного аккаунта |
+| `POST /api/client-auth/activate` | `{ secret }` сохранённой сессии; активация запомненного клиента в том же браузере |
+| `GET /api/client-auth/me` | Только собственный `clientId` |
+| `POST /api/client-auth/logout` | Отзыв текущей сессии; ссылка и другие устройства сохраняются |
+
+Сохранённый клиентский доступ не имеет периодического срока истечения. Access token остаётся пятиминутным. Замена/отзыв ссылки и архив клиента навсегда отзывают старые ссылки/сессии; разархивирование не возвращает доступ. Миграция исторических ссылок — отдельная задача данных.
+
+## Настройка и серверное восстановление
+
+Используются ASP.NET Core PasswordHasher, Otp.NET 1.4.1 и Fido2 4.3.1. Существующая конфигурация `PersonalData` защищает TOTP-секреты отдельным контекстом владельца. Для production необходимы корректный HTTPS и явная конфигурация passkey:
+
+```text
+Authentication__Passkeys__RelyingPartyId=school.example
+Authentication__Passkeys__ServerName=MelodyTrack
+Authentication__Passkeys__Origins__0=https://school.example
+```
+
+Development defaults разрешают origin `http://localhost:5280`. Внешние origin и RP ID не выводятся из недоверенного заголовка запроса.
+
+Первый супер и восстановление при потере доступа всех суперов доступны только серверному Init. Пример параметров после `--`:
+
+```text
+--Auth:Bootstrap true --Auth:SetupUrl https://school.example/auth/register
+--Auth:Bootstrap true --Auth:RecoverSuperuser <staffId> --Auth:SetupUrl https://school.example/auth/register
+```
+
+Команда выдаёт одноразовую ссылку оператору через stdout; секрет не пишется в logger. Ссылка использует fragment, который браузерный интерфейс должен передать credential-endpoint в JSON. Серверная команда не создаёт рабочий access token и не обходит обязательную настройку фактора. Реальный запуск Init/импорта требует отдельного разрешения; тесты используют изолированные PostgreSQL-фикстуры.
+
+## Проверка
+
+Полный запуск `20261110T172104-8ae646df`: сборка без предупреждений и ошибок, **816/816 тестов успешны**, без пропусков. Сценарии используют настоящий PostgreSQL, Kestrel, PasswordHasher, TOTP и программный ES256 WebAuthn-аутентификатор. Это серверная проверка протокола; аппаратная/браузерная WebAuthn-приёмка и интерфейс переключения вкладок в объём backend-тестов не входят. Отчёт: `.artifacts/agent-checks/20261110T172104-8ae646df/report.json`.
