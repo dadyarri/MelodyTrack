@@ -1,4 +1,5 @@
 using System.Net.Http.Headers;
+using System.Collections.Concurrent;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Security.Cryptography;
@@ -54,6 +55,8 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         builder.Services.AddSingleton<ClientNotesService>();
         builder.Services.AddSingleton<IExpenseStore>(expenses ?? new ExpenseState());
         builder.Services.AddSingleton<ExpenseService>();
+        builder.Services.AddBrowserAccess();
+        builder.Services.AddSingleton<IBrowserAccessStore, BrowserState>();
         builder.Services.AddStaffAuthentication();
         var app = builder.Build();
         app.UseAuthentication();
@@ -94,6 +97,21 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
 
     internal sealed record ClaimProbe(string Type, string Value);
     internal sealed record IdentityProbe(Guid StaffId, ClaimProbe[] Claims);
+
+    private sealed class BrowserState : IBrowserAccessStore
+    {
+        private readonly ConcurrentDictionary<string, Guid> contexts = new();
+        public Task<Guid?> ResolveAsync(string secretHash, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(contexts.TryGetValue(secretHash, out var id) ? (Guid?)id : null);
+        }
+        public Task<Guid> CreateAsync(string secretHash, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult(contexts.GetOrAdd(secretHash, _ => Guid.NewGuid()));
+        }
+    }
 
     internal sealed record PolicyWrite(Guid CommandId, StaffId AuthorId, StaffRole? Role,
         StaffId? TargetId, StaffPermission Permission, PermissionGrant? Grant);

@@ -5,6 +5,11 @@
     <ProjectReference Include="..\MelodyTrack.Rewrite.Persistence\MelodyTrack.Rewrite.Persistence.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Fido2" />
+    <PackageReference Include="Otp.NET" />
+  </ItemGroup>
+
   <PropertyGroup>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>

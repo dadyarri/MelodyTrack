@@ -56,9 +56,12 @@ internal static class Program
                     logger.LogInformation("Миграция {MigrationName} применена.", migration.Name);
                 }
                 logger.LogInformation("Инициализация завершена. Применено миграций: {MigrationCount}.", pending.Length);
-                exitCode = builder.Configuration.GetValue<bool>("Import:Clients")
-                    ? await ClientImportCommand.RunAsync(builder.Configuration, connection, logger, cancellationToken)
-                    : 0;
+                if (builder.Configuration.GetValue<bool>("Auth:Bootstrap"))
+                    exitCode = await AuthBootstrapCommand.RunAsync(builder.Configuration, new Database(dataSource), cancellationToken);
+                else
+                    exitCode = builder.Configuration.GetValue<bool>("Import:Clients")
+                        ? await ClientImportCommand.RunAsync(builder.Configuration, connection, logger, cancellationToken)
+                        : 0;
             }
         }
         catch (MigrationLockUnavailableException) { logger.LogError("Другой Init уже выполняет инициализацию этой базы данных."); }

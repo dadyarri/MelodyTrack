@@ -8,9 +8,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="../../build/MigrationGeneration.cs" Link="Build/MigrationGeneration.cs" />
+    <Compile Include="../MelodyTrack.Rewrite.Api.Tests/WebAuthnTestAuthenticator.cs" Link="Fixtures/WebAuthnTestAuthenticator.cs" />
     <Reference Include="Microsoft.Build.Framework" HintPath="$(MSBuildToolsPath)/Microsoft.Build.Framework.dll" />
     <Reference Include="Microsoft.Build.Utilities.Core" HintPath="$(MSBuildToolsPath)/Microsoft.Build.Utilities.Core.dll" />
     <ProjectReference Include="../../src/MelodyTrack.Rewrite.Init/MelodyTrack.Rewrite.Init.csproj" />
+    <ProjectReference Include="../../src/MelodyTrack.Rewrite.Api/MelodyTrack.Rewrite.Api.csproj" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0001_CreateClients.sql"
           Link="Schema/0001_CreateClients.sql" CopyToOutputDirectory="PreserveNewest" />
@@ -30,6 +33,12 @@
           Link="Schema/0009_CreateExpenseAuditMarkers.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0010_CreateStaffAccessTokens.sql"
           Link="Schema/0010_CreateStaffAccessTokens.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0011_CreateStaffCredentials.sql"
+          Link="Schema/0011_CreateStaffCredentials.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0012_CreateClientAccessSessions.sql"
+          Link="Schema/0012_CreateClientAccessSessions.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0013_CreateBrowserAccessContexts.sql"
+          Link="Schema/0013_CreateBrowserAccessContexts.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />

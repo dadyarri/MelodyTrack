@@ -8,7 +8,7 @@ using Microsoft.Extensions.Options;
 namespace MelodyTrack.Rewrite.Api;
 
 public sealed class StaffAuthentication(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerFactory logger,
-    UrlEncoder encoder, StaffAccessTokens tokens) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+    UrlEncoder encoder, StaffAccessTokens tokens, BrowserAccessContext browser) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "StaffBearer";
     internal const string SessionProperty = "melodytrack.session_id";
@@ -20,6 +20,7 @@ public sealed class StaffAuthentication(IOptionsMonitor<AuthenticationSchemeOpti
         if (headers.Count != 1 || !AuthenticationHeaderValue.TryParse(headers[0], out var header)
             || !string.Equals(header.Scheme, "Bearer", StringComparison.OrdinalIgnoreCase) || header.Parameter is null)
             return AuthenticateResult.Fail("Invalid credentials.");
+        await browser.ResolveAsync(Context.RequestAborted);
         var session = await tokens.AuthenticateAsync(header.Parameter, Context.RequestAborted);
         if (session is null || session.StaffId.Value == Guid.Empty || session.SessionId == Guid.Empty)
             return AuthenticateResult.Fail("Invalid credentials.");

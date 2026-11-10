@@ -139,11 +139,12 @@ public sealed class StaffAccessTokenStoreTests(PostgreSqlFixture fixture) : ICla
         await using var dataSource = NpgsqlDataSource.Create(await fixture.CreateDatabaseAsync(Token));
         var database = new Database(dataSource);
         foreach (var migration in new[] { "0001_CreateClients.sql", "0003_CreateClientNotesHistory.sql",
-            "0008_CreateStaffPermissions.sql", "0010_CreateStaffAccessTokens.sql" })
+            "0008_CreateStaffPermissions.sql", "0010_CreateStaffAccessTokens.sql", "0011_CreateStaffCredentials.sql",
+            "0012_CreateClientAccessSessions.sql", "0013_CreateBrowserAccessContexts.sql" })
             await database.Query(await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", migration), Token)).ExecuteAsync(Token);
         await database.Query("INSERT INTO public.staff_access_state(staff_id, role) VALUES (@first, 'administrator'), (@second, 'teacher')")
             .WithParameter("first", First.Value).WithParameter("second", Second.Value).ExecuteAsync(Token);
-        await scenario(new StaffAccessTokenStore(database), database);
+        await scenario(new StaffAccessTokenStore(database, new TrustedInternalBrowserAccessContext()), database);
     }
 
     private static void Ok(UnitResult<ErrorList> result) => Assert.True(result.IsSuccess);

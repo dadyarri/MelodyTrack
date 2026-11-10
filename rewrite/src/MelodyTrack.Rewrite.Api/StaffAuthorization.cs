@@ -20,7 +20,7 @@ public sealed class CurrentStaff
     }
 }
 
-public sealed record StaffAccessRequirement(StaffPermission? Permission = null) : IAuthorizationRequirement;
+public sealed record StaffAccessRequirement(StaffPermission? Permission = null, StaffRole[]? AllowedRoles = null) : IAuthorizationRequirement;
 
 public sealed class StaffAuthorization(ICurrentStaffAccess access, CurrentStaff current)
     : AuthorizationHandler<StaffAccessRequirement>
@@ -35,6 +35,7 @@ public sealed class StaffAuthorization(ICurrentStaffAccess access, CurrentStaff 
         var resolved = await access.ResolveAsync(id, http.RequestAborted);
         if (resolved.IsFailure || resolved.Value.Id != id || resolved.Value.Permissions is null || resolved.Value.Validate().IsFailure) return;
         var actor = resolved.Value;
+        if (requirement.AllowedRoles is { } allowed && !allowed.Contains(actor.Role)) return;
         // The early gate checks the action. Data/time scopes are evaluated with the command's facts by Application.
         if (requirement.Permission is { } permission &&
             (actor.Permissions is null || !actor.Permissions.For(permission).Allowed
@@ -50,7 +51,7 @@ public static class StaffAuthorizationExtensions
 
     public static IServiceCollection AddStaffAuthentication(this IServiceCollection services)
     {
-        services.AddSingleton<StaffAccessTokens>();
+        services.AddScoped<StaffAccessTokens>();
         services.AddScoped<CurrentStaff>();
         services.AddScoped<IAuthorizationHandler, StaffAuthorization>();
         services.AddAuthentication(StaffAuthentication.SchemeName)
