@@ -43,6 +43,19 @@ public sealed class SeriesConflictTests
         var (conflict, _) = Setup();
         AssertError(new SeriesConflictError.WrongAppointment(), conflict.ConfirmCreated(StaffRole.Administrator, [], SeriesAppointment(91, 2, Utc(8, 16))));
     }
+
+    [Fact]
+    public void ConfirmCreated_DifferentAppointmentForResolvedPosition_RejectsReplacement()
+    {
+        var (conflict, appointment) = Setup();
+        var created = Ok(conflict.ConfirmCreated(StaffRole.Administrator, [], appointment));
+        var replacement = SeriesAppointment(92, conflict.SequenceNumber.Value, conflict.DesiredStart);
+
+        var result = created.ConfirmCreated(StaffRole.Administrator, [], replacement);
+
+        AssertError(new SeriesConflictError.AlreadyResolved(), result);
+        Assert.Equal(new ConflictResolution.Created(appointment.Id), created.Resolution);
+    }
     [Fact]
     public void Skip_ExplicitChoice_PreservesOriginalPositionAndPreventsLaterCreation()
     {

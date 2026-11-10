@@ -29,7 +29,8 @@ public static class SeriesConflictRules
             ConflictResolution.Created created when created.AppointmentId == appointment.Id => model,
             ConflictResolution.Pending when blockers.Count > 0 => ErrorList.Single(new SeriesConflictError.StillBlocked()),
             ConflictResolution.Pending => model with { Resolution = new ConflictResolution.Created(appointment.Id) },
-            _ => ErrorList.Single(new SeriesConflictError.AlreadyResolved())
+            ConflictResolution.Created => ErrorList.Single(new SeriesConflictError.AlreadyResolved()),
+            ConflictResolution.Skipped => ErrorList.Single(new SeriesConflictError.AlreadyResolved())
         };
     }
 
