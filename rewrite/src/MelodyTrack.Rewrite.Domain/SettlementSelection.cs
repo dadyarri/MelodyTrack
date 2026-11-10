@@ -4,45 +4,13 @@ using MelodyTrack.Rewrite.Domain.Rules;
 
 namespace MelodyTrack.Rewrite.Domain;
 
-public enum SubscriptionSize { Four = 4, Eight = 8 }
-
-public sealed record Subscription
-{
-    internal Subscription(SubscriptionId id, ClientId clientId, SubscriptionSize size, Money price,
-        DateTimeOffset purchasedAt, DateTimeOffset expiresAt, DiscountActivationId? discountId)
-    {
-        Id = id; ClientId = clientId; Size = size; Price = price; PurchasedAt = purchasedAt;
-        BaseExpiresAt = expiresAt; ExpiresAt = expiresAt; DiscountId = discountId;
-    }
-
-    public SubscriptionId Id { get; }
-
-    public ClientId ClientId { get; }
-
-    public SubscriptionSize Size { get; }
-
-    public Money Price { get; }
-
-    public DateTimeOffset PurchasedAt { get; }
-
-    public DateTimeOffset BaseExpiresAt { get; }
-
-    public DateTimeOffset ExpiresAt { get; internal init; }
-
-    public DiscountActivationId? DiscountId { get; }
-
-    public bool IsCancelled { get; internal init; }
-
-    public ImmutableArray<TimeInterval> GrantedAbsences { get; internal init; } = [];
-}
-
 public static class SettlementSelection
 {
     public static Result<SettlementSource, ErrorList> Select(Appointment appointment, Service service,
         IEnumerable<Payment> payments, IEnumerable<AppointmentSettlement> history, DateTimeOffset recordedAt)
     {
         if (service.Id != appointment.ServiceId) return ErrorList.Single(new ModelError.InvalidValue(), "serviceId");
-        if (service.IsConsultation) return new SettlementSource.Cash(Money.Create(0).Value, null);
+        if (service.IsConsultation) return new SettlementSource.Uncovered(Money.Create(0).Value, null);
         var snapshot = history.ToImmutableArray();
         var allPayments = payments.Where(item => item.ClientId == appointment.ClientId).ToArray();
         var validation = PaymentSnapshotRules.Validate(appointment.ClientId, appointment.ServiceId, allPayments, snapshot);
@@ -72,6 +40,6 @@ public static class SettlementSelection
         if (price is null) return ErrorList.Single(new FinanceError.MissingPrice());
         var amount = Money.Create(price.Value);
         if (amount.IsFailure) return amount.Error;
-        return new SettlementSource.Cash(amount.Value, null);
+        return new SettlementSource.Uncovered(amount.Value, null);
     }
 }

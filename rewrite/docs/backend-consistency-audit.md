@@ -73,7 +73,7 @@ HTTP расходов возвращает `200` с `{ id }` после созд
 | BA-002 | D-484: цена на начало встречи | `SettlementSelection.Select` и прогноз выбирали `PriceAt(EndsAt)`. Оба используют `StartsAt`; уже записанный Cash settlement сохраняет исходную сумму. Личный резерв D-480 этим ещё не реализован. |
 | BA-003 | D-461: прошедшее без результата исключается из ожидаемого итога | Прогноз создавал неопределённую строку, а при переданном покрытии выбирал его раньше проверки результата. Прошедшая Scheduled-встреча теперь исключается до оценки цены и покрытия; статус встречи не меняется. |
 
-Изменённые исходники: [ForecastRules.cs](../src/MelodyTrack.Rewrite.Domain/Rules/ForecastRules.cs), [Subscriptions.cs](../src/MelodyTrack.Rewrite.Domain/Subscriptions.cs).
+Исходники расчёта: [ForecastRules.cs](../src/MelodyTrack.Rewrite.Domain/Rules/ForecastRules.cs), [SettlementSelection.cs](../src/MelodyTrack.Rewrite.Domain/SettlementSelection.cs).
 
 Добавлены [MonthlyForecastTests](../tests/MelodyTrack.Rewrite.Domain.Tests/MonthlyForecastTests.cs): граница московского месяца/года, встреча через полночь, цена на начале/окончании, поздняя запись списания в следующем месяце, сохранение исходной суммы, прошедшее без результата с покрытием и без него, совместный отбор результата и будущего плана. В [AppointmentAccountingTests](../tests/MelodyTrack.Rewrite.Domain.Tests/AppointmentAccountingTests.cs) заменено ожидание цены на конец; сценарий проверяет цену без скидки при результате, чтобы не закреплять отменённую механику D-481.
 

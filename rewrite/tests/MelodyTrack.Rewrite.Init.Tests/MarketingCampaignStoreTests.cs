@@ -109,7 +109,6 @@ public sealed class MarketingCampaignStoreTests(PostgreSqlFixture fixture) : ICl
     [InlineData("payment")]
     [InlineData("lessons")]
     [InlineData("period")]
-    [InlineData("purchase")]
     public Task InsertAsync_HistoricalTerms_RoundTripsOriginalFacts(string kind) => WithStore(async (store, _) =>
     {
         DiscountTerms terms = kind switch
@@ -117,7 +116,6 @@ public sealed class MarketingCampaignStoreTests(PostgreSqlFixture fixture) : ICl
             "payment" => new DiscountTerms.Payment(),
             "lessons" => Ok(DiscountTerms.Lessons.Create(3)),
             "period" => Ok(DiscountTerms.Period.Create(TimeSpan.FromTicks(123456789))),
-            "purchase" => Ok(DiscountTerms.Purchase.Create([SubscriptionSize.Four, SubscriptionSize.Eight])),
             _ => throw new InvalidOperationException()
         };
         var original = Ok(MarketingCampaignRules.Restore(new(Guid.NewGuid()), "HISTORY",
@@ -129,9 +127,28 @@ public sealed class MarketingCampaignStoreTests(PostgreSqlFixture fixture) : ICl
         var restored = Ok(await store.FindAsync(original.Id, Token));
 
         AssertCampaign(original, restored!);
-        if (terms is DiscountTerms.Purchase purchase)
-            Assert.True(purchase.Sizes.SetEquals(Assert.IsType<DiscountTerms.Purchase>(restored!.Terms).Sizes));
-        else Assert.Equal(terms, restored!.Terms);
+        Assert.Equal(terms, restored!.Terms);
+    });
+
+    [Fact]
+    public Task FindAsync_StoredSubscriptionPurchase_RejectsUnsupportedTermsWithoutChangingData() => WithStore(async (store, database) =>
+    {
+        var original = Campaign("HISTORY");
+        Ok(await store.InsertAsync(original, Token));
+        await database.Query("""
+            UPDATE public.marketing_campaigns SET terms_kind='purchase', purchase_sizes=ARRAY[4, 8]
+            WHERE id=@id
+            """).WithParameter("id", original.Id.Value).ExecuteAsync(Token);
+
+        var result = await store.FindAsync(original.Id, Token);
+
+        Assert.True(result.IsFailure);
+        Assert.Contains(result.Error.Issues, issue => issue.Error is ModelError.InvalidValue && issue.Field == "terms");
+        Assert.Equal("purchase", await database.Query("SELECT terms_kind::text FROM public.marketing_campaigns WHERE id=@id")
+            .WithParameter("id", original.Id.Value).GetSingleAsync<string>(Token));
+        Assert.Equal(2, await database.Query("SELECT cardinality(purchase_sizes) FROM public.marketing_campaigns WHERE id=@id")
+            .WithParameter("id", original.Id.Value).GetSingleAsync<int>(Token));
+        Assert.Equal(new[] { "HISTORY" }, await store.GetCodesAsync(Token));
     });
 
     [Fact]

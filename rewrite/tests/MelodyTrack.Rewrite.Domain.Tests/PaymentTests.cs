@@ -170,6 +170,6 @@ public sealed class PaymentTests
         Assert.Equal(2, payment.Conditions!.Quantity);
         Assert.Equal(TestData.ServiceId, payment.Conditions.ServiceId);
         Assert.Equal(1, payment.RemainingLessons(debt.SettlementChanges));
-        Assert.IsType<SettlementSource.Cash>(settlement.Source);
+        Assert.IsType<SettlementSource.Uncovered>(settlement.Source);
     }
 }

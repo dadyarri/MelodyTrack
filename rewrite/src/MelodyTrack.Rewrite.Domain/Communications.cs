@@ -98,7 +98,7 @@ public closed record AuditChange
     public sealed record ExpenseCategoryChanged(ExpenseCategoryId? Before, ExpenseCategoryId? After) : AuditChange;
     public sealed record ExpenseDescriptionChanged() : AuditChange;
 }
-public sealed record AuditFinancialEffect(string Description, decimal CashDelta, SubscriptionId? SubscriptionId, int UnitDelta);
+public sealed record AuditFinancialEffect(string Description, decimal CashDelta, int UnitDelta);
 public sealed record AuditEntry
 {
     internal AuditEntry(AuditEntryId id, Actor author, DateTimeOffset occurredAt, string operation, ImmutableArray<AuditLink> links,

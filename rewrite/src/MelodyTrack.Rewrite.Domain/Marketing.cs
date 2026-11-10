@@ -1,4 +1,3 @@
-using System.Collections.Immutable;
 using CSharpFunctionalExtensions;
 
 namespace MelodyTrack.Rewrite.Domain;
@@ -33,17 +32,6 @@ public closed record DiscountTerms
         public TimeSpan Duration { get; }
         public static Result<Period, ErrorList> Create(TimeSpan duration) => duration <= TimeSpan.Zero
             ? ErrorList.Single(new ModelError.InvalidValue(), "duration") : new Period(duration);
-    }
-    public sealed record Purchase : DiscountTerms
-    {
-        private Purchase(ImmutableHashSet<SubscriptionSize> sizes) => Sizes = sizes;
-        public ImmutableHashSet<SubscriptionSize> Sizes { get; }
-        public static Result<Purchase, ErrorList> Create(IEnumerable<SubscriptionSize> sizes)
-        {
-            var values = sizes.ToImmutableHashSet();
-            return values.IsEmpty || values.Any(value => !Enum.IsDefined(value))
-                ? ErrorList.Single(new ModelError.InvalidValue(), "sizes") : new Purchase(values);
-        }
     }
 }
 

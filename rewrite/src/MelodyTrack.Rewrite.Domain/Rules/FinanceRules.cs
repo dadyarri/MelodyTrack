@@ -21,7 +21,7 @@ public static class PaymentRules
             .SelectMany(payment => payment.DebtCoverage).Select(coverage => coverage.SettlementId).ToHashSet();
         var debts = settlements.Where(settlement => settlement.ClientId == clientId && settlement.ServiceId == service.Id
                 && !settlement.IsReversed && !coveredIds.Contains(settlement.Id)
-                && settlement.Source is SettlementSource.Cash { Amount.Amount: > 0, DiscountId: null })
+                && settlement.Source is SettlementSource.Uncovered { Amount.Amount: > 0, DiscountId: null })
             .OrderBy(settlement => settlement.StartsAt).ThenBy(settlement => settlement.Id.Value).ToArray();
         if (discount is not null && debts.Length > 0)
             return ErrorList.Single(new ModelError.DecisionRequired(), "discountedDebtAllocation");
@@ -32,7 +32,7 @@ public static class PaymentRules
         try
         {
             var coverage = debts.Take(quantity).Select(settlement =>
-                new PaymentDebtCoverage(settlement.Id, ((SettlementSource.Cash)settlement.Source).Amount)).ToImmutableArray();
+                new PaymentDebtCoverage(settlement.Id, ((SettlementSource.Uncovered)settlement.Source).Amount)).ToImmutableArray();
             var total = Money.Create(coverage.Sum(item => item.Amount.Amount) + price * (quantity - coverage.Length));
             if (total.IsFailure) return total.Error;
             var amount = discount is null ? total : discount.Discount.ApplyToPayment(total.Value);
@@ -131,9 +131,8 @@ public static class AppointmentSettlementRules
         {
             SettlementSource.Prepaid payment => Validation.Collect(Validation.Identifier(payment.Id.Value, "paymentId"),
                 payment.RecoveredDebtId is { } debt ? Validation.Identifier(debt.Value, "recoveredDebtId") : UnitResult.Success<ErrorList>()),
-            SettlementSource.Subscription subscription => Validation.Identifier(subscription.Id.Value, "subscriptionId"),
-            SettlementSource.Cash { DiscountId: { } discount } => Validation.Identifier(discount.Value, "discountId"),
-            SettlementSource.Cash => UnitResult.Success<ErrorList>()
+            SettlementSource.Uncovered { DiscountId: { } discount } => Validation.Identifier(discount.Value, "discountId"),
+            SettlementSource.Uncovered => UnitResult.Success<ErrorList>()
         };
         if (sourceValidation.IsFailure) return sourceValidation.Error;
         return new AppointmentSettlement(id, appointment, source, recordedAt);

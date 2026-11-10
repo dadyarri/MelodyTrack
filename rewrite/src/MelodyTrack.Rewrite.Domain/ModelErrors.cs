@@ -15,7 +15,6 @@ public closed record FinanceError(string Code) : DomainError(Code)
 {
     public sealed record AlreadySettled() : FinanceError("finance.already_settled");
     public sealed record InconsistentSettlement() : FinanceError("finance.inconsistent_settlement");
-    public sealed record SubscriptionUsed() : FinanceError("finance.subscription_used");
     public sealed record NoCoverage() : FinanceError("finance.no_coverage");
     public sealed record AmbiguousCoverage() : FinanceError("finance.ambiguous_coverage");
     public sealed record AmbiguousDiscount() : FinanceError("finance.ambiguous_discount");

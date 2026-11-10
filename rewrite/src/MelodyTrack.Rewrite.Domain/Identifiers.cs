@@ -55,9 +55,6 @@ public partial struct ExpenseId { }
 public partial struct ExpenseCategoryId { }
 
 [StronglyTypedId]
-public partial struct SubscriptionId { }
-
-[StronglyTypedId]
 public partial struct SettlementId { }
 
 [StronglyTypedId]

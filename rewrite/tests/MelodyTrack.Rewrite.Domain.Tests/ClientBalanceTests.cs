@@ -14,7 +14,7 @@ public sealed class ClientBalanceTests
         var otherService = Ok(ServiceRules.Create(new(Guid(105)), "Вокал", Duration(60), false, Ok(ServicePrice.Create(Now, 1000))));
         var appointment = Ok(AppointmentRules.Create(new(Guid(101)), TestData.ClientId, otherService.Id, TestData.StaffId, null, Utc(5, 15), Duration(60)));
         var completed = Ok(appointment.Complete(StaffRole.Superuser, Utc(5, 17), "Результат", TestData.StaffId));
-        var charge = Ok(AppointmentSettlementRules.Create(new(Guid(102)), completed, new SettlementSource.Cash(Ok(Money.Create(1000)), null), Utc(5, 17), []));
+        var charge = Ok(AppointmentSettlementRules.Create(new(Guid(102)), completed, new SettlementSource.Uncovered(Ok(Money.Create(1000)), null), Utc(5, 17), []));
 
         var guitar = Ok(ClientBalance.CalculateForService(TestData.ClientId, TestData.ServiceId, [payment], [charge]));
         var singing = Ok(ClientBalance.CalculateForService(TestData.ClientId, otherService.Id, [payment], [charge]));
@@ -23,7 +23,7 @@ public sealed class ClientBalanceTests
         Assert.Equal(2, guitar.RemainingLessons);
         Assert.Equal(-1000m, singing.Amount);
         Assert.Equal(0, singing.RemainingLessons);
-        Assert.IsType<SettlementSource.Cash>(Ok(SettlementSelection.Select(completed, otherService, [payment], [], Utc(5, 17))));
+        Assert.IsType<SettlementSource.Uncovered>(Ok(SettlementSelection.Select(completed, otherService, [payment], [], Utc(5, 17))));
     }
 
     [Fact]

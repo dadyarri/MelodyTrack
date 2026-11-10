@@ -22,7 +22,7 @@ public static class PaymentSnapshotRules
         var active = charges.Where(item => !item.IsReversed).ToArray();
         if (active.Select(item => item.AppointmentId).Distinct().Count() != active.Length)
             return Fail(new FinanceError.InconsistentSettlement());
-        if (active.Any(item => item.Source is SettlementSource.Subscription or SettlementSource.Cash { DiscountId: not null }))
+        if (active.Any(item => item.Source is SettlementSource.Uncovered { DiscountId: not null }))
             return Fail(new ModelError.DecisionRequired(), "historicalSettlement");
         var byId = settlements.ToDictionary(item => item.Id);
         var covered = new HashSet<SettlementId>();
@@ -35,7 +35,7 @@ public static class PaymentSnapshotRules
             {
                 if (!covered.Add(coverage.SettlementId) || !byId.TryGetValue(coverage.SettlementId, out var debt)
                     || debt.ClientId != clientId || debt.ServiceId != serviceId
-                    || debt.Source is not SettlementSource.Cash { DiscountId: null } cash || cash.Amount.Amount <= 0
+                    || debt.Source is not SettlementSource.Uncovered { DiscountId: null } cash || cash.Amount.Amount <= 0
                     || cash.Amount != coverage.Amount)
                     return Fail(new FinanceError.InconsistentSettlement(), "debtCoverage");
             }

@@ -30,7 +30,7 @@ API должен входить через Application. Публичность �
 | `Absences.cs` | `VacationRules`, `VacationRequestRules`, `SchoolClosureRules` | Окончательный одобряющий отпуска ещё не выбран; разрешение не назначается произвольной роли |
 | `Scheduling.cs`, `Appointments.cs` | `Rules/SchedulingRules.cs`, `Rules/AppointmentsRules.cs`, `Booking`, `Availability` | `AppointmentOperations`: роли, месяц исправления, проверка старой и новой даты |
 | `WorkingSchedules.cs`, `SeriesConflicts.cs` | `WorkingScheduleRules`, `SeriesConflictRules`, `SeriesEffects` | Согласование графика, права разбора конфликтов, `SeriesOperations` |
-| `Money.cs`, `Finance.cs`, `Subscriptions.cs` | `Rules/FinanceRules.cs`, `SubscriptionRules`, `SettlementSelection`, `ClientBalance` | `AppointmentAccounting`: выбор и согласование результата со списанием |
+| `Money.cs`, `Finance.cs`, `SettlementSelection.cs` | `Rules/FinanceRules.cs`, `SettlementSelection`, `ClientBalance` | `AppointmentAccounting`: выбор платежа и согласование результата со списанием |
 | `Marketing.cs`, `Forecast.cs` | `MarketingCampaignRules`, `DiscountActivationRules`, `DiscountRules`, `MonthlyForecastRules` | Управление/активация кампаний в `Operations/MarketingOperations.cs` |
 | `Courses.cs` | `CourseRules`, `CourseEnrollmentRules`, `PersonalAssignmentRules` | Назначенный преподаватель, область прав администратора, доступ к своему уроку/ДЗ |
 | `LearningDocuments.cs`, `Practice.cs` | Локальные значения документа и `PracticeAttemptRules` | `PracticeAttemptOperations`: личная/учебная область чтения, право копировать конфигурацию и экспортировать видео |
@@ -46,7 +46,7 @@ API должен входить через Application. Публичность �
 
 `AppointmentAccountingChange` содержит занятие и только изменяемые строки списаний. При снятии результата строка обновляется по прежнему ID с признаком отмены, а не добавляется дубликатом. Повторная отметка уже записанного результата не переоценивает прежний источник. Исправление одной встречи не перераспределяет покрытия остальных.
 
-Историческое использование абонемента сохраняет запрет отменить покупку после снятия результата. Продление сохраняет уже предоставленные интервалы и не уменьшается после удаления отпуска. Исторический прогресс исключённых тем не удаляется; добавление темы не снимает завершение прохождения. Эти правила не являются проверками доступа.
+Отдельной модели абонемента, сроков и продлений в Domain нет по D-428. Сохранение исторических фактов при переносе описано в спецификации и не требует поддерживать прежний механизм в рабочем расчёте. Исторический прогресс исключённых тем не удаляется; добавление темы не снимает завершение прохождения. Эти правила не являются проверками доступа.
 
 ## Проверки и последующая работа
 

@@ -34,7 +34,7 @@ public sealed class AppointmentAccountingTests
             new(Guid(101)), MakeService(0m, true), [payment], [], Super, Utc(5, 17), "Результат консультации"));
 
         var settlement = Assert.Single(change.SettlementChanges);
-        Assert.Equal(new SettlementSource.Cash(Ok(Money.Create(0)), null), settlement.Source);
+        Assert.Equal(new SettlementSource.Uncovered(Ok(Money.Create(0)), null), settlement.Source);
         Assert.Equal(2, payment.RemainingLessons([settlement]));
         Assert.Equal(TestData.StaffId, Assert.Single(change.Appointment.StateHistory).AuthorId);
     }
@@ -62,7 +62,7 @@ public sealed class AppointmentAccountingTests
         var change = Ok(AppointmentAccounting.SetResult(MakeAppointment(100, Utc(5, 15)), AppointmentStatus.Completed,
             new(Guid(101)), service, [], [], Super, Utc(10, 0), "Поздняя отметка"));
 
-        Assert.Equal(new SettlementSource.Cash(Ok(Money.Create(1000)), null), Assert.Single(change.SettlementChanges).Source);
+        Assert.Equal(new SettlementSource.Uncovered(Ok(Money.Create(1000)), null), Assert.Single(change.SettlementChanges).Source);
         Assert.Equal(-1000m, Ok(ClientBalance.CalculateForService(TestData.ClientId, TestData.ServiceId, [], change.SettlementChanges)).Amount);
     }
 

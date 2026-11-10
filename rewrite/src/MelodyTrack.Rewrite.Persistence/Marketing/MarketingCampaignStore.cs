@@ -11,7 +11,7 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
     private const string Select = """
         SELECT id AS "Id", code AS "Code", normalized_code AS "NormalizedCode", activation_starts_at AS "StartsAt", activation_ends_at AS "EndsAt",
                discount_kind::text AS "DiscountKind", discount_value AS "DiscountValue", terms_kind::text AS "TermsKind",
-               lesson_count AS "LessonCount", period_ticks AS "PeriodTicks", purchase_sizes AS "PurchaseSizes",
+               lesson_count AS "LessonCount", period_ticks AS "PeriodTicks",
                returning_gap_ticks AS "ReturningGapTicks", is_stopped AS "IsStopped"
         FROM public.marketing_campaigns
         """;
@@ -39,15 +39,15 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
         await using var transaction = await database.BeginTransactionAsync(cancellationToken);
         var inserted = await transaction.Query("""
             INSERT INTO public.marketing_campaigns(id, code, normalized_code, activation_starts_at, activation_ends_at,
-                discount_kind, discount_value, terms_kind, lesson_count, period_ticks, purchase_sizes, returning_gap_ticks, is_stopped)
+                discount_kind, discount_value, terms_kind, lesson_count, period_ticks, returning_gap_ticks, is_stopped)
             VALUES (@id, @code, @normalizedCode, @startsAt, @endsAt, @discountKind::public.marketing_discount_kind, @discountValue,
-                @termsKind::public.marketing_terms_kind, @lessonCount, @periodTicks, @purchaseSizes, @returningGapTicks, @isStopped)
+                @termsKind::public.marketing_terms_kind, @lessonCount, @periodTicks, @returningGapTicks, @isStopped)
             ON CONFLICT DO NOTHING RETURNING id
             """).WithParameter("id", row.Id).WithParameter("code", row.Code).WithParameter("normalizedCode", row.NormalizedCode)
             .WithParameter("startsAt", row.StartsAt).WithParameter("endsAt", row.EndsAt)
             .WithParameter("discountKind", row.DiscountKind).WithParameter("discountValue", row.DiscountValue)
             .WithParameter("termsKind", row.TermsKind).WithParameter("lessonCount", row.LessonCount)
-            .WithParameter("periodTicks", row.PeriodTicks).WithParameter("purchaseSizes", row.PurchaseSizes)
+            .WithParameter("periodTicks", row.PeriodTicks)
             .WithParameter("returningGapTicks", row.ReturningGapTicks).WithParameter("isStopped", row.IsStopped)
             .GetSingleOrDefaultAsync<Guid?>(cancellationToken);
         if (inserted is null)
@@ -78,11 +78,10 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
         TermsKind = campaign.Terms switch
         {
             DiscountTerms.Payment => "payment", DiscountTerms.Lessons => "lessons",
-            DiscountTerms.Period => "period", DiscountTerms.Purchase => "purchase"
+            DiscountTerms.Period => "period"
         },
         LessonCount = (campaign.Terms as DiscountTerms.Lessons)?.Count,
         PeriodTicks = (campaign.Terms as DiscountTerms.Period)?.Duration.Ticks,
-        PurchaseSizes = (campaign.Terms as DiscountTerms.Purchase)?.Sizes.Select(size => (int)size).Order().ToArray(),
         ReturningGapTicks = campaign.ReturningClientGap?.Ticks,
         IsStopped = campaign.IsStopped
     };
@@ -92,8 +91,7 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
         && expected.StartsAt == stored.StartsAt && expected.EndsAt == stored.EndsAt
         && expected.DiscountKind == stored.DiscountKind && expected.DiscountValue == stored.DiscountValue
         && expected.TermsKind == stored.TermsKind && expected.LessonCount == stored.LessonCount
-        && expected.PeriodTicks == stored.PeriodTicks && expected.ReturningGapTicks == stored.ReturningGapTicks
-        && (expected.PurchaseSizes ?? []).SequenceEqual(stored.PurchaseSizes ?? []);
+        && expected.PeriodTicks == stored.PeriodTicks && expected.ReturningGapTicks == stored.ReturningGapTicks;
 
     private static Result<MarketingCampaign, ErrorList> Restore(CampaignRow row)
     {
@@ -133,13 +131,6 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
                 terms = value.Value;
                 break;
             }
-            case "purchase" when row.PurchaseSizes is { } sizes:
-            {
-                var value = DiscountTerms.Purchase.Create(sizes.Select(size => (SubscriptionSize)size));
-                if (value.IsFailure) return value.Error;
-                terms = value.Value;
-                break;
-            }
             default: return ErrorList.Single(new ModelError.InvalidValue(), "terms");
         }
         var campaign = MarketingCampaignRules.Restore(new(row.Id), row.Code, period.Value, discount, terms,
@@ -163,7 +154,6 @@ public sealed class MarketingCampaignStore(Database database) : IMarketingCampai
         public string TermsKind { get; init; } = "";
         public int? LessonCount { get; init; }
         public long? PeriodTicks { get; init; }
-        public int[]? PurchaseSizes { get; init; }
         public long? ReturningGapTicks { get; init; }
         public bool IsStopped { get; init; }
     }

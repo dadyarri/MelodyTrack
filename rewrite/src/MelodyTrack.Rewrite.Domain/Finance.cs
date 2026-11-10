@@ -76,8 +76,7 @@ public sealed record Expense
 public closed record SettlementSource
 {
     public sealed record Prepaid(PaymentId Id, Money Amount, SettlementId? RecoveredDebtId = null) : SettlementSource;
-    public sealed record Cash(Money Amount, DiscountActivationId? DiscountId) : SettlementSource;
-    public sealed record Subscription(SubscriptionId Id) : SettlementSource;
+    public sealed record Uncovered(Money Amount, DiscountActivationId? DiscountId) : SettlementSource;
 }
 
 /// <summary>One historical result charge. Reversal preserves its original source.</summary>
@@ -110,14 +109,6 @@ public sealed record AppointmentSettlement
 
 public static class ClientBalance
 {
-    public static decimal CalculateHistorical(ClientId clientId, IEnumerable<Payment> payments, IEnumerable<Refund> refunds,
-        IEnumerable<Subscription> subscriptions, IEnumerable<AppointmentSettlement> settlements) =>
-        payments.Where(item => item.ClientId == clientId).DistinctBy(item => item.Id).Sum(item => item.Amount.Amount)
-        - refunds.Where(item => item.ClientId == clientId).DistinctBy(item => item.Id).Sum(item => item.Amount.Amount)
-        - subscriptions.Where(item => item.ClientId == clientId && !item.IsCancelled).DistinctBy(item => item.Id).Sum(item => item.Price.Amount)
-        - settlements.Where(item => item.ClientId == clientId && !item.IsReversed).DistinctBy(item => item.Id)
-            .Sum(item => item.Source is SettlementSource.Cash cash ? cash.Amount.Amount : 0);
-
     public static Result<ServiceBalance, ErrorList> CalculateForService(ClientId clientId, ServiceId serviceId,
         IEnumerable<Payment> payments, IEnumerable<AppointmentSettlement> settlements)
     {
@@ -126,17 +117,16 @@ public static class ClientBalance
         var validation = PaymentSnapshotRules.Validate(clientId, serviceId, paid, history);
         if (validation.IsFailure) return validation.Error;
         var charges = history.Where(item => item.ClientId == clientId && item.ServiceId == serviceId && !item.IsReversed).ToArray();
-        if (paid.Any(item => item.Conditions is null) || charges.Any(item => item.Source is SettlementSource.Subscription
-            or SettlementSource.Cash { DiscountId: not null })) return ErrorList.Single(new ModelError.DecisionRequired());
+        if (paid.Any(item => item.Conditions is null) || charges.Any(item => item.Source is SettlementSource.Uncovered { DiscountId: not null }))
+            return ErrorList.Single(new ModelError.DecisionRequired());
         var servicePayments = paid.Where(item => item.Conditions!.ServiceId == serviceId).ToArray();
         if (servicePayments.Any(item => item.RemainingLessons(charges) < 0)) return ErrorList.Single(new FinanceError.InconsistentSettlement());
         if (charges.Any(item => item.Source is SettlementSource.Prepaid source && !servicePayments.Any(payment => payment.Id == source.Id)))
             return ErrorList.Single(new FinanceError.InconsistentSettlement());
         var amount = servicePayments.Sum(item => item.Amount.Amount) - charges.Sum(item => item.Source switch
         {
-            SettlementSource.Cash cash => cash.Amount.Amount,
-            SettlementSource.Prepaid prepaid => prepaid.Amount.Amount,
-            SettlementSource.Subscription => 0m
+            SettlementSource.Uncovered cash => cash.Amount.Amount,
+            SettlementSource.Prepaid prepaid => prepaid.Amount.Amount
         });
         var remaining = servicePayments.Sum(item => item.RemainingLessons(history));
         var discounted = servicePayments.Where(item => item.Conditions!.DiscountId is not null).Sum(item => item.RemainingLessons(history));
