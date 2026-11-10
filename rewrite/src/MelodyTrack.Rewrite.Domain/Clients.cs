@@ -73,8 +73,6 @@ public sealed record Client
 
     public DateTimeOffset CreatedAt { get; internal init; }
 
-    public bool IsLeadClosed { get; internal init; }
-
     public ClientProfile Profile { get; internal init; }
 
     public ImmutableArray<ClientContact> Contacts { get; internal init; }

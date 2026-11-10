@@ -25,12 +25,17 @@ public sealed class ClientImportTests(PostgreSqlFixture fixture) : IClassFixture
     private static async Task ApplySchema(NpgsqlConnection connection)
     {
         await MigrationRunner.PrepareAsync(connection, Token);
-        var names = new[] { "0001_CreateClients.sql", "0002_CreateImportMappings.sql" };
-        for (var index = 0; index < names.Length; index++)
+        var migrations = new[]
         {
-            var bytes = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Schema", names[index]), Token);
+            (Version: 1L, Name: "0001_CreateClients.sql"),
+            (Version: 2L, Name: "0002_CreateImportMappings.sql"),
+            (Version: 14L, Name: "0014_UnifyClientWorkState.sql")
+        };
+        foreach (var migration in migrations)
+        {
+            var bytes = await File.ReadAllBytesAsync(Path.Combine(AppContext.BaseDirectory, "Schema", migration.Name), Token);
             await MigrationRunner.ApplyAsync(connection,
-                new(index + 1, names[index], Convert.ToHexString(SHA256.HashData(bytes)), context => SqlMigration.RunAsync(Encoding.UTF8.GetString(bytes), context)),
+                new(migration.Version, migration.Name, Convert.ToHexString(SHA256.HashData(bytes)), context => SqlMigration.RunAsync(Encoding.UTF8.GetString(bytes), context)),
                 NullLogger.Instance, Token);
         }
     }
@@ -105,8 +110,10 @@ public sealed class ClientImportTests(PostgreSqlFixture fixture) : IClassFixture
         Assert.Equal(2L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE source_id IS NULL"));
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE created_at='-infinity'::timestamptz"));
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE birthdate='2000-02-29'"));
-        Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE is_lead_closed"));
-        Assert.Equal(0L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE is_archived"));
+        Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE is_archived"));
+        Assert.Equal(2L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE NOT is_archived"));
+        Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE first_name='Another' AND is_archived"));
+        Assert.Equal(0L, await Scalar<long>(target, "SELECT count(*) FROM information_schema.columns WHERE table_schema='public' AND table_name='clients' AND column_name='is_lead_closed'"));
         Assert.Equal(0L, await Scalar<long>(target, "SELECT count(*) FROM public.client_contacts WHERE protected_value NOT LIKE 'mtpii:1:%'"));
         await using (var command = new NpgsqlCommand("SELECT client_id,id,protected_value,protected_comment,is_primary FROM public.client_contacts", target))
         await using (var reader = await command.ExecuteReaderAsync(Token))
@@ -201,6 +208,36 @@ public sealed class ClientImportTests(PostgreSqlFixture fixture) : IClassFixture
         Assert.Equal(2, result.ClientsMatched);
         Assert.Equal(0, result.ClientsInserted);
         Assert.Equal(1L, await Scalar<long>(target, "SELECT count(*) FROM public.clients WHERE first_name='Edited'"));
+    });
+
+    [Theory]
+    [InlineData("Another", false)]
+    [InlineData("First", true)]
+    public Task Run_TargetWorkStateChanged_ReportsDifferenceWithoutOverwritingIt(string firstName, bool archived) => WithDatabases(async (source, target) =>
+    {
+        using var legacy = new LegacyPersonalDataReader(new Dictionary<string, string> { ["old"] = LegacyKey });
+        using var protector = Protector();
+        var first = await ClientImport.RunAsync(source, target, legacy, new(protector), Token);
+        Assert.True(first.Complete);
+        var ids = await Scalar<Guid[]>(target, "SELECT ARRAY(SELECT target_id FROM public.import_id_map ORDER BY target_id)");
+        await using (var change = new NpgsqlCommand("UPDATE public.clients SET is_archived=$1 WHERE first_name=$2", target))
+        {
+            change.Parameters.AddWithValue(archived);
+            change.Parameters.AddWithValue(firstName);
+            await change.ExecuteNonQueryAsync(Token);
+        }
+
+        var replay = await ClientImport.RunAsync(source, target, legacy, new(protector), Token);
+
+        Assert.False(replay.Complete);
+        Assert.Equal("target_client_differs", Assert.Single(replay.Issues).Code);
+        Assert.Equal(2, replay.ClientsMatched);
+        Assert.Equal(0, replay.ClientsInserted);
+        Assert.Equal(0, replay.ContactsInserted);
+        Assert.Equal(ids, await Scalar<Guid[]>(target, "SELECT ARRAY(SELECT target_id FROM public.import_id_map ORDER BY target_id)"));
+        await using var stored = new NpgsqlCommand("SELECT is_archived FROM public.clients WHERE first_name=$1", target);
+        stored.Parameters.AddWithValue(firstName);
+        Assert.Equal(archived, (bool)(await stored.ExecuteScalarAsync(Token))!);
     });
 
     [Fact]

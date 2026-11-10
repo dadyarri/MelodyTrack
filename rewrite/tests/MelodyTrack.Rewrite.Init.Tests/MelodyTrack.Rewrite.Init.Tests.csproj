@@ -39,6 +39,8 @@
           Link="Schema/0012_CreateClientAccessSessions.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0013_CreateBrowserAccessContexts.sql"
           Link="Schema/0013_CreateBrowserAccessContexts.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0014_UnifyClientWorkState.sql"
+          Link="Schema/0014_UnifyClientWorkState.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />

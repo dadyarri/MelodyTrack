@@ -127,7 +127,7 @@ public static class ClientImport
                 if (report.Issues.Count == previousIssueCount)
                 {
                     var profile = new ClientProfile(name.Value, row.Date, sourceId is { } known ? new ClientSourceId(known) : null, null);
-                    var restored = ClientRules.Restore(clientId, profile, values.Select(value => value.Model), row.CreatedAt, row.Closed, false);
+                    var restored = ClientRules.Restore(clientId, profile, values.Select(value => value.Model), row.CreatedAt, row.Closed);
                     if (restored.IsFailure)
                         report.Issues.Add(new("Clients", row.Row, null, "invalid_client_state"));
                     else
@@ -194,10 +194,10 @@ public static class ClientImport
         List<ImportedContact> contacts, ClientDataProtection protection, CancellationToken token)
     {
         await Execute(connection, transaction, """
-            INSERT INTO public.clients(id,first_name,last_name,middle_name,birthdate,source_id,protected_notes,created_at,is_lead_closed,is_archived)
-            VALUES ($1,$2,$3,$4,CAST($5 AS date),$6,$7,CAST($8 AS timestamptz),$9,false)
+            INSERT INTO public.clients(id,first_name,last_name,middle_name,birthdate,source_id,protected_notes,created_at,is_archived)
+            VALUES ($1,$2,$3,$4,CAST($5 AS date),$6,$7,CAST($8 AS timestamptz),$9)
             """, token, client.Id.Value, old.First, old.Last, Db(old.Middle), Db(old.Birthdate), Db(client.Profile.SourceId?.Value),
-            Db(protection.ProtectNotes(client.Id, client.Profile.Notes)), old.CreatedAtText, old.Closed);
+            Db(protection.ProtectNotes(client.Id, client.Profile.Notes)), old.CreatedAtText, client.IsArchived);
         foreach (var contact in contacts)
             await Execute(connection, transaction, """
                 INSERT INTO public.client_contacts(id,client_id,kind_id,protected_value,protected_comment,is_primary)
@@ -211,7 +211,7 @@ public static class ClientImport
         List<ImportedContact> contacts, ClientDataProtection protection, CancellationToken token)
     {
         await using (var command = Command(connection, transaction, """
-            SELECT first_name,last_name,middle_name,birthdate::text,source_id,created_at::text,is_lead_closed,is_archived,protected_notes
+            SELECT first_name,last_name,middle_name,birthdate::text,source_id,created_at::text,is_archived,protected_notes
             FROM public.clients WHERE id=$1
             """, client.Id.Value))
         await using (var reader = await command.ExecuteReaderAsync(token))
@@ -219,8 +219,8 @@ public static class ClientImport
             if (!await reader.ReadAsync(token)) return false;
             if (reader.GetString(0) != old.First || reader.GetString(1) != old.Last || Text(reader, 2) != old.Middle
                 || Text(reader, 3) != old.Birthdate || (reader.IsDBNull(4) ? (Guid?)null : reader.GetGuid(4)) != client.Profile.SourceId?.Value
-                || reader.GetString(5) != old.CreatedAtText || reader.GetBoolean(6) != old.Closed || reader.GetBoolean(7)
-                || protection.UnprotectNotes(client.Id, Text(reader, 8)) != client.Profile.Notes) return false;
+                || reader.GetString(5) != old.CreatedAtText || reader.GetBoolean(6) != client.IsArchived
+                || protection.UnprotectNotes(client.Id, Text(reader, 7)) != client.Profile.Notes) return false;
         }
         var expected = contacts.ToDictionary(contact => contact.Model.Id.Value);
         await using var rows = Command(connection, transaction,

@@ -108,8 +108,9 @@ public static class ClientRules
         return new Client(id, profile, values) { CreatedAt = createdAt.ToUniversalTime() };
     }
 
-    public static Result<Client, ErrorList> Restore(ClientId id, ClientProfile profile, IEnumerable<ClientContact> contacts,
-        DateTimeOffset createdAt, bool isLeadClosed, bool isArchived)
+    public static Result<Client, ErrorList> Restore(ClientId id, ClientProfile profile,
+        IEnumerable<ClientContact> contacts,
+        DateTimeOffset createdAt, bool isArchived)
     {
         var values = contacts.ToImmutableArray();
         var source = profile.SourceId is { } sourceId
@@ -120,7 +121,6 @@ public static class ClientRules
         return new Client(id, profile, values)
         {
             CreatedAt = createdAt.ToUniversalTime(),
-            IsLeadClosed = isLeadClosed,
             IsArchived = isArchived
         };
     }
