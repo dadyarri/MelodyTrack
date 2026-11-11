@@ -1,0 +1,11 @@
+node_modules/
+dist/
+.vite/
+.artifacts/
+coverage/
+*.tsbuildinfo
+.playwright/
+.playwright-cli/
+output/playwright/
+.env.local
+.env.*.local

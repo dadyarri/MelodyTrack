@@ -4,7 +4,7 @@
 
 ## Контекст и источники
 
-- Это отдельная реализация: `MelodyTrack.Rewrite.slnx`, пять проектов `src/`, три проекта `tests/`. SDK/runner заданы в `global.json`: .NET 11, xUnit v3/Microsoft.Testing.Platform. SQL — Npgsql/Dapper; EF здесь нет. Frontend rewrite пока отсутствует.
+- Это отдельная реализация: `MelodyTrack.Rewrite.slnx`, пять C#-проектов `src/`, три проекта `tests/` и React/TypeScript frontend `web/`. SDK/runner заданы в `global.json`: .NET 11, xUnit v3/Microsoft.Testing.Platform. SQL — Npgsql/Dapper; EF здесь нет. Для frontend действуют `web/AGENTS.md` и `web/README.md`.
 - Нормативный вход: `../specification/README.md`; подтверждения и замены правил — `../specification/decisions.md` (`D-*`), архитектура — `../specification/architecture.md`. Сохраняй существующие ID и статусы. Открытые вопросы: `docs/open-questions.md` и `../specification/access-questions.md`.
 - Позднее подтверждённое решение заменяет старое только при явном указании области замены. Конфликт двух подтверждённых правил предъяви пользователю с источниками и контрпримером. Не выбирай по дате файла или удобству реализации.
 - Код и тесты доказывают фактическое поведение, а не его правильность. `docs/domain-models.md` фиксирует отставание моделей от D-420–D-455. Старые Backend/Web, roadmap и Git — исторические свидетельства; отсутствие правила в новой спецификации не подтверждает ни отмену, ни автоматический перенос.

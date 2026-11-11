@@ -1,0 +1,38 @@
+.staff-access-form {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+}
+.staff-access-form .ant-input,
+.staff-access-form .ant-input-affix-wrapper,
+.staff-access-form .ant-btn-lg {
+  min-height: 44px;
+  font-size: 16px;
+}
+.staff-access-form .ant-form-item {
+  margin-bottom: 20px;
+}
+.staff-access-form .ant-input-affix-wrapper > .ant-input {
+  min-height: 0;
+}
+.staff-access-form .ant-alert {
+  margin-bottom: 4px;
+}
+.staff-access-form .ant-tabs-nav {
+  margin-bottom: 24px;
+}
+.staff-access-secondary {
+  margin-top: 12px;
+}
+.staff-access-help {
+  margin-top: 22px;
+  max-width: 100%;
+}
+.staff-access-trace {
+  overflow-wrap: anywhere;
+  margin-bottom: 0;
+  font-size: 12px;
+}
+.staff-access-trace code {
+  font: inherit;
+}

@@ -1,6 +1,6 @@
 # Контракт входа и сессий
 
-Нормативные правила — [authentication.md](../../specification/authentication.md), D-420/D-529–D-533 и [матрица доступа](../../specification/access.md). Этот документ описывает HTTP/SQL-реализацию; он не задаёт новые права. Frontend rewrite отсутствует.
+Нормативные правила — [authentication.md](../../specification/authentication.md), D-420/D-529–D-533 и [матрица доступа](../../specification/access.md). Этот документ описывает HTTP/SQL-реализацию; он не задаёт новые права. Первоначальный [frontend rewrite](../web/README.md) поддерживает пароль/passkey и второй фактор сотрудников, текущую сессию, refresh и выход. UI регистрации, восстановления и запомненных аккаунтов ещё не реализован.
 
 ## Браузер и идентичность
 

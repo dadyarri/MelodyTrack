@@ -53,7 +53,7 @@ Read-only ограничения ролей — инструкции, не от�
 
 Утилита `scripts/agent_checks.py` — тонкая Python 3.11+ stdlib обёртка, не test runner. Настоящие проверки выполняют dotnet и xUnit. Перед `run`/`rerun-failed` с dotnet требуется elevated shell: возможен restore. При отказе не пробовать альтернативы. Команда `plan` ничего не запускает. Не передавай credentials параметрами команд. Артефакты игнорируются Git; полные логи локальны и не предназначены для публикации — перед передачей проверяй содержимое. Используй синтетические данные: обёртка не гарантирует удаление секретов из произвольного вывода стороннего процесса.
 
-Текущие проверки: Domain/Application и Api unit tests без Docker; Init интеграционные тесты с PostgreSQL Testcontainers. Live import не входит в обычный набор. Frontend, E2E, линтер, coverage и API generator rewrite пока не имеют настроенных pipelines — не симулировать их успех и не добавлять зависимости ради отчёта.
+Текущие проверки: Domain/Application и Api unit tests без Docker; Init интеграционные тесты с PostgreSQL Testcontainers. Live import не входит в обычный набор. Frontend проверяется отдельно командой `npm run verify:fix` в `web/` после готовой пачки и разрешения; она включает Biome, TypeScript, Vitest и Vite build. `agent_checks.py --scope all` не включает этот frontend pipeline. Браузерные сценарии проверяются отдельно; общие E2E, coverage и API generator rewrite пока не имеют настроенных pipelines — не симулировать их успех и не добавлять зависимости ради отчёта.
 
 ```bash
 python3 scripts/agent_checks.py plan --scope domain

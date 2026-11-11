@@ -1,0 +1,62 @@
+.employee-training-loading {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+
+.employee-training-workspace,
+.employee-training-exercise,
+.employee-training-article {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+
+.employee-training-workspace {
+  max-width: 900px;
+}
+
+.employee-training-resume {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 900;
+  max-width: calc(100vw - 40px);
+}
+
+@media (max-width: 600px) {
+  .ant-modal.employee-training-modal {
+    top: 0;
+    margin: 0;
+    padding-bottom: 0;
+  }
+
+  .employee-training-modal .ant-modal-container {
+    height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    border-radius: 0;
+    padding-top: max(20px, env(safe-area-inset-top));
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+  }
+
+  .employee-training-modal .ant-modal-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  .employee-training-modal .ant-modal-footer {
+    flex-shrink: 0;
+  }
+
+  .employee-training-workspace,
+  .employee-training-exercise,
+  .employee-training-article {
+    gap: 16px;
+  }
+}
