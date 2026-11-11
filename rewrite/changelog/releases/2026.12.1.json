@@ -1,0 +1,12 @@
+{
+  "version": "2026.12.1",
+  "codename": "Da capo",
+  "codenameMeaning": "С начала, заново.",
+  "date": null,
+  "changes": {
+    "new": ["Полная переработка системы"],
+    "improved": [],
+    "fixed": [],
+    "security": []
+  }
+}

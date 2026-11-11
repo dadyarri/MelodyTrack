@@ -70,6 +70,10 @@ public sealed class StaffCredentialStore(Database database, IBrowserAccessContex
                 role, row.Blocked, row.Archived, row.Revision);
         }
 
+        public Task<Guid?> PasskeyOwnerAsync(string credentialId, CancellationToken ct) =>
+            database.Query("SELECT staff_id FROM public.staff_passkeys WHERE credential_id=@credential")
+                .WithParameter("credential", credentialId).GetSingleOrDefaultAsync<Guid?>(ct);
+
         public async Task SaveAccountAsync(StaffCredentialAccount account, bool create, CancellationToken ct)
         {
             if (create)
@@ -132,13 +136,22 @@ public sealed class StaffCredentialStore(Database database, IBrowserAccessContex
             await RefreshClockAsync(ct);
             return row is null ? null : new(row.Hash,row.Purpose,row.StaffId,row.Revision,row.Payload,Utc(row.ExpiresAt));
         }
-        public async Task AddChallengeAsync(StaffCredentialChallenge challenge, CancellationToken ct) =>
+        public async Task AddChallengeAsync(StaffCredentialChallenge challenge, CancellationToken ct)
+        {
+            if (challenge.Purpose == "primary-passkey" && challenge.StaffId is null)
+                await database.Query("""
+                    DELETE FROM public.staff_credential_challenges
+                    WHERE purpose='primary-passkey' AND staff_id IS NULL AND expires_at<=clock_timestamp()
+                        AND (browser_context_id=@browser OR (@trusted AND browser_context_id IS NULL))
+                    """).WithParameter("browser", browser.ContextId, System.Data.DbType.Guid)
+                        .WithParameter("trusted", browser.IsTrustedInternal).ExecuteAsync(ct);
             await database.Query("""
                 INSERT INTO public.staff_credential_challenges(token_hash,purpose,staff_id,credential_revision,payload,expires_at,browser_context_id)
                 VALUES (@hash,@purpose,@staff,@revision,@payload,@expires,@browser)
                 """).WithParameter("hash", challenge.Hash).WithParameter("purpose", challenge.Purpose).WithParameter("staff", challenge.StaffId, System.Data.DbType.Guid)
                 .WithParameter("revision", challenge.Revision).WithParameter("payload", challenge.Payload).WithParameter("expires", challenge.ExpiresAt)
                 .WithParameter("browser", browser.ContextId, System.Data.DbType.Guid).ExecuteAsync(ct);
+        }
 
         public async Task<StaffCredentialSession> CreateSessionAsync(Guid staffId, string accessHash, string refreshHash,
             bool factorVerified, CancellationToken ct)

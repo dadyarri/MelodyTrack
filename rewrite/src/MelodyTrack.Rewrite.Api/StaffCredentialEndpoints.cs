@@ -9,6 +9,11 @@ using Microsoft.AspNetCore.Http.HttpResults;
 namespace MelodyTrack.Rewrite.Api;
 
 public sealed record StaffInvitationRequest([property: JsonRequired] string? Role);
+public sealed record StaffRegistrationInvitationRequest([property: JsonRequired] string? Link)
+{
+    public override string ToString() => nameof(StaffRegistrationInvitationRequest);
+}
+public sealed record StaffRegistrationInvitationResponse(string Role);
 public sealed record StaffRegistrationRequest([property: JsonRequired] string? Link, [property: JsonRequired] string? Login,
     string? Password, bool Authenticator = false, bool SecondFactor = false)
 {
@@ -19,11 +24,15 @@ public sealed record StaffRegistrationCompleteRequest([property: JsonRequired] s
 {
     public override string ToString() => nameof(StaffRegistrationCompleteRequest);
 }
+public sealed record StaffRegistrationAuthenticatorRequest([property: JsonRequired] string? Challenge,
+    [property: JsonRequired] bool Skip, string? Code = null)
+{
+    public override string ToString() => nameof(StaffRegistrationAuthenticatorRequest);
+}
 public sealed record StaffPasswordRequest([property: JsonRequired] string? Login, [property: JsonRequired] string? Password)
 {
     public override string ToString() => nameof(StaffPasswordRequest);
 }
-public sealed record StaffPasskeyOptionsRequest([property: JsonRequired] string? Login);
 public sealed record StaffPasskeyCompleteRequest([property: JsonRequired] string? Challenge, [property: JsonRequired] JsonElement Response)
 {
     public override string ToString() => nameof(StaffPasskeyCompleteRequest);
@@ -61,6 +70,7 @@ public static class StaffCredentialEndpoints
     {
         services.AddScoped<IStaffCredentialStore, StaffCredentialStore>();
         services.AddScoped<StaffCredentialFlows>();
+        services.AddScoped<ICurrentStaffLogin>(provider => provider.GetRequiredService<StaffCredentialFlows>());
         return services;
     }
 
@@ -74,17 +84,26 @@ public static class StaffCredentialEndpoints
             return await next(context);
         });
 
+        Public(routes.MapPost("/register/invitation", async (StaffRegistrationInvitationRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
+        {
+            if (!Present(request.Link)) return Unauthorized<StaffRegistrationInvitationResponse>();
+            var invitation = await flows.PreviewInvitationAsync(request.Link!, ct);
+            return Map(invitation.Map(role => new StaffRegistrationInvitationResponse(StaffSessionEndpoints.Label(role))), true);
+        }));
         Public(routes.MapPost("/register/options", async (StaffRegistrationRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.Link) || !Present(request.Login) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.BeginRegistrationAsync(request.Link!, request.Login!, request.Password, request.Authenticator, request.SecondFactor, ct), true)));
+        Public(routes.MapPost("/register/authenticator", async (StaffRegistrationAuthenticatorRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
+            !Present(request.Challenge) ? Unauthorized<StaffCredentialResponse>()
+                : Map(await flows.AdvanceRegistrationAuthenticatorAsync(request.Challenge!, request.Code, request.Skip, ct), true)));
         Public(routes.MapPost("/register/complete", async (StaffRegistrationCompleteRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.Challenge) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.CompleteRegistrationAsync(request.Challenge!, request.AuthenticatorCode, Json(request.PasskeyResponse), ct), true)));
         Public(routes.MapPost("/password", async (StaffPasswordRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.Login) || !Present(request.Password) ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.PasswordAsync(request.Login!, request.Password!, ct), true)));
-        Public(routes.MapPost("/passkey/options", async (StaffPasskeyOptionsRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
-            !Present(request.Login) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.BeginPasskeyAsync(request.Login!, ct), true)));
+        Public(routes.MapPost("/passkey/options", async (StaffCredentialFlows flows, CancellationToken ct) =>
+            Map(await flows.BeginPasskeyAsync(ct), true)));
         Public(routes.MapPost("/passkey/complete", async (StaffPasskeyCompleteRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.Challenge) || Json(request.Response) is not { } response ? Unauthorized<StaffCredentialResponse>()
                 : Map(await flows.CompletePasskeyAsync(request.Challenge!, response, ct), true)));

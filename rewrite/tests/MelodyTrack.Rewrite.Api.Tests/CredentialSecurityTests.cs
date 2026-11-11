@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MelodyTrack.Rewrite.Api;
 using MelodyTrack.Rewrite.Application;
 using MelodyTrack.Rewrite.Domain;
@@ -111,6 +112,74 @@ public sealed class CredentialSecurityTests
         Assert.Equal("localhost", first.RootElement.GetProperty("rp").GetProperty("id").GetString());
         Assert.Equal("synthetic-user", first.RootElement.GetProperty("user").GetProperty("name").GetString());
         Assert.False(string.IsNullOrWhiteSpace(first.RootElement.GetProperty("user").GetProperty("id").GetString()));
+    }
+
+    [Fact]
+    public void CreatePasskeyRegistration_NewCredential_RequiresDiscoverableUserVerifiedCredential()
+    {
+        using var protection = Protection();
+        var security = Security(protection);
+
+        using var options = JsonDocument.Parse(security.CreatePasskeyRegistration(Staff, "discoverable-user", []));
+
+        var selection = options.RootElement.GetProperty("authenticatorSelection");
+        Assert.Equal("required", selection.GetProperty("residentKey").GetString());
+        Assert.True(selection.GetProperty("requireResidentKey").GetBoolean());
+        Assert.Equal("required", selection.GetProperty("userVerification").GetString());
+    }
+
+    [Theory]
+    [InlineData("{}")]
+    [InlineData("invalid-json")]
+    [InlineData("{\"rawId\":\"AQID\",\"response\":{}}")]
+    [InlineData("{\"rawId\":\"AQID\",\"response\":{\"userHandle\":null}}")]
+    public void ReadPasskeyAssertionIdentity_MalformedOrMissingHandle_ReturnsNull(string response)
+    {
+        using var protection = Protection();
+        var security = Security(protection);
+
+        var identity = security.ReadPasskeyAssertionIdentity(response);
+
+        Assert.Null(identity);
+    }
+
+    [Fact]
+    public void ReadPasskeyAssertionIdentity_AssertionWithHandle_ReturnsUnverifiedSelectorWithoutDiagnosticValues()
+    {
+        using var protection = Protection();
+        var security = Security(protection);
+        using var authenticator = new WebAuthnTestAuthenticator();
+        var registration = security.CreatePasskeyRegistration(Staff, "discoverable-user", []);
+        authenticator.Register(registration);
+        var options = security.CreatePasskeyAssertion([]);
+
+        var identity = security.ReadPasskeyAssertionIdentity(authenticator.Assert(options));
+
+        Assert.NotNull(identity);
+        Assert.Equal(authenticator.CredentialId, identity.CredentialId);
+        Assert.Equal(Staff.Value.ToByteArray(), identity.UserHandle);
+        Assert.Equal(nameof(PasskeyAssertionIdentity), identity.ToString());
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("mismatched")]
+    public async Task VerifyPasskeyAssertion_DiscoveryWithoutMatchingHandle_RejectsOtherwiseValidSignature(string handle)
+    {
+        using var protection = Protection();
+        var security = Security(protection);
+        using var authenticator = new WebAuthnTestAuthenticator();
+        var registration = security.CreatePasskeyRegistration(Staff, "discoverable-user", []);
+        var credential = await security.VerifyPasskeyRegistrationAsync(Staff, registration, authenticator.Register(registration), Token);
+        Assert.NotNull(credential);
+        var options = security.CreatePasskeyAssertion([]);
+        var assertion = JsonNode.Parse(authenticator.Assert(options))!;
+        if (handle == "missing") assertion["response"]!.AsObject().Remove("userHandle");
+        else assertion["response"]!["userHandle"] = "AQID";
+
+        var result = await security.VerifyPasskeyAssertionAsync(Staff, options, assertion.ToJsonString(), credential, Token);
+
+        Assert.Null(result);
     }
 
     [Fact]

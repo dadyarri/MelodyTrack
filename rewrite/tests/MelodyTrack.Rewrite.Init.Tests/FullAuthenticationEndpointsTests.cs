@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using MelodyTrack.Rewrite.Api;
 using MelodyTrack.Rewrite.Api.Tests;
 using MelodyTrack.Rewrite.Application;
@@ -27,6 +28,289 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private const string Password = "Synthetic passphrase 27!";
 
+    [Theory]
+    [InlineData("teacher")]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    public async Task PreviewInvitation_ActiveInvitation_ReturnsRoleWithoutConsumingOrCreatingCredentials(string role)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, role);
+        var credentialCount = await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials").GetSingleAsync<int>(Token);
+        var challengeCount = await host.Database.Query("SELECT count(*)::integer FROM public.staff_credential_challenges").GetSingleAsync<int>(Token);
+
+        using var first = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/invitation", new { link = invitation });
+        using var second = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/invitation", new { link = invitation });
+
+        foreach (var response in new[] { first, second })
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            Assert.True(response.Headers.CacheControl?.NoStore);
+            var preview = await response.Content.ReadFromJsonAsync<StaffRegistrationInvitationResponse>(Token);
+            Assert.Equal(role, preview!.Role);
+        }
+        Assert.False(await host.Database.Query("SELECT consumed FROM public.staff_credential_links WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).GetSingleAsync<bool>(Token));
+        Assert.Equal(credentialCount, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials").GetSingleAsync<int>(Token));
+        Assert.Equal(challengeCount, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credential_challenges").GetSingleAsync<int>(Token));
+    }
+
+    [Theory]
+    [InlineData("expired")]
+    [InlineData("consumed")]
+    [InlineData("unknown")]
+    [InlineData("malformed")]
+    public async Task PreviewInvitation_UnusableInvitation_ReturnsUniformUnauthorized(string state)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "teacher");
+        if (state == "expired")
+            await host.Database.Query("UPDATE public.staff_credential_links SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        else if (state == "consumed")
+            await host.Database.Query("UPDATE public.staff_credential_links SET consumed=true WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        else invitation = state == "unknown" ? OpaqueTokens.Create() : "invalid";
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/invitation", new { link = invitation });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        Assert.Equal("Требуется вход", problem.RootElement.GetProperty("title").GetString());
+        Assert.False(problem.RootElement.TryGetProperty("role", out _));
+    }
+
+    [Theory]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    public async Task AdvanceRegistrationAuthenticator_ConfirmedCode_RotatesBoundedProofWithoutCreatingAccount(string role)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, role);
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-authenticator", authenticator: true);
+        await host.Database.Query("UPDATE public.staff_credential_challenges SET expires_at=clock_timestamp()+INTERVAL '2 minutes' WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(registration.Challenge!)).ExecuteAsync(Token);
+        var originalExpiry = await host.Database.Query("SELECT expires_at FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(registration.Challenge!)).GetSingleAsync<DateTime>(Token);
+
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new
+        {
+            challenge = registration.Challenge, code = await CodeAsync(host, registration.AuthenticatorSecret!), skip = false
+        });
+
+        Assert.NotNull(advanced.Challenge);
+        Assert.NotEqual(registration.Challenge, advanced.Challenge);
+        Assert.NotNull(advanced.OptionsJson);
+        Assert.Null(advanced.AuthenticatorSecret);
+        Assert.Null(advanced.AccessToken);
+        Assert.Null(advanced.RefreshToken);
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials WHERE login='staged-authenticator'")
+            .GetSingleAsync<int>(Token));
+        Assert.False(await host.Database.Query("SELECT consumed FROM public.staff_credential_links WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).GetSingleAsync<bool>(Token));
+        Assert.Equal(originalExpiry, await host.Database.Query("SELECT expires_at FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(advanced.Challenge)).GetSingleAsync<DateTime>(Token));
+
+        var completed = await PostStaffAsync(host, "/api/auth/staff/register/complete", new
+        {
+            challenge = advanced.Challenge, authenticatorCode = "not-a-code"
+        });
+
+        Assert.NotNull(completed.AccessToken);
+        using var me = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, completed.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    public async Task AdvanceRegistrationAuthenticator_SkippedWithPassword_RequiresPasskeyAssertionBeforeWorkingAccess(string role)
+    {
+        await using var host = await HostAsync();
+        using var authenticator = new WebAuthnTestAuthenticator();
+        var invitation = await InviteAsync(host, role);
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-passkey-factor", authenticator: true);
+
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new
+        {
+            challenge = registration.Challenge, skip = true
+        });
+        using var attestation = JsonDocument.Parse(authenticator.Register(advanced.OptionsJson!));
+        var completed = await PostStaffAsync(host, "/api/auth/staff/register/complete", new
+        {
+            challenge = advanced.Challenge, passkeyResponse = attestation.RootElement
+        });
+
+        Assert.Null(completed.AccessToken);
+        Assert.Null(completed.RefreshToken);
+        Assert.Equal("authenticatorOrPasskey", completed.Factor);
+        using var me = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null);
+        Assert.Equal(HttpStatusCode.Unauthorized, me.StatusCode);
+        using var assertion = JsonDocument.Parse(authenticator.Assert(completed.OptionsJson!));
+
+        var verified = await PostStaffAsync(host, "/api/auth/staff/factor", new
+        {
+            challenge = completed.Challenge, passkeyResponse = assertion.RootElement
+        });
+
+        Assert.NotNull(verified.AccessToken);
+        Assert.True(await host.Database.Query("SELECT protected_authenticator IS NULL AND NOT second_factor_enabled FROM public.staff_credentials WHERE login='staged-passkey-factor'")
+            .GetSingleAsync<bool>(Token));
+    }
+
+    [Fact]
+    public async Task AdvanceRegistrationAuthenticator_TeacherSkipsOptionalAuthenticator_AllowsPasswordOnlyRegistration()
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "teacher");
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-password-only", authenticator: true);
+
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new { challenge = registration.Challenge, skip = true });
+        var completed = await PostStaffAsync(host, "/api/auth/staff/register/complete", new { challenge = advanced.Challenge });
+
+        Assert.NotNull(completed.AccessToken);
+        Assert.True(await host.Database.Query("SELECT protected_authenticator IS NULL AND NOT second_factor_enabled FROM public.staff_credentials WHERE login='staged-password-only'")
+            .GetSingleAsync<bool>(Token));
+    }
+
+    [Theory]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    public async Task CompleteRegistration_MandatoryRoleSkipsBothFactors_DoesNotCreateAccount(string role)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, role);
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-no-factor", authenticator: true);
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new { challenge = registration.Challenge, skip = true });
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/complete", new { challenge = advanced.Challenge });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials WHERE login='staged-no-factor'")
+            .GetSingleAsync<int>(Token));
+        Assert.False(await host.Database.Query("SELECT consumed FROM public.staff_credential_links WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).GetSingleAsync<bool>(Token));
+    }
+
+    [Fact]
+    public async Task AdvanceRegistrationAuthenticator_InvitationExpiresBeforeOriginalProof_BoundsNewProofByInvitation()
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "administrator");
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-short-invitation", authenticator: true);
+        await host.Database.Query("UPDATE public.staff_credential_links SET expires_at=clock_timestamp()+INTERVAL '1 minute' WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        var invitationExpiry = await host.Database.Query("SELECT expires_at FROM public.staff_credential_links WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).GetSingleAsync<DateTime>(Token);
+
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new
+        {
+            challenge = registration.Challenge, code = await CodeAsync(host, registration.AuthenticatorSecret!), skip = false
+        });
+
+        Assert.Equal(invitationExpiry, await host.Database.Query("SELECT expires_at FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(advanced.Challenge!)).GetSingleAsync<DateTime>(Token));
+    }
+
+    [Theory]
+    [InlineData("expired-proof")]
+    [InlineData("expired-invitation")]
+    [InlineData("consumed-invitation")]
+    public async Task CompleteRegistration_StagedProofOrInvitationBecomesInvalid_DoesNotBypassValidityChecks(string state)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "administrator");
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-invalid-completion", authenticator: true);
+        var advanced = await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new
+        {
+            challenge = registration.Challenge, code = await CodeAsync(host, registration.AuthenticatorSecret!), skip = false
+        });
+        if (state == "expired-proof")
+            await host.Database.Query("UPDATE public.staff_credential_challenges SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(advanced.Challenge!)).ExecuteAsync(Token);
+        else if (state == "expired-invitation")
+            await host.Database.Query("UPDATE public.staff_credential_links SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        else
+            await host.Database.Query("UPDATE public.staff_credential_links SET consumed=true WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/complete", new { challenge = advanced.Challenge });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials WHERE login='staged-invalid-completion'")
+            .GetSingleAsync<int>(Token));
+    }
+
+    [Theory]
+    [InlineData("teacher", HttpStatusCode.OK)]
+    [InlineData("administrator", HttpStatusCode.Unauthorized)]
+    [InlineData("superuser", HttpStatusCode.Unauthorized)]
+    public async Task AdvanceRegistrationAuthenticator_SkippedWithoutPassword_PreservesRoleProtection(string role, HttpStatusCode expected)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, role);
+        var registration = await PostStaffAsync(host, "/api/auth/staff/register/options", new
+        {
+            link = invitation, login = "staged-passwordless", password = (string?)null, authenticator = true, secondFactor = true
+        });
+
+        using var advancedResponse = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/authenticator",
+            new { challenge = registration.Challenge, skip = true });
+
+        Assert.Equal(expected, advancedResponse.StatusCode);
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials WHERE login='staged-passwordless'")
+            .GetSingleAsync<int>(Token));
+        Assert.False(await host.Database.Query("SELECT consumed FROM public.staff_credential_links WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(invitation)).GetSingleAsync<bool>(Token));
+        if (expected == HttpStatusCode.OK)
+        {
+            using var authenticator = new WebAuthnTestAuthenticator();
+            var advanced = (await advancedResponse.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!;
+            using var attestation = JsonDocument.Parse(authenticator.Register(advanced.OptionsJson!));
+            var completed = await PostStaffAsync(host, "/api/auth/staff/register/complete", new
+            {
+                challenge = advanced.Challenge, passkeyResponse = attestation.RootElement
+            });
+            Assert.NotNull(completed.AccessToken);
+        }
+    }
+
+    [Theory]
+    [InlineData("expired-proof")]
+    [InlineData("used-proof")]
+    [InlineData("expired-invitation")]
+    [InlineData("consumed-invitation")]
+    [InlineData("incorrect-code")]
+    public async Task AdvanceRegistrationAuthenticator_InvalidProofOrInvitation_DoesNotCreateCredentials(string state)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "administrator");
+        var registration = await BeginRegistrationAsync(host, invitation, "staged-invalid", authenticator: true);
+        var code = await CodeAsync(host, registration.AuthenticatorSecret!);
+        if (state == "expired-proof")
+            await host.Database.Query("UPDATE public.staff_credential_challenges SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(registration.Challenge!)).ExecuteAsync(Token);
+        else if (state == "expired-invitation")
+            await host.Database.Query("UPDATE public.staff_credential_links SET expires_at=clock_timestamp()-INTERVAL '1 second' WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        else if (state == "consumed-invitation")
+            await host.Database.Query("UPDATE public.staff_credential_links SET consumed=true WHERE token_hash=@hash")
+                .WithParameter("hash", OpaqueTokens.Hash(invitation)).ExecuteAsync(Token);
+        else if (state == "used-proof")
+            await PostStaffAsync(host, "/api/auth/staff/register/authenticator", new { challenge = registration.Challenge, code, skip = false });
+        else code = "not-a-code";
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/register/authenticator",
+            new { challenge = registration.Challenge, code, skip = false });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials WHERE login='staged-invalid'")
+            .GetSingleAsync<int>(Token));
+    }
+
     [Fact]
     public async Task Register_TeacherInvitation_CreatesAccountAndPasswordSessionOnce()
     {
@@ -41,6 +325,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var me = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, signedIn.AccessToken);
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
         using var document = JsonDocument.Parse(await me.Content.ReadAsStringAsync(Token));
+        Assert.Equal("teacher-one", document.RootElement.GetProperty("login").GetString());
         Assert.Equal("teacher", document.RootElement.GetProperty("role").GetString());
         var passwordSession = await PostStaffAsync(host, "/api/auth/staff/password", new { login = "TEACHER-ONE", password = Password });
         Assert.NotNull(passwordSession.AccessToken);
@@ -81,11 +366,160 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     }
 
     [Fact]
-    public async Task Passkey_Administrator_RequiresTotpAndRejectsSecondPasskeyAsFactor()
+    public async Task BeginPasskey_NoRegisteredAccounts_ReturnsAnonymousDiscoverableChallenge()
+    {
+        await using var host = await HostAsync();
+        await host.Database.Query("TRUNCATE TABLE public.staff_access_state CASCADE").ExecuteAsync(Token);
+
+        var response = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+
+        Assert.NotNull(response.Challenge);
+        Assert.Null(response.AccessToken);
+        Assert.Null(response.StaffId);
+        using var options = JsonDocument.Parse(response.OptionsJson!);
+        Assert.True(!options.RootElement.TryGetProperty("allowCredentials", out var allowed) || allowed.GetArrayLength() == 0);
+        Assert.Equal("required", options.RootElement.GetProperty("userVerification").GetString());
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credentials").GetSingleAsync<int>(Token));
+        Assert.True(await host.Database.Query("SELECT staff_id IS NULL FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(response.Challenge!)).GetSingleAsync<bool>(Token));
+    }
+
+    [Fact]
+    public async Task BeginPasskey_ExpiredAnonymousProofs_RemovesOnlyOwnExpiredProofs()
+    {
+        await using var host = await HostAsync();
+        using var otherBrowser = host.CreateBrowser();
+        var expiredOwn = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        var liveOwn = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        var expiredOther = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null, browser: otherBrowser);
+        await host.Database.Query("""
+            UPDATE public.staff_credential_challenges SET expires_at=clock_timestamp()-INTERVAL '1 second'
+            WHERE token_hash=@own OR token_hash=@other
+            """).WithParameter("own", OpaqueTokens.Hash(expiredOwn.Challenge!))
+                .WithParameter("other", OpaqueTokens.Hash(expiredOther.Challenge!)).ExecuteAsync(Token);
+
+        await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+
+        Assert.Equal(0, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(expiredOwn.Challenge!)).GetSingleAsync<int>(Token));
+        Assert.Equal(1, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(liveOwn.Challenge!)).GetSingleAsync<int>(Token));
+        Assert.Equal(1, await host.Database.Query("SELECT count(*)::integer FROM public.staff_credential_challenges WHERE token_hash=@hash")
+            .WithParameter("hash", OpaqueTokens.Hash(expiredOther.Challenge!)).GetSingleAsync<int>(Token));
+    }
+
+    [Fact]
+    public async Task CompletePasskey_DiscoverableCredential_ResolvesSelectedOwnerWithoutLogin()
+    {
+        await using var host = await HostAsync();
+        using var first = new WebAuthnTestAuthenticator();
+        using var second = new WebAuthnTestAuthenticator();
+        var selected = await RegisterPasskeyTeacherAsync(host, "selected-discoverable", first);
+        await RegisterPasskeyTeacherAsync(host, "other-discoverable", second);
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        using var assertion = JsonDocument.Parse(first.Assert(options.OptionsJson!));
+
+        var completed = await PostStaffAsync(host, "/api/auth/staff/passkey/complete", new
+        {
+            challenge = options.Challenge, response = assertion.RootElement
+        });
+
+        Assert.Equal(selected.StaffId, completed.StaffId);
+        Assert.NotNull(completed.AccessToken);
+        using var me = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, completed.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, me.StatusCode);
+        var identity = (await me.Content.ReadFromJsonAsync<CurrentStaffResponse>(Token))!;
+        Assert.Equal(selected.StaffId, identity.StaffId);
+    }
+
+    [Theory]
+    [InlineData("unknown-key")]
+    [InlineData("missing-handle")]
+    [InlineData("null-handle")]
+    [InlineData("mismatched-handle")]
+    [InlineData("blocked")]
+    [InlineData("archived")]
+    [InlineData("malformed")]
+    [InlineData("wrong-origin")]
+    [InlineData("wrong-challenge")]
+    public async Task CompletePasskey_UnusableSelectedCredential_ReturnsUnauthorized(string state)
     {
         await using var host = await HostAsync();
         using var authenticator = new WebAuthnTestAuthenticator();
-        var invitation = await InviteAsync(host, "administrator");
+        var account = await RegisterPasskeyTeacherAsync(host, "rejected-discoverable", authenticator);
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        var assertion = JsonNode.Parse(authenticator.Assert(options.OptionsJson!,
+            origin: state == "wrong-origin" ? "https://untrusted.invalid" : "https://localhost",
+            challengeOverride: state == "wrong-challenge" ? OpaqueTokens.Create() : null))!;
+        if (state == "unknown-key")
+        {
+            var unknown = OpaqueTokens.Create();
+            assertion["id"] = unknown;
+            assertion["rawId"] = unknown;
+        }
+        else if (state == "missing-handle") assertion["response"]!.AsObject().Remove("userHandle");
+        else if (state == "null-handle") assertion["response"]!["userHandle"] = null;
+        else if (state == "mismatched-handle") assertion["response"]!["userHandle"] = "AQID";
+        else if (state == "malformed") assertion = new JsonObject();
+        else if (state == "blocked")
+            await host.Database.Query("UPDATE public.staff_access_state SET is_blocked=true WHERE staff_id=@id")
+                .WithParameter("id", account.StaffId!.Value).ExecuteAsync(Token);
+        else if (state == "archived")
+            await host.Database.Query("UPDATE public.staff_access_state SET is_archived=true WHERE staff_id=@id")
+                .WithParameter("id", account.StaffId!.Value).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/passkey/complete", new
+        {
+            challenge = options.Challenge, response = assertion
+        });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+    }
+
+    [Fact]
+    public async Task CompletePasskey_ReusedDiscoveryProof_ReturnsUnauthorized()
+    {
+        await using var host = await HostAsync();
+        using var authenticator = new WebAuthnTestAuthenticator();
+        await RegisterPasskeyTeacherAsync(host, "replayed-discoverable", authenticator);
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        using var assertion = JsonDocument.Parse(authenticator.Assert(options.OptionsJson!));
+        var request = new { challenge = options.Challenge, response = assertion.RootElement };
+        var first = await PostStaffAsync(host, "/api/auth/staff/passkey/complete", request);
+
+        using var replay = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/passkey/complete", request);
+
+        Assert.NotNull(first.AccessToken);
+        Assert.Equal(HttpStatusCode.Unauthorized, replay.StatusCode);
+    }
+
+    [Fact]
+    public async Task CompletePasskey_DifferentBrowser_CannotConsumeDiscoveryProof()
+    {
+        await using var host = await HostAsync();
+        using var authenticator = new WebAuthnTestAuthenticator();
+        using var otherBrowser = host.CreateBrowser();
+        await RegisterPasskeyTeacherAsync(host, "browser-bound-discoverable", authenticator);
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
+        using var assertion = JsonDocument.Parse(authenticator.Assert(options.OptionsJson!));
+        var request = new { challenge = options.Challenge, response = assertion.RootElement };
+
+        using var other = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/passkey/complete", request, browser: otherBrowser);
+        var original = await PostStaffAsync(host, "/api/auth/staff/passkey/complete", request);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, other.StatusCode);
+        Assert.NotNull(original.AccessToken);
+    }
+
+    [Theory]
+    [InlineData("administrator")]
+    [InlineData("superuser")]
+    public async Task Passkey_ProtectedRole_RequiresTotpAndRejectsSecondPasskeyAsFactor(string role)
+    {
+        await using var host = await HostAsync();
+        using var authenticator = new WebAuthnTestAuthenticator();
+        var invitation = await InviteAsync(host, role);
         var registration = await BeginRegistrationAsync(host, invitation, "passkey-administrator", authenticator: true);
         using var attestation = JsonDocument.Parse(authenticator.Register(registration.OptionsJson!));
         var signup = await PostStaffAsync(host, "/api/auth/staff/register/complete", new
@@ -95,7 +529,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
             passkeyResponse = attestation.RootElement
         });
         Assert.NotNull(signup.AccessToken);
-        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", new { login = "passkey-administrator" });
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
         using var assertion = JsonDocument.Parse(authenticator.Assert(options.OptionsJson!));
 
         var primary = await PostStaffAsync(host, "/api/auth/staff/passkey/complete", new { challenge = options.Challenge, response = assertion.RootElement });
@@ -107,7 +541,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
             new { challenge = primary.Challenge, passkeyResponse = assertion.RootElement });
         Assert.Equal(HttpStatusCode.Unauthorized, wrongFactor.StatusCode);
 
-        var freshOptions = await PostStaffAsync(host, "/api/auth/staff/passkey/options", new { login = "passkey-administrator" });
+        var freshOptions = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
         using var freshAssertion = JsonDocument.Parse(authenticator.Assert(freshOptions.OptionsJson!));
         var freshPrimary = await PostStaffAsync(host, "/api/auth/staff/passkey/complete", new { challenge = freshOptions.Challenge, response = freshAssertion.RootElement });
         var completed = await PostStaffAsync(host, "/api/auth/staff/factor", new
@@ -138,6 +572,41 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
 
         Assert.Equal(HttpStatusCode.Unauthorized, expiredRefresh.StatusCode);
         Assert.Equal(HttpStatusCode.OK, remainingAccess.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetMe_CurrentCredentials_ReturnsOwnCanonicalLoginWithoutAcceptingAnotherStaffId()
+    {
+        await using var host = await HostAsync();
+        using var otherBrowser = host.CreateBrowser();
+        var own = await RegisterTeacherAsync(host, "  MiXeD.Login  ");
+        var other = await RegisterTeacherAsync(host, "other-login", otherBrowser);
+
+        using var response = await host.SendAsync(HttpMethod.Get, $"/api/auth/me?staffId={other.StaffId}", null, own.AccessToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        var identity = (await response.Content.ReadFromJsonAsync<CurrentStaffResponse>(Token))!;
+        Assert.Equal(own.StaffId, identity.StaffId);
+        Assert.Equal("MiXeD.Login", identity.Login);
+    }
+
+    [Fact]
+    public async Task GetMe_CredentialRecordRemoved_ReturnsUnauthorizedInsteadOfIncompleteIdentity()
+    {
+        await using var host = await HostAsync();
+        var own = await RegisterTeacherAsync(host, "removed-login");
+        await host.Database.Query("DELETE FROM public.staff_credentials WHERE staff_id=@id")
+            .WithParameter("id", own.StaffId!.Value).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, own.AccessToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Contains(response.Headers.WwwAuthenticate, header => header.Scheme == "Bearer");
+        using var problem = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        Assert.Equal("Требуется вход", problem.RootElement.GetProperty("title").GetString());
+        Assert.False(problem.RootElement.TryGetProperty("login", out _));
     }
 
     [Fact]
@@ -290,7 +759,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
             $"/api/auth/staff/security/passkeys/{authenticator.CredentialId}", null, signedIn.AccessToken);
 
         Assert.Equal(HttpStatusCode.Forbidden, removal.StatusCode);
-        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", new { login = "passkey-only" });
+        var options = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
         using var assertion = JsonDocument.Parse(authenticator.Assert(options.OptionsJson!));
         Assert.NotNull((await PostStaffAsync(host, "/api/auth/staff/passkey/complete", new { challenge = options.Challenge, response = assertion.RootElement })).AccessToken);
     }
@@ -312,7 +781,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var removal = await host.SendAsync(HttpMethod.Delete,
             $"/api/auth/staff/security/passkeys/{original.CredentialId}", null, signedIn.AccessToken);
         Assert.Equal(HttpStatusCode.OK, removal.StatusCode);
-        var loginOptions = await PostStaffAsync(host, "/api/auth/staff/passkey/options", new { login = "two-passkeys" });
+        var loginOptions = await PostStaffAsync(host, "/api/auth/staff/passkey/options", null);
         using var assertion = JsonDocument.Parse(replacement.Assert(loginOptions.OptionsJson!));
         Assert.NotNull((await PostStaffAsync(host, "/api/auth/staff/passkey/complete",
             new { challenge = loginOptions.Challenge, response = assertion.RootElement })).AccessToken);
@@ -523,7 +992,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         HttpClient? browser = null) => PostStaffAsync(host, "/api/auth/staff/register/options",
             new { link = invitation, login, password = Password, authenticator, secondFactor = authenticator }, browser: browser);
 
-    private static async Task<StaffCredentialResponse> PostStaffAsync(TestHost host, string path, object body, string? access = null, HttpClient? browser = null)
+    private static async Task<StaffCredentialResponse> PostStaffAsync(TestHost host, string path, object? body, string? access = null, HttpClient? browser = null)
     {
         using var response = await host.SendAsync(HttpMethod.Post, path, body, access, browser);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);

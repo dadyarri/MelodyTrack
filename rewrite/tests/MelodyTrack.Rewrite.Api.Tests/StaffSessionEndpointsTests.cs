@@ -25,6 +25,7 @@ public sealed class StaffSessionEndpointsTests
         using var document = JsonDocument.Parse(json);
         var current = document.RootElement;
         Assert.Equal(StaffApiHost.Staff.Value, current.GetProperty("staffId").GetGuid());
+        Assert.Equal("fixture-staff", current.GetProperty("login").GetString());
         Assert.Equal("administrator", current.GetProperty("role").GetString());
         var expenses = Assert.Single(current.GetProperty("permissions").EnumerateArray(),
             permission => permission.GetProperty("permission").GetString() == "expensesRecord");
@@ -35,6 +36,43 @@ public sealed class StaffSessionEndpointsTests
         Assert.False(current.TryGetProperty("sessionId", out _));
         Assert.DoesNotContain(StaffApiHost.BearerToken, json);
         Assert.DoesNotContain("tokenHash", json, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task GetMe_AnotherStaffIdInQuery_ReturnsOnlyAuthenticatedStaffLogin()
+    {
+        await using var host = await StaffApiHost.StartAsync(Administrator, Token);
+
+        using var response = await SendAsync(host, HttpMethod.Get, $"/api/auth/me?staffId={StaffApiHost.OtherStaff.Value}", StaffApiHost.BearerToken);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        Assert.Equal("fixture-staff", document.RootElement.GetProperty("login").GetString());
+        Assert.Equal(StaffApiHost.Staff, Assert.Single(host.Logins.Reads));
+    }
+
+    [Fact]
+    public async Task GetMe_MissingCredentialLogin_ReturnsUniformUnauthorized()
+    {
+        await using var host = await StaffApiHost.StartAsync(Administrator, Token);
+        host.Logins.Values.Remove(StaffApiHost.Staff);
+
+        using var response = await SendAsync(host, HttpMethod.Get, "/api/auth/me", StaffApiHost.BearerToken);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.Contains(response.Headers.WwwAuthenticate, header => header.Scheme == "Bearer");
+        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync(Token));
+        Assert.Equal("Требуется вход", document.RootElement.GetProperty("title").GetString());
+        Assert.False(document.RootElement.TryGetProperty("login", out _));
+    }
+
+    [Fact]
+    public void ToString_CurrentIdentity_OmitsLoginAndStaffId()
+    {
+        var response = new CurrentStaffResponse(StaffApiHost.Staff.Value, "fixture-staff", "administrator", []);
+
+        Assert.Equal(nameof(CurrentStaffResponse), response.ToString());
     }
 
     [Fact]

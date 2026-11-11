@@ -9,13 +9,14 @@ public static class PersonalDataProtectionExtensions
 {
     /// <summary>Подключает ключи из конфигурации с обязательной проверкой при старте host.</summary>
     /// <param name="services">Регистрации API.</param>
+    /// <param name="validateOnStart">Проверять ключи при старте; выключается только для build-time OpenAPI export.</param>
     /// <returns>Та же коллекция сервисов.</returns>
-    public static IServiceCollection AddPersonalDataProtection(this IServiceCollection services)
+    public static IServiceCollection AddPersonalDataProtection(this IServiceCollection services, bool validateOnStart = true)
     {
-        services.AddOptions<PersonalDataProtectionOptions>()
+        var protectionOptions = services.AddOptions<PersonalDataProtectionOptions>()
             .BindConfiguration(PersonalDataProtectionOptions.SectionName)
-            .Validate(ValidKeys, "Некорректная конфигурация PersonalData: требуется текущая версия и 256-битные Base64-ключи.")
-            .ValidateOnStart();
+            .Validate(ValidKeys, "Некорректная конфигурация PersonalData: требуется текущая версия и 256-битные Base64-ключи.");
+        if (validateOnStart) protectionOptions.ValidateOnStart();
         services.AddSingleton(provider =>
         {
             var options = provider.GetRequiredService<IOptions<PersonalDataProtectionOptions>>().Value;

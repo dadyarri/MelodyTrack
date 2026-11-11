@@ -63,7 +63,11 @@ public sealed class CredentialSecurity(IOptions<PasskeyOptions> options, Persona
         {
             User = new Fido2User { Id = staffId.Value.ToByteArray(), Name = login, DisplayName = login },
             ExcludeCredentials = existing.Select(key => new PublicKeyCredentialDescriptor(WebEncoders.Base64UrlDecode(key.CredentialId))).ToArray(),
-            AuthenticatorSelection = new AuthenticatorSelection { UserVerification = UserVerificationRequirement.Required },
+            AuthenticatorSelection = new AuthenticatorSelection
+            {
+                ResidentKey = ResidentKeyRequirement.Required,
+                UserVerification = UserVerificationRequirement.Required
+            },
             AttestationPreference = AttestationConveyancePreference.None
         }).ToJson();
 
@@ -94,6 +98,17 @@ public sealed class CredentialSecurity(IOptions<PasskeyOptions> options, Persona
         UserVerification = UserVerificationRequirement.Required
     }).ToJson();
 
+    public PasskeyAssertionIdentity? ReadPasskeyAssertionIdentity(string responseJson)
+    {
+        try
+        {
+            var response = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(responseJson, JsonOptions);
+            if (response?.RawId is not { Length: > 0 } || response.Response?.UserHandle is not { Length: > 0 }) return null;
+            return new(WebEncoders.Base64UrlEncode(response.RawId), response.Response.UserHandle);
+        }
+        catch (Exception error) when (InvalidWebAuthn(error)) { return null; }
+    }
+
     public async Task<uint?> VerifyPasskeyAssertionAsync(StaffId staffId, string optionsJson, string responseJson, StoredPasskey credential, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -103,10 +118,14 @@ public sealed class CredentialSecurity(IOptions<PasskeyOptions> options, Persona
             var response = JsonSerializer.Deserialize<AuthenticatorAssertionRawResponse>(responseJson, JsonOptions);
             if (response is null || response.RawId is not { Length: > 0 } || response.Response is null
                 || WebEncoders.Base64UrlEncode(response.RawId) != credential.CredentialId) return null;
+            var original = AssertionOptions.FromJson(optionsJson);
+            var hasUserHandle = response.Response.UserHandle is { Length: > 0 };
+            if (!original.AllowCredentials.Any() && !hasUserHandle
+                || hasUserHandle && !response.Response.UserHandle!.SequenceEqual(credential.UserHandle)) return null;
             var result = await fido.MakeAssertionAsync(new MakeAssertionParams
             {
                 AssertionResponse = response,
-                OriginalOptions = AssertionOptions.FromJson(optionsJson),
+                OriginalOptions = original,
                 StoredPublicKey = credential.PublicKey,
                 StoredSignatureCounter = credential.Counter,
                 IsUserHandleOwnerOfCredentialIdCallback = (args, _) => Task.FromResult(

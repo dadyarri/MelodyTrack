@@ -6,6 +6,8 @@
   <ItemGroup>
     <ProjectReference Include="../MelodyTrack.Rewrite.Persistence/MelodyTrack.Rewrite.Persistence.csproj" />
     <None Update="appsettings*.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Update="appsettings.Development.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+    <None Update="appsettings.Development.example.json" CopyToOutputDirectory="Never" CopyToPublishDirectory="Never" />
     <None Update="Migrations/*.sql;Migrations/README.md" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <None Include="Migrations/*.cs" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

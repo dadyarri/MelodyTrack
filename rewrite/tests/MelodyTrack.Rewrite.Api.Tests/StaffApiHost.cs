@@ -20,7 +20,8 @@ using Microsoft.Extensions.Logging;
 namespace MelodyTrack.Rewrite.Api.Tests;
 
 internal sealed class StaffApiHost(WebApplication application, HttpClient client,
-    StaffApiHost.AccessState access, StaffApiHost.TokenState tokens, StaffApiHost.Clock clock) : IAsyncDisposable
+    StaffApiHost.AccessState access, StaffApiHost.TokenState tokens, StaffApiHost.Clock clock,
+    StaffApiHost.LoginState logins) : IAsyncDisposable
 {
     internal static readonly StaffId Staff = new(Guid.Parse("019a2c63-8c00-7000-8000-000000000001"));
     internal static readonly StaffId OtherStaff = new(Guid.Parse("019a2c63-8c00-7000-8000-000000000002"));
@@ -36,6 +37,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
     internal AccessState Access { get; } = access;
     internal TokenState Tokens { get; } = tokens;
     internal Clock Time { get; } = clock;
+    internal LoginState Logins { get; } = logins;
 
     internal static async Task<StaffApiHost> StartAsync(Actor.Staff actor, CancellationToken cancellationToken,
         NotesState? notes = null, ExpenseState? expenses = null, DateTimeOffset? now = null)
@@ -45,11 +47,13 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         builder.Logging.ClearProviders();
         var access = new AccessState(actor);
         var tokens = new TokenState();
+        var logins = new LoginState();
         var clock = new Clock(now ?? new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero));
         builder.Services.AddSingleton<ICurrentStaffAccess>(access);
         builder.Services.AddSingleton<IStaffPolicyStore>(access);
         builder.Services.AddSingleton<StaffPolicies>();
         builder.Services.AddSingleton<IStaffAccessTokenStore>(tokens);
+        builder.Services.AddSingleton<ICurrentStaffLogin>(logins);
         builder.Services.AddSingleton<TimeProvider>(clock);
         builder.Services.AddSingleton<IClientNotesStore>(notes ?? new NotesState(null));
         builder.Services.AddSingleton<ClientNotesService>();
@@ -72,7 +76,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         {
             await app.StartAsync(cancellationToken);
             var address = app.Services.GetRequiredService<IServer>().Features.Get<IServerAddressesFeature>()!.Addresses.Single();
-            return new(app, new HttpClient { BaseAddress = new Uri(address) }, access, tokens, clock);
+            return new(app, new HttpClient { BaseAddress = new Uri(address) }, access, tokens, clock, logins);
         }
         catch
         {
@@ -97,6 +101,25 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
 
     internal sealed record ClaimProbe(string Type, string Value);
     internal sealed record IdentityProbe(Guid StaffId, ClaimProbe[] Claims);
+
+    internal sealed class LoginState : ICurrentStaffLogin
+    {
+        internal Dictionary<StaffId, string> Values { get; } = new()
+        {
+            [Staff] = "fixture-staff",
+            [OtherStaff] = "other-staff"
+        };
+        internal List<StaffId> Reads { get; } = [];
+
+        public Task<Result<string, ErrorList>> GetLoginAsync(StaffId staffId, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            Reads.Add(staffId);
+            return Task.FromResult(Values.TryGetValue(staffId, out var login)
+                ? Result.Success<string, ErrorList>(login)
+                : Result.Failure<string, ErrorList>(ErrorList.Single(new ModelError.NotFound())));
+        }
+    }
 
     private sealed class BrowserState : IBrowserAccessStore
     {

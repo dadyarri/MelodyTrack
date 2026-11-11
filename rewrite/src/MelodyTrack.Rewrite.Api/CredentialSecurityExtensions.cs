@@ -6,13 +6,13 @@ namespace MelodyTrack.Rewrite.Api;
 
 public static class CredentialSecurityExtensions
 {
-    public static IServiceCollection AddCredentialSecurity(this IServiceCollection services)
+    public static IServiceCollection AddCredentialSecurity(this IServiceCollection services, bool validateOnStart = true)
     {
-        services.AddOptions<PasskeyOptions>().BindConfiguration(PasskeyOptions.SectionName)
+        var passkeyOptions = services.AddOptions<PasskeyOptions>().BindConfiguration(PasskeyOptions.SectionName)
             .Validate(options => Uri.CheckHostName(options.RelyingPartyId) != UriHostNameType.Unknown
                 && !string.IsNullOrWhiteSpace(options.ServerName) && options.Origins.Count > 0
-                && options.Origins.All(ValidOrigin), "Authentication:Passkeys requires a relying-party domain and explicit valid origins.")
-            .ValidateOnStart();
+                && options.Origins.All(ValidOrigin), "Authentication:Passkeys requires a relying-party domain and explicit valid origins.");
+        if (validateOnStart) passkeyOptions.ValidateOnStart();
         services.AddSingleton<ICredentialSecurity, CredentialSecurity>();
         services.AddRateLimiter(options =>
         {

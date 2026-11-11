@@ -6,6 +6,11 @@
 !.env.example
 appsettings.Local.json
 appsettings.*.local.json
+appsettings.Development.json
+
+# Application release metadata is source data, not build output.
+!changelog/releases/
+!changelog/releases/*.json
 
 # Local verification artifacts (may contain detailed diagnostics).
 .artifacts/
