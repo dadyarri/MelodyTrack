@@ -1,0 +1,39 @@
+.registration-form,
+.registration-authenticator,
+.registration-passkey {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+.registration-actions {
+  display: grid;
+  gap: 12px;
+}
+.registration-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 100px;
+}
+.registration-form .ant-form-item {
+  margin-bottom: 20px;
+}
+.registration-form .ant-input,
+.registration-form .ant-input-affix-wrapper {
+  font-size: 16px;
+}
+.registration-authenticator h2,
+.registration-passkey h2 {
+  font-size: 18px;
+}
+.registration-authenticator p,
+.registration-passkey p {
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+.registration-qr {
+  justify-self: center;
+  padding: 8px;
+  background: #ffffff;
+  border-radius: 6px;
+}

@@ -1,3 +1,11 @@
+import type { RequestOption } from "@microsoft/kiota-abstractions";
+import {
+  FetchRequestAdapter,
+  HttpClient,
+  type Middleware,
+} from "@microsoft/kiota-http-fetchlibrary";
+import { createRewriteClient } from "./generated/rewriteClient";
+
 export class ApiError extends Error {
   readonly status: number;
   readonly traceId: string | undefined;
@@ -17,9 +25,9 @@ export function isAbortError(error: unknown): boolean {
 }
 
 export function toApiError(error: unknown): ApiError {
-  return error instanceof ApiError
-    ? error
-    : new ApiError("Не удалось связаться с сервером. Проверьте подключение и повторите действие.");
+  if (error instanceof ApiError) return error;
+  if (error instanceof SyntaxError) return invalidResponse();
+  return new ApiError("Нет соединения с сервером. Повторите попытку.");
 }
 
 export function isObject(value: unknown): value is Record<string, unknown> {
@@ -27,52 +35,82 @@ export function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 export function invalidResponse(): ApiError {
-  return new ApiError(
-    "Сервер вернул неожиданный ответ. Повторите действие или обратитесь за помощью.",
-    502,
-  );
+  return new ApiError("Не удалось прочитать ответ сервера.", 502);
 }
 
-type RequestOptions = {
-  method?: "GET" | "POST";
-  body?: unknown;
-  accessToken?: string;
-  signal: AbortSignal;
-  unauthorizedMessage?: string;
-};
+class BrowserRequestOption implements RequestOption {
+  static readonly key = "MelodyTrackBrowserRequest";
 
-export async function requestJson(path: string, options: RequestOptions): Promise<unknown> {
-  if (!path.startsWith("/api/")) throw new ApiError("Недопустимый адрес запроса.");
-  const headers = new Headers({ Accept: "application/json" });
-  if (options.body !== undefined) headers.set("Content-Type", "application/json");
-  if (options.accessToken) headers.set("Authorization", `Bearer ${options.accessToken}`);
+  constructor(
+    readonly signal: AbortSignal,
+    readonly unauthorizedMessage?: string,
+  ) {}
 
-  let response: Response;
-  try {
-    response = await fetch(path, {
-      method: options.method ?? "GET",
-      headers,
-      credentials: "include",
-      cache: "no-store",
-      redirect: "error",
-      signal: options.signal,
-      ...(options.body !== undefined ? { body: JSON.stringify(options.body) } : {}),
-    });
-  } catch (error) {
-    if (isAbortError(error)) throw error;
-    throw toApiError(error);
+  getKey() {
+    return BrowserRequestOption.key;
   }
+}
 
-  if (response.status === 204 && response.ok) return null;
+export function apiOptions(signal: AbortSignal, unauthorizedMessage?: string) {
+  return { options: [new BrowserRequestOption(signal, unauthorizedMessage)] };
+}
+
+class BrowserMiddleware implements Middleware {
+  next: Middleware | undefined;
+
+  async execute(url: string, init: RequestInit, options?: Record<string, RequestOption>) {
+    const option = options?.[BrowserRequestOption.key] as BrowserRequestOption | undefined;
+    if (!this.next || !option) throw new ApiError("Не удалось подготовить запрос.");
+    let response: Response;
+    try {
+      response = await this.next.execute(
+        url,
+        {
+          ...init,
+          headers: new Headers(init.headers),
+          credentials: "include",
+          cache: "no-store",
+          redirect: "error",
+          signal: option.signal,
+        },
+        options,
+      );
+    } catch (error) {
+      if (isAbortError(error)) throw error;
+      throw toApiError(error);
+    }
+    if (response.ok) return response;
+    throw await responseError(response, option.unauthorizedMessage);
+  }
+}
+
+export function applicationApi(accessToken?: string) {
+  const adapter = new FetchRequestAdapter(
+    {
+      authenticateRequest(request) {
+        if (accessToken) request.headers.add("Authorization", `Bearer ${accessToken}`);
+        return Promise.resolve();
+      },
+    },
+    undefined,
+    undefined,
+    new HttpClient((url, init) => fetch(url, init), new BrowserMiddleware()),
+  );
+  adapter.baseUrl = window.location.origin;
+  return createRewriteClient(adapter).api;
+}
+
+export function staffApi(accessToken?: string) {
+  return applicationApi(accessToken).auth;
+}
+
+async function responseError(response: Response, unauthorizedMessage?: string): Promise<ApiError> {
   let payload: unknown;
   try {
     payload = await response.json();
   } catch (error) {
     if (isAbortError(error)) throw error;
-    if (response.ok) throw invalidResponse();
   }
-  if (response.ok) return payload;
-
   const possibleTraceId = isObject(payload) ? payload.traceId : undefined;
   const traceId =
     typeof possibleTraceId === "string" && /^[a-fA-F0-9-]{16,64}$/.test(possibleTraceId)
@@ -85,17 +123,16 @@ export async function requestJson(path: string, options: RequestOptions): Promis
       : undefined;
   const message =
     response.status === 401
-      ? (options.unauthorizedMessage ??
-        "Сессия завершилась или активный аккаунт изменился. Войдите снова.")
+      ? (unauthorizedMessage ?? "Сессия завершена. Войдите снова.")
       : response.status === 403
-        ? "Нет доступа к этому действию. Обратитесь к администратору."
+        ? "Нет доступа."
         : response.status === 429
-          ? "Слишком много попыток. Подождите и повторите вход."
+          ? "Слишком много попыток. Повторите позже."
           : response.status === 409
-            ? "Состояние изменилось. Начните действие заново."
+            ? "Состояние изменилось. Повторите действие."
             : response.status === 400
-              ? "Не удалось выполнить действие. Проверьте введённые данные."
-              : "Сервис временно недоступен. Повторите действие позже.";
-  // Raw Problem Details and credential response bodies never become diagnostic text.
-  throw new ApiError(message, response.status, traceId, retryAfterSeconds);
+              ? "Проверьте введённые данные."
+              : "Сервис недоступен. Повторите позже.";
+  // Raw Problem Details never become diagnostic text or UI messages.
+  return new ApiError(message, response.status, traceId, retryAfterSeconds);
 }

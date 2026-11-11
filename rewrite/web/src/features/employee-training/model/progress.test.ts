@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
-  attemptDemoSignIn,
+  startDemoSession,
   createProgress,
   finishDemoSession,
   readProgress,
@@ -10,9 +10,7 @@ import {
 describe("staff access training", () => {
   it("requires the demonstrated session to open before the exercise can finish", () => {
     expect(finishDemoSession("signed-out")).toBe("signed-out");
-    expect(attemptDemoSignIn("signed-out", "teacher.demo", "wrong")).toBe("signed-out");
-
-    const signedIn = attemptDemoSignIn("signed-out", "teacher.demo", "demo-lesson");
+    const signedIn = startDemoSession("signed-out");
 
     expect(signedIn).toBe("signed-in");
     expect(finishDemoSession(signedIn)).toBe("completed");
@@ -50,7 +48,7 @@ describe("staff access training", () => {
     };
 
     const replayStart = recordDemoStep(completed, "signed-out");
-    const signedIn = attemptDemoSignIn("signed-out", "teacher.demo", "demo-lesson");
+    const signedIn = startDemoSession("signed-out");
     const replayInProgress = recordDemoStep(replayStart, signedIn);
     const replayComplete = recordDemoStep(replayInProgress, finishDemoSession(signedIn));
 

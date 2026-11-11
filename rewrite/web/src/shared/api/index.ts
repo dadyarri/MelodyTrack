@@ -1,4 +1,13 @@
-export { ApiError, invalidResponse, isAbortError, isObject, requestJson, toApiError } from "./http";
+export {
+  ApiError,
+  applicationApi,
+  apiOptions,
+  invalidResponse,
+  isAbortError,
+  isObject,
+  staffApi,
+  toApiError,
+} from "./http";
 export type {
   PasskeyChallenge,
   StaffCredentialOutcome,

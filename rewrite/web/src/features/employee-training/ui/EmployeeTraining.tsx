@@ -3,8 +3,6 @@ import {
   Button,
   Card,
   Collapse,
-  Form,
-  Input,
   Modal,
   Space,
   Spin,
@@ -15,7 +13,7 @@ import {
 } from "antd";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import {
-  attemptDemoSignIn,
+  startDemoSession,
   createProgress,
   type DemoStep,
   finishDemoSession,
@@ -31,11 +29,12 @@ interface TrainingContextValue {
   progress: TrainingProgress | null;
   demoStep: DemoStep | null;
   ready: boolean;
+  active: boolean;
   storageAvailable: boolean;
   openTraining: () => void;
   openArticle: () => void;
   markArticleRead: () => void;
-  attemptSignIn: (login: string, password: string) => boolean;
+  startDemo: () => void;
   finishSession: () => void;
   restartDemo: () => void;
 }
@@ -126,13 +125,21 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
     setReplayStep(step);
   }
 
+  function startTrainingSession() {
+    const previous = current.current;
+    if (!previous) return;
+    if (previous.demoStep === "completed") updateReplay("signed-in");
+    else update((record) => recordDemoStep(record, startDemoSession(record.demoStep)));
+  }
+
   const value: TrainingContextValue = {
     progress,
     demoStep: replayStep ?? progress?.demoStep ?? null,
     ready: progress !== null,
+    active: modalOpen,
     storageAvailable,
     openTraining: () => {
-      updateReplay(current.current?.demoStep === "completed" ? "signed-out" : null);
+      startTrainingSession();
       setTab("exercise");
       setModalOpen(true);
     },
@@ -142,24 +149,12 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
       setModalOpen(true);
     },
     markArticleRead,
-    attemptSignIn: (login, password) => {
-      const previous = current.current;
-      if (!previous) return false;
-      const previousStep = replay.current ?? previous.demoStep;
-      const nextStep = attemptDemoSignIn(previousStep, login, password);
-      if (nextStep === previousStep) return false;
-      if (replay.current !== null) updateReplay(nextStep);
-      else update((record) => recordDemoStep(record, nextStep));
-      return true;
-    },
+    startDemo: startTrainingSession,
     finishSession: () => {
       if (replay.current !== null) updateReplay(finishDemoSession(replay.current));
       else update((record) => recordDemoStep(record, finishDemoSession(record.demoStep)));
     },
-    restartDemo: () => {
-      if (current.current?.demoStep === "completed") updateReplay("signed-out");
-      else update((record) => recordDemoStep(record, "signed-out"));
-    },
+    restartDemo: startTrainingSession,
   };
 
   function closeTraining() {
@@ -177,13 +172,13 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
       ) : (
         <div className="employee-training-loading" role="status" aria-live="polite">
           <Spin />
-          <span>Загружаем ваше обучение…</span>
+          <span>Загрузка…</span>
         </div>
       )}
       <Modal
         className="employee-training-modal"
         style={{ maxWidth: "100vw" }}
-        title="Первое знакомство: вход и сессия"
+        title="Вход и сессия"
         open={Boolean(progress) && modalOpen}
         closable={false}
         mask={{ closable: false }}
@@ -195,10 +190,6 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
           </Button>,
         ]}
       >
-        <Paragraph>
-          Попробуйте рабочий сценарий на вымышленном аккаунте. Его можно пройти сейчас или отложить
-          и вернуться через кнопку обучения.
-        </Paragraph>
         {!storageAvailable && <StorageNotice />}
         <Tabs
           activeKey={tab}
@@ -208,7 +199,7 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
           }}
           items={[
             { key: "exercise", label: "Тренировка", children: <SessionExercise /> },
-            { key: "article", label: "Как это работает", children: <AccessArticle /> },
+            { key: "article", label: "Инструкция", children: <AccessArticle /> },
           ]}
         />
       </Modal>
@@ -228,16 +219,14 @@ function StorageNotice() {
     <Alert
       type="warning"
       showIcon
-      title="Прогресс пока доступен только в этой вкладке"
-      description="Сохранение на устройстве недоступно. Вы можете продолжить обучение, но после закрытия страницы его может понадобиться пройти снова."
+      title="Не удалось сохранить прогресс"
+      description="После закрытия страницы тренировку может понадобиться пройти заново."
     />
   );
 }
 
 function SessionExercise() {
-  const { progress, demoStep, attemptSignIn, finishSession, restartDemo } = useEmployeeTraining();
-  const [error, setError] = useState(false);
-  const [form] = Form.useForm<{ login: string; password: string }>();
+  const { progress, demoStep, startDemo, finishSession, restartDemo } = useEmployeeTraining();
   if (!progress) return null;
   const completed = demoStep === "completed";
   return (
@@ -245,71 +234,27 @@ function SessionExercise() {
       <Alert
         type="info"
         showIcon
-        title="Учебная ситуация"
-        description="Здесь нет настоящих аккаунтов. Не вводите свой пароль: действия изменяют только демонстрацию."
+        title="Учебный аккаунт"
+        description="Действия в тренировке не меняют ваш настоящий аккаунт."
       />
       <Steps
         size="small"
         current={completed ? 2 : demoStep === "signed-in" ? 1 : 0}
-        items={[{ title: "Войти" }, { title: "Выйти" }]}
+        items={[{ title: "Начать" }, { title: "Выйти" }]}
       />
       {demoStep === "signed-out" && (
-        <Card size="small" title="Войдите в учебный аккаунт">
-          <Paragraph>
-            Введите логин <Text code>teacher.demo</Text> и учебный пароль{" "}
-            <Text code>demo-lesson</Text>.
-          </Paragraph>
-          <Form
-            form={form}
-            layout="vertical"
-            autoComplete="off"
-            onFinish={(values) => {
-              const accepted = attemptSignIn(values.login, values.password);
-              setError(!accepted);
-              form.resetFields(["password"]);
-            }}
-          >
-            <Form.Item
-              name="login"
-              label="Учебный логин"
-              rules={[{ required: true, message: "Введите учебный логин" }]}
-            >
-              <Input autoComplete="off" spellCheck={false} autoCapitalize="none" />
-            </Form.Item>
-            <Form.Item
-              name="password"
-              label="Учебный пароль"
-              rules={[{ required: true, message: "Введите учебный пароль" }]}
-            >
-              <Input.Password autoComplete="new-password" />
-            </Form.Item>
-            {error && (
-              <Paragraph type="danger" role="alert">
-                Используйте вымышленные данные из задания выше.
-              </Paragraph>
-            )}
-            <Button type="primary" htmlType="submit">
-              Войти в демонстрацию
-            </Button>
-          </Form>
-        </Card>
+        <Button type="primary" onClick={startDemo}>Начать обучение</Button>
       )}
       {demoStep === "signed-in" && (
         <Card size="small" title="Учебная сессия открыта">
           <Paragraph>
-            Вы вошли как <Text strong>Учебный преподаватель</Text>. Завершите эту сессию кнопкой
-            выхода.
+            Вы вошли как <Text strong>Учебный преподаватель</Text>. Теперь выйдите из аккаунта.
           </Paragraph>
           <Space wrap>
             <Button type="primary" onClick={finishSession}>
               Выйти из демонстрации
             </Button>
-            <Button
-              onClick={() => {
-                setError(false);
-                restartDemo();
-              }}
-            >
+            <Button onClick={restartDemo}>
               Начать заново
             </Button>
           </Space>
@@ -317,18 +262,8 @@ function SessionExercise() {
       )}
       {completed && (
         <div className="employee-training-exercise">
-          <Alert
-            type="success"
-            showIcon
-            title="Тренировка пройдена"
-            description="Вы открыли и завершили учебную сессию. Настоящий аккаунт сотрудника и его сессии не изменились."
-          />
-          <Button
-            onClick={() => {
-              setError(false);
-              restartDemo();
-            }}
-          >
+          <Alert type="success" showIcon title="Тренировка пройдена" />
+          <Button onClick={restartDemo}>
             Повторить тренировку
           </Button>
         </div>
@@ -340,23 +275,31 @@ function SessionExercise() {
 function AccessArticle() {
   return (
     <div className="employee-training-article">
-      <Title level={4}>Вход и безопасное завершение работы</Title>
+      <Title level={4}>Вход и выход</Title>
       <Paragraph>
-        Войти можно по логину и паролю либо с помощью ключа доступа. Если для аккаунта нужен второй
-        фактор, следуйте следующему шагу входа: подтвердите код аутентификатора или ключ доступа. До
-        завершения проверки рабочая сессия не открыта.
+        Войдите по логину и паролю или с ключом доступа. Если запрошен второй фактор, подтвердите
+        вход кодом из аутентификатора или ключом доступа.
       </Paragraph>
       <Collapse
         items={[
+          {
+            key: "invitation",
+            label: "Первый вход по приглашению",
+            children: (
+              <Paragraph>
+                Откройте полученную ссылку и пройдите шаги: пароль, аутентификатор, ключ доступа.
+                Кнопка пропуска доступна там, где выбранные средства входа и роль это допускают.
+                У суперпользователя и администратора второй фактор обязателен.
+              </Paragraph>
+            ),
+          },
           {
             key: "identity",
             label: "Проверьте, что вход завершён",
             children: (
               <Paragraph>
-                После завершения входа открывается рабочее пространство. Доступные действия зависят
-                от ваших текущих прав. Если нужный раздел недоступен, обратитесь к сотруднику,
-                который управляет доступом: обучение само по себе не выдаёт дополнительных
-                разрешений.
+                После входа открывается главная страница. Если нужный раздел недоступен, обратитесь
+                к суперпользователю школы.
               </Paragraph>
             ),
           },
@@ -365,10 +308,9 @@ function AccessArticle() {
             label: "Не получается подтвердить второй фактор",
             children: (
               <Paragraph>
-                Проверьте код в приложении-аутентификаторе и время устройства. При использовании
-                ключа доступа выполните системный запрос браузера. Если средство входа потеряно,
-                обратитесь за восстановлением доступа. Не передавайте пароли, коды и ссылки
-                восстановления другим людям.
+                Проверьте код в приложении-аутентификаторе и время устройства. Для ключа доступа
+                выполните запрос браузера. Если ключ или аутентификатор потерян, обратитесь к
+                суперпользователю. Не передавайте пароли и коды другим людям.
               </Paragraph>
             ),
           },
@@ -377,9 +319,8 @@ function AccessArticle() {
             label: "Завершите сессию на общем устройстве",
             children: (
               <Paragraph>
-                Используйте «Выйти», когда заканчиваете работу на общем компьютере. Закрытие вкладки
-                не заменяет отзыв серверной сессии. Выход завершает текущую сессию и не затрагивает
-                другие устройства.
+                Откройте меню под приветствием в верхней панели и нажмите «Выйти». Закрытие вкладки не завершает сессию на сервере.
+                Выход на этом устройстве не затрагивает другие устройства.
               </Paragraph>
             ),
           },
@@ -388,18 +329,13 @@ function AccessArticle() {
             label: "Что происходит без связи",
             children: (
               <Paragraph>
-                Для настоящего входа и выхода требуется связь с сервером. При сетевой ошибке
-                приложение не должно выдавать неподтверждённое действие за успешное. Уже загруженная
-                учебная демонстрация работает без обращения к серверу.
+                Для входа и выхода нужна связь с сервером. Если появилась ошибка, восстановите
+                соединение и повторите действие. Загруженная учебная тренировка доступна без сети.
               </Paragraph>
             ),
           },
         ]}
       />
-      <Paragraph type="secondary">
-        Этот начальный модуль сохраняет прогресс на текущем устройстве. Синхронизация обучения между
-        устройствами появится отдельной возможностью.
-      </Paragraph>
     </div>
   );
 }
@@ -409,12 +345,7 @@ export function TrainingWorkspace() {
   return (
     <div className="employee-training-workspace">
       <div>
-        <Text type="secondary">ПОМОЩЬ В РАБОТЕ</Text>
-        <Title level={2}>Журнал обучения</Title>
-        <Paragraph>
-          Короткие инструкции и безопасная практика. Материалы появляются вместе с рабочими
-          возможностями приложения.
-        </Paragraph>
+        <Title level={2}>Обучение</Title>
       </div>
       {!storageAvailable && <StorageNotice />}
       <Card
@@ -429,14 +360,10 @@ export function TrainingWorkspace() {
           </Tag>
         }
       >
-        <Paragraph>
-          Как подтвердить вход, проверить свой аккаунт и завершить сессию на общем устройстве.
-        </Paragraph>
         <Space wrap>
           <Button type="primary" onClick={openTraining}>
-            {progress?.demoStep === "completed" ? "Открыть тренировку" : "Продолжить тренировку"}
+            {progress?.demoStep === "completed" ? "Повторить тренировку" : progress?.deferred ? "Продолжить обучение" : "Начать обучение"}
           </Button>
-          <Tag>{progress?.articleRead ? "Статья прочитана" : "Новая статья"}</Tag>
         </Space>
       </Card>
       <Collapse
@@ -446,14 +373,11 @@ export function TrainingWorkspace() {
         items={[
           {
             key: "access",
-            label: "Инструкция: вход и безопасное завершение работы",
+            label: "Инструкция: вход и выход",
             children: <AccessArticle />,
           },
         ]}
       />
-      <Paragraph type="secondary">
-        Прогресс на этом устройстве. Чтение статьи и прохождение тренировки учитываются отдельно.
-      </Paragraph>
     </div>
   );
 }

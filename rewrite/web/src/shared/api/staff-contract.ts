@@ -1,24 +1,27 @@
+import type {
+  CurrentStaffResponse,
+  StaffCredentialResponse,
+  StaffPermissionResponse,
+} from "./generated/models";
 import { invalidResponse, isObject } from "./http";
 
-export type StaffPermission = {
-  permission: string;
-  allowed: boolean;
-  dataScope: string;
-  timeScope: string;
-};
+type PresentFields<T, K extends keyof T> = { [P in K]-?: NonNullable<T[P]> };
 
-export type StaffIdentity = {
-  staffId: string;
+export type StaffPermission = PresentFields<
+  StaffPermissionResponse,
+  "permission" | "allowed" | "dataScope" | "timeScope"
+>;
+
+export type StaffIdentity = PresentFields<CurrentStaffResponse, "staffId" | "login"> & {
   role: "superuser" | "administrator" | "teacher";
   permissions: StaffPermission[];
 };
 
-export type StaffTokens = {
+export type StaffTokens = PresentFields<
+  StaffCredentialResponse,
+  "accessToken" | "refreshToken" | "staffId" | "expiresIn"
+> & {
   kind: "tokens";
-  accessToken: string;
-  refreshToken: string;
-  staffId: string;
-  expiresIn: number;
 };
 
 export type StaffFactor = {
@@ -28,7 +31,7 @@ export type StaffFactor = {
   optionsJson: string | null;
 };
 
-export type PasskeyChallenge = { challenge: string; optionsJson: string };
+export type PasskeyChallenge = PresentFields<StaffCredentialResponse, "challenge" | "optionsJson">;
 export type StaffCredentialOutcome = StaffTokens | StaffFactor;
 
 function nonempty(value: unknown): value is string {
@@ -80,6 +83,7 @@ export function readStaffIdentity(value: unknown): StaffIdentity {
   if (
     !isObject(value) ||
     !nonempty(value.staffId) ||
+    !nonempty(value.login) ||
     !["superuser", "administrator", "teacher"].includes(String(value.role)) ||
     !Array.isArray(value.permissions)
   )
@@ -100,5 +104,5 @@ export function readStaffIdentity(value: unknown): StaffIdentity {
       timeScope: entry.timeScope,
     };
   });
-  return { staffId: value.staffId, role: value.role as StaffIdentity["role"], permissions };
+  return { staffId: value.staffId, login: value.login, role: value.role as StaffIdentity["role"], permissions };
 }

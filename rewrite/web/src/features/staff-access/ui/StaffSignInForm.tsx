@@ -1,5 +1,5 @@
-import { Alert, Button, Form, Input, Space, Tabs, Typography } from "antd";
-import { useState } from "react";
+import { Alert, Button, Form, Input, Typography } from "antd";
+import { useEffect, useState } from "react";
 import { useStaffSession } from "@/entities/session";
 import { supportsPasskeys } from "@/shared/lib/passkeys";
 import "./StaffSignInForm.css";
@@ -9,23 +9,33 @@ type FactorValues = { code: string };
 
 export function StaffSignInForm() {
   const session = useStaffSession();
-  const [mode, setMode] = useState<"password" | "passkey">("password");
+  const [method, setMethod] = useState<"password" | "passkey">("password");
   const [primaryForm] = Form.useForm<PrimaryValues>();
   const [factorForm] = Form.useForm<FactorValues>();
   const busy = session.status === "authenticating";
+  const passkeysSupported = supportsPasskeys();
+  const { preparePasskey, factor } = session;
+
+  useEffect(() => {
+    if (!passkeysSupported || factor || busy) return;
+    const prepare = () => {
+      if (document.visibilityState === "visible") void preparePasskey();
+    };
+    prepare();
+    window.addEventListener("focus", prepare);
+    document.addEventListener("visibilitychange", prepare);
+    return () => {
+      window.removeEventListener("focus", prepare);
+      document.removeEventListener("visibilitychange", prepare);
+    };
+  }, [passkeysSupported, factor, busy, preparePasskey]);
 
   const submitPrimary = (values: PrimaryValues) => {
+    setMethod("password");
     const login = values.login.trim();
-    if (mode === "passkey") {
-      // Form validation may complete asynchronously. The prepared assertion is
-      // started only by the direct confirmation-button gesture below.
-      if (session.passkeyReady) return;
-      void session.signInWithPasskey(login);
-    } else {
-      const password = values.password ?? "";
-      primaryForm.resetFields(["password"]);
-      void session.signInWithPassword(login, password);
-    }
+    const password = values.password ?? "";
+    primaryForm.resetFields(["password"]);
+    void session.signInWithPassword(login, password);
   };
 
   const submitFactor = (values: FactorValues) => {
@@ -64,7 +74,7 @@ export function StaffSignInForm() {
             Подтвердите вход
           </Typography.Title>
           <Typography.Paragraph type="secondary">
-            Введите текущий шестизначный код из приложения-аутентификатора.
+            Введите код из приложения-аутентификатора.
           </Typography.Paragraph>
           <Form<FactorValues>
             form={factorForm}
@@ -98,14 +108,14 @@ export function StaffSignInForm() {
             <Button
               block
               size="large"
-              disabled={busy || !supportsPasskeys()}
+              disabled={busy || !passkeysSupported}
               className="staff-access-secondary"
               onClick={() => {
                 factorForm.resetFields();
                 void session.completeFactorWithPasskey();
               }}
             >
-              Подтвердить ключом доступа
+              Использовать ключ доступа
             </Button>
           )}
           <Button
@@ -120,111 +130,78 @@ export function StaffSignInForm() {
         </section>
       ) : (
         <>
-          <Tabs
-            activeKey={mode}
-            onChange={(key) => {
-              if (key !== "password" && key !== "passkey") return;
-              session.cancelSignIn();
-              primaryForm.resetFields(["password"]);
-              setMode(key);
-            }}
-            items={[
-              { key: "password", label: "По паролю", disabled: busy },
-              { key: "passkey", label: "Ключ доступа", disabled: busy },
-            ]}
-          />
-          <Form<PrimaryValues>
-            form={primaryForm}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={submitPrimary}
-            disabled={busy}
-            onValuesChange={(changed: Partial<PrimaryValues>) => {
-              if (changed.login !== undefined && session.passkeyReady) session.cancelSignIn();
-            }}
-          >
-            <Form.Item
-              name="login"
-              label="Логин сотрудника"
-              rules={[{ required: true, whitespace: true, message: "Введите ваш логин." }]}
+            <Form<PrimaryValues>
+              form={primaryForm}
+              layout="vertical"
+              requiredMark={false}
+              onFinish={submitPrimary}
+              disabled={busy}
             >
-              <Input
-                autoComplete="username"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Ваш логин"
-                size="large"
-              />
-            </Form.Item>
-            {mode === "password" && (
+              <Form.Item
+                name="login"
+                label="Логин"
+                rules={[{ required: true, whitespace: true, message: "Введите ваш логин." }]}
+              >
+                <Input
+                  autoComplete="username"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  spellCheck={false}
+                  size="large"
+                />
+              </Form.Item>
               <Form.Item
                 name="password"
                 label="Пароль"
                 rules={[{ required: true, message: "Введите пароль." }]}
               >
-                <Input.Password
-                  autoComplete="current-password"
-                  placeholder="Введите пароль"
-                  size="large"
-                />
+                <Input.Password autoComplete="current-password" size="large" />
               </Form.Item>
-            )}
-            {mode === "passkey" && (
-              <Typography.Paragraph type="secondary">
-                {session.passkeyReady
-                  ? "Ключ готов. Нажмите подтверждение и следуйте подсказкам вашего устройства."
-                  : "Продолжите, чтобы подготовить вход с ключом на этом устройстве или телефоне."}
-              </Typography.Paragraph>
-            )}
-            {mode === "passkey" && !supportsPasskeys() && (
-              <Alert
-                type="info"
-                showIcon
-                title="Ключи доступа здесь недоступны"
-                description="Откройте приложение по HTTPS или используйте вход по паролю."
-              />
-            )}
-            <Button
-              type="primary"
-              htmlType={mode === "passkey" && session.passkeyReady ? "button" : "submit"}
-              size="large"
-              block
-              loading={busy}
-              disabled={mode === "passkey" && !supportsPasskeys()}
-              onClick={() => {
-                if (mode !== "passkey" || !session.passkeyReady) return;
-                const login: unknown = primaryForm.getFieldValue("login");
-                if (typeof login === "string" && login.trim()) {
-                  void session.signInWithPasskey(login.trim());
-                }
-              }}
-            >
-              {mode === "password"
-                ? "Войти"
-                : session.passkeyReady
-                  ? "Подтвердить ключом доступа"
-                  : "Продолжить с ключом доступа"}
-            </Button>
-            {busy && (
+              <Button type="primary" htmlType="submit" size="large" block loading={busy && method === "password"}>
+                Войти
+              </Button>
+            </Form>
+            <section className="staff-access-passkey" aria-label="Вход с ключом доступа">
+              {!passkeysSupported && (
+                <Alert
+                  type="info"
+                  showIcon
+                  title="Ключи доступа здесь недоступны"
+                  description="Откройте приложение по HTTPS или используйте вход по паролю."
+                />
+              )}
               <Button
-                type="link"
+                htmlType="button"
+                size="large"
                 block
+                loading={session.preparingPasskey || (busy && method === "passkey")}
+                disabled={busy || !session.passkeyReady || !passkeysSupported}
                 onClick={() => {
+                  setMethod("passkey");
                   primaryForm.resetFields(["password"]);
-                  session.cancelSignIn();
+                  void session.signInWithPasskey();
                 }}
               >
-                Отменить попытку
+                Войти с ключом
               </Button>
-            )}
-          </Form>
-          <Space orientation="vertical" size={4} className="staff-access-help">
-            <Typography.Text type="secondary">Первый вход или потеряли доступ?</Typography.Text>
-            <Typography.Text type="secondary">
-              Попросите у суперпользователя приглашение или ссылку восстановления.
-            </Typography.Text>
-          </Space>
+              {passkeysSupported && !session.passkeyReady && !session.preparingPasskey && session.error && (
+                <Button block className="staff-access-secondary" onClick={() => void preparePasskey()}>
+                  Повторить
+                </Button>
+              )}
+            </section>
+          {busy && (
+            <Button
+              type="link"
+              block
+              onClick={() => {
+                primaryForm.resetFields(["password"]);
+                session.cancelSignIn();
+              }}
+            >
+              Отменить попытку
+            </Button>
+          )}
         </>
       )}
     </div>

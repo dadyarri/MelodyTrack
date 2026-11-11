@@ -11,6 +11,8 @@ appsettings.Development.json
 # Application release metadata is source data, not build output.
 !changelog/releases/
 !changelog/releases/*.json
+!web/src/shared/api/generated/api/releases/
+!web/src/shared/api/generated/api/releases/**
 
 # Local verification artifacts (may contain detailed diagnostics).
 .artifacts/

@@ -53,10 +53,8 @@ export function readProgress(value: unknown, staffId: string): TrainingProgress 
   };
 }
 
-export function attemptDemoSignIn(current: DemoStep, login: string, password: string): DemoStep {
-  return current === "signed-out" && login.trim() === "teacher.demo" && password === "demo-lesson"
-    ? "signed-in"
-    : current;
+export function startDemoSession(current: DemoStep): DemoStep {
+  return current === "signed-out" ? "signed-in" : current;
 }
 
 export function finishDemoSession(current: DemoStep): DemoStep {

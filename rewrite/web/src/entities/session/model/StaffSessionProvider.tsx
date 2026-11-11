@@ -9,17 +9,18 @@ import {
 } from "react";
 import {
   ApiError,
+  apiOptions,
   invalidResponse,
   isAbortError,
   type PasskeyChallenge,
   readPasskeyChallenge,
   readStaffIdentity,
   readStaffOutcome,
-  requestJson,
   type StaffCredentialOutcome,
   type StaffFactor,
   type StaffIdentity,
   type StaffTokens,
+  staffApi,
   toApiError,
 } from "@/shared/api";
 import { getPasskeyAssertion } from "@/shared/lib/passkeys";
@@ -31,13 +32,16 @@ type SessionState = {
   status: SessionStatus;
   factor: FactorPresentation | null;
   passkeyReady: boolean;
+  preparingPasskey: boolean;
   error: ApiError | null;
 };
 type SessionContextValue = SessionState & {
   signInWithPassword(login: string, password: string): Promise<void>;
-  signInWithPasskey(login: string): Promise<void>;
+  preparePasskey(): Promise<void>;
+  signInWithPasskey(): Promise<void>;
   completeFactor(code: string): Promise<void>;
   completeFactorWithPasskey(): Promise<void>;
+  completeRegistration(challenge: string, authenticatorCode?: string, passkeyResponse?: Record<string, unknown>): Promise<boolean>;
   cancelSignIn(): void;
   signOut(): Promise<void>;
   clearError(): void;
@@ -48,6 +52,7 @@ const initialState: SessionState = {
   status: "anonymous",
   factor: null,
   passkeyReady: false,
+  preparingPasskey: false,
   error: null,
 };
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -60,7 +65,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const tokens = useRef<StaffTokens | null>(null);
   const staff = useRef<StaffIdentity | null>(null);
   const factor = useRef<StaffFactor | null>(null);
-  const primaryPasskey = useRef<(PasskeyChallenge & { login: string }) | null>(null);
+  const primaryPasskey = useRef<(PasskeyChallenge & { expiresAt: number }) | null>(null);
+  const passkeyRequest = useRef<AbortController | null>(null);
+  const passkeyTask = useRef<Promise<void> | null>(null);
+  const passkeyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
   const refreshTask = useRef<Promise<void> | null>(null);
@@ -73,6 +81,15 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     refreshTimer.current = null;
   }, []);
 
+  const stopPasskeyPreparation = useCallback(() => {
+    passkeyRequest.current?.abort();
+    passkeyRequest.current = null;
+    passkeyTask.current = null;
+    primaryPasskey.current = null;
+    if (passkeyTimer.current !== null) clearTimeout(passkeyTimer.current);
+    passkeyTimer.current = null;
+  }, []);
+
   const clearLocal = useCallback(
     (error: ApiError | null = null) => {
       generation.current += 1;
@@ -80,13 +97,14 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       activeRequest.current = null;
       refreshTask.current = null;
       stopTimer();
+      stopPasskeyPreparation();
       tokens.current = null;
       staff.current = null;
       factor.current = null;
       primaryPasskey.current = null;
       setState({ ...initialState, error });
     },
-    [stopTimer],
+    [stopTimer, stopPasskeyPreparation],
   );
 
   const scheduleRefresh = useCallback(
@@ -128,10 +146,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       // even if the following identity read encounters a connectivity failure.
       channel.current?.postMessage("changed");
       const identity = readStaffIdentity(
-        await requestJson("/api/auth/me", {
-          accessToken: outcome.accessToken,
-          signal: controller.signal,
-        }),
+        await staffApi(outcome.accessToken).me.get(apiOptions(controller.signal)),
       );
       if (identity.staffId !== outcome.staffId) throw invalidResponse();
       if (id !== generation.current) return;
@@ -158,12 +173,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       const { controller, id } = beginSignIn();
       try {
         const outcome = readStaffOutcome(
-          await requestJson("/api/auth/staff/password", {
-            method: "POST",
-            body: { login, password },
-            signal: controller.signal,
-            unauthorizedMessage: credentialFailure,
-          }),
+          await staffApi().staff.password.post(
+            { login, password },
+            apiOptions(controller.signal, credentialFailure),
+          ),
         );
         await acceptOutcome(outcome, id, controller);
       } catch (error) {
@@ -173,40 +186,82 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     [acceptOutcome, beginSignIn, failSignIn],
   );
 
-  const signInWithPasskey = useCallback(
-    async (login: string) => {
-      const prepared = primaryPasskey.current?.login === login ? primaryPasskey.current : null;
+  const completeRegistration = useCallback(
+    async (challenge: string, authenticatorCode?: string, passkeyResponse?: Record<string, unknown>): Promise<boolean> => {
       const { controller, id } = beginSignIn();
       try {
-        if (!prepared) {
-          const challenge = readPasskeyChallenge(
-            await requestJson("/api/auth/staff/passkey/options", {
-              method: "POST",
-              body: { login },
-              signal: controller.signal,
-              unauthorizedMessage: credentialFailure,
-            }),
-          );
-          if (id !== generation.current) return;
-          primaryPasskey.current = { ...challenge, login };
-          setState({ ...initialState, passkeyReady: true });
-          return;
+        const outcome = readStaffOutcome(await staffApi().staff.register.complete.post({
+          challenge,
+          ...(authenticatorCode ? { authenticatorCode } : {}),
+          ...(passkeyResponse ? { passkeyResponse: { additionalData: passkeyResponse } } : {}),
+        }, apiOptions(controller.signal, "Не удалось завершить регистрацию. Настройте вход заново или войдите, если аккаунт уже создан.")));
+        await acceptOutcome(outcome, id, controller);
+        return id === generation.current;
+      } catch (error) {
+        failSignIn(error, id);
+        return false;
+      }
+    },
+    [acceptOutcome, beginSignIn, failSignIn],
+  );
+
+  const preparePasskey = useCallback(function prepare(): Promise<void> {
+    if (staff.current || factor.current || activeRequest.current) return Promise.resolve();
+    if (primaryPasskey.current && primaryPasskey.current.expiresAt > Date.now()) return Promise.resolve();
+    if (passkeyTask.current) return passkeyTask.current;
+    const controller = new AbortController();
+    passkeyRequest.current = controller;
+    const id = generation.current;
+    setState((previous) => ({ ...previous, preparingPasskey: true, passkeyReady: false }));
+    const task = (async () => {
+      try {
+        const challenge = readPasskeyChallenge(await staffApi().staff.passkey.optionsPath.post(apiOptions(controller.signal)));
+        if (id !== generation.current || controller.signal.aborted) return;
+        primaryPasskey.current = { ...challenge, expiresAt: Date.now() + 240_000 };
+        setState((previous) => ({ ...previous, preparingPasskey: false, passkeyReady: true }));
+        if (passkeyTimer.current !== null) clearTimeout(passkeyTimer.current);
+        passkeyTimer.current = setTimeout(() => {
+          passkeyTimer.current = null;
+          primaryPasskey.current = null;
+          setState((previous) => ({ ...previous, passkeyReady: false }));
+          if (document.visibilityState === "visible") void prepare();
+        }, 240_000);
+      } catch (error) {
+        if (id !== generation.current || isAbortError(error)) return;
+        setState((previous) => ({ ...previous, preparingPasskey: false, passkeyReady: false, error: toApiError(error) }));
+      } finally {
+        if (passkeyRequest.current === controller) {
+          passkeyRequest.current = null;
+          passkeyTask.current = null;
         }
+      }
+    })();
+    passkeyTask.current = task;
+    return task;
+  }, []);
+
+  const signInWithPasskey = useCallback(
+    async () => {
+      const prepared = primaryPasskey.current;
+      if (!prepared || prepared.expiresAt <= Date.now()) {
+        void preparePasskey();
+        return;
+      }
+      const { controller, id } = beginSignIn();
+      try {
         const response = await getPasskeyAssertion(prepared.optionsJson, controller.signal);
         const outcome = readStaffOutcome(
-          await requestJson("/api/auth/staff/passkey/complete", {
-            method: "POST",
-            body: { challenge: prepared.challenge, response },
-            signal: controller.signal,
-            unauthorizedMessage: credentialFailure,
-          }),
+          await staffApi().staff.passkey.complete.post(
+            { challenge: prepared.challenge, response: { additionalData: response } },
+            apiOptions(controller.signal, credentialFailure),
+          ),
         );
         await acceptOutcome(outcome, id, controller);
       } catch (error) {
         failSignIn(error, id);
       }
     },
-    [acceptOutcome, beginSignIn, failSignIn],
+    [acceptOutcome, beginSignIn, failSignIn, preparePasskey],
   );
 
   const completeFactor = useCallback(
@@ -219,13 +274,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       });
       try {
         const outcome = readStaffOutcome(
-          await requestJson("/api/auth/staff/factor", {
-            method: "POST",
-            body: { challenge: pending.challenge, code },
-            signal: controller.signal,
-            unauthorizedMessage:
-              "Не удалось подтвердить вход. Начните вход заново и используйте новый код.",
-          }),
+          await staffApi().staff.factor.post(
+            { challenge: pending.challenge, code },
+            apiOptions(controller.signal, "Код не подошёл. Начните вход заново."),
+          ),
         );
         await acceptOutcome(outcome, id, controller);
       } catch (error) {
@@ -245,12 +297,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     try {
       const passkeyResponse = await getPasskeyAssertion(pending.optionsJson, controller.signal);
       const outcome = readStaffOutcome(
-        await requestJson("/api/auth/staff/factor", {
-          method: "POST",
-          body: { challenge: pending.challenge, passkeyResponse },
-          signal: controller.signal,
-          unauthorizedMessage: "Не удалось подтвердить вход. Начните вход заново.",
-        }),
+        await staffApi().staff.factor.post(
+          { challenge: pending.challenge, passkeyResponse: { additionalData: passkeyResponse } },
+          apiOptions(controller.signal, "Не удалось подтвердить вход. Начните заново."),
+        ),
       );
       await acceptOutcome(outcome, id, controller);
     } catch (error) {
@@ -269,21 +319,17 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     const run = async () => {
       try {
         const outcome = readStaffOutcome(
-          await requestJson("/api/auth/staff/refresh", {
-            method: "POST",
-            body: { refreshToken: previousTokens.refreshToken },
-            signal: controller.signal,
-          }),
+          await staffApi().staff.refresh.post(
+            { refreshToken: previousTokens.refreshToken },
+            apiOptions(controller.signal),
+          ),
         );
         if (outcome.kind !== "tokens") throw invalidResponse();
         if (id !== generation.current) return;
         // Preserve the rotated refresh even if the subsequent identity read loses the connection.
         tokens.current = outcome;
         const identity = readStaffIdentity(
-          await requestJson("/api/auth/me", {
-            accessToken: outcome.accessToken,
-            signal: controller.signal,
-          }),
+          await staffApi(outcome.accessToken).me.get(apiOptions(controller.signal)),
         );
         if (identity.staffId !== previousTokens.staffId || identity.staffId !== outcome.staffId)
           throw invalidResponse();
@@ -329,11 +375,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     activeRequest.current = controller;
     setState((value) => ({ ...value, status: "authenticating", error: null }));
     try {
-      await requestJson("/api/auth/logout", {
-        method: "POST",
-        accessToken: current.accessToken,
-        signal: controller.signal,
-      });
+      await staffApi(current.accessToken).logout.post(apiOptions(controller.signal));
       if (id !== generation.current) return;
       clearLocal();
       channel.current?.postMessage("changed");
@@ -347,7 +389,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
           ...value,
           status: "authenticated",
           error: new ApiError(
-            "Выход на сервере не подтверждён. Повторите попытку, когда восстановится соединение.",
+            "Не удалось выйти. Повторите попытку.",
             apiError.status,
             apiError.traceId,
           ),
@@ -384,22 +426,25 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       activeRequest.current?.abort();
       refreshTask.current = null;
       stopTimer();
+      stopPasskeyPreparation();
       updates?.close();
       channel.current = null;
       window.removeEventListener("focus", revalidate);
       window.removeEventListener("online", revalidate);
       document.removeEventListener("visibilitychange", revalidate);
     };
-  }, [clearLocal, stopTimer]);
+  }, [clearLocal, stopTimer, stopPasskeyPreparation]);
 
   return (
     <SessionContext.Provider
       value={{
         ...state,
         signInWithPassword,
+        preparePasskey,
         signInWithPasskey,
         completeFactor,
         completeFactorWithPasskey,
+        completeRegistration,
         cancelSignIn: clearLocal,
         signOut,
         clearError: () => setState((value) => ({ ...value, error: null })),

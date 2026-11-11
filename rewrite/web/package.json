@@ -7,6 +7,7 @@
     "node": ">=26 <27"
   },
   "scripts": {
+    "api:generate": "node ../scripts/generate-api-client.mjs",
     "dev": "vite --host 127.0.0.1",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
@@ -17,6 +18,12 @@
     "verify:fix": "npm run format && npm run typecheck && npm run test && vite build"
   },
   "dependencies": {
+    "@microsoft/kiota-abstractions": "1.0.0-preview.112",
+    "@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.112",
+    "@microsoft/kiota-serialization-form": "1.0.0-preview.112",
+    "@microsoft/kiota-serialization-json": "1.0.0-preview.112",
+    "@microsoft/kiota-serialization-multipart": "1.0.0-preview.112",
+    "@microsoft/kiota-serialization-text": "1.0.0-preview.112",
     "antd": "6.7.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

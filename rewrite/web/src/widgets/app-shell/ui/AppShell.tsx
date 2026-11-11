@@ -1,17 +1,13 @@
-import { Alert, Button } from "antd";
+import { Alert, Button, Dropdown } from "antd";
 import { useState } from "react";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
 import { useEmployeeTraining } from "@/features/employee-training";
+import { ReleaseNotesProvider, ReleaseVersion } from "@/features/view-release-notes";
 import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
 import { Icon } from "@/shared/ui/Icon";
-
-const roleNames: Record<string, string> = {
-  superuser: "Суперпользователь",
-  administrator: "Администратор",
-  teacher: "Преподаватель",
-};
+import "./app-shell.css";
 
 export function AppShell({
   appearance,
@@ -20,12 +16,20 @@ export function AppShell({
   appearance: Appearance;
   onToggleAppearance: () => void;
 }) {
+  const { staff } = useStaffSession();
+  const training = useEmployeeTraining();
+  if (!staff) return null;
+  return (
+    <ReleaseNotesProvider key={staff.staffId} staffId={staff.staffId} canViewHistory={staff.role === "superuser" || staff.role === "administrator"} enabled={training.ready && !training.active}>
+      <ShellContent appearance={appearance} onToggleAppearance={onToggleAppearance} />
+    </ReleaseNotesProvider>
+  );
+}
+
+function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearance; onToggleAppearance: () => void }) {
   const { staff, signOut, error, clearError } = useStaffSession();
-  const { openArticle } = useEmployeeTraining();
-  const location = useLocation();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutFailed, setLogoutFailed] = useState(false);
-  const title = location.pathname === "/learning" ? "Журнал обучения" : "Рабочее пространство";
 
   async function leave() {
     setSigningOut(true);
@@ -45,20 +49,15 @@ export function AppShell({
         <NavLink to="/workspace" className="brand-link">
           <Brand />
         </NavLink>
-        <div className="sidebar-school">
-          <span className="small-dot" /> Музыкальная школа
-        </div>
         <nav className="workspace-navigation" aria-label="Разделы приложения">
           <NavLink to="/workspace">
-            <Icon name="home" /> Рабочее пространство
+            <Icon name="home" /> Главная
           </NavLink>
           <NavLink to="/learning">
-            <Icon name="book" /> Журнал обучения
+            <Icon name="book" /> Обучение
           </NavLink>
         </nav>
-        <div className="sidebar-bottom">
-          <span className="sidebar-motto">Всё в своём ритме.</span>
-        </div>
+        <div className="workspace-version-footer"><ReleaseVersion /></div>
       </aside>
 
       <div className="workspace-main">
@@ -66,33 +65,29 @@ export function AppShell({
           <div className="mobile-brand">
             <Brand />
           </div>
-          <span className="header-breadcrumb">
-            Школа <span>/</span> <strong>{title}</strong>
-          </span>
           <div className="header-actions">
-            <Button
-              type="text"
-              icon={<Icon name="book" />}
-              onClick={openArticle}
-              aria-label="Помощь по входу и сессиям"
-            />
-            <Button
-              type="text"
-              icon={<Icon name={appearance === "light" ? "moon" : "sun"} />}
-              onClick={onToggleAppearance}
-              aria-label={appearance === "light" ? "Включить тёмную тему" : "Включить светлую тему"}
-            />
-            <div className="staff-chip">
-              <span className="staff-avatar">М</span>
-              <span>{roleNames[staff?.role ?? ""] ?? "Сотрудник"}</span>
-            </div>
-            <Button
-              type="text"
-              icon={<Icon name="logout" />}
-              onClick={() => void leave()}
-              loading={signingOut}
-              aria-label="Выйти из аккаунта"
-            />
+            <Dropdown
+              trigger={["click"]}
+              placement="bottomRight"
+              disabled={signingOut}
+              menu={{
+                className: "account-menu",
+                selectable: false,
+                items: [
+                  { key: "theme", label: appearance === "light" ? "Тёмная тема" : "Светлая тема", icon: <Icon name={appearance === "light" ? "moon" : "sun"} />, disabled: signingOut },
+                  { type: "divider" },
+                  { key: "logout", label: "Выйти", icon: <Icon name="logout" />, danger: true, disabled: signingOut },
+                ],
+                onClick: ({ key }) => {
+                  if (key === "theme") onToggleAppearance();
+                  if (key === "logout") void leave();
+                },
+              }}
+            >
+              <Button type="text" className="account-menu-trigger" loading={signingOut} aria-label={`Меню пользователя ${staff?.login ?? ""}`}>
+                <span className="account-greeting">Привет, {staff?.login}</span><span aria-hidden="true">▾</span>
+              </Button>
+            </Dropdown>
           </div>
         </header>
 
@@ -111,11 +106,7 @@ export function AppShell({
               type="error"
               showIcon
               title={error?.message ?? "Не удалось завершить сессию"}
-              description={
-                error?.traceId
-                  ? `Код обращения: ${error.traceId}`
-                  : "Проверьте соединение и повторите действие."
-              }
+              description={error?.traceId ? `Код обращения: ${error.traceId}` : undefined}
               closable
               onClose={() => {
                 clearError();
@@ -125,9 +116,7 @@ export function AppShell({
           )}
           <Outlet />
         </main>
-        <footer className="workspace-footer">
-          MelodyTrack <span>Рабочее пространство школы</span>
-        </footer>
+        <div className="mobile-release-footer"><ReleaseVersion /></div>
       </div>
     </div>
   );
