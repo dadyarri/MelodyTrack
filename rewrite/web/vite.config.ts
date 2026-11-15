@@ -12,9 +12,36 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react()],
+    plugins: [
+      react(),
+      {
+        name: "localhost-navigation",
+        configureServer(server) {
+          server.middlewares.use((request, response, next) => {
+            const loopbackIp =
+              request.headers.host === "127.0.0.1:5174" ||
+              request.headers.host === "[::1]:5174";
+            if (
+              loopbackIp &&
+              (request.method === "GET" || request.method === "HEAD") &&
+              request.headers.accept?.includes("text/html") &&
+              request.url?.startsWith("/")
+            ) {
+              response.writeHead(307, {
+                Location: `http://localhost:5174${request.url}`,
+                "Cache-Control": "no-store",
+              });
+              response.end();
+              return;
+            }
+            next();
+          });
+        },
+      },
+    ],
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
     server: {
+      host: "localhost",
       port: 5174,
       strictPort: true,
       proxy: { "/api": { target: api.origin, changeOrigin: true } },
