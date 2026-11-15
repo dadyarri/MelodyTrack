@@ -7,6 +7,9 @@ export default defineConfig(({ mode }) => {
   const environment = loadEnv(mode, process.cwd(), "MELODYTRACK_");
   const target = environment.MELODYTRACK_API_TARGET || "http://localhost:5280";
   const api = new URL(target);
+  const port = Number(process.env.AGENT_CHECKS_BROWSER_PORT ?? 5174);
+  const testReport = process.env.AGENT_CHECKS_VITEST_REPORT;
+  const testFiles = process.env.AGENT_CHECKS_VITEST_FILES;
   if (!["http:", "https:"].includes(api.protocol) || api.username || api.password) {
     throw new Error("MELODYTRACK_API_TARGET должен быть HTTP(S)-адресом API без учётных данных.");
   }
@@ -19,7 +22,8 @@ export default defineConfig(({ mode }) => {
         configureServer(server) {
           server.middlewares.use((request, response, next) => {
             const loopbackIp =
-              request.headers.host === "127.0.0.1:5174" || request.headers.host === "[::1]:5174";
+              request.headers.host === `127.0.0.1:${port}` ||
+              request.headers.host === `[::1]:${port}`;
             if (
               loopbackIp &&
               (request.method === "GET" || request.method === "HEAD") &&
@@ -27,7 +31,7 @@ export default defineConfig(({ mode }) => {
               request.url?.startsWith("/")
             ) {
               response.writeHead(307, {
-                Location: `http://localhost:5174${request.url}`,
+                Location: `http://localhost:${port}${request.url}`,
                 "Cache-Control": "no-store",
               });
               response.end();
@@ -41,12 +45,15 @@ export default defineConfig(({ mode }) => {
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
     server: {
       host: "localhost",
-      port: 5174,
+      port,
       strictPort: true,
       proxy: { "/api": { target: api.origin, changeOrigin: true } },
     },
     build: { target: ["chrome109", "edge109", "firefox115", "safari16.4"] },
     test: {
+      ...(testFiles ? { include: JSON.parse(testFiles) as string[] } : {}),
+      reporters: testReport ? ["default", "json"] : ["default"],
+      ...(testReport ? { outputFile: { json: testReport } } : {}),
       exclude: ["**/node_modules/**", "e2e/**"],
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],

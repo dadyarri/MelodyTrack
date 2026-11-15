@@ -89,14 +89,22 @@ npm run api:generate
 После законченной пачки и разрешения пользователя:
 
 ```sh
-npm run verify:fix
-npm run test:browser
+# Из корня rewrite: краткая сводка, полные логи и нативные отчёты в артефактах.
+python3 scripts/agent_checks.py plan --scope frontend
+python3 scripts/agent_checks.py run --scope frontend
+python3 scripts/agent_checks.py plan --scope browser
+python3 scripts/agent_checks.py run --scope browser
+python3 scripts/agent_checks.py summary
+python3 scripts/agent_checks.py details --index 0
+python3 scripts/agent_checks.py rerun-failed --run <run-id>
 ```
 
-Первая команда применяет Biome, проверяет TypeScript, запускает весь Vitest и собирает production assets. Изменения форматтера нужно просматривать. Второй набор требует браузеры Playwright (`npx playwright install chromium webkit`), их системные зависимости и свободный порт 5174. Он запускает Chromium, desktop WebKit и mobile WebKit; на Linux без совместимых системных библиотек используйте контейнер с ними и теми же версиями Node.js/Playwright.
+Scope `frontend` запускает `npm run verify:fix` из `web/`: применяет Biome, проверяет TypeScript, запускает весь Vitest и собирает production assets. Изменения форматтера нужно просматривать. `browser` запускает `npm run test:browser`; нужны браузеры Playwright (`npx playwright install chromium webkit`), их системные зависимости и свободный порт 5174. Он запускает Chromium, desktop WebKit и mobile WebKit; на Linux без совместимых системных библиотек используйте контейнер с ними и теми же версиями Node.js/Playwright. Выбор проекта и свободного порта: `--scope browser --browser-project chromium --browser-port 5189`. Это проверка выбранного проекта, не полного browser suite. Обёртка использует Node26 через fnm при его наличии, иначе npm из PATH. Прямые npm-команды остаются доступны.
+
+`rerun-failed` выбирает только упавшие Vitest/Playwright-тесты из отчёта, включая flaky. Для Vitest повторяются только тесты, без format/typecheck/build; для Playwright сохраняются проект и порт. Это частичная проверка (`subset_passed`) со ссылкой на исходный запуск, а не новый успех всего pipeline. Неоднозначные имена и старые отчёты без полного списка тестов требуют повторного запуска scope.
 
 Browser suite проверяет cookies/reload, две вкладки, Web Locks/BroadcastChannel, настоящий IndexedDB, фокус/viewport, композицию приложения и Vite redirect. HTTP business outcomes синтетические. Native WebAuthn через virtual authenticator доступен только в Chromium; сценарий явно пропускается на WebKit. Native wheel проверяется desktop Chromium/WebKit, mobile WebKit не предоставляет Playwright mouse wheel. Жест вызова chooser отдельно проверяется с синтетическим credentials API, включая WebKit без WebAuthn.
 
-JSON, traces и error contexts лежат в игнорируемом `.artifacts/browser/`. Это не аппаратная WebAuthn/Safari-приёмка и не браузерный acceptance с настоящим API/PostgreSQL. Серверная интеграция запускается отдельно из rewrite через `python3 scripts/agent_checks.py plan --scope all` и разрешённый elevated `run --scope all`.
+Через обёртку JSON, полные логи, traces и error contexts лежат в уникальном каталоге `rewrite/.artifacts/agent-checks/<run-id>/`; прямой npm-запуск сохраняет browser-артефакты в `web/.artifacts/browser/`. Сводка не выводит assertion values; `details` раскрывает ошибки по запросу. Нулевой/повреждённый отчёт и ненулевой exit code не считаются успехом. Это не аппаратная WebAuthn/Safari-приёмка и не браузерный acceptance с настоящим API/PostgreSQL. Серверная интеграция запускается отдельно из rewrite через `python3 scripts/agent_checks.py plan --scope all` и разрешённый elevated `run --scope all`; scope `all` не включает frontend/browser.
 
 [Полный аудит тестов, фактические результаты и ограничения](../docs/test-quality-audit.md). Контракт каталога: [список клиентов](../docs/client-directory.md).

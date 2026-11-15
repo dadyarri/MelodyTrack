@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Small, dependency-free wrapper for this rewrite's build and xUnit MTP checks.
+"""Compact reports for rewrite backend, frontend and browser checks.
 
 Run only after verification is authorized; dotnet invocations require an elevated shell.
 Native report reference: https://xunit.net/docs/format-xml-v2
@@ -12,12 +12,14 @@ import os
 from pathlib import Path
 import re
 import signal
+import shutil
 import subprocess
 import sys
 import time
 import uuid
 import xml.etree.ElementTree as ET
 from datetime import datetime, timezone
+from frontend_check_reports import parse_vitest, parse_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
 ARTIFACTS = ROOT / '.artifacts' / 'agent-checks'
@@ -98,7 +100,7 @@ def build_diagnostics(log):
     return list(grouped.values())
 
 
-def invoke(command, cwd, log, timeout):
+def invoke(command, cwd, log, timeout, env=None):
     """Stream directly to a private file; stop the complete process group on cancellation."""
     started = time.monotonic()
     process = None
@@ -106,6 +108,7 @@ def invoke(command, cwd, log, timeout):
     with log.open('w') as output:
         try:
             process = subprocess.Popen(command, cwd=cwd, stdout=output, stderr=subprocess.STDOUT,
+                                       env={**os.environ, **env} if env else None,
                                        start_new_session=(os.name == 'posix'))
             result['exit_code'] = process.wait(timeout=timeout)
             result['status'] = 'success' if result['exit_code'] == 0 else 'command_failed'
@@ -126,8 +129,43 @@ def invoke(command, cwd, log, timeout):
     return result
 
 
-def plan(scope, directory, filters=None):
+def npm_command():
+    fnm = shutil.which('fnm')
+    fallback = Path.home() / '.local/share/fnm/fnm'
+    if fnm or fallback.is_file():
+        return [fnm or str(fallback), 'exec', '--using', '26', 'npm']
+    return ['npm']
+
+
+def plan(scope, directory, filters=None, browser_projects=None, browser_port=5174):
     commands = []
+    if scope == 'frontend' and filters:
+        for index, target in enumerate(filters):
+            name = f'frontend-{index + 1}'
+            native_report = directory / name / 'result.json'
+            pattern = '^' + re.sub(r'([\\^$.*+?()\[\]{}|])', r'\\\1', target['filter_name']) + '(?![\\s\\S])'
+            commands.append({'name': name, 'kind': scope, 'cwd': str(ROOT / 'web'),
+                             'command': npm_command() + ['run', 'test', '--', '--testNamePattern', pattern],
+                             'env': {'AGENT_CHECKS_VITEST_REPORT': str(native_report),
+                                     'AGENT_CHECKS_VITEST_FILES': json.dumps([target['file']])},
+                             'report': str(native_report), 'targets': [target]})
+        return commands
+    if scope in ('frontend', 'browser'):
+        report_dir = directory / scope
+        native_report = report_dir / 'result.json'
+        command = npm_command() + ['run', 'verify:fix' if scope == 'frontend' else 'test:browser']
+        environment = ({'AGENT_CHECKS_VITEST_REPORT': str(native_report)} if scope == 'frontend' else
+                       {'AGENT_CHECKS_BROWSER_DIR': str(report_dir),
+                        'AGENT_CHECKS_BROWSER_PORT': str(browser_port)})
+        if scope == 'browser' and browser_projects:
+            command += ['--', *(f'--project={project}' for project in browser_projects)]
+        if filters:
+            command += ['--', '--test-list', str(report_dir / 'failed-tests.txt')]
+            environment['AGENT_CHECKS_BROWSER_PORT'] = filters['port']
+        return [{'name': scope, 'kind': scope, 'command': command, 'cwd': str(ROOT / 'web'),
+                 'env': environment, 'report': str(native_report),
+                 'selection': browser_projects or [],
+                 **({'targets': filters['tests']} if filters else {})}]
     if scope in ('all', 'build'):
         commands.append({'name': 'build', 'kind': 'build', 'command':
                          ['dotnet', 'build', 'MelodyTrack.Rewrite.slnx', '--verbosity', 'minimal']})
@@ -151,6 +189,9 @@ def short_summary(report):
              f"Report: {report['artifacts']['report']}"]
     if report.get('parent_run'):
         lines.append(f"Subset rerun of {report['parent_run']}; full suite remains unverified by this run.")
+    for check in report['checks']:
+        if check.get('selection'):
+            lines.append(f"{check['name']} projects: {', '.join(check['selection'])}; other projects not verified.")
     for index, failure in enumerate(report['failures'][:5]):
         # Deliberately omit arbitrary test assertion values from the compact summary.
         lines.append(f"[{index}] {failure['check']}: {failure['category']}; details {index}")
@@ -167,11 +208,12 @@ def save_report(report, directory):
     (directory / 'summary.txt').write_text(short_summary(report))
 
 
-def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts=ARTIFACTS):
+def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts=ARTIFACTS,
+               browser_projects=None, browser_port=5174):
     os.umask(0o077)
     started = time.monotonic()
     run_id = datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S') + '-' + uuid.uuid4().hex[:8]
-    directory = artifacts / run_id
+    directory = artifacts.resolve() / run_id
     directory.mkdir(parents=True)
     report = {'schema_version': 1, 'run_id': run_id, 'started_at': utc_now(), 'duration_ms': 0,
               'scope': scope, 'parent_run': parent, 'status': 'running', 'exit_code': None,
@@ -179,7 +221,7 @@ def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts
               'artifacts': {'directory': str(directory), 'report': str(directory / 'report.json'),
                             'summary': str(directory / 'summary.txt')}}
     save_report(report, directory)
-    specs = plan(scope, directory)
+    specs = plan(scope, directory, browser_projects=browser_projects, browser_port=browser_port)
     if filters_by_scope is not None:
         specs = [entry for item, filters in filters_by_scope.items()
                  for entry in plan(item, directory, filters)]
@@ -191,7 +233,12 @@ def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts
         else:
             if 'report' in spec:
                 Path(spec['report']).parent.mkdir(parents=True)
-            check = dict(spec, **invoke(spec['command'], ROOT, log, timeout))
+            if spec['kind'] == 'browser' and spec.get('targets'):
+                lines = [f"[{target['project']}] › {target['file']} › " + ' › '.join(target['title_path'])
+                         for target in spec['targets']]
+                (Path(spec['report']).parent / 'failed-tests.txt').write_text('\n'.join(lines) + '\n')
+            check = dict(spec, **invoke(spec['command'], spec.get('cwd', ROOT), log, timeout,
+                                       **({'env': spec['env']} if 'env' in spec else {})))
             if check['status'] in ('timeout', 'interrupted', 'tool_error'):
                 halted = True
             elif spec['kind'] == 'build':
@@ -200,7 +247,20 @@ def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts
                     check['failures'] = build_diagnostics(log)
                     halted = True
             else:
-                parsed = parse_xunit(spec['report'])
+                parse = {'frontend': parse_vitest, 'browser': parse_playwright}.get(spec['kind'], parse_xunit)
+                parsed = parse(spec['report'])
+                if spec.get('targets') and parsed['complete']:
+                    fields = ('file', 'test') if spec['kind'] == 'frontend' else ('file', 'project', 'title_path')
+                    def identity(test):
+                        file = Path(test['file'])
+                        if spec['kind'] == 'frontend' and file.is_absolute():
+                            file = file.relative_to(ROOT / 'web')
+                        return (str(file), *(json.dumps(test.get(key), ensure_ascii=False) for key in fields[1:]))
+                    actual = [identity(test) for test in parsed['tests']
+                              if test['status'] not in ('skipped', 'todo', 'disabled', 'pending')]
+                    expected = [identity(test) for test in spec['targets']]
+                    if sorted(actual) != sorted(expected):
+                        parsed.update(complete=False, problem='Rerun selection differs from executed tests; inspect native report')
                 check.update(parsed)
                 check['status'] = ('test_failed' if parsed['complete'] and parsed['failures'] else
                                    'incomplete' if not parsed['complete'] else
@@ -209,6 +269,7 @@ def run_checks(scope, timeout=600, parent=None, filters_by_scope=None, artifacts
                     report['totals'][key] += parsed['totals'][key]
             for failure in check.get('failures', []):
                 report['failures'].append(dict(failure, check=spec['name'], log=str(log),
+                                               scope=spec['kind'] if spec['kind'] in ('frontend', 'browser') else spec['name'],
                                                structured_report=spec.get('report')))
             if check['status'] != 'success' and not check.get('failures'):
                 report['failures'].append({'check': spec['name'], 'category': check['status'],
@@ -243,7 +304,48 @@ def rerun_filters(report):
     for failure in report['failures']:
         if failure['category'] != 'test':
             continue
-        scope, cls, method = failure['check'], failure.get('type'), failure.get('method')
+        scope = failure.get('scope', failure['check'])
+        if scope in ('frontend', 'browser'):
+            check = next((item for item in report.get('checks', []) if item['name'] == failure['check']), None)
+            if not check or not check.get('complete') or not check.get('tests'):
+                raise ValueError('No complete test inventory for precise rerun; rerun the affected scope')
+            fields = ('file', 'test') if scope == 'frontend' else ('file', 'test', 'project', 'title_path')
+            target = {key: failure.get(key) for key in fields}
+            if not all(target.values()) or sum(all(test.get(key) == target[key] for key in fields)
+                                               for test in check['tests']) != 1:
+                raise ValueError('Missing or ambiguous failed test identity; rerun the affected scope')
+            file = Path(target['file'])
+            if scope == 'frontend' and file.is_absolute():
+                file = file.relative_to(ROOT / 'web')
+            if file.is_absolute() or '..' in file.parts:
+                raise ValueError('Test file must be inside its test root')
+            target['file'] = file.as_posix()
+            if scope == 'frontend':
+                if not isinstance(failure.get('filter_name'), str) or not failure['filter_name']:
+                    raise ValueError('Missing Vitest title path for precise rerun; rerun frontend scope')
+                target['filter_name'] = failure['filter_name']
+                if sum(test.get('file') == failure['file'] and test.get('filter_name') == target['filter_name']
+                       for test in check['tests']) != 1:
+                    raise ValueError('Ambiguous Vitest title path; rerun frontend scope')
+                if re.search(r'[*?\[\]{}()!+@\\]', target['file']):
+                    raise ValueError('Cannot safely express test file glob; rerun frontend scope')
+                result.setdefault(scope, []).append(target)
+            else:
+                parts = [target['file'], target['project'], *target['title_path']]
+                if any(not isinstance(part, str) or not part or part != part.strip()
+                       or any(char in part for char in '\r\n›>') for part in parts):
+                    raise ValueError('Cannot safely express Playwright test list; rerun browser scope')
+                matches = [test for test in check['tests'] if test.get('file') == failure['file']
+                           and test.get('project') == target['project']
+                           and test.get('title_path', [])[:len(target['title_path'])] == target['title_path']]
+                if len(matches) != 1 or ':' in target['file']:
+                    raise ValueError('Ambiguous Playwright test list; rerun browser scope')
+                port = check.get('env', {}).get('AGENT_CHECKS_BROWSER_PORT', '5174')
+                if not str(port).isdigit() or not 1 <= int(port) <= 65535:
+                    raise ValueError('Invalid original browser port')
+                result.setdefault(scope, {'tests': [], 'port': str(port)})['tests'].append(target)
+            continue
+        cls, method = failure.get('type'), failure.get('method')
         if scope not in PROJECTS or not cls or not method:
             raise ValueError('Failed test has no reliable project/type/method; rerun its scope instead')
         target = f'{cls}.{method}'
@@ -251,8 +353,8 @@ def rerun_filters(report):
             raise ValueError('Cannot safely express this method filter; rerun its scope instead')
         result.setdefault(scope, set()).add(target)
     if not result:
-        raise ValueError('No failed test methods to rerun; inspect failures or run the affected scope')
-    return {scope: sorted(methods) for scope, methods in result.items()}
+        raise ValueError('No failed tests to rerun; inspect failures or run the affected scope')
+    return {scope: sorted(methods) if scope in PROJECTS else methods for scope, methods in result.items()}
 
 
 def main(argv=None):
@@ -260,8 +362,10 @@ def main(argv=None):
     sub = parser.add_subparsers(dest='action', required=True)
     for action in ('plan', 'run'):
         command = sub.add_parser(action)
-        command.add_argument('--scope', choices=[*PROJECTS, 'all', 'build'], default='domain')
+        command.add_argument('--scope', choices=[*PROJECTS, 'all', 'build', 'frontend', 'browser'], default='domain')
         command.add_argument('--timeout', type=float, default=600)
+        command.add_argument('--browser-project', action='append', help='Playwright project; repeat to select several')
+        command.add_argument('--browser-port', type=int, default=5174)
     for action in ('summary', 'details', 'rerun-failed'):
         command = sub.add_parser(action)
         command.add_argument('--run', default='latest')
@@ -274,16 +378,23 @@ def main(argv=None):
     try:
         if hasattr(args, 'timeout') and args.timeout <= 0:
             raise ValueError('Timeout must be positive')
+        if args.action in ('plan', 'run'):
+            if not 1 <= args.browser_port <= 65535:
+                raise ValueError('Browser port must be between 1 and 65535')
+            if args.scope != 'browser' and (args.browser_project or args.browser_port != 5174):
+                raise ValueError('Browser options require --scope browser')
         if args.action == 'plan':
-            print(json.dumps(plan(args.scope, ARTIFACTS / '<run-id>'), indent=2))
+            print(json.dumps(plan(args.scope, ARTIFACTS / '<run-id>', browser_projects=args.browser_project,
+                                  browser_port=args.browser_port), indent=2))
             return 0
         if args.action == 'run':
-            report = run_checks(args.scope, args.timeout)
+            report = run_checks(args.scope, args.timeout, browser_projects=args.browser_project,
+                                browser_port=args.browser_port)
         else:
             report = load_report(args.run)
             if args.action == 'rerun-failed':
                 filters = rerun_filters(report)
-                report = run_checks('failed-methods', args.timeout, report['run_id'], filters)
+                report = run_checks('failed-tests', args.timeout, report['run_id'], filters)
             elif args.action == 'details':
                 if args.index < 0:
                     raise ValueError('Index must be nonnegative')

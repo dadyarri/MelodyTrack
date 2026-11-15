@@ -1,13 +1,17 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const artifacts = process.env.AGENT_CHECKS_BROWSER_DIR ?? ".artifacts/browser";
+const baseURL = `http://localhost:${process.env.AGENT_CHECKS_BROWSER_PORT ?? 5174}`;
+const reportFile = process.env.AGENT_CHECKS_BROWSER_DIR ? "result.json" : "report.json";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
   forbidOnly: true,
   retries: 0,
-  outputDir: ".artifacts/browser/results",
-  reporter: [["list"], ["json", { outputFile: ".artifacts/browser/report.json" }]],
-  use: { baseURL: "http://localhost:5174", trace: "retain-on-failure" },
+  outputDir: `${artifacts}/results`,
+  reporter: [["list"], ["json", { outputFile: `${artifacts}/${reportFile}` }]],
+  use: { baseURL, trace: "retain-on-failure" },
   projects: [
     { name: "chromium", use: { ...devices["Desktop Chrome"] } },
     { name: "webkit", use: { ...devices["Desktop Safari"] } },
@@ -15,7 +19,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "npm run dev",
-    url: "http://localhost:5174",
+    url: baseURL,
     reuseExistingServer: false,
   },
 });

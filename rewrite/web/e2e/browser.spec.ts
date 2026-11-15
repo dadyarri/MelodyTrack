@@ -458,15 +458,18 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
 
 test("redirects loopback HTML navigation while preserving the route and query", async ({
   request,
+  baseURL,
 }) => {
-  const response = await request.get("http://127.0.0.1:5174/clients?q=synthetic", {
+  const loopback = new URL(baseURL as string);
+  loopback.hostname = "127.0.0.1";
+  const response = await request.get(`${loopback.origin}/clients?q=synthetic`, {
     headers: { Accept: "text/html" },
     maxRedirects: 0,
   });
   expect(response.status()).toBe(307);
-  expect(response.headers().location).toBe("http://localhost:5174/clients?q=synthetic");
+  expect(response.headers().location).toBe(`${baseURL}/clients?q=synthetic`);
   expect(response.headers()["cache-control"]).toBe("no-store");
-  const apiResponse = await request.get("http://127.0.0.1:5174/", {
+  const apiResponse = await request.get(`${loopback.origin}/`, {
     headers: { Accept: "application/json" },
     maxRedirects: 0,
   });
