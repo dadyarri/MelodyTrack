@@ -1,5 +1,5 @@
 import { Alert, Button, Drawer, Select, Tag } from "antd";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import {
   clientName,
   type DirectoryClient,
@@ -13,7 +13,7 @@ import {
 } from "@/entities/client-directory";
 import { useStaffSession } from "@/entities/session";
 import { useEmployeeTraining } from "@/features/employee-training";
-import { isAbortError, toApiError } from "@/shared/api";
+import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
 import {
   DataView as CollectionDataView,
   type DataViewColumn,
@@ -162,6 +162,14 @@ function ClientDirectory() {
   const [optionsError, setOptionsError] = useState(false);
   const [reload, setReload] = useState(() => new AbortController());
   const [selected, setSelected] = useState<DirectoryClient | null>(null);
+  const queryRef = useRef(query);
+  const dataRef = useRef(data);
+  const latestDataRequest = useRef(0);
+  const optionsRequestVersion = useRef(0);
+  const backgroundRequest = useRef<AbortController | null>(null);
+  const silentQueryRef = useRef<string | null>(null);
+  queryRef.current = query;
+  dataRef.current = data;
   const filterId = useId();
   const permission = staff?.permissions.find((entry) => entry.permission === "clientsRead");
   const allowed = permission?.allowed === true;
@@ -171,53 +179,171 @@ function ClientDirectory() {
     if (!allowed || !supportedScope) return;
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, reload.signal]);
+    const requestVersion = ++optionsRequestVersion.current;
     setOptionsError(false);
     void request(getClientDirectoryOptions, signal)
       .then((result) => {
-        if (!signal.aborted) setOptions(result);
+        if (!signal.aborted && requestVersion === optionsRequestVersion.current) setOptions(result);
       })
       .catch((failure: unknown) => {
-        if (!signal.aborted && !isAbortError(failure)) setOptionsError(true);
+        if (
+          !signal.aborted &&
+          requestVersion === optionsRequestVersion.current &&
+          !isAbortError(failure)
+        )
+          setOptionsError(true);
       });
     return () => controller.abort();
   }, [allowed, supportedScope, request, reload]);
 
   useEffect(() => {
-    setData(null);
-    setError(null);
+    const background = silentQueryRef.current === JSON.stringify(query) && dataRef.current !== null;
+    if (background) silentQueryRef.current = null;
+    else {
+      setData(null);
+      setError(null);
+    }
     if (!allowed || !supportedScope) {
+      setOptions(null);
+      setSelected(null);
       setLoading(false);
       return;
     }
     const controller = new AbortController();
     const signal = AbortSignal.any([controller.signal, reload.signal]);
-    setLoading(true);
-    const timer = window.setTimeout(() => {
-      void request((api, requestSignal) => getClientDirectory(api, requestSignal, query), signal)
-        .then((result) => {
-          if (signal.aborted) return;
-          if (result.totalPages > 0 && query.page > result.totalPages) {
-            setQuery((previous) => ({ ...previous, page: result.totalPages }));
-            return;
-          }
-          if (result.totalPages === 0 && query.page !== 1) {
-            setQuery((previous) => ({ ...previous, page: 1 }));
-            return;
-          }
-          setData(result);
-        })
-        .catch((failure: unknown) => {
-          if (!signal.aborted && !isAbortError(failure)) setError(toApiError(failure).message);
-        })
-        .finally(() => {
-          if (!signal.aborted) setLoading(false);
-        });
-    }, 250);
+    backgroundRequest.current?.abort();
+    if (!background) setLoading(true);
+    const timer = window.setTimeout(
+      () => {
+        const requestVersion = ++latestDataRequest.current;
+        void request((api, requestSignal) => getClientDirectory(api, requestSignal, query), signal)
+          .then((result) => {
+            if (signal.aborted || requestVersion !== latestDataRequest.current) return;
+            if (
+              (result.totalPages > 0 && query.page > result.totalPages) ||
+              (result.totalPages === 0 && query.page !== 1)
+            ) {
+              const page = result.totalPages > 0 ? result.totalPages : 1;
+              if (background) silentQueryRef.current = JSON.stringify({ ...query, page });
+              setQuery((previous) => ({ ...previous, page }));
+              return;
+            }
+            setData(result);
+          })
+          .catch((failure: unknown) => {
+            if (
+              !signal.aborted &&
+              requestVersion === latestDataRequest.current &&
+              !isAbortError(failure)
+            ) {
+              const apiError = toApiError(failure);
+              if (apiError.status === 403) {
+                setData(null);
+                setOptions(null);
+                setSelected(null);
+              }
+              if (!background) setError(apiError.message);
+            }
+          })
+          .finally(() => {
+            if (!signal.aborted && requestVersion === latestDataRequest.current) setLoading(false);
+          });
+      },
+      background ? 0 : 250,
+    );
     return () => {
       window.clearTimeout(timer);
       controller.abort();
     };
   }, [allowed, supportedScope, query, reload, request]);
+
+  useEffect(() => {
+    if (!allowed || !supportedScope) return;
+    let active = true;
+    let refreshPending = false;
+    const refresh = () => {
+      if (!active) return;
+      if (backgroundRequest.current) {
+        refreshPending = true;
+        return;
+      }
+      const requestQuery = queryRef.current;
+      const controller = new AbortController();
+      backgroundRequest.current = controller;
+      const requestVersion = ++latestDataRequest.current;
+      const optionsVersion = ++optionsRequestVersion.current;
+      void Promise.allSettled([
+        request((api, signal) => getClientDirectory(api, signal, requestQuery), controller.signal),
+        request(getClientDirectoryOptions, controller.signal),
+      ])
+        .then(([directory, sources]) => {
+          if (controller.signal.aborted || requestVersion !== latestDataRequest.current) return;
+          if (directory.status === "fulfilled") {
+            const result = directory.value;
+            if (
+              (result.totalPages > 0 && requestQuery.page > result.totalPages) ||
+              (result.totalPages === 0 && requestQuery.page !== 1)
+            ) {
+              const page = result.totalPages > 0 ? result.totalPages : 1;
+              silentQueryRef.current = JSON.stringify({ ...requestQuery, page });
+              setQuery((previous) => ({ ...previous, page }));
+            } else {
+              setData(result);
+              setLoading(false);
+              setError(null);
+              setSelected((previous) =>
+                previous
+                  ? (result.items.find((client) => client.id === previous.id) ?? null)
+                  : null,
+              );
+            }
+          } else {
+            const apiError = toApiError(directory.reason);
+            if (apiError.status === 403) {
+              setData(null);
+              setSelected(null);
+            }
+            if (dataRef.current === null) setError(apiError.message);
+            setLoading(false);
+          }
+          if (sources.status === "fulfilled" && optionsVersion === optionsRequestVersion.current) {
+            setOptions(sources.value);
+            setOptionsError(false);
+          } else if (
+            sources.status === "rejected" &&
+            optionsVersion === optionsRequestVersion.current &&
+            toApiError(sources.reason).status === 403
+          ) {
+            setOptions(null);
+          }
+          // Transient background failures keep the last successful list and sources visible.
+        })
+        .catch((failure: unknown) => {
+          if (controller.signal.aborted || requestVersion !== latestDataRequest.current) return;
+          const apiError = toApiError(failure);
+          if (apiError.status === 403) {
+            setData(null);
+            setOptions(null);
+            setSelected(null);
+          }
+          if (dataRef.current === null) setError(apiError.message);
+          setLoading(false);
+        })
+        .finally(() => {
+          if (backgroundRequest.current === controller) backgroundRequest.current = null;
+          if (active && refreshPending) {
+            refreshPending = false;
+            refresh();
+          }
+        });
+    };
+    const unsubscribe = subscribeDataChanges(refresh);
+    return () => {
+      active = false;
+      unsubscribe();
+      backgroundRequest.current?.abort();
+    };
+  }, [allowed, supportedScope, request]);
 
   function refresh() {
     reload.abort();

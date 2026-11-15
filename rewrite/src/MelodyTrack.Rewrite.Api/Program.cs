@@ -43,6 +43,7 @@ builder.Services.AddCredentialSecurity(validateOnStart: !isOpenApiGeneration);
 builder.Services.AddStaffCredentialFlows();
 builder.Services.AddScoped<IClientAuthenticationStore, ClientAuthenticationStore>();
 builder.Services.AddClientAuthentication();
+builder.Services.AddDataChangeEvents();
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -52,6 +53,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseAuthentication();
 app.UseAuthorization();
+app.UseDataChangeEvents();
 app.UseRateLimiter();
 app.MapReleaseEndpoints();
 app.MapStaffCredentialEndpoints();
@@ -61,4 +63,5 @@ app.MapStaffPoliciesEndpoints();
 app.MapClientNotesEndpoints();
 app.MapClientDirectoryEndpoints();
 app.MapExpensesEndpoints();
+app.MapDataChangeEvents();
 app.Run();

@@ -30,6 +30,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
     internal static readonly string OtherSessionToken = new('C', 64);
     internal static readonly string SameSessionToken = new('D', 64);
     internal static readonly string OtherStaffToken = new('E', 64);
+    internal static readonly string ClientToken = new('F', 64);
     internal static readonly Guid Session = Guid.Parse("019a2c63-8c00-7000-8000-000000000011");
     internal static readonly Guid OtherSession = Guid.Parse("019a2c63-8c00-7000-8000-000000000012");
     internal static readonly Guid OtherStaffSession = Guid.Parse("019a2c63-8c00-7000-8000-000000000013");
@@ -68,13 +69,20 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         builder.Services.AddBrowserAccess();
         builder.Services.AddSingleton<IBrowserAccessStore, BrowserState>();
         builder.Services.AddStaffAuthentication();
+        builder.Services.AddSingleton<IClientAuthenticationStore, ClientAuthState>();
+        builder.Services.AddClientAuthentication();
+        builder.Services.AddDataChangeEvents();
+        builder.Services.AddSingleton(new DataChangeEventOptions(TimeSpan.FromMilliseconds(100)));
         var app = builder.Build();
         app.UseAuthentication();
         app.UseAuthorization();
+        app.UseDataChangeEvents();
         app.MapClientNotesEndpoints();
         app.MapExpensesEndpoints();
         app.MapStaffSessionEndpoints();
         app.MapStaffPoliciesEndpoints();
+        app.MapDataChangeEvents();
+        app.MapPost("/api/_test/mutation", () => Results.NoContent()).RequireAuthorization();
         if (directory is not null) app.MapClientDirectoryEndpoints();
         app.MapGet("/_test/identity", (ClaimsPrincipal principal, CurrentStaff current) =>
             TypedResults.Ok(new IdentityProbe(current.Actor.Id.Value,
@@ -205,6 +213,28 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
             LastRevokedSession = sessionId;
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class ClientAuthState : IClientAuthenticationStore
+    {
+        private static readonly string ClientTokenHash = OpaqueTokens.Hash(ClientToken);
+        public Task<Result<ClientLinkWriteResult, ErrorList>> ReplaceLinkAsync(ClientId clientId, Guid commandId,
+            StaffId authorId, string? linkHash, CancellationToken cancellationToken) => throw new InvalidOperationException();
+        public Task<ClientSessionIdentity?> OpenSessionAsync(string linkHash, Guid sessionId, string refreshHash,
+            string accessHash, CancellationToken cancellationToken) => throw new InvalidOperationException();
+        public Task<ClientSessionIdentity?> RefreshAsync(string refreshHash, string accessHash,
+            CancellationToken cancellationToken) => throw new InvalidOperationException();
+        public Task<ClientSessionIdentity?> ActivateAsync(string refreshHash, string accessHash,
+            CancellationToken cancellationToken) => throw new InvalidOperationException();
+        public Task<ClientSessionIdentity?> AuthenticateAsync(string accessHash, CancellationToken cancellationToken)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            return Task.FromResult<ClientSessionIdentity?>(accessHash == ClientTokenHash
+                ? new(new(Guid.Parse("019a2c63-8c00-7000-8000-000000009001")),
+                    Guid.Parse("019a2c63-8c00-7000-8000-000000009011"))
+                : null);
+        }
+        public Task RevokeSessionAsync(ClientSessionIdentity identity, CancellationToken cancellationToken) => throw new InvalidOperationException();
     }
 
     internal sealed class Clock(DateTimeOffset now) : TimeProvider

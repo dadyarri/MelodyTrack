@@ -88,6 +88,7 @@ describe("rewrite API generation command", () => {
       "/api/releases/**",
       "/api/clients",
       "/api/clients/options",
+      "/api/changes/events",
     ]);
     expect(calls[3]).toEqual(["normalize"]);
     expect(calls).toHaveLength(4);

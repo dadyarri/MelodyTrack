@@ -91,6 +91,8 @@ function clearSessionCookie(): string {
 export async function startCookieServer(): Promise<{
   origin: string;
   maximumRestores(): number;
+  waitForEventStream(): Promise<void>;
+  invalidate(): void;
   close(): Promise<void>;
 }> {
   let credentialGeneration = 0;
@@ -99,6 +101,27 @@ export async function startCookieServer(): Promise<{
   let currentCookie: string | null = null;
   let currentAccessToken: string | null = null;
   const accessTokens = new Set<string>();
+  const eventStreams = new Map<ServerResponse, ReturnType<typeof setInterval>>();
+  const eventStreamWaiters = new Set<() => void>();
+
+  const waitForEventStream = () =>
+    eventStreams.size > 0
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => eventStreamWaiters.add(resolve));
+
+  const closeEventStreams = () => {
+    for (const [response, heartbeat] of eventStreams) {
+      clearInterval(heartbeat);
+      response.end();
+    }
+    eventStreams.clear();
+  };
+
+  const invalidate = () => {
+    for (const response of eventStreams.keys()) {
+      if (!response.destroyed) response.write("event: invalidate\ndata: {}\n\n");
+    }
+  };
 
   const issueCredentials = (): Credentials => {
     credentialGeneration += 1;
@@ -130,6 +153,33 @@ export async function startCookieServer(): Promise<{
       }
 
       const path = new URL(request.url ?? "/", "http://localhost").pathname;
+      if (request.method === "GET" && path === "/api/changes/events") {
+        if (!accessTokens.has(bearerToken(request) ?? "")) {
+          sendJson(request, response, 401, {});
+          return;
+        }
+
+        response.writeHead(200, {
+          ...corsHeaders(request),
+          "Cache-Control": "no-cache, no-transform",
+          Connection: "keep-alive",
+          "Content-Type": "text/event-stream; charset=utf-8",
+        });
+        response.flushHeaders();
+        const heartbeat = setInterval(() => {
+          if (!response.destroyed) response.write(": keepalive\n\n");
+        }, 15_000);
+        eventStreams.set(response, heartbeat);
+        for (const resolve of eventStreamWaiters) resolve();
+        eventStreamWaiters.clear();
+        response.once("close", () => {
+          clearInterval(heartbeat);
+          eventStreams.delete(response);
+        });
+        response.write("event: invalidate\ndata: {}\n\n");
+        return;
+      }
+
       if (request.method === "POST" && path === "/api/auth/staff/password") {
         const credentials = issueCredentials();
         sendJson(request, response, 200, credentials, {
@@ -175,6 +225,7 @@ export async function startCookieServer(): Promise<{
         currentCookie = null;
         currentAccessToken = null;
         accessTokens.clear();
+        closeEventStreams();
         sendNoContent(request, response, { "Set-Cookie": clearSessionCookie() });
         return;
       }
@@ -205,8 +256,11 @@ export async function startCookieServer(): Promise<{
   return {
     origin: `http://localhost:${port}`,
     maximumRestores: () => maximumConcurrentRestores,
+    waitForEventStream,
+    invalidate,
     close: () =>
       new Promise<void>((resolve, reject) => {
+        closeEventStreams();
         server.close((error) => (error ? reject(error) : resolve()));
       }),
   };

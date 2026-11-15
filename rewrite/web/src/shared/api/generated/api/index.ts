@@ -4,6 +4,8 @@
 // @ts-ignore
 import { AuthRequestBuilderNavigationMetadata, type AuthRequestBuilder } from './auth/index.js';
 // @ts-ignore
+import { ChangesRequestBuilderNavigationMetadata, type ChangesRequestBuilder } from './changes/index.js';
+// @ts-ignore
 import { ClientsRequestBuilderNavigationMetadata, ClientsRequestBuilderRequestsMetadata, type ClientsRequestBuilder } from './clients/index.js';
 // @ts-ignore
 import { ReleasesRequestBuilderNavigationMetadata, ReleasesRequestBuilderRequestsMetadata, type ReleasesRequestBuilder } from './releases/index.js';
@@ -18,6 +20,10 @@ export interface ApiRequestBuilder extends BaseRequestBuilder<ApiRequestBuilder>
      * The auth property
      */
     get auth(): AuthRequestBuilder;
+    /**
+     * The changes property
+     */
+    get changes(): ChangesRequestBuilder;
     /**
      * The clients property
      */
@@ -37,6 +43,9 @@ export const ApiRequestBuilderUriTemplate = "{+baseurl}/api";
 export const ApiRequestBuilderNavigationMetadata: Record<Exclude<keyof ApiRequestBuilder, KeysToExcludeForNavigationMetadata>, NavigationMetadata> = {
     auth: {
         navigationMetadata: AuthRequestBuilderNavigationMetadata,
+    },
+    changes: {
+        navigationMetadata: ChangesRequestBuilderNavigationMetadata,
     },
     clients: {
         requestsMetadata: ClientsRequestBuilderRequestsMetadata,

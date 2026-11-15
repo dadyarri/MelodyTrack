@@ -1,9 +1,17 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { releaseNotesSeenKey } from "../model/releaseNotesStorage";
 import { ReleaseNotesProvider, ReleaseVersion } from "./ReleaseNotes";
 
 const api = vi.hoisted(() => ({ current: vi.fn(), history: vi.fn() }));
+const dataChanges = vi.hoisted(() => ({ listeners: new Set<() => void>() }));
+vi.mock("@/shared/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/api")>()),
+  subscribeDataChanges: (listener: () => void) => {
+    dataChanges.listeners.add(listener);
+    return () => dataChanges.listeners.delete(listener);
+  },
+}));
 vi.mock("@/entities/app-release", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/entities/app-release")>()),
   getCurrentRelease: api.current,
@@ -29,6 +37,7 @@ const history = {
 };
 
 beforeEach(() => {
+  dataChanges.listeners.clear();
   api.current.mockReset().mockResolvedValue(current);
   api.history.mockReset().mockResolvedValue(history);
   window.localStorage.clear();
@@ -109,6 +118,122 @@ describe("release notes", () => {
     expect(api.current).toHaveBeenCalledTimes(2);
     expect(api.history).toHaveBeenCalledTimes(2);
     expect(window.localStorage.getItem(releaseNotesSeenKey("staff-a"))).toBeNull();
+  });
+
+  it("keeps automatic notes visible while reconnect history is pending", async () => {
+    let resolveHistory!: (value: typeof history) => void;
+    const pendingHistory = new Promise<typeof history>((resolve) => {
+      resolveHistory = resolve;
+    });
+    api.history.mockResolvedValueOnce(history).mockReturnValueOnce(pendingHistory);
+    render(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    const existingChange = await screen.findByText("Полная переработка системы");
+    const dialog = screen.getByRole("dialog");
+
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+    await waitFor(() => expect(api.history).toHaveBeenCalledTimes(2));
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByText("Полная переработка системы")).toBe(existingChange);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    const firstRelease = history.releases[0];
+    if (!firstRelease) throw new Error("Expected release history fixture to have an entry");
+    resolveHistory({
+      ...history,
+      releases: [
+        { ...firstRelease, changes: { ...firstRelease.changes, new: ["Новое изменение"] } },
+      ],
+    });
+    await screen.findByText("Новое изменение");
+    expect(screen.getByRole("dialog")).toBe(dialog);
+  });
+
+  it("keeps the displayed release open while history for a newer version is pending", async () => {
+    const nextCurrent = {
+      version: "2026.12.2",
+      codename: "Da capo II",
+      codenameMeaning: "Снова с начала.",
+    };
+    const firstRelease = history.releases[0];
+    if (!firstRelease) throw new Error("Expected release history fixture to have an entry");
+    const nextHistory = {
+      ...history,
+      currentVersion: nextCurrent.version,
+      releases: [
+        {
+          ...firstRelease,
+          ...nextCurrent,
+          changes: { ...firstRelease.changes, new: ["Изменения новой версии"] },
+        },
+      ],
+    };
+    let resolveHistory!: (value: typeof nextHistory) => void;
+    const pendingHistory = new Promise<typeof nextHistory>((resolve) => {
+      resolveHistory = resolve;
+    });
+    api.current.mockResolvedValueOnce(current).mockResolvedValue(nextCurrent);
+    api.history.mockResolvedValueOnce(history).mockReturnValue(pendingHistory);
+    render(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    const existingChange = await screen.findByText("Полная переработка системы");
+    const dialog = screen.getByRole("dialog");
+
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+    await screen.findByRole("button", { name: "Список изменений версии 2026.12.2" });
+    await waitFor(() => expect(api.history.mock.calls.length).toBeGreaterThan(1));
+    expect(screen.getByRole("dialog")).toBe(dialog);
+    expect(screen.getByText("Полная переработка системы")).toBe(existingChange);
+    expect(screen.queryByRole("progressbar")).toBeNull();
+
+    resolveHistory(nextHistory);
+    await screen.findByText("Изменения новой версии");
+    expect(screen.getByRole("dialog")).toBe(dialog);
+  });
+
+  it("refreshes open release history without showing a loading state", async () => {
+    window.localStorage.setItem(releaseNotesSeenKey("staff-a"), current.version);
+    render(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    const versionButton = await screen.findByRole("button", {
+      name: "Список изменений версии 2026.12.1",
+    });
+    fireEvent.click(versionButton);
+    const acknowledgement = await screen.findByRole("button", { name: "Понятно" });
+    acknowledgement.focus();
+    expect(document.activeElement).toBe(acknowledgement);
+
+    const firstRelease = history.releases[0];
+    if (!firstRelease) throw new Error("Expected release history fixture to have an entry");
+    api.history.mockResolvedValue({
+      ...history,
+      releases: [
+        {
+          ...firstRelease,
+          changes: { ...firstRelease.changes, new: ["Свежее изменение"] },
+        },
+      ],
+    });
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+
+    await screen.findByText("Свежее изменение");
+    expect(screen.queryByRole("progressbar")).toBeNull();
+    expect(document.activeElement).toBe(acknowledgement);
   });
 
   it("retries a failed manual history without acknowledging unseen content on failure", async () => {

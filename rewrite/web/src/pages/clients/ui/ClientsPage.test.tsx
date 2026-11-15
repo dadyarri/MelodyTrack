@@ -10,6 +10,14 @@ const mocks = vi.hoisted(() => ({
     { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
   ],
 }));
+const dataChanges = vi.hoisted(() => ({ listeners: new Set<() => void>() }));
+vi.mock("@/shared/api", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/shared/api")>()),
+  subscribeDataChanges: (listener: () => void) => {
+    dataChanges.listeners.add(listener);
+    return () => dataChanges.listeners.delete(listener);
+  },
+}));
 vi.mock("@/entities/session", () => ({
   useStaffSession: () => ({
     request: mocks.request,
@@ -99,6 +107,7 @@ function deferred<T>() {
 beforeEach(() => {
   localStorage.clear();
   vi.clearAllMocks();
+  dataChanges.listeners.clear();
   mocks.permissions = [
     { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
   ];
@@ -132,6 +141,78 @@ afterEach(() => {
 });
 
 describe("client directory page", () => {
+  it("updates rows in the background while preserving the search input", async () => {
+    const fetchMock = vi.mocked(fetch);
+    let currentClient = client;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      return url.pathname.endsWith("/options")
+        ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }] })
+        : jsonResponse(page([currentClient]));
+    });
+    render(<ClientsPage />);
+    await screen.findByText("Тестова Анна");
+    const search = screen.getByRole("searchbox", { name: "ФИО или контакт" });
+    fireEvent.change(search, { target: { value: "Тестова" } });
+    await screen.findByText("Тестова Анна");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='false']"),
+      ).not.toBeNull(),
+    );
+
+    currentClient = { ...client, firstName: "Обновлённая" };
+    search.focus();
+    expect(document.activeElement).toBe(search);
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+
+    await screen.findByText("Тестова Обновлённая");
+    expect(document.activeElement).toBe(search);
+    expect((search as HTMLInputElement).value).toBe("Тестова");
+    expect(
+      screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='true']"),
+    ).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("refreshes the open client and clears it when the server denies access", async () => {
+    const fetchMock = vi.mocked(fetch);
+    let currentClient = client;
+    let denyDirectory = false;
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/options")) return jsonResponse({ sources: [] });
+      if (denyDirectory) return jsonResponse({}, 403);
+      return jsonResponse(page([currentClient]));
+    });
+    render(<ClientsPage />);
+    await screen.findByText("Тестова Анна");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='false']"),
+      ).not.toBeNull(),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Тестова Анна" }));
+    const drawer = await screen.findByRole("dialog");
+    expect(within(drawer).getByText("Тестова Анна")).toBeTruthy();
+
+    currentClient = { ...client, firstName: "Обновлённая" };
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+    expect(await within(drawer).findByText("Тестова Обновлённая")).toBeTruthy();
+
+    denyDirectory = true;
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByText("Тестова Обновлённая")).toBeNull();
+  });
+
   it("connects filters, multi-sort, paging, and client details to generated HTTP", async () => {
     const fetchMock = vi.mocked(fetch);
     render(<ClientsPage />);

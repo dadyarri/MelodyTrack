@@ -42,6 +42,7 @@ type SessionState = {
 };
 type SessionContextValue = SessionState & {
   restoreSession(): Promise<void>;
+  synchronizeIdentity(signal: AbortSignal): Promise<void>;
   /** Read-only GET callback; it may run once more after an active-session refresh. */
   request<T>(
     send: (api: ReturnType<typeof applicationApi>, signal: AbortSignal) => Promise<T>,
@@ -699,11 +700,32 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     [clearLocal, refreshSession],
   );
 
+  const synchronizeIdentity = useCallback(
+    async (signal: AbortSignal) => {
+      const id = generation.current;
+      const identity = await request(
+        async (api, requestSignal) =>
+          readStaffIdentity(await api.auth.me.get(apiOptions(requestSignal))),
+        signal,
+      );
+      signal.throwIfAborted();
+      if (id !== generation.current) throw new DOMException("Session changed", "AbortError");
+      if (staff.current?.staffId !== identity.staffId) {
+        clearLocal(invalidResponse());
+        return;
+      }
+      staff.current = identity;
+      setState((current) => ({ ...current, staff: identity }));
+    },
+    [request, clearLocal],
+  );
+
   return (
     <SessionContext.Provider
       value={{
         ...state,
         restoreSession,
+        synchronizeIdentity,
         request,
         signInWithPassword,
         preparePasskey,

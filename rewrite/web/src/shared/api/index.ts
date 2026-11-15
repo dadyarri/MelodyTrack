@@ -8,6 +8,7 @@ export {
   staffApi,
   toApiError,
 } from "./http";
+export { subscribeDataChanges } from "./live-data";
 export type {
   PasskeyChallenge,
   StaffCredentialOutcome,

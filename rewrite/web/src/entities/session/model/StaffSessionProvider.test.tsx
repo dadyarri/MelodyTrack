@@ -97,6 +97,31 @@ afterEach(() => {
 });
 
 describe("staff session", () => {
+  it("updates effective permissions in the background without restarting the authenticated session", async () => {
+    const updated = {
+      ...identity,
+      permissions: [
+        { permission: "clientsRead", allowed: false, dataScope: "available", timeScope: "any" },
+      ],
+    };
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity))
+      .mockResolvedValueOnce(response(updated));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const { result } = await renderAnonymousSession();
+    await act(() => result.current.signInWithPassword("staff.demo", "demo-password"));
+
+    await act(() => result.current.synchronizeIdentity(new AbortController().signal));
+
+    expect(result.current.status).toBe("authenticated");
+    expect(result.current.staff).toEqual(updated);
+    expect(fetch.mock.calls[2]?.[0]).toContain("/api/auth/me");
+    expect(fetch.mock.calls).toHaveLength(3);
+  });
+
   it("aborts resource requests when the account is cleared and rejects their late results", async () => {
     vi.stubGlobal(
       "fetch",

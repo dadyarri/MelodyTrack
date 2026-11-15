@@ -31,6 +31,7 @@ run([
   "--include-path", "/api/releases/**",
   "--include-path", "/api/clients",
   "--include-path", "/api/clients/options",
+  "--include-path", "/api/changes/events",
 ]);
 const normalization = spawnSync(process.execPath, ["web/scripts/normalize-kiota-optionals.ts"], {
   cwd: root,

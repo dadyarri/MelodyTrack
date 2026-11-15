@@ -17,7 +17,7 @@ import {
   type ReleaseEntry,
   type ReleaseHistory,
 } from "@/entities/app-release";
-import { isAbortError } from "@/shared/api";
+import { isAbortError, subscribeDataChanges } from "@/shared/api";
 import {
   readSeenVersion,
   releaseNotesSeenKey,
@@ -47,14 +47,21 @@ export function ReleaseNotesProvider({
   children: ReactNode;
 }) {
   const [current, setCurrent] = useState<LoadState<CurrentRelease>>({ status: "loading" });
-  const [unseen, setUnseen] = useState<{ currentVersion: string; releases: ReleaseEntry[] } | null>(
-    null,
-  );
+  const [unseen, setUnseen] = useState<{
+    scopeKey: string;
+    data: { currentVersion: string; releases: ReleaseEntry[] };
+  } | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [historyRequest, setHistoryRequest] = useState({ page: 1 });
   const [history, setHistory] = useState<LoadState<ReleaseHistory>>({ status: "loading" });
+  const [unseenReload, setUnseenReload] = useState(() => new AbortController());
   const manualAcknowledgement = useRef<string | null>(null);
+  const manualOpenRef = useRef(manualOpen);
+  const historyRequestRef = useRef(historyRequest);
+  const historyRequestVersion = useRef(0);
+  manualOpenRef.current = manualOpen;
+  historyRequestRef.current = historyRequest;
 
   const subscribe = useCallback(
     (onChange: () => void) => {
@@ -69,9 +76,12 @@ export function ReleaseNotesProvider({
   const readSnapshot = useCallback(() => readSeenVersion(staffId), [staffId]);
   const seenVersion = useSyncExternalStore(subscribe, readSnapshot, () => null);
   const currentVersion = current.status === "ready" ? current.data.version : null;
+  const unseenScopeKey = JSON.stringify([staffId, canViewHistory, seenVersion]);
+  const currentUnseen = unseen?.scopeKey === unseenScopeKey ? unseen.data : null;
 
   useEffect(() => {
     let controller: AbortController | null = null;
+    let backgroundHistoryController: AbortController | null = null;
     let attemptedAt = 0;
     const load = (force = false) => {
       if (document.visibilityState !== "visible" || (!force && Date.now() - attemptedAt < 300_000))
@@ -83,7 +93,14 @@ export function ReleaseNotesProvider({
       void getCurrentRelease(request.signal)
         .then((release) => {
           if (!request.signal.aborted) {
-            setCurrent({ status: "ready", data: release });
+            setCurrent((previous) =>
+              previous.status === "ready" &&
+              previous.data.version === release.version &&
+              previous.data.codename === release.codename &&
+              previous.data.codenameMeaning === release.codenameMeaning
+                ? previous
+                : { status: "ready", data: release },
+            );
           }
         })
         .catch((error: unknown) => {
@@ -94,42 +111,81 @@ export function ReleaseNotesProvider({
         });
     };
     const onFocus = () => load();
-    const onOnline = () => load(true);
+    const onOnline = () => {
+      load(true);
+      setUnseenReload((previous) => {
+        previous.abort();
+        return new AbortController();
+      });
+    };
+    const unsubscribe = subscribeDataChanges(() => {
+      load(true);
+      setUnseenReload((previous) => {
+        previous.abort();
+        return new AbortController();
+      });
+      if (!manualOpenRef.current) return;
+      const version = ++historyRequestVersion.current;
+      const page = historyRequestRef.current.page;
+      backgroundHistoryController?.abort();
+      const request = new AbortController();
+      backgroundHistoryController = request;
+      void getReleaseHistory(page, request.signal)
+        .then((result) => {
+          if (request.signal.aborted || version !== historyRequestVersion.current) return;
+          if (page === 1) manualAcknowledgement.current = result.releases[0]?.version ?? null;
+          setHistory({ status: "ready", data: result });
+          setCurrent((previous) =>
+            previous.status === "ready" && previous.data.version === result.currentVersion
+              ? previous
+              : {
+                  status: "ready",
+                  data: { version: result.currentVersion, codename: null, codenameMeaning: null },
+                },
+          );
+        })
+        .catch(() => {
+          // Keep the visible history when a background refresh fails.
+        });
+    });
     load(true);
     window.addEventListener("focus", onFocus);
     window.addEventListener("online", onOnline);
     document.addEventListener("visibilitychange", onFocus);
     return () => {
       controller?.abort();
+      backgroundHistoryController?.abort();
       window.removeEventListener("focus", onFocus);
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onFocus);
+      unsubscribe();
     };
   }, []);
 
   useEffect(() => {
     if (!canViewHistory || current.status !== "ready") return;
     const controller = new AbortController();
-    setUnseen(null);
+    const signal = AbortSignal.any([controller.signal, unseenReload.signal]);
     void loadUnseenReleases(seenVersion, (requestedPage) =>
-      getReleaseHistory(requestedPage, controller.signal),
+      getReleaseHistory(requestedPage, signal),
     )
       .then((result) => {
-        if (!controller.signal.aborted) setUnseen(result);
+        if (!signal.aborted) setUnseen({ scopeKey: unseenScopeKey, data: result });
       })
       .catch(() => {
         // History failure remains available through the manual modal and its retry button.
       });
     return () => controller.abort();
-  }, [canViewHistory, current, seenVersion]);
+  }, [canViewHistory, current, seenVersion, unseenReload, unseenScopeKey]);
 
   useEffect(() => {
     if (!manualOpen || !canViewHistory) return;
     const controller = new AbortController();
+    const version = ++historyRequestVersion.current;
     setHistory({ status: "loading" });
     void getReleaseHistory(historyRequest.page, controller.signal)
       .then((result) => {
-        if (controller.signal.aborted) return;
+        if (controller.signal.aborted || version !== historyRequestVersion.current) return;
         if (historyRequest.page === 1)
           manualAcknowledgement.current = result.releases[0]?.version ?? null;
         setHistory({ status: "ready", data: result });
@@ -152,18 +208,19 @@ export function ReleaseNotesProvider({
     enabled &&
       canViewHistory &&
       !manualOpen &&
-      unseen &&
-      unseen.currentVersion === currentVersion &&
-      unseen.releases.length > 0 &&
-      dismissed !== currentVersion &&
-      unseen.releases[0]?.version !== seenVersion,
+      currentUnseen &&
+      currentUnseen.releases.length > 0 &&
+      dismissed !== currentUnseen.currentVersion &&
+      currentUnseen.releases[0]?.version !== seenVersion,
   );
 
   function close() {
-    const acknowledged = manualOpen ? manualAcknowledgement.current : unseen?.releases[0]?.version;
+    const acknowledged = manualOpen
+      ? manualAcknowledgement.current
+      : currentUnseen?.releases[0]?.version;
     if (acknowledged) {
       writeSeenVersion(staffId, acknowledged);
-      setDismissed(currentVersion);
+      setDismissed(manualOpen ? currentVersion : (currentUnseen?.currentVersion ?? currentVersion));
     }
     setManualOpen(false);
   }
@@ -195,7 +252,7 @@ export function ReleaseNotesProvider({
       >
         {open &&
           (automaticOpen ? (
-            <ReleaseList releases={unseen?.releases ?? []} />
+            <ReleaseList releases={currentUnseen?.releases ?? []} />
           ) : history.status === "loading" ? (
             <Skeleton active paragraph={{ rows: 4 }} />
           ) : history.status === "error" ? (

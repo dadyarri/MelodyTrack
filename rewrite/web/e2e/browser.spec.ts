@@ -12,12 +12,14 @@ test.afterEach(async ({ context }) => {
 async function installApi(context: BrowserContext) {
   const server = await startCookieServer();
   servers.set(context, server);
+  let clientFirstName = "Клиент";
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (!path.startsWith("/api/")) return route.continue();
     // Continue through the browser network stack: WebKit adds Cookie after routing.
     // Ports differ, but localhost + HTTP preserves the cookie's same-site boundary.
     if (path.startsWith("/api/auth/")) return route.continue({ url: `${server.origin}${path}` });
+    if (path === "/api/changes/events") return route.continue({ url: `${server.origin}${path}` });
     const json = (body: unknown, headers = {}) => route.fulfill({ json: body, headers });
     if (path.endsWith("/clients/options")) return json({ sources: [] });
     if (path.endsWith("/clients"))
@@ -25,7 +27,7 @@ async function installApi(context: BrowserContext) {
         items: [
           {
             id: "019a2c63-8c00-7000-8000-000000000002",
-            firstName: "Клиент",
+            firstName: clientFirstName,
             lastName: "Синтетический",
             middleName: null,
             birthdate: "2001-05-06",
@@ -53,7 +55,14 @@ async function installApi(context: BrowserContext) {
       });
     return route.fulfill({ status: 404, json: {} });
   });
-  return { maximumRestores: server.maximumRestores };
+  return {
+    maximumRestores: server.maximumRestores,
+    waitForEventStream: server.waitForEventStream,
+    setClientFirstName: (value: string) => {
+      clientFirstName = value;
+    },
+    invalidate: server.invalidate,
+  };
 }
 
 async function openProbe(page: Page) {
@@ -370,7 +379,11 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   page,
   context,
 }) => {
-  await installApi(context);
+  const api = await installApi(context);
+  let eventRequests = 0;
+  page.on("request", (request) => {
+    if (new URL(request.url()).pathname === "/api/changes/events") eventRequests += 1;
+  });
   await page.setViewportSize({ width: 390, height: 844 });
   await openProbe(page);
   await page.evaluate(async (staffId) => {
@@ -392,7 +405,39 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
     .getByRole("link", { name: "Клиенты" })
     .click();
   await expect(page.getByRole("heading", { name: "Клиенты", exact: true })).toBeVisible();
-  await page.getByRole("row", { name: /Синтетический Клиент/ }).click();
+  const search = page.getByRole("searchbox", { name: "ФИО или контакт" });
+  await search.fill("Синтетический");
+  await expect(page.getByRole("row", { name: /Синтетический Клиент/ })).toBeVisible();
+  await page.locator(".workspace-layout").evaluate((element) => {
+    (element as HTMLElement).style.minHeight = "1600px";
+  });
+  await page.evaluate(() => window.scrollTo(0, 160));
+  const scrollPosition = await page.evaluate(() => window.scrollY);
+  expect(scrollPosition).toBeGreaterThan(0);
+  await api.waitForEventStream();
+  const initialEventRequests = eventRequests;
+  await page.clock.install();
+  await page.evaluate(() => window.dispatchEvent(new Event("blur")));
+  await page.clock.fastForward(120_000);
+  const restored = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/auth/staff/restore",
+  );
+  const identity = page.waitForResponse(
+    (response) => new URL(response.url()).pathname === "/api/auth/me",
+  );
+  await page.evaluate(() => {
+    window.dispatchEvent(new Event("focus"));
+  });
+  await Promise.all([restored, identity]);
+  expect(eventRequests).toBe(initialEventRequests);
+  api.setClientFirstName("Обновлённый");
+  api.invalidate();
+  await expect(page.getByRole("row", { name: /Синтетический Обновлённый/ })).toBeVisible();
+  await expect(search).toBeFocused();
+  await expect(search).toHaveValue("Синтетический");
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+  expect(eventRequests).toBe(initialEventRequests);
+  await page.getByRole("row", { name: /Синтетический Обновлённый/ }).click();
   const drawer = page.getByRole("dialog");
   await expect(drawer.getByText("Тестовый контакт")).toBeVisible();
   await expect(drawer.getByRole("link", { name: "synthetic@example.invalid" })).toHaveAttribute(
