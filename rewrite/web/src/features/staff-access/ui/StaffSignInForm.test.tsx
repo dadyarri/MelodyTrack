@@ -126,4 +126,17 @@ describe("staff sign in", () => {
     expect(session.preparePasskey).not.toHaveBeenCalled();
     expect(session.signInWithPasskey).not.toHaveBeenCalled();
   });
+
+  it("offers a passkey only for a factor that allows it and clears the code first", async () => {
+    session.factor = { method: "authenticatorOrPasskey", canUsePasskey: true };
+    render(<StaffSignInForm />);
+    fireEvent.change(screen.getByLabelText("Код подтверждения"), { target: { value: "123456" } });
+
+    fireEvent.click(screen.getByRole("button", { name: "Использовать ключ доступа" }));
+
+    expect(session.completeFactorWithPasskey).toHaveBeenCalledOnce();
+    expect(session.completeFactor).not.toHaveBeenCalled();
+    expect((screen.getByLabelText("Код подтверждения") as HTMLInputElement).value).toBe("");
+    expect(session.signInWithPassword).not.toHaveBeenCalled();
+  });
 });

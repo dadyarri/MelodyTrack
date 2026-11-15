@@ -83,12 +83,13 @@ export function DateInput({
           setOpen(next);
         }}
         destroyOnHidden
+        fresh
         content={
           <Calendar
             value={value}
             min={min}
             max={max}
-            autoFocus={calendarAutoFocus}
+            autoFocus={open && calendarAutoFocus}
             onSelect={(selected) => {
               setDraft(displayDate(selected));
               setInvalid(false);

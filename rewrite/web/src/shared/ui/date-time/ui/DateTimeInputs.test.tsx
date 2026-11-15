@@ -100,6 +100,89 @@ describe("date and time inputs", () => {
     ).toBe(true);
   });
 
+  it("supports week and year keyboard jumps while clamping to inclusive range edges", () => {
+    const onSelect = vi.fn();
+    render(
+      <Calendar
+        value="2026-11-12"
+        min="2026-11-10"
+        max="2027-12-31"
+        onSelect={onSelect}
+        onClose={vi.fn()}
+      />,
+    );
+    const selected = screen.getByRole("button", { name: /12 ноября 2026/ });
+
+    fireEvent.keyDown(selected, { key: "Home" });
+    const lowerEdge = screen.getByRole("button", { name: /10 ноября 2026/ });
+    expect(document.activeElement).toBe(lowerEdge);
+    expect((lowerEdge as HTMLButtonElement).disabled).toBe(false);
+    expect(
+      (screen.getByRole("button", { name: /\D9 ноября 2026/ }) as HTMLButtonElement).disabled,
+    ).toBe(true);
+
+    fireEvent.keyDown(lowerEdge, { key: "End" });
+    const sunday = screen.getByRole("button", { name: /15 ноября 2026/ });
+    expect(document.activeElement).toBe(sunday);
+
+    fireEvent.keyDown(sunday, { key: "PageDown" });
+    const nextMonth = screen.getByRole("button", { name: /15 декабря 2026/ });
+    expect(document.activeElement).toBe(nextMonth);
+    fireEvent.keyDown(nextMonth, { key: "PageUp", shiftKey: true });
+    const yearEdge = screen.getByRole("button", { name: /10 ноября 2026/ });
+    expect(document.activeElement).toBe(yearEdge);
+    fireEvent.keyDown(yearEdge, { key: "PageDown", shiftKey: true });
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: /10 ноября 2027/ }));
+
+    fireEvent.click(screen.getByRole("button", { name: "Следующий месяц" }));
+    expect(screen.getByText("декабрь 2027 г.")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: /31 декабря 2027/ }));
+    expect(onSelect).toHaveBeenCalledWith("2027-12-31");
+  });
+
+  it("opens from Alt+ArrowDown and keeps composed date-time limits and clearing", async () => {
+    const onChange = vi.fn();
+    render(
+      <DateTimeInput
+        value="2026-11-12T10:00"
+        min="2026-11-12T09:00"
+        max="2026-11-12T11:00"
+        onChange={onChange}
+        aria-label="Встреча"
+      />,
+    );
+    const date = screen.getByRole("textbox", { name: "Встреча: дата" });
+    fireEvent.keyDown(date, { key: "ArrowDown", altKey: true });
+    const calendar = await screen.findByRole("dialog", { name: "Календарь" });
+    expect(
+      (within(calendar).getByRole("button", { name: /11 ноября 2026/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+    expect(
+      (within(calendar).getByRole("button", { name: /12 ноября 2026/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+    expect(
+      (within(calendar).getByRole("button", { name: /13 ноября 2026/ }) as HTMLButtonElement)
+        .disabled,
+    ).toBe(true);
+
+    fireEvent.change(screen.getByRole("combobox", { name: "Встреча: время: часы" }), {
+      target: { value: "08" },
+    });
+    expect(onChange).not.toHaveBeenCalledWith("2026-11-12T08:00");
+    fireEvent.change(screen.getByRole("combobox", { name: "Встреча: время: часы" }), {
+      target: { value: "11" },
+    });
+    fireEvent.change(screen.getByRole("combobox", { name: "Встреча: время: минуты" }), {
+      target: { value: "00" },
+    });
+    expect(onChange).toHaveBeenLastCalledWith("2026-11-12T11:00");
+
+    fireEvent.click(screen.getByRole("button", { name: "Встреча: дата: очистить" }));
+    expect(onChange).toHaveBeenLastCalledWith(null);
+  });
+
   it("selects a 24-hour time and clears it without using native date or time inputs", () => {
     const onChange = vi.fn();
     const view = render(<TimeInput value={null} onChange={onChange} aria-label="Начало" />);

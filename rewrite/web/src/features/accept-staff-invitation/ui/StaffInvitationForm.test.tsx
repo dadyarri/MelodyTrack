@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { StaffInvitationForm } from "./StaffInvitationForm";
 
@@ -56,6 +56,19 @@ async function enterPassword() {
   fireEvent.change(screen.getByLabelText("Повторите пароль"), { target: { value: "test-only" } });
   fireEvent.click(screen.getByRole("button", { name: "Продолжить" }));
   await screen.findByLabelText("Код из приложения");
+}
+
+async function advanceTeacherToPasskey(fetch: ReturnType<typeof vi.fn>, onComplete = vi.fn()) {
+  fetch
+    .mockResolvedValueOnce(jsonResponse({ role: "teacher" }))
+    .mockResolvedValueOnce(jsonResponse(initialSetup))
+    .mockResolvedValueOnce(jsonResponse(nextSetup));
+  vi.stubGlobal("fetch", fetch);
+  render(<StaffInvitationForm invitation="synthetic-invitation" onComplete={onComplete} />);
+  await enterPassword();
+  fireEvent.click(screen.getByRole("button", { name: "Пропустить аутентификатор" }));
+  await screen.findByRole("button", { name: "Создать ключ и войти" });
+  return onComplete;
 }
 
 describe("invitation acceptance", () => {
@@ -225,5 +238,88 @@ describe("invitation acceptance", () => {
     expect((screen.getByLabelText("Пароль", { exact: true }) as HTMLInputElement).value).toBe("");
     expect(fetch).toHaveBeenCalledTimes(3);
     expect(session.completeRegistration).not.toHaveBeenCalled();
+  });
+
+  it("ignores a late authenticator response after restarting setup", async () => {
+    let finishConfirmation: ((value: Response) => void) | undefined;
+    let confirmationSignal: AbortSignal | undefined;
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse({ role: "superuser" }))
+      .mockResolvedValueOnce(jsonResponse(initialSetup))
+      .mockImplementationOnce((_url: string, init: RequestInit) => {
+        confirmationSignal = init.signal as AbortSignal;
+        return new Promise<Response>((resolve) => {
+          finishConfirmation = resolve;
+        });
+      });
+    vi.stubGlobal("fetch", fetch);
+    render(<StaffInvitationForm invitation="synthetic-invitation" onComplete={vi.fn()} />);
+    await enterPassword();
+    fireEvent.change(screen.getByLabelText("Код из приложения"), {
+      target: { value: "123456" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Подтвердить код" }));
+    await waitFor(() => expect(confirmationSignal).toBeDefined());
+
+    fireEvent.click(screen.getByRole("button", { name: "Начать заново" }));
+    expect(confirmationSignal?.aborted).toBe(true);
+    expect(screen.getByLabelText("Логин")).toBeTruthy();
+
+    await act(async () => {
+      finishConfirmation?.(jsonResponse(nextSetup));
+      await Promise.resolve();
+    });
+    expect(screen.queryByRole("button", { name: "Создать ключ и войти" })).toBeNull();
+    expect(session.completeRegistration).not.toHaveBeenCalled();
+  });
+
+  it("ignores a passkey chooser result after restarting registration", async () => {
+    let finishChooser: ((value: Record<string, unknown>) => void) | undefined;
+    let chooserSignal: AbortSignal | undefined;
+    passkeys.create.mockImplementation((_options: string, signal: AbortSignal) => {
+      chooserSignal = signal;
+      return new Promise<Record<string, unknown>>((resolve) => {
+        finishChooser = resolve;
+      });
+    });
+    const onComplete = await advanceTeacherToPasskey(vi.fn());
+    fireEvent.click(screen.getByRole("button", { name: "Создать ключ и войти" }));
+    await waitFor(() => expect(chooserSignal).toBeDefined());
+
+    fireEvent.click(screen.getByRole("button", { name: "Начать заново" }));
+    expect(chooserSignal?.aborted).toBe(true);
+    await act(async () => {
+      finishChooser?.({ id: "late-passkey" });
+      await Promise.resolve();
+    });
+
+    expect(session.completeRegistration).not.toHaveBeenCalled();
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Логин")).toBeTruthy();
+  });
+
+  it("cancels a pending completion and ignores its late success after restart", async () => {
+    let finishRegistration: ((accepted: boolean) => void) | undefined;
+    session.completeRegistration.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          finishRegistration = resolve;
+        }),
+    );
+    const onComplete = await advanceTeacherToPasskey(vi.fn());
+    fireEvent.click(screen.getByRole("button", { name: "Пропустить ключ доступа" }));
+    await waitFor(() => expect(finishRegistration).toBeDefined());
+
+    fireEvent.click(screen.getByRole("button", { name: "Начать заново" }));
+    expect(session.cancelSignIn).toHaveBeenCalledOnce();
+    await act(async () => {
+      finishRegistration?.(true);
+      await Promise.resolve();
+    });
+
+    expect(session.completeRegistration).toHaveBeenCalledWith("passkey-test", undefined, undefined);
+    expect(onComplete).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Логин")).toBeTruthy();
   });
 });

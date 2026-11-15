@@ -49,6 +49,11 @@ export function Calendar({
   });
 
   useEffect(() => {
+    shouldFocus.current = autoFocus;
+    if (autoFocus) [...cells.current.values()].find((cell) => cell.tabIndex === 0)?.focus();
+  }, [autoFocus]);
+
+  useEffect(() => {
     if (shouldFocus.current) cells.current.get(dateValue(focused))?.focus();
   }, [focused]);
 

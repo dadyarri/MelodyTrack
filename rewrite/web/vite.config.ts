@@ -47,6 +47,7 @@ export default defineConfig(({ mode }) => {
     },
     build: { target: ["chrome109", "edge109", "firefox115", "safari16.4"] },
     test: {
+      exclude: ["**/node_modules/**", "e2e/**"],
       environment: "jsdom",
       setupFiles: ["./src/test/setup.ts"],
       clearMocks: true,

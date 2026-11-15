@@ -174,4 +174,145 @@ describe("client directory module", () => {
     expect(screen.getByText("clients-complete")).toBeDefined();
     expect(storage.save).not.toHaveBeenCalled();
   });
+
+  it("completes the demonstrated search, filters, and descending order, then restores the saved result", async () => {
+    let persisted = createProgress("staff-a");
+    storage.load.mockImplementation(async () => persisted);
+    storage.save.mockImplementation(async (next) => {
+      persisted = next;
+    });
+    const view = render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: "Открыть учебный список" }));
+    await screen.findByText("Учебные клиенты");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Поиск" }), {
+      target: { value: "Иванов Антон" },
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебный источник" }));
+    fireEvent.click(
+      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
+    fireEvent.click(
+      await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
+
+    const result = screen.getByRole("button", { name: "Проверить результат" });
+    fireEvent.click(result);
+
+    await screen.findByText("Тренировка пройдена");
+    await waitFor(() => expect(persisted.clientDirectory.completed).toBe(true));
+    expect(persisted).toMatchObject({
+      staffId: "staff-a",
+      demoStep: "signed-out",
+      articleRead: false,
+      clientDirectory: { version: 1, completed: true, deferred: false },
+    });
+    expect(storage.save).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientDirectory: { version: 1, completed: true, deferred: false },
+      }),
+      expect.any(AbortSignal),
+    );
+    expect(fetch).not.toHaveBeenCalled();
+
+    view.unmount();
+    render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Открыть учебный список" }));
+    await screen.findByText("Учебные клиенты");
+    expect(screen.getByText("clients-complete")).toBeDefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("saves an incomplete exercise as deferred and reports a failed local write", async () => {
+    storage.load.mockResolvedValue(createProgress("staff-a"));
+    const view = render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Открыть учебный список" }));
+    await screen.findByText("Учебные клиенты");
+    fireEvent.click(screen.getByRole("button", { name: "Отложить" }));
+    await waitFor(() =>
+      expect(storage.save).toHaveBeenCalledWith(
+        expect.objectContaining({
+          clientDirectory: { version: 1, completed: false, deferred: true },
+        }),
+        expect.any(AbortSignal),
+      ),
+    );
+    await waitFor(() => expect(screen.getByLabelText("Учебное окно").textContent).toBe("закрыто"));
+
+    view.unmount();
+    storage.load.mockResolvedValue(createProgress("staff-a"));
+    storage.save.mockRejectedValue(new Error("storage unavailable"));
+    render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Открыть учебный список" }));
+    await screen.findByText("Учебные клиенты");
+    fireEvent.change(screen.getByRole("searchbox", { name: "Поиск" }), {
+      target: { value: "Иванов Антон" },
+    });
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебный источник" }));
+    fireEvent.click(
+      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
+    );
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
+    fireEvent.click(
+      await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
+    fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
+
+    await screen.findByText("Тренировка пройдена");
+    await screen.findByText("Не удалось сохранить прогресс");
+    expect(screen.getByText("clients-complete")).toBeDefined();
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it("does not apply an earlier account progress after the owner changes", async () => {
+    let finishFirstLoad: ((value: ReturnType<typeof createProgress>) => void) | undefined;
+    storage.load.mockImplementation((staffId) =>
+      staffId === "staff-a"
+        ? new Promise((resolve) => {
+            finishFirstLoad = resolve;
+          })
+        : Promise.resolve(createProgress(staffId)),
+    );
+    const view = render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+    await screen.findByText("Загрузка…");
+
+    view.rerender(
+      <EmployeeTrainingProvider staffId="staff-b" canUseClientDirectory>
+        <LaunchClientTraining />
+      </EmployeeTrainingProvider>,
+    );
+    await waitFor(() => expect(screen.getByText("clients-incomplete")).toBeDefined());
+    const oldProgress = {
+      ...createProgress("staff-a"),
+      clientDirectory: { version: 1 as const, completed: true, deferred: true },
+    };
+    finishFirstLoad?.(oldProgress);
+
+    await waitFor(() => expect(screen.getByText("clients-incomplete")).toBeDefined());
+    expect(screen.queryByText("clients-complete")).toBeNull();
+    expect(storage.save).not.toHaveBeenCalled();
+  });
 });

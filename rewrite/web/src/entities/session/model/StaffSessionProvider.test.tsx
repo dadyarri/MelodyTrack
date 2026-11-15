@@ -844,6 +844,76 @@ describe("browser session restoration", () => {
     expect(postMessage).not.toHaveBeenCalled();
   });
 
+  it("clears the active account on an incoming change and ignores unrelated messages", async () => {
+    const channels: Array<{ onmessage: ((event: MessageEvent<unknown>) => void) | null }> = [];
+    class Channel {
+      onmessage: ((event: MessageEvent<unknown>) => void) | null = null;
+      postMessage = vi.fn();
+      close = vi.fn();
+
+      constructor() {
+        channels.push(this);
+      }
+    }
+    vi.stubGlobal("BroadcastChannel", Channel);
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(response(credentials))
+        .mockResolvedValueOnce(response(identity)),
+    );
+    const { result } = await renderAnonymousSession();
+    await act(() => result.current.signInWithPassword("staff.demo", "demo-password"));
+    let finish: (() => void) | undefined;
+    let resourceSignal: AbortSignal | undefined;
+    const deferred = new Promise<void>((resolve) => {
+      finish = resolve;
+    });
+    const pending = result.current.request(async (_api, signal) => {
+      resourceSignal = signal;
+      await deferred;
+      return "late account data";
+    }, new AbortController().signal);
+    const rejected = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+
+    act(() => channels[0]?.onmessage?.({ data: "unrelated" } as MessageEvent<unknown>));
+    expect(result.current.staff).toEqual(identity);
+    expect(resourceSignal?.aborted).toBe(false);
+
+    act(() => channels[0]?.onmessage?.({ data: "changed" } as MessageEvent<unknown>));
+    finish?.();
+
+    await rejected;
+    expect(resourceSignal?.aborted).toBe(true);
+    expect(result.current.staff).toBeNull();
+    expect(result.current.status).toBe("anonymous");
+    expect(result.current.error?.status).toBe(401);
+  });
+
+  it("preserves an active session after a transient logout failure", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity))
+      .mockResolvedValueOnce(new Response("{}", { status: 503 }));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const { result } = await renderAnonymousSession();
+    await act(() => result.current.signInWithPassword("staff.demo", "demo-password"));
+
+    await act(() => result.current.signOut());
+
+    expect(result.current.staff).toEqual(identity);
+    expect(result.current.status).toBe("authenticated");
+    expect(result.current.error?.status).toBe(503);
+    expect(fetch.mock.calls.map(([url]) => new URL(String(url)).pathname)).toEqual([
+      "/api/auth/staff/password",
+      "/api/auth/me",
+      "/api/auth/logout",
+    ]);
+  });
+
   it("finishes an old cookie restoration before writing another sign-in and ignores its account", async () => {
     let finish: ((value: Response) => void) | undefined;
     const lock = installCookieLock();

@@ -135,4 +135,56 @@ describe("release notes", () => {
     expect(api.history).toHaveBeenCalledTimes(3);
     expect(window.localStorage.getItem(releaseNotesSeenKey("staff-a"))).toBe(current.version);
   });
+
+  it("closes shown notes when browser storage is unavailable without claiming persistence", async () => {
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("unavailable", "SecurityError");
+    });
+    const view = render(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    await screen.findByText("Полная переработка системы");
+
+    fireEvent.click(screen.getByRole("button", { name: "Понятно" }));
+
+    const closingDialog = screen.getByRole("dialog");
+    await waitFor(() => expect(closingDialog.className).toContain("ant-zoom-leave-active"));
+    fireEvent.transitionEnd(closingDialog);
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(window.localStorage.getItem(releaseNotesSeenKey("staff-a"))).toBeNull();
+    expect(Storage.prototype.setItem).toHaveBeenCalled();
+
+    view.rerender(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("acknowledges release notes for the account selected after a provider switch", async () => {
+    window.localStorage.setItem(releaseNotesSeenKey("staff-a"), current.version);
+    const view = render(
+      <ReleaseNotesProvider staffId="staff-a" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    await waitFor(() => expect(api.history).toHaveBeenCalledOnce());
+    expect(screen.queryByRole("dialog")).toBeNull();
+
+    view.rerender(
+      <ReleaseNotesProvider staffId="staff-b" canViewHistory enabled>
+        <ReleaseVersion />
+      </ReleaseNotesProvider>,
+    );
+    await screen.findByText("Полная переработка системы");
+    fireEvent.click(screen.getByRole("button", { name: "Понятно" }));
+
+    await waitFor(() =>
+      expect(window.localStorage.getItem(releaseNotesSeenKey("staff-b"))).toBe(current.version),
+    );
+    expect(window.localStorage.getItem(releaseNotesSeenKey("staff-a"))).toBe(current.version);
+  });
 });
