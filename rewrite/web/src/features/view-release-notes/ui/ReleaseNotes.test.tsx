@@ -57,6 +57,7 @@ const history = {
 };
 
 beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true });
   dataChanges.listeners.clear();
   api.current.mockReset().mockResolvedValue(current);
   api.history.mockReset().mockResolvedValue(history);
@@ -74,8 +75,12 @@ beforeEach(() => {
     })),
   );
 });
-afterEach(() => {
+afterEach(async () => {
   cleanup();
+  await act(async () => {
+    await vi.runOnlyPendingTimersAsync();
+  });
+  vi.useRealTimers();
   window.localStorage.clear();
   vi.restoreAllMocks();
   vi.unstubAllGlobals();
