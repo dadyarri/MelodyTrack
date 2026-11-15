@@ -49,7 +49,9 @@ export function selectDemoClients(query: DemoClientQuery): DemoClient[] {
   return demoClients
     .filter(
       (client) =>
-        (!search || demoNameDistance(client.name, search) <= 3) &&
+        (!search ||
+          normalizedName(client.name).includes(search) ||
+          demoNameDistance(client.name, search) <= 3) &&
         (query.source === "all" || client.source === query.source) &&
         (query.archive === "all" || client.archived === (query.archive === "archived")),
     )

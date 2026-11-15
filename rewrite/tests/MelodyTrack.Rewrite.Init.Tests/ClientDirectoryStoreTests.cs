@@ -21,7 +21,7 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
     [InlineData("Иванов Иван Ивановичxxx", true)]
     [InlineData("Иванов Иван Ивановичxxxx", false)]
     [InlineData("  ИВАНОВ\tИВАН \n ИВАНОВИЧ  ", true)]
-    [InlineData("Иван", false)]
+    [InlineData("Иван", true)]
     public async Task Read_UnifiedName_UsesDatabaseLevenshteinWithThreeEditBoundary(string query, bool matches)
     {
         await WithStore(async store =>
@@ -49,15 +49,41 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         });
     }
 
+    [Theory]
+    [InlineData("иванов", true)]
+    [InlineData("  ИВАН  ", true)]
+    [InlineData("НОВ\tИВ", true)]
+    [InlineData("нович", true)]
+    [InlineData("%", false)]
+    [InlineData("_", false)]
+    [InlineData("Пётр", false)]
+    public async Task Read_NameFragment_MatchesNormalizedLiteralSubstring(string query, bool matches)
+    {
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: query), Token);
+
+            Assert.Equal(matches ? 1 : 0, page.TotalCount);
+            if (matches) Assert.Equal(First, Assert.Single(page.Items).Id);
+            else Assert.Empty(page.Items);
+        }, async database =>
+        {
+            await database.Query("UPDATE public.clients SET last_name='Иванов',first_name='Иван',middle_name='Иванович' WHERE id=@id")
+                .WithParameter("id", First).ExecuteAsync(Token);
+        });
+    }
+
     [Fact]
     public async Task Read_NameLongerThanExtensionLimit_DoesNotTruncateOrFailContactSearch()
     {
         await WithStore(async store =>
         {
             var byName = await store.ReadAsync(new(Q: new string('A', 200)), Token);
+            var missingName = await store.ReadAsync(new(Q: new string('B', 200)), Token);
             var byContact = await store.ReadAsync(new(Q: "79990000000"), Token);
 
-            Assert.Empty(byName.Items);
+            Assert.Equal(First, Assert.Single(byName.Items).Id);
+            Assert.Empty(missingName.Items);
             Assert.Equal(First, Assert.Single(byContact.Items).Id);
         }, async database =>
         {

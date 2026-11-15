@@ -18,6 +18,7 @@ public sealed class ClientDirectoryStore(Database database, ClientDataProtection
                    c.is_archived AS "IsArchived", c.created_at AS "CreatedAt",
                    CASE
                      WHEN search.query = '' THEN true
+                     WHEN strpos(search.full_name, search.query) > 0 THEN true
                      WHEN char_length(search.full_name) <= 255 AND char_length(search.query) <= 255
                        AND abs(char_length(search.full_name) - char_length(search.query)) <= 3
                      THEN public.levenshtein_less_equal(search.full_name, search.query, 3) <= 3

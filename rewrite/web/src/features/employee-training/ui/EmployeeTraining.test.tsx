@@ -137,7 +137,7 @@ describe("client directory module", () => {
     fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
     await screen.findByText("Проверьте поиск, источник, состояние работы и порядок фамилий.");
     fireEvent.click(screen.getByRole("tab", { name: "Инструкция" }));
-    await screen.findByText(/Поиск находит клиентов по полному ФИО/);
+    await screen.findByText(/Поиск находит клиентов по любой части ФИО/);
     expect(screen.getByText("clients-incomplete")).toBeDefined();
     expect(storage.save).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();

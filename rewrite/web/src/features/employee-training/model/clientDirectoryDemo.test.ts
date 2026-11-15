@@ -38,7 +38,17 @@ describe("client directory training", () => {
     expect(
       selectDemoClients({ ...target, search: "Иванов Бртём" }).map((client) => client.id),
     ).not.toContain("demo-anton");
-    expect(selectDemoClients({ ...target, search: "Антон" })).toEqual([]);
+  });
+
+  it("finds literal normalized fragments of the full name", () => {
+    expect(
+      selectDemoClients({ ...target, search: "  АНТОН  " }).map((client) => client.id),
+    ).toEqual(["demo-anton"]);
+    expect(selectDemoClients({ ...target, search: "НОВ\tАН" }).map((client) => client.id)).toEqual([
+      "demo-anton",
+    ]);
+    expect(selectDemoClients({ ...target, search: "%" })).toEqual([]);
+    expect(selectDemoClients({ ...target, search: "_" })).toEqual([]);
   });
 
   it("requires the demonstrated result as well as the chosen controls", () => {
