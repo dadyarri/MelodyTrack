@@ -5,6 +5,14 @@ import { displayDate, parseDateInput, withinDateRange } from "../model/calendar"
 import { Calendar } from "./Calendar";
 import "./date-time.css";
 
+function dateInputError(draft: string, min?: string, max?: string): string {
+  if (!draft.trim()) return "";
+  const parsed = parseDateInput(draft);
+  return parsed && withinDateRange(parsed, min, max)
+    ? ""
+    : "Введите допустимую дату в формате ДД.ММ.ГГГГ.";
+}
+
 export type DateInputProps = {
   value: string | null;
   onChange: (value: string | null) => void;
@@ -38,7 +46,12 @@ export function DateInput({
   useEffect(() => {
     setDraft(displayDate(value));
     setInvalid(false);
+    input.current?.setCustomValidity("");
   }, [value]);
+
+  useEffect(() => {
+    input.current?.setCustomValidity(dateInputError(draft, min, max));
+  }, [draft, min, max]);
 
   function commit() {
     if (!draft.trim()) {
@@ -94,6 +107,7 @@ export function DateInput({
             onSelect={(selected) => {
               setDraft(displayDate(selected));
               setInvalid(false);
+              input.current?.setCustomValidity("");
               onChange(selected);
               setOpen(false);
               input.current?.focus();
@@ -120,7 +134,9 @@ export function DateInput({
             aria-label={label}
             aria-invalid={invalid || undefined}
             aria-describedby={invalid ? `${inputId}-error` : undefined}
+            onInvalid={() => setInvalid(true)}
             onChange={(event) => {
+              event.target.setCustomValidity(dateInputError(event.target.value, min, max));
               setDraft(event.target.value);
               setInvalid(false);
             }}
@@ -142,6 +158,7 @@ export function DateInput({
                 event.stopPropagation();
                 setDraft("");
                 setInvalid(false);
+                input.current?.setCustomValidity("");
                 setOpen(false);
                 onChange(null);
                 input.current?.focus();

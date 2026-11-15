@@ -1,5 +1,7 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Notifications } from "@/shared/ui/notifications";
 import { createProgress } from "../model/progress";
 import {
   EmployeeTrainingProvider,
@@ -12,6 +14,17 @@ vi.mock("../model/storage", () => ({
   loadTrainingProgress: storage.load,
   saveTrainingProgress: storage.save,
 }));
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 beforeEach(() => {
   storage.load.mockReset();
@@ -278,7 +291,7 @@ describe("client directory module", () => {
     fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
 
     await screen.findByText("Тренировка пройдена");
-    await screen.findByText("Не удалось сохранить прогресс");
+    await screen.findByText("Не удалось сохранить прогресс обучения.");
     expect(screen.getByText("clients-complete")).toBeDefined();
     expect(fetch).not.toHaveBeenCalled();
   });

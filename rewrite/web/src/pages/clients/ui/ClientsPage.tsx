@@ -1,5 +1,5 @@
 import { Alert, Button, Drawer, Select, Tag, Tooltip } from "antd";
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   clientName,
   type DirectoryClient,
@@ -32,6 +32,7 @@ import {
   type DataViewSort,
 } from "@/shared/ui/data-view";
 import { Icon } from "@/shared/ui/Icon";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import "./clients.css";
 
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
@@ -263,6 +264,26 @@ function ClientDirectory() {
   cardReloadKeyRef.current = cardReloadKey;
   editorModeRef.current = editorMode;
   const filterId = useId();
+  const retryDirectory = useCallback(() => {
+    setReload((current) => {
+      current.abort();
+      return new AbortController();
+    });
+  }, []);
+  const retryOptions = useCallback(() => {
+    setOptionsError(false);
+    retryDirectory();
+  }, [retryDirectory]);
+  const retryCard = useCallback(() => setCardReloadKey((key) => key + 1), []);
+  useErrorNotification(error, { title: "Не удалось загрузить клиентов", retry: retryDirectory });
+  useErrorNotification(optionsError ? "Не удалось загрузить справочники." : null, {
+    title: "Не удалось загрузить источники",
+    retry: retryOptions,
+  });
+  useErrorNotification(clientCardError, {
+    title: "Не удалось загрузить карточку клиента",
+    retry: retryCard,
+  });
   const permission = staff?.permissions.find((entry) => entry.permission === "clientsRead");
   const allowed = permission?.allowed === true;
   const supportedScope = permission?.dataScope === "available" && permission.timeScope === "any";
@@ -501,6 +522,7 @@ function ClientDirectory() {
               return;
             }
             setData(result);
+            setError(null);
           })
           .catch((failure: unknown) => {
             if (
@@ -520,7 +542,7 @@ function ClientDirectory() {
                 setEditorMode(null);
                 setEditorSaving(false);
               }
-              if (!background) setError(apiError.message);
+              setError(apiError.message);
             }
           })
           .finally(() => {
@@ -583,7 +605,7 @@ function ClientDirectory() {
               setData(null);
               setSelected(null);
             }
-            if (dataRef.current === null) setError(apiError.message);
+            setError(apiError.message);
             setLoading(false);
           }
           if (sources.status === "fulfilled" && optionsVersion === optionsRequestVersion.current) {
@@ -612,7 +634,7 @@ function ClientDirectory() {
             setEditorMode(null);
             setEditorSaving(false);
           }
-          if (dataRef.current === null) setError(apiError.message);
+          setError(apiError.message);
           setLoading(false);
         })
         .finally(() => {
@@ -631,10 +653,7 @@ function ClientDirectory() {
     };
   }, [allowed, supportedScope, request]);
 
-  function refresh() {
-    reload.abort();
-    setReload(new AbortController());
-  }
+  const refresh = retryDirectory;
   function change(patch: Partial<DirectoryQuery>) {
     setQuery((current) => ({ ...current, ...patch, page: 1 }));
   }
@@ -967,13 +986,6 @@ function ClientDirectory() {
         />
       ) : (
         <>
-          {optionsError && (
-            <Alert
-              type="warning"
-              title="Не удалось загрузить источники"
-              action={<Button onClick={refresh}>Повторить</Button>}
-            />
-          )}
           <CollectionDataView
             ariaLabel="Клиенты"
             columns={columns}
@@ -998,8 +1010,7 @@ function ClientDirectory() {
               change({ sort: sort.map((entry) => `${entry.key}:${entry.direction}`).join(",") })
             }
             loading={loading}
-            error={error}
-            onRetry={refresh}
+            error={error ? "Список клиентов пока недоступен." : null}
             activeFilterCount={filterCount}
             onResetFilters={() =>
               setQuery({ ...initialDirectoryQuery, pageSize: query.pageSize, sort: query.sort })
@@ -1098,16 +1109,6 @@ function ClientDirectory() {
                 </div>
                 {selectedCard.isArchived ? <Tag>Архив</Tag> : null}
                 {clientCardLoading ? <p role="status">Обновляем карточку…</p> : null}
-                {clientCardError ? (
-                  <Alert
-                    type="error"
-                    showIcon
-                    title={clientCardError}
-                    action={
-                      <Button onClick={() => setCardReloadKey((key) => key + 1)}>Повторить</Button>
-                    }
-                  />
-                ) : null}
                 {duplicateWarning ? (
                   <Alert
                     type="warning"

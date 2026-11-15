@@ -3,7 +3,7 @@
   gap: 16px;
   margin-top: 24px;
   padding: 18px;
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-line);
   border-radius: 10px;
 }
 .employee-training-card-practice > .ant-space {

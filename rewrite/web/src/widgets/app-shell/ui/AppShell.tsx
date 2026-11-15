@@ -1,4 +1,4 @@
-import { Alert, Button, Dropdown } from "antd";
+import { Button, Dropdown } from "antd";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
@@ -7,6 +7,7 @@ import { ReleaseNotesProvider, ReleaseVersion } from "@/features/view-release-no
 import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
 import { Icon } from "@/shared/ui/Icon";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import "./app-shell.css";
 
 export function AppShell({
@@ -38,9 +39,17 @@ function ShellContent({
   appearance: Appearance;
   onToggleAppearance: () => void;
 }) {
-  const { staff, signOut, error, clearError } = useStaffSession();
+  const { staff, signOut, error } = useStaffSession();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutFailed, setLogoutFailed] = useState(false);
+  const sessionError = error
+    ? `${error.message}${error.traceId ? ` · Код обращения: ${error.traceId}` : ""}`
+    : logoutFailed
+      ? "Не удалось завершить сессию."
+      : null;
+  useErrorNotification(sessionError, {
+    title: "Ошибка сессии",
+  });
 
   async function leave() {
     setSigningOut(true);
@@ -145,19 +154,6 @@ function ShellContent({
         </nav>
 
         <main id="main-content" className="workspace-content">
-          {(error || logoutFailed) && (
-            <Alert
-              type="error"
-              showIcon
-              title={error?.message ?? "Не удалось завершить сессию"}
-              description={error?.traceId ? `Код обращения: ${error.traceId}` : undefined}
-              closable
-              onClose={() => {
-                clearError();
-                setLogoutFailed(false);
-              }}
-            />
-          )}
           <Outlet />
         </main>
         <div className="mobile-release-footer">

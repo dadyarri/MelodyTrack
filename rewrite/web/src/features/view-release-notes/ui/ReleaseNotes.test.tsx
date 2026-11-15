@@ -1,5 +1,14 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderUi,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Notifications } from "@/shared/ui/notifications";
 import { releaseNotesSeenKey } from "../model/releaseNotesStorage";
 import { ReleaseNotesProvider, ReleaseVersion } from "./ReleaseNotes";
 
@@ -12,6 +21,17 @@ vi.mock("@/shared/api", async (importOriginal) => ({
     return () => dataChanges.listeners.delete(listener);
   },
 }));
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 vi.mock("@/entities/app-release", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@/entities/app-release")>()),
   getCurrentRelease: api.current,

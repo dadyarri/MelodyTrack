@@ -10,6 +10,7 @@ import {
   toApiError,
 } from "@/shared/api";
 import { createPasskeyRegistration, supportsPasskeys } from "@/shared/lib/passkeys";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import {
   authenticatorUri,
   canSkipAuthenticator,
@@ -22,6 +23,7 @@ import "./registration.css";
 type Preview =
   | { kind: "loading" }
   | { kind: "invalid" }
+  | { kind: "failed" }
   | { kind: "ready"; role: StaffIdentity["role"] };
 type Setup = (
   | ({ step: "authenticator" } & ReturnType<typeof readAuthenticatorSetup>)
@@ -71,14 +73,20 @@ export function StaffInvitationForm({
       .catch((issue: unknown) => {
         if (controller.signal.aborted || isAbortError(issue)) return;
         const apiError = toApiError(issue);
-        setPreview({ kind: "invalid" });
-        setError(
-          apiError.status === 401
-            ? "Приглашение недействительно или уже использовано."
-            : apiError.message,
-        );
+        if (apiError.status === 401) {
+          setPreview({ kind: "invalid" });
+          setError(null);
+        } else {
+          setPreview({ kind: "failed" });
+          setError(apiError.message);
+        }
       });
   }, [invitation]);
+
+  useErrorNotification(preview.kind === "invalid" ? null : error, {
+    title: "Не удалось продолжить регистрацию",
+    retry: preview.kind === "failed" ? loadPreview : undefined,
+  });
 
   useEffect(() => {
     loadPreview();
@@ -241,7 +249,14 @@ export function StaffInvitationForm({
   if (preview.kind === "invalid")
     return (
       <div className="registration-form">
-        <Alert type="error" showIcon title={error ?? "Приглашение недействительно."} />
+        <Alert type="error" showIcon title="Приглашение недействительно или уже использовано." />
+        <Button onClick={loadPreview}>Проверить снова</Button>
+      </div>
+    );
+
+  if (preview.kind === "failed")
+    return (
+      <div className="registration-form">
         <Button onClick={loadPreview}>Проверить снова</Button>
       </div>
     );
@@ -256,7 +271,6 @@ export function StaffInvitationForm({
         current={!setup ? 0 : setup.step === "authenticator" ? 1 : 2}
         items={[{ title: "Пароль" }, { title: "Аутентификатор" }, { title: "Ключ доступа" }]}
       />
-      {error && <Alert type="error" showIcon title={error} />}
       {!passkeysAvailable && !setup && (
         <Alert
           type="info"

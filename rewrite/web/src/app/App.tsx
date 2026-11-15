@@ -1,10 +1,11 @@
-import { Alert, Button, ConfigProvider, theme } from "antd";
+import { Button, ConfigProvider, theme } from "antd";
 import ruRU from "antd/locale/ru_RU";
-import { lazy, Suspense, useEffect, useState } from "react";
+import { lazy, Suspense, useLayoutEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { StaffSessionProvider, useStaffSession } from "@/entities/session";
 import { SignInPage } from "@/pages/sign-in";
 import { type Appearance, readAppearance, saveAppearance } from "@/shared/lib/appearance";
+import { Notifications, useErrorNotification } from "@/shared/ui/notifications";
 import { usePopupScrollBoundary } from "@/shared/ui/scroll-boundary";
 
 const AuthenticatedApplication = lazy(() => import("./AuthenticatedApplication"));
@@ -17,8 +18,12 @@ export function App({ invitation = null }: { invitation?: string | null }) {
   const [appearance, setAppearance] = useState<Appearance>(readAppearance);
   const dark = appearance === "dark";
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.appearance = appearance;
+    document.documentElement.style.colorScheme = appearance;
+    const background = appearance === "dark" ? "#15120f" : "#f4e8c8";
+    document.documentElement.style.backgroundColor = background;
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", background);
     saveAppearance(appearance);
   }, [appearance]);
 
@@ -79,6 +84,7 @@ export function App({ invitation = null }: { invitation?: string | null }) {
             />
           </StaffSessionProvider>
         </BrowserRouter>
+        <Notifications appearance={appearance} />
       </div>
     </ConfigProvider>
   );
@@ -90,6 +96,10 @@ function ApplicationRoutes(props: {
   onToggleAppearance: () => void;
 }) {
   const { staff, status, error, restoreSession } = useStaffSession();
+  useErrorNotification(status === "restoring" ? error?.message : null, {
+    title: "Не удалось восстановить сессию",
+    retry: () => void restoreSession(),
+  });
 
   return (
     <Routes>
@@ -113,20 +123,9 @@ function ApplicationRoutes(props: {
           status === "restoring" ? (
             <div className="employee-training-loading" role="status">
               {error ? (
-                <Alert
-                  type="warning"
-                  title="Не удалось восстановить сессию"
-                  description={error.message}
-                  action={
-                    <Button
-                      onClick={() => {
-                        void restoreSession();
-                      }}
-                    >
-                      Повторить
-                    </Button>
-                  }
-                />
+                <Button onClick={() => void restoreSession()}>
+                  Повторить восстановление сессии
+                </Button>
               ) : (
                 "Восстановление сессии…"
               )}

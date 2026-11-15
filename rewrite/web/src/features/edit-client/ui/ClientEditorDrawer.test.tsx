@@ -1,7 +1,20 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { fireEvent, render as renderUi, screen, within } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { DirectoryClient } from "@/entities/client-directory";
+import { Notifications } from "@/shared/ui/notifications";
 import { ClientEditorDrawer } from "./ClientEditorDrawer";
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 const kinds = [
   { id: "phone", name: "Телефон", format: "phone" as const, isArchived: false },
@@ -46,6 +59,89 @@ const phoneContacts: DirectoryClient["contacts"] = [
 ];
 
 describe("client editor", () => {
+  it("blocks invalid birthday input and saves only after it is corrected", () => {
+    const onSave = vi.fn();
+    render(
+      <ClientEditorDrawer
+        open
+        client={{ ...client([]), birthdate: "2001-05-06" }}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+    const birthday = screen.getByRole("textbox", { name: "Дата рождения" });
+
+    fireEvent.change(birthday, { target: { value: "31.11.2026" } });
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(birthday.getAttribute("aria-invalid")).toBe("true");
+    expect(document.activeElement).toBe(birthday);
+
+    fireEvent.change(birthday, { target: { value: "30.11.2026" } });
+    fireEvent.blur(birthday);
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ birthdate: "2026-11-30" }),
+    );
+  });
+
+  it("allows clearing an invalid birthday before saving", () => {
+    const onSave = vi.fn();
+    render(
+      <ClientEditorDrawer
+        open
+        client={{ ...client([]), birthdate: "2001-05-06" }}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+    fireEvent.change(screen.getByRole("textbox", { name: "Дата рождения" }), {
+      target: { value: "31.11.2026" },
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Дата рождения: очистить" }));
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ birthdate: null }));
+  });
+
+  it("submits through the form and focuses an invalid required field", () => {
+    const onSave = vi.fn();
+    render(
+      <ClientEditorDrawer
+        open
+        client={client([])}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+    const name = screen.getByRole("textbox", { name: /^Имя$/ });
+    fireEvent.change(name, { target: { value: " " } });
+
+    fireEvent.submit(screen.getByRole("form", { name: "Изменить карточку" }));
+
+    expect(onSave).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(name);
+    expect(name.getAttribute("aria-invalid")).toBe("true");
+    const errorId = name.getAttribute("aria-describedby");
+    expect(errorId && document.getElementById(errorId)?.textContent).toContain(
+      "Заполните фамилию, имя и источник клиента.",
+    );
+
+    fireEvent.change(name, { target: { value: "Анна" } });
+    fireEvent.submit(screen.getByRole("form", { name: "Изменить карточку" }));
+
+    expect(onSave).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ firstName: "Анна" }));
+  });
+
   it("edits the birthday through the shared calendar and saves a calendar date", async () => {
     const onSave = vi.fn();
     render(

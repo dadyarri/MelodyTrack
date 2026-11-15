@@ -28,8 +28,8 @@ export type DataViewProps<T> = {
   activeFilterCount?: number;
   onResetFilters?: () => void;
   loading?: boolean;
+  /** Describes an empty failed read; errors are reported outside the table shell. */
   error?: ReactNode;
-  onRetry?: () => void;
   emptyDescription?: ReactNode;
   /** Pointer convenience; provide a normal button/link in a cell for keyboard activation. */
   onRowClick?: (item: T) => void;
@@ -56,15 +56,13 @@ export function CollectionDataView<T>({
   onResetFilters,
   loading = false,
   error,
-  onRetry,
   emptyDescription = "Ничего не найдено",
   onRowClick,
 }: DataViewProps<T>) {
   const table = useRef<HTMLTableElement>(null);
-  const failed = error !== undefined && error !== null && error !== false;
 
   useEffect(() => {
-    if (failed || loading) return;
+    if (loading) return;
     const element = table.current;
     if (!element || !onRowClick) return;
     // Native delegation preserves table semantics. The visible name button supplies keyboard access.
@@ -86,7 +84,7 @@ export function CollectionDataView<T>({
     }
     element.addEventListener("click", activate);
     return () => element.removeEventListener("click", activate);
-  }, [items, rowKey, onRowClick, failed, loading]);
+  }, [items, rowKey, onRowClick, loading]);
 
   function toggleSort(key: string) {
     const selected = sort.find((entry) => entry.key === key);
@@ -124,19 +122,14 @@ export function CollectionDataView<T>({
         </div>
       )}
       <div className="data-view-results" aria-busy={loading}>
-        {failed ? (
-          <div className="data-view-state" role="alert">
-            <div>{error}</div>
-            {onRetry && <Button onClick={onRetry}>Повторить</Button>}
-          </div>
-        ) : loading && items.length === 0 ? (
+        {loading && items.length === 0 ? (
           <div className="data-view-state" role="status">
             <Spin />
             <span>Загрузка…</span>
           </div>
         ) : items.length === 0 ? (
           <div className="data-view-state" role="status">
-            {emptyDescription}
+            {error ?? emptyDescription}
           </div>
         ) : (
           <>
@@ -213,29 +206,27 @@ export function CollectionDataView<T>({
           </>
         )}
       </div>
-      {!failed && (
-        <div className="data-view-pagination">
-          <span className="data-view-count" aria-live="polite">
-            {loading && items.length === 0
-              ? ""
-              : items.length === 0
-                ? `Всего: ${total}`
-                : `${(page - 1) * pageSize + 1}–${Math.min((page - 1) * pageSize + items.length, total)} из ${total}`}
-          </span>
-          <Pagination
-            current={page}
-            pageSize={pageSize}
-            total={total}
-            pageSizeOptions={[10, 20, 50, 100]}
-            showSizeChanger
-            responsive
-            disabled={loading}
-            onChange={(nextPage, nextSize) =>
-              onPageChange(nextSize === pageSize ? nextPage : 1, nextSize)
-            }
-          />
-        </div>
-      )}
+      <div className="data-view-pagination">
+        <span className="data-view-count" aria-live="polite">
+          {loading && items.length === 0
+            ? ""
+            : items.length === 0
+              ? `Всего: ${total}`
+              : `${(page - 1) * pageSize + 1}–${Math.min((page - 1) * pageSize + items.length, total)} из ${total}`}
+        </span>
+        <Pagination
+          current={page}
+          pageSize={pageSize}
+          total={total}
+          pageSizeOptions={[10, 20, 50, 100]}
+          showSizeChanger
+          responsive
+          disabled={loading}
+          onChange={(nextPage, nextSize) =>
+            onPageChange(nextSize === pageSize ? nextPage : 1, nextSize)
+          }
+        />
+      </div>
     </section>
   );
 }

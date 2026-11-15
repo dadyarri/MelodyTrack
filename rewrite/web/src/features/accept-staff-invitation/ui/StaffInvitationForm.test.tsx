@@ -1,6 +1,26 @@
-import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderUi,
+  screen,
+  waitFor,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Notifications } from "@/shared/ui/notifications";
 import { StaffInvitationForm } from "./StaffInvitationForm";
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 const session = vi.hoisted(() => ({
   completeRegistration: vi.fn<(...args: unknown[]) => Promise<boolean>>(),

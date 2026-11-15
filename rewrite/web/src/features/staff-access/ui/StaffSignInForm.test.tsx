@@ -1,6 +1,19 @@
-import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { Notifications } from "@/shared/ui/notifications";
 import { StaffSignInForm } from "./StaffSignInForm";
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 const session = vi.hoisted(() => ({
   status: "anonymous" as "anonymous" | "authenticating",
@@ -106,6 +119,7 @@ describe("staff sign in", () => {
   it("allows a failed challenge preparation to be retried explicitly without a request loop", async () => {
     session.error = { message: "Нет соединения с сервером." };
     render(<StaffSignInForm />);
+    await screen.findByText("Не удалось выполнить вход");
     await waitFor(() => expect(session.preparePasskey).toHaveBeenCalledOnce());
 
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));

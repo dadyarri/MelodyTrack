@@ -2,6 +2,7 @@ import { Alert, Button, Form, Input, Typography } from "antd";
 import { useEffect, useState } from "react";
 import { useStaffSession } from "@/entities/session";
 import { supportsPasskeys } from "@/shared/lib/passkeys";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import "./StaffSignInForm.css";
 
 type PrimaryValues = { login: string; password?: string };
@@ -15,6 +16,18 @@ export function StaffSignInForm() {
   const busy = session.status === "authenticating";
   const passkeysSupported = supportsPasskeys();
   const { preparePasskey, factor } = session;
+  const sessionError = session.error
+    ? [
+        session.error.message,
+        session.error.retryAfterSeconds
+          ? `Повторите через ${session.error.retryAfterSeconds} сек.`
+          : null,
+        session.error.traceId ? `Код обращения: ${session.error.traceId}` : null,
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    : null;
+  useErrorNotification(sessionError, { title: "Не удалось выполнить вход" });
 
   useEffect(() => {
     if (!passkeysSupported || factor || busy) return;
@@ -46,28 +59,6 @@ export function StaffSignInForm() {
 
   return (
     <div className="staff-access-form">
-      {session.error && (
-        <Alert
-          type="error"
-          showIcon
-          title={session.error.message}
-          description={
-            <>
-              {session.error.retryAfterSeconds && (
-                <p>Повторите через {session.error.retryAfterSeconds} сек.</p>
-              )}
-              {session.error.traceId && (
-                <p className="staff-access-trace">
-                  Код обращения: <code>{session.error.traceId}</code>
-                </p>
-              )}
-            </>
-          }
-          closable
-          onClose={() => session.clearError()}
-        />
-      )}
-
       {session.factor ? (
         <section aria-labelledby="staff-access-factor-title">
           <Typography.Title level={3} id="staff-access-factor-title">

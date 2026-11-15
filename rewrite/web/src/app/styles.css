@@ -14,6 +14,7 @@
   --color-line: #d8c8a7;
   --color-soft: #e6d5ad;
   --color-success: #5f7b4b;
+  --color-error: #9b4a3c;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -29,6 +30,7 @@
   --color-line: #4d3a28;
   --color-soft: #2f241a;
   --color-success: #7ca46d;
+  --color-error: #d27a70;
 }
 
 * {

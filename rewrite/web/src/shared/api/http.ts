@@ -42,8 +42,17 @@ export function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-export function invalidResponse(): ApiError {
-  return new ApiError("Не удалось прочитать ответ сервера.", 502, undefined, undefined, false);
+/** The location must be a static schema path, never a response value or record identifier. */
+export function invalidResponse(location?: string): ApiError {
+  return new ApiError(
+    location && import.meta.env.DEV
+      ? `Не удалось прочитать ответ сервера. Поле: ${location}.`
+      : "Не удалось прочитать ответ сервера.",
+    502,
+    undefined,
+    undefined,
+    false,
+  );
 }
 
 class BrowserRequestOption implements RequestOption {

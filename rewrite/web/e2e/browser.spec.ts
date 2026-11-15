@@ -4,6 +4,42 @@ import { startCookieServer } from "./cookie-server";
 const staffId = "019a2c63-8c00-7000-8000-000000000001";
 const servers = new WeakMap<BrowserContext, Awaited<ReturnType<typeof startCookieServer>>>();
 
+test("applies the stored dark theme before the application module runs", async ({ page }) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.addInitScript(() => {
+    localStorage.setItem("melodytrack.rewrite.appearance", "dark");
+  });
+  await page.route("**/src/main.tsx", (route) => route.abort());
+
+  await page.goto("/");
+
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  await expect(page.locator("html")).toHaveCSS("background-color", "rgb(21, 18, 15)");
+  await expect(page.locator('meta[name="theme-color"]')).toHaveAttribute("content", "#15120f");
+  await expect(page.locator("#root")).toBeEmpty();
+});
+
+test("applies the system theme before startup when preference storage is unavailable", async ({
+  page,
+}) => {
+  await page.emulateMedia({ colorScheme: "dark" });
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      get() {
+        throw new DOMException("Storage unavailable", "SecurityError");
+      },
+    });
+  });
+  await page.route("**/src/main.tsx", (route) => route.abort());
+
+  await page.goto("/");
+
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "dark");
+  await expect(page.locator("#root")).toBeEmpty();
+});
+
 test.afterEach(async ({ context }) => {
   await servers.get(context)?.close();
 });

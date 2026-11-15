@@ -1,6 +1,19 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render as renderUi, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { Notifications } from "@/shared/ui/notifications";
 import { ClientNotesSection } from "./ClientNotesSection";
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 describe("client notes", () => {
   it("keeps a dirty note draft after a server refresh and shows the conflict", () => {

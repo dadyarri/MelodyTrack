@@ -128,7 +128,7 @@ describe("data view", () => {
     expect(initial.onSortChange).toHaveBeenLastCalledWith([]);
   });
 
-  it("distinguishes loading, an empty response and a failed response with retry", () => {
+  it("preserves a stable empty state after a failed read and keeps received rows visible", () => {
     const initial = props({ items: [], total: 0, loading: true });
     const view = render(<CollectionDataView {...initial} />);
     expect(screen.getByText("Загрузка…")).toBeTruthy();
@@ -137,19 +137,15 @@ describe("data view", () => {
     view.rerender(<CollectionDataView {...initial} loading={false} />);
     expect(screen.getByText("Ничего не найдено")).toBeTruthy();
 
-    const onRetry = vi.fn();
     view.rerender(
-      <CollectionDataView
-        {...initial}
-        loading={false}
-        error="Не удалось загрузить"
-        onRetry={onRetry}
-      />,
+      <CollectionDataView {...initial} loading={false} error="Список клиентов пока недоступен." />,
     );
-    expect(screen.getByRole("alert").textContent).toContain("Не удалось загрузить");
-    expect(screen.queryByText("Ничего не найдено")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
-    expect(onRetry).toHaveBeenCalledOnce();
+    expect(screen.getByRole("status").textContent).toContain("Список клиентов пока недоступен.");
+    expect(screen.queryByRole("alert")).toBeNull();
+
+    view.rerender(<CollectionDataView {...props({ loading: false, error: "Сбой обновления" })} />);
+    expect(screen.getByRole("table").textContent).toContain("Бета");
+    expect(screen.getByRole("table").textContent).toContain("Альфа");
   });
 
   it("reports search and pagination changes without filtering the received page", () => {

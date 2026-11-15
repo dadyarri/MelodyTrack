@@ -17,7 +17,8 @@ import {
   type ReleaseEntry,
   type ReleaseHistory,
 } from "@/entities/app-release";
-import { isAbortError, subscribeDataChanges } from "@/shared/api";
+import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import {
   readSeenVersion,
   releaseNotesSeenKey,
@@ -47,6 +48,7 @@ export function ReleaseNotesProvider({
   children: ReactNode;
 }) {
   const [current, setCurrent] = useState<LoadState<CurrentRelease>>({ status: "loading" });
+  const [currentError, setCurrentError] = useState<string | null>(null);
   const [unseen, setUnseen] = useState<{
     scopeKey: string;
     data: { currentVersion: string; releases: ReleaseEntry[] };
@@ -55,6 +57,8 @@ export function ReleaseNotesProvider({
   const [dismissed, setDismissed] = useState<string | null>(null);
   const [historyRequest, setHistoryRequest] = useState({ page: 1 });
   const [history, setHistory] = useState<LoadState<ReleaseHistory>>({ status: "loading" });
+  const [historyError, setHistoryError] = useState<string | null>(null);
+  const [currentReload, setCurrentReload] = useState(() => new AbortController());
   const [unseenReload, setUnseenReload] = useState(() => new AbortController());
   const manualAcknowledgement = useRef<string | null>(null);
   const manualOpenRef = useRef(manualOpen);
@@ -78,6 +82,32 @@ export function ReleaseNotesProvider({
   const currentVersion = current.status === "ready" ? current.data.version : null;
   const unseenScopeKey = JSON.stringify([staffId, canViewHistory, seenVersion]);
   const currentUnseen = unseen?.scopeKey === unseenScopeKey ? unseen.data : null;
+  const retryCurrent = useCallback(() => {
+    setCurrentError(null);
+    setCurrentReload((previous) => {
+      previous.abort();
+      return new AbortController();
+    });
+  }, []);
+  const retryHistory = useCallback(() => {
+    if (manualOpenRef.current) {
+      setHistoryRequest((value) => ({ ...value }));
+      return;
+    }
+    setUnseenReload((previous) => {
+      previous.abort();
+      return new AbortController();
+    });
+  }, []);
+
+  useErrorNotification(currentError, {
+    title: "Не удалось проверить текущую версию",
+    retry: retryCurrent,
+  });
+  useErrorNotification(historyError, {
+    title: "Не удалось загрузить список изменений",
+    retry: retryHistory,
+  });
 
   useEffect(() => {
     let controller: AbortController | null = null;
@@ -90,9 +120,10 @@ export function ReleaseNotesProvider({
       controller?.abort();
       const request = new AbortController();
       controller = request;
-      void getCurrentRelease(request.signal)
+      void getCurrentRelease(AbortSignal.any([request.signal, currentReload.signal]))
         .then((release) => {
           if (!request.signal.aborted) {
+            setCurrentError(null);
             setCurrent((previous) =>
               previous.status === "ready" &&
               previous.data.version === release.version &&
@@ -104,10 +135,13 @@ export function ReleaseNotesProvider({
           }
         })
         .catch((error: unknown) => {
-          if (!request.signal.aborted && !isAbortError(error))
+          if (!request.signal.aborted && !isAbortError(error)) {
+            const message = toApiError(error).message;
+            setCurrentError(message);
             setCurrent((previous) =>
               previous.status === "ready" ? previous : { status: "error" },
             );
+          }
         });
     };
     const onFocus = () => load();
@@ -134,6 +168,7 @@ export function ReleaseNotesProvider({
         .then((result) => {
           if (request.signal.aborted || version !== historyRequestVersion.current) return;
           if (page === 1) manualAcknowledgement.current = result.releases[0]?.version ?? null;
+          setHistoryError(null);
           setHistory({ status: "ready", data: result });
           setCurrent((previous) =>
             previous.status === "ready" && previous.data.version === result.currentVersion
@@ -144,8 +179,9 @@ export function ReleaseNotesProvider({
                 },
           );
         })
-        .catch(() => {
-          // Keep the visible history when a background refresh fails.
+        .catch((error: unknown) => {
+          if (!request.signal.aborted && !isAbortError(error))
+            setHistoryError(toApiError(error).message);
         });
     });
     load(true);
@@ -160,7 +196,7 @@ export function ReleaseNotesProvider({
       document.removeEventListener("visibilitychange", onFocus);
       unsubscribe();
     };
-  }, []);
+  }, [currentReload]);
 
   useEffect(() => {
     if (!canViewHistory || current.status !== "ready") return;
@@ -170,10 +206,13 @@ export function ReleaseNotesProvider({
       getReleaseHistory(requestedPage, signal),
     )
       .then((result) => {
-        if (!signal.aborted) setUnseen({ scopeKey: unseenScopeKey, data: result });
+        if (!signal.aborted) {
+          setUnseen({ scopeKey: unseenScopeKey, data: result });
+          setHistoryError(null);
+        }
       })
-      .catch(() => {
-        // History failure remains available through the manual modal and its retry button.
+      .catch((error: unknown) => {
+        if (!signal.aborted && !isAbortError(error)) setHistoryError(toApiError(error).message);
       });
     return () => controller.abort();
   }, [canViewHistory, current, seenVersion, unseenReload, unseenScopeKey]);
@@ -188,6 +227,7 @@ export function ReleaseNotesProvider({
         if (controller.signal.aborted || version !== historyRequestVersion.current) return;
         if (historyRequest.page === 1)
           manualAcknowledgement.current = result.releases[0]?.version ?? null;
+        setHistoryError(null);
         setHistory({ status: "ready", data: result });
         setCurrent((previous) =>
           previous.status === "ready" && previous.data.version === result.currentVersion
@@ -199,7 +239,11 @@ export function ReleaseNotesProvider({
         );
       })
       .catch((error: unknown) => {
-        if (!controller.signal.aborted && !isAbortError(error)) setHistory({ status: "error" });
+        if (!controller.signal.aborted && !isAbortError(error)) {
+          const message = toApiError(error).message;
+          setHistoryError(message);
+          setHistory({ status: "error" });
+        }
       });
     return () => controller.abort();
   }, [manualOpen, canViewHistory, historyRequest]);
@@ -228,6 +272,7 @@ export function ReleaseNotesProvider({
   function openHistory() {
     if (!canViewHistory || !enabled) return;
     manualAcknowledgement.current = null;
+    setHistoryError(null);
     setHistoryRequest({ page: 1 });
     setHistory({ status: "loading" });
     setManualOpen(true);
@@ -256,11 +301,8 @@ export function ReleaseNotesProvider({
           ) : history.status === "loading" ? (
             <Skeleton active paragraph={{ rows: 4 }} />
           ) : history.status === "error" ? (
-            <div className="release-notes-empty">
-              <Empty description="Не удалось загрузить список изменений" />
-              <Button onClick={() => setHistoryRequest((value) => ({ ...value }))}>
-                Повторить
-              </Button>
+            <div className="release-notes-empty" role="status">
+              Список изменений пока недоступен.
             </div>
           ) : (
             <>

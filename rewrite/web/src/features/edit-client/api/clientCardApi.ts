@@ -13,7 +13,9 @@ function text(value: unknown): string {
 }
 
 function nullableText(value: unknown): string | null {
-  return value === null || value === undefined ? null : text(value);
+  if (value === null || value === undefined) return null;
+  if (typeof value !== "string") throw invalidResponse();
+  return value;
 }
 
 function readCard(value: unknown): DirectoryClient {

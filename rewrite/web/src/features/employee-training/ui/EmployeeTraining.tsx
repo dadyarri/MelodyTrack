@@ -12,6 +12,7 @@ import {
   Typography,
 } from "antd";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
+import { useErrorNotification } from "@/shared/ui/notifications";
 import {
   createProgress,
   type DemoStep,
@@ -79,6 +80,7 @@ function AccountTraining({
 }) {
   const [progress, setProgress] = useState<TrainingProgress | null>(null);
   const [storageAvailable, setStorageAvailable] = useState(true);
+  const [storageError, setStorageError] = useState<"load" | "save" | null>(null);
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState("exercise");
   const [module, setModule] = useState<"access" | "clients">("access");
@@ -90,6 +92,15 @@ function AccountTraining({
   const canPersist = useRef(true);
   const writes = useRef<Promise<void>>(Promise.resolve());
   const visibleModal = modalOpen && (module !== "clients" || canUseClientDirectory);
+
+  useErrorNotification(
+    storageError
+      ? storageError === "load"
+        ? "Не удалось загрузить сохранённый прогресс обучения."
+        : "Не удалось сохранить прогресс обучения."
+      : null,
+    { title: "Ошибка локального хранилища" },
+  );
 
   useEffect(() => {
     if (module === "clients" && !canUseClientDirectory) setModalOpen(false);
@@ -103,6 +114,8 @@ function AccountTraining({
         if (controller.signal.aborted) return;
         current.current = loaded;
         setProgress(loaded);
+        setStorageError(null);
+        setStorageAvailable(true);
         setModalOpen(loaded.demoStep !== "completed" && !loaded.deferred);
       })
       .catch(() => {
@@ -110,6 +123,7 @@ function AccountTraining({
         // Do not overwrite unavailable, corrupt or future-version persisted data.
         canPersist.current = false;
         setStorageAvailable(false);
+        setStorageError("load");
         const fallback = createProgress(staffId);
         current.current = fallback;
         setProgress(fallback);
@@ -130,10 +144,16 @@ function AccountTraining({
       .then(async () => {
         if (controller.signal.aborted) return;
         await saveTrainingProgress(next, controller.signal);
-        if (!controller.signal.aborted) setStorageAvailable(true);
+        if (!controller.signal.aborted) {
+          setStorageAvailable(true);
+          setStorageError(null);
+        }
       })
       .catch(() => {
-        if (!controller.signal.aborted) setStorageAvailable(false);
+        if (!controller.signal.aborted) {
+          setStorageAvailable(false);
+          setStorageError("save");
+        }
       });
   }
 
@@ -251,7 +271,6 @@ function AccountTraining({
             </Button>,
           ]}
         >
-          {!storageAvailable && <StorageNotice />}
           <Tabs
             activeKey={tab}
             onChange={(key) => {
@@ -304,17 +323,6 @@ function AccountTraining({
           </div>
         )}
     </TrainingContext.Provider>
-  );
-}
-
-function StorageNotice() {
-  return (
-    <Alert
-      type="warning"
-      showIcon
-      title="Не удалось сохранить прогресс"
-      description="После закрытия страницы тренировку может понадобиться пройти заново."
-    />
   );
 }
 
@@ -433,20 +441,13 @@ function AccessArticle() {
 }
 
 export function TrainingWorkspace() {
-  const {
-    progress,
-    storageAvailable,
-    canUseClientDirectory,
-    openTraining,
-    openClientTraining,
-    markArticleRead,
-  } = useEmployeeTraining();
+  const { progress, canUseClientDirectory, openTraining, openClientTraining, markArticleRead } =
+    useEmployeeTraining();
   return (
     <div className="employee-training-workspace">
       <div>
         <Title level={2}>Обучение</Title>
       </div>
-      {!storageAvailable && <StorageNotice />}
       <Card
         title="Вход и сессия"
         extra={

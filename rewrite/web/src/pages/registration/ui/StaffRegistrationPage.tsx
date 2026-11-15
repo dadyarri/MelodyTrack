@@ -6,6 +6,7 @@ import { StaffInvitationForm } from "@/features/accept-staff-invitation";
 import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
 import { Icon } from "@/shared/ui/Icon";
+import { useErrorNotification } from "@/shared/ui/notifications";
 
 export function StaffRegistrationPage({
   invitation,
@@ -19,6 +20,7 @@ export function StaffRegistrationPage({
   const navigate = useNavigate();
   const { staff, signOut, status, error } = useStaffSession();
   const [mustSignOut, setMustSignOut] = useState(Boolean(staff));
+  useErrorNotification(error?.message, { title: "Не удалось завершить текущую сессию" });
   useEffect(() => {
     if (!staff) setMustSignOut(false);
   }, [staff]);
@@ -49,7 +51,6 @@ export function StaffRegistrationPage({
           ) : mustSignOut && staff ? (
             <div className="registration-form">
               <p>Для регистрации другого аккаунта сначала выйдите из текущего.</p>
-              {error && <Alert type="error" showIcon title={error.message} />}
               <Button onClick={() => void signOut()} loading={status === "authenticating"}>
                 Выйти из текущего аккаунта
               </Button>

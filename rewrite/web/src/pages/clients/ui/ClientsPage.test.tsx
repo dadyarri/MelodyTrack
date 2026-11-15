@@ -1,7 +1,28 @@
-import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as renderUi,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { applicationApi } from "@/shared/api";
+import { Notifications } from "@/shared/ui/notifications";
 import { ClientsPage } from "./ClientsPage";
+
+function render(ui: ReactNode) {
+  return renderUi(ui, {
+    wrapper: ({ children }) => (
+      <>
+        {children}
+        <Notifications appearance="light" />
+      </>
+    ),
+  });
+}
 
 const mocks = vi.hoisted(() => ({
   request: vi.fn(),
@@ -514,7 +535,7 @@ describe("client directory page", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "ФИО или контакт" }), {
       target: { value: "ошибка" },
     });
-    await screen.findByRole("alert");
+    await screen.findByText("Не удалось загрузить клиентов");
     expect(screen.queryByText("Тестова Анна")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(3));

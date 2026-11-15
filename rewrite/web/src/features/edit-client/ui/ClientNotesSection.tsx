@@ -1,6 +1,7 @@
 import { Alert, Button, Input, Space, Tooltip } from "antd";
 import { useEffect, useId, useRef, useState } from "react";
 import { Icon } from "@/shared/ui/Icon";
+import { useErrorNotification } from "@/shared/ui/notifications";
 
 export type ClientNoteHistoryEntry = {
   id: string;
@@ -46,6 +47,9 @@ export function ClientNotesSection({
   const previousResetKey = useRef(resetKey);
   const changed = (value || null) !== initial;
   const stale = changed && notes !== initial;
+  const conflict = error?.startsWith("Заметки изменились на сервере.") === true;
+
+  useErrorNotification(conflict ? null : error, { title: "Ошибка при работе с заметками" });
 
   useEffect(() => {
     const reset = previousResetKey.current !== resetKey;
@@ -95,7 +99,7 @@ export function ClientNotesSection({
           }
         />
       ) : null}
-      {error ? <Alert type="error" showIcon title={error} /> : null}
+      {conflict ? <Alert type="error" showIcon title={error} /> : null}
       {canEdit ? (
         <Input.TextArea
           aria-label="Заметки клиента"
