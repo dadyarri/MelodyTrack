@@ -1,0 +1,25 @@
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="zellij:tab-bar"
+        }
+
+        children
+
+        pane size=2 borderless=true {
+            plugin location="zellij:status-bar"
+        }
+    }
+
+    tab name="backend" focus=true {
+        pane command="dotnet" {
+            args "run" "--project" "src/MelodyTrack.Rewrite.Api"
+        }
+    }
+
+    tab name="frontend" cwd="web" {
+        pane command="fish" {
+            args "-ic" "npm run dev; exec fish"
+        }
+    }
+}
