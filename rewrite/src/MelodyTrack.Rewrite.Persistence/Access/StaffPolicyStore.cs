@@ -15,9 +15,14 @@ public sealed class StaffPolicyStore(Database database) : IStaffPolicyStore
         StaffId staffId, DateTimeOffset selectedAt, CancellationToken cancellationToken)
         => await AuthorizeWriteAsync(transaction, staffId, StaffPermission.ClientNotesWrite, [selectedAt], cancellationToken);
 
+    internal static async Task<UnitResult<ErrorList>> AuthorizeClientWriteAsync(DatabaseTransaction transaction,
+        StaffId staffId, DateTimeOffset selectedAt, CancellationToken cancellationToken)
+        => await AuthorizeWriteAsync(transaction, staffId, StaffPermission.ClientsWrite, [selectedAt], cancellationToken,
+            requiredDataScope: PermissionDataScope.Available);
+
     internal static async Task<UnitResult<ErrorList>> AuthorizeWriteAsync(DatabaseTransaction transaction,
         StaffId staffId, StaffPermission permission, IReadOnlyList<DateTimeOffset> recordDates, CancellationToken cancellationToken,
-        string? correctionComment = null)
+        string? correctionComment = null, PermissionDataScope? requiredDataScope = null)
     {
         var identity = await transaction.Query("""
             SELECT role::text AS "Role", is_blocked AS "Blocked", is_archived AS "Archived", CURRENT_TIMESTAMP AS "CurrentAt"
@@ -60,6 +65,7 @@ public sealed class StaffPolicyStore(Database database) : IStaffPolicyStore
             && string.IsNullOrWhiteSpace(correctionComment))
             return UnitResult.Failure(ErrorList.Single(new CatalogueError.Required("comment"), "comment"));
         return recordDates.Count > 0 && recordDates.All(date => actor.HasPermission(permission, recordAt: date, now: now)
+            && (requiredDataScope is null || actor.Permissions is { } permissions && permissions.For(permission).DataScope == requiredDataScope)
             && (!expensePermission || role != StaffRole.Administrator || SchoolTime.Date(date) == SchoolTime.Date(now)))
             ? UnitResult.Success<ErrorList>() : UnitResult.Failure(ErrorList.Single(new ModelError.Forbidden()));
     }

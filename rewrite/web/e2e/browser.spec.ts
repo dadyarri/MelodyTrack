@@ -13,6 +13,28 @@ async function installApi(context: BrowserContext) {
   const server = await startCookieServer();
   servers.set(context, server);
   let clientFirstName = "Клиент";
+  const client = () => ({
+    id: "019a2c63-8c00-7000-8000-000000000002",
+    firstName: clientFirstName,
+    lastName: "Синтетический",
+    middleName: null,
+    birthdate: "2001-05-06",
+    sourceId: null,
+    sourceName: null,
+    isArchived: false,
+    createdAt: "2026-11-15T22:00:00Z",
+    contacts: [
+      {
+        id: "019a2c63-8c00-7000-8000-000000000003",
+        kindId: "019a2c63-8c00-7000-8000-000000000004",
+        kindName: "Email",
+        format: "email",
+        value: "synthetic@example.invalid",
+        comment: "Тестовый контакт",
+        isPrimary: true,
+      },
+    ],
+  });
   await context.route("**/api/**", async (route) => {
     const path = new URL(route.request().url()).pathname;
     if (!path.startsWith("/api/")) return route.continue();
@@ -21,33 +43,11 @@ async function installApi(context: BrowserContext) {
     if (path.startsWith("/api/auth/")) return route.continue({ url: `${server.origin}${path}` });
     if (path === "/api/changes/events") return route.continue({ url: `${server.origin}${path}` });
     const json = (body: unknown, headers = {}) => route.fulfill({ json: body, headers });
-    if (path.endsWith("/clients/options")) return json({ sources: [] });
+    if (path.endsWith("/clients/options")) return json({ sources: [], contactKinds: [] });
+    if (path === `/api/clients/${client().id}`) return json(client());
     if (path.endsWith("/clients"))
       return json({
-        items: [
-          {
-            id: "019a2c63-8c00-7000-8000-000000000002",
-            firstName: clientFirstName,
-            lastName: "Синтетический",
-            middleName: null,
-            birthdate: "2001-05-06",
-            sourceId: null,
-            sourceName: null,
-            isArchived: false,
-            createdAt: "2026-11-15T22:00:00Z",
-            contacts: [
-              {
-                id: "019a2c63-8c00-7000-8000-000000000003",
-                kindId: "019a2c63-8c00-7000-8000-000000000004",
-                kindName: "Email",
-                format: "email",
-                value: "synthetic@example.invalid",
-                comment: "Тестовый контакт",
-                isPrimary: true,
-              },
-            ],
-          },
-        ],
+        items: [client()],
         totalCount: 1,
         totalPages: 1,
         page: 1,
@@ -437,8 +437,17 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   await expect(search).toHaveValue("Синтетический");
   expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
   expect(eventRequests).toBe(initialEventRequests);
+  const cardLoaded = page.waitForResponse(
+    (response) =>
+      new URL(response.url()).pathname === "/api/clients/019a2c63-8c00-7000-8000-000000000002" &&
+      response.status() === 200,
+  );
   await page.getByRole("row", { name: /Синтетический Обновлённый/ }).click();
+  await cardLoaded;
   const drawer = page.getByRole("dialog");
+  await expect(drawer.getByRole("status")).toHaveCount(0);
+  await expect(drawer.getByRole("alert").filter({ hasText: "Повторить" })).toHaveCount(0);
+  await expect(drawer.getByRole("button", { name: "В архив", exact: true })).toBeDisabled();
   await expect(drawer.getByText("Тестовый контакт")).toBeVisible();
   await expect(drawer.getByRole("link", { name: "synthetic@example.invalid" })).toHaveAttribute(
     "href",

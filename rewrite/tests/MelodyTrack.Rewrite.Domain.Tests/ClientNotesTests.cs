@@ -168,7 +168,15 @@ public sealed class ClientNotesTests
         var result = Ok(await service.ReadHistoryAsync(TestData.ClientId, actor, TestContext.Current.CancellationToken));
         var current = Ok(await service.ReadCurrentAsync(TestData.ClientId, actor, TestContext.Current.CancellationToken));
 
-        Assert.Equal(change, Assert.Single(result));
+        var entry = Assert.Single(result);
+        Assert.Equal(change.Id, entry.Id);
+        Assert.Equal("teacher", entry.AuthorName);
+        Assert.Equal(change.ChangedAt, entry.ChangedAt);
+        Assert.Equal(change.Before, entry.Before);
+        Assert.Equal(change.After, entry.After);
+        Assert.DoesNotContain("teacher", entry.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("previous", entry.ToString(), StringComparison.Ordinal);
+        Assert.DoesNotContain("new", entry.ToString(), StringComparison.Ordinal);
         Assert.Equal("new", current);
     }
 
@@ -235,10 +243,11 @@ public sealed class ClientNotesTests
             return Task.FromResult(Result.Success<string?, ErrorList>(Current));
         }
 
-        public Task<Result<IReadOnlyList<ClientNotesChange>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken)
+        public Task<Result<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken)
         {
             Reads++;
-            return Task.FromResult(Result.Success<IReadOnlyList<ClientNotesChange>, ErrorList>(History));
+            return Task.FromResult(Result.Success<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>(History.Select(item =>
+                new ClientNotesHistoryEntry(item.Id, "teacher", item.ChangedAt, item.Before, item.After)).ToArray()));
         }
 
         public Task<Result<ClientNotesChange?, ErrorList>> FindChangeAsync(Guid entryId, CancellationToken cancellationToken)

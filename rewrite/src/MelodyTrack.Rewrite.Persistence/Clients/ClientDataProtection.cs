@@ -1,5 +1,6 @@
 using MelodyTrack.Rewrite.Domain;
 using MelodyTrack.Rewrite.Persistence.Security;
+using System.Security.Cryptography;
 
 namespace MelodyTrack.Rewrite.Persistence.Clients;
 
@@ -51,6 +52,19 @@ public sealed class ClientDataProtection(PersonalDataProtector protector)
     public string? UnprotectComment(ClientId clientId, ClientContactId contactId, string? comment) =>
         protector.Unprotect(comment, ContactContext(clientId, contactId) + "/comment");
 
+    /// <summary>Protects an idempotency fingerprint so low-entropy contact values cannot be guessed from the command journal.</summary>
+    public string ProtectCommandFingerprint(ClientId clientId, Guid commandId, byte[] fingerprint) =>
+        protector.Protect(Convert.ToBase64String(fingerprint), CommandContext(clientId, commandId))!;
+
+    /// <summary>Compares a protected idempotency fingerprint in memory.</summary>
+    public bool MatchesCommandFingerprint(ClientId clientId, Guid commandId, string? protectedFingerprint, byte[] fingerprint)
+    {
+        var decoded = protector.Unprotect(protectedFingerprint, CommandContext(clientId, commandId));
+        if (decoded is null) return false;
+        try { return CryptographicOperations.FixedTimeEquals(Convert.FromBase64String(decoded), fingerprint); }
+        catch (FormatException) { return false; }
+    }
+
     private static string NotesContext(ClientId clientId)
     {
         if (clientId.Value == Guid.Empty) throw new ArgumentException("Требуется непустой ID клиента.", nameof(clientId));
@@ -69,5 +83,11 @@ public sealed class ClientDataProtection(PersonalDataProtector protector)
         if (clientId.Value == Guid.Empty) throw new ArgumentException("Требуется непустой ID клиента.", nameof(clientId));
         if (entryId == Guid.Empty) throw new ArgumentException("Требуется непустой ID записи истории.", nameof(entryId));
         return $"clients/{clientId.Value:N}/notes-history/{entryId:N}";
+    }
+
+    private static string CommandContext(ClientId clientId, Guid commandId)
+    {
+        if (clientId.Value == Guid.Empty || commandId == Guid.Empty) throw new ArgumentException("Требуются ID клиента и команды.");
+        return $"clients/{clientId.Value:N}/commands/{commandId:N}/fingerprint";
     }
 }

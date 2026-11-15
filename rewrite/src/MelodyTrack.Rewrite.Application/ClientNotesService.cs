@@ -10,10 +10,15 @@ public sealed record ClientNotesWriteCommand(Guid EntryId, ClientId ClientId, St
     public override string ToString() => nameof(ClientNotesWriteCommand);
 }
 
+public sealed record ClientNotesHistoryEntry(Guid Id, string AuthorName, DateTimeOffset ChangedAt, string? Before, string? After)
+{
+    public override string ToString() => nameof(ClientNotesHistoryEntry);
+}
+
 public interface IClientNotesStore
 {
     Task<Result<string?, ErrorList>> GetCurrentAsync(ClientId clientId, CancellationToken cancellationToken);
-    Task<Result<IReadOnlyList<ClientNotesChange>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken);
+    Task<Result<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken);
     Task<Result<ClientNotesChange?, ErrorList>> FindChangeAsync(Guid entryId, CancellationToken cancellationToken);
     // Rechecks current authority before reading/replaying text and atomically compares/appends the change.
     Task<Result<ClientNotesChange, ErrorList>> ChangeAsync(ClientNotesWriteCommand command, CancellationToken cancellationToken);
@@ -44,15 +49,15 @@ public sealed class ClientNotesService(IClientNotesStore store)
         return await store.ChangeAsync(new(entryId, clientId, staff.Id, now, notes, expectedNotes, hasExpectation), cancellationToken);
     }
 
-    public Task<Result<IReadOnlyList<ClientNotesChange>, ErrorList>> ReadHistoryAsync(ClientId clientId,
+    public Task<Result<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>> ReadHistoryAsync(ClientId clientId,
         Actor actor, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var validation = actor.Validate();
-        if (validation.IsFailure) return Task.FromResult(Result.Failure<IReadOnlyList<ClientNotesChange>, ErrorList>(validation.Error));
+        if (validation.IsFailure) return Task.FromResult(Result.Failure<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>(validation.Error));
         return actor.HasPermission(StaffPermission.ClientNotesRead) && clientId.Value != Guid.Empty
             ? store.GetHistoryAsync(clientId, cancellationToken)
-            : Task.FromResult(Result.Failure<IReadOnlyList<ClientNotesChange>, ErrorList>(ErrorList.Single(new ModelError.Forbidden())));
+            : Task.FromResult(Result.Failure<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>(ErrorList.Single(new ModelError.Forbidden())));
     }
 
     public Task<Result<string?, ErrorList>> ReadCurrentAsync(ClientId clientId, Actor actor, CancellationToken cancellationToken)

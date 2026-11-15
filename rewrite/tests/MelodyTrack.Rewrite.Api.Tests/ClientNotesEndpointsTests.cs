@@ -92,7 +92,44 @@ public sealed class ClientNotesEndpointsTests
         Assert.Equal(0, store.Reads);
     }
 
+    [Fact]
+    public async Task GetCurrent_GrantedReader_ReturnsNoStoreNoteValue()
+    {
+        var store = new StaffApiHost.NotesState("private note");
+        await using var host = await StaffApiHost.StartAsync(GrantedReader(), Token, notes: store);
+        using var request = new HttpRequestMessage(HttpMethod.Get, Path);
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", StaffApiHost.BearerToken);
+
+        using var response = await host.Client.SendAsync(request, Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("no-store", response.Headers.CacheControl?.ToString());
+        Assert.Contains("private note", await response.Content.ReadAsStringAsync(Token));
+    }
+
+    [Fact]
+    public async Task GetHistory_GrantedReader_ReturnsAuthorAndChanges()
+    {
+        var store = new StaffApiHost.NotesState("current");
+        var change = ClientNotesChange.Create(Command, new(Client), StaffApiHost.Staff,
+            new DateTimeOffset(2026, 11, 8, 12, 0, 0, TimeSpan.Zero), "before", "current").Value;
+        store.History.Add(change);
+        await using var host = await StaffApiHost.StartAsync(GrantedReader(), Token, notes: store);
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"{Path}/history");
+        request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", StaffApiHost.BearerToken);
+
+        using var response = await host.Client.SendAsync(request, Token);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Contains("authorName", await response.Content.ReadAsStringAsync(Token));
+        Assert.Contains("teacher", await response.Content.ReadAsStringAsync(Token));
+    }
+
     private static Actor.Staff GrantedTeacher() => new(StaffApiHost.Staff, StaffRole.Teacher,
         new(ImmutableDictionary<StaffPermission, PermissionGrant>.Empty.Add(StaffPermission.ClientNotesWrite,
+            new(true, PermissionDataScope.Available, PermissionTimeScope.Any))));
+
+    private static Actor.Staff GrantedReader() => new(StaffApiHost.Staff, StaffRole.Teacher,
+        new(ImmutableDictionary<StaffPermission, PermissionGrant>.Empty.Add(StaffPermission.ClientNotesRead,
             new(true, PermissionDataScope.Available, PermissionTimeScope.Any))));
 }

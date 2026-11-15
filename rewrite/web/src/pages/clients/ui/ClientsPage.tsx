@@ -1,4 +1,4 @@
-import { Alert, Button, Drawer, Select, Tag } from "antd";
+import { Alert, Button, Drawer, Select, Tag, Tooltip } from "antd";
 import { useEffect, useId, useRef, useState } from "react";
 import {
   clientName,
@@ -12,13 +12,26 @@ import {
   initialDirectoryQuery,
 } from "@/entities/client-directory";
 import { useStaffSession } from "@/entities/session";
+import {
+  type ClientCardDraft,
+  ClientEditorDrawer,
+  ClientNotesSection,
+  createClientCard,
+  getClientCard,
+  getClientNotes,
+  restoreClientCard,
+  updateClientCard,
+  updateClientNotes,
+} from "@/features/edit-client";
 import { useEmployeeTraining } from "@/features/employee-training";
 import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
+import { uuidv7 } from "@/shared/lib/uuidv7";
 import {
   DataView as CollectionDataView,
   type DataViewColumn,
   type DataViewSort,
 } from "@/shared/ui/data-view";
+import { Icon } from "@/shared/ui/Icon";
 import "./clients.css";
 
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
@@ -43,7 +56,7 @@ function contactHref(contact: DirectoryContact): string | undefined {
   return undefined;
 }
 
-function ActionIcon({ kind }: { kind: "profile" | "phone" | "email" }) {
+function ActionIcon({ kind }: { kind: "profile" | "phone" | "email" | "edit" }) {
   return (
     <svg
       viewBox="0 0 24 24"
@@ -63,10 +76,15 @@ function ActionIcon({ kind }: { kind: "profile" | "phone" | "email" }) {
         </>
       ) : kind === "phone" ? (
         <path d="m7 3-4 2c0 9 7 16 16 16l2-4-5-3-2 2a12 12 0 0 1-6-6l2-2Z" />
-      ) : (
+      ) : kind === "email" ? (
         <>
           <rect x="3" y="5" width="18" height="14" rx="2" />
           <path d="m3 6 9 7 9-7" />
+        </>
+      ) : (
+        <>
+          <path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4Z" />
+          <path d="m14.8 5.7 3.5 3.5" />
         </>
       )}
     </svg>
@@ -96,7 +114,17 @@ function Contact({ contact }: { contact: DirectoryContact }) {
   );
 }
 
-function QuickActions({ client, onOpen }: { client: DirectoryClient; onOpen: () => void }) {
+function QuickActions({
+  client,
+  canWrite,
+  onOpen,
+  onEdit,
+}: {
+  client: DirectoryClient;
+  canWrite: boolean;
+  onOpen: () => void;
+  onEdit: () => void;
+}) {
   const phone =
     client.contacts.find((contact) => contact.format === "phone" && contact.isPrimary) ??
     client.contacts.find((contact) => contact.format === "phone");
@@ -115,6 +143,16 @@ function QuickActions({ client, onOpen }: { client: DirectoryClient; onOpen: () 
       >
         <ActionIcon kind="profile" />
       </button>
+      {canWrite ? (
+        <button
+          type="button"
+          aria-label={`Изменить карточку: ${clientName(client)}`}
+          title="Изменить карточку"
+          onClick={onEdit}
+        >
+          <ActionIcon kind="edit" />
+        </button>
+      ) : null}
       {phoneHref && (
         <a href={phoneHref} aria-label={`Позвонить: ${clientName(client)}`} title="Позвонить">
           <ActionIcon kind="phone" />
@@ -146,6 +184,54 @@ function directorySort(value: string): DataViewSort[] {
   });
 }
 
+function sameCardState(left: DirectoryClient, right: DirectoryClient): boolean {
+  return (
+    JSON.stringify({
+      firstName: left.firstName,
+      lastName: left.lastName,
+      middleName: left.middleName,
+      birthdate: left.birthdate,
+      sourceId: left.sourceId,
+      contacts: left.contacts.map(({ id, kindId, value, comment, isPrimary }) => ({
+        id,
+        kindId,
+        value,
+        comment,
+        isPrimary,
+      })),
+    }) ===
+    JSON.stringify({
+      firstName: right.firstName,
+      lastName: right.lastName,
+      middleName: right.middleName,
+      birthdate: right.birthdate,
+      sourceId: right.sourceId,
+      contacts: right.contacts.map(({ id, kindId, value, comment, isPrimary }) => ({
+        id,
+        kindId,
+        value,
+        comment,
+        isPrimary,
+      })),
+    })
+  );
+}
+
+function permissionAllowed(
+  staff: ReturnType<typeof useStaffSession>["staff"],
+  name: string,
+  dataScope?: "available" | "own",
+  timeScopes?: readonly ("any" | "today" | "currentMonth")[],
+): boolean {
+  const grant = staff?.permissions.find((entry) => entry.permission === name);
+  return Boolean(
+    grant?.allowed === true &&
+      (dataScope === undefined || grant.dataScope === dataScope) &&
+      (timeScopes === undefined ||
+        timeScopes.includes(grant.timeScope as "any" | "today" | "currentMonth")),
+  );
+}
+
 export function ClientsPage() {
   const { staff } = useStaffSession();
   return staff ? <ClientDirectory key={staff.staffId} /> : null;
@@ -162,18 +248,96 @@ function ClientDirectory() {
   const [optionsError, setOptionsError] = useState(false);
   const [reload, setReload] = useState(() => new AbortController());
   const [selected, setSelected] = useState<DirectoryClient | null>(null);
+  const [clientCard, setClientCard] = useState<DirectoryClient | null>(null);
+  const [clientCardLoading, setClientCardLoading] = useState(false);
+  const [clientCardError, setClientCardError] = useState<string | null>(null);
+  const [cardReloadKey, setCardReloadKey] = useState(0);
+  const [editorMode, setEditorMode] = useState<"create" | "edit" | null>(null);
+  const [editorSaving, setEditorSaving] = useState(false);
+  const [editorError, setEditorError] = useState<string | null>(null);
+  const [editorStale, setEditorStale] = useState(false);
+  const [editorResetKey, setEditorResetKey] = useState(0);
+  const [duplicateWarning, setDuplicateWarning] = useState(false);
+  const [notes, setNotes] = useState<string | null>(null);
+  const [noteHistory, setNoteHistory] = useState<
+    Awaited<ReturnType<typeof getClientNotes>>["history"]
+  >([]);
+  const [notesForClient, setNotesForClient] = useState<string | null>(null);
+  const [notesLoading, setNotesLoading] = useState(false);
+  const [notesSaving, setNotesSaving] = useState(false);
+  const [notesError, setNotesError] = useState<string | null>(null);
+  const [notesResetKey, setNotesResetKey] = useState(0);
+  const [restoreBusy, setRestoreBusy] = useState(false);
   const queryRef = useRef(query);
   const dataRef = useRef(data);
+  const selectedIdRef = useRef(selected?.id ?? null);
+  const cardReloadKeyRef = useRef(cardReloadKey);
+  const notesSaveClientId = useRef<string | null>(null);
+  const editorReloadClientId = useRef<string | null>(null);
+  const restoreClientId = useRef<string | null>(null);
+  const editorModeRef = useRef(editorMode);
   const latestDataRequest = useRef(0);
   const optionsRequestVersion = useRef(0);
   const backgroundRequest = useRef<AbortController | null>(null);
   const silentQueryRef = useRef<string | null>(null);
+  const editorBase = useRef<DirectoryClient | null>(null);
+  const editorRequest = useRef<AbortController | null>(null);
+  const editorReloadRequest = useRef<AbortController | null>(null);
+  const editorCommand = useRef<{ signature: string; commandId: string; clientId: string } | null>(
+    null,
+  );
+  const notesCommand = useRef<{ signature: string; commandId: string } | null>(null);
+  const restoreCommand = useRef<{ clientId: string; commandId: string } | null>(null);
+  const notesSaveRequest = useRef<AbortController | null>(null);
+  const notesSaveVersion = useRef(0);
+  const canReadNotesRef = useRef(false);
+  const restoreRequest = useRef<AbortController | null>(null);
   queryRef.current = query;
   dataRef.current = data;
+  selectedIdRef.current = selected?.id ?? null;
+  cardReloadKeyRef.current = cardReloadKey;
+  editorModeRef.current = editorMode;
   const filterId = useId();
   const permission = staff?.permissions.find((entry) => entry.permission === "clientsRead");
   const allowed = permission?.allowed === true;
   const supportedScope = permission?.dataScope === "available" && permission.timeScope === "any";
+  const canWrite =
+    allowed &&
+    supportedScope &&
+    permissionAllowed(staff, "clientsWrite", "available", ["any", "today", "currentMonth"]);
+  const canReadNotes =
+    allowed && supportedScope && permissionAllowed(staff, "clientNotesRead", "available", ["any"]);
+  const canWriteNotes =
+    allowed &&
+    supportedScope &&
+    permissionAllowed(staff, "clientNotesWrite", "available", ["any", "today", "currentMonth"]);
+  canReadNotesRef.current = canReadNotes;
+
+  useEffect(() => {
+    if (allowed && supportedScope && canWrite) return;
+    editorRequest.current?.abort();
+    editorRequest.current = null;
+    editorReloadRequest.current?.abort();
+    editorReloadRequest.current = null;
+    setClientCardLoading(false);
+    restoreRequest.current?.abort();
+    restoreRequest.current = null;
+    editorBase.current = null;
+    editorCommand.current = null;
+    setEditorMode(null);
+    setEditorSaving(false);
+    setRestoreBusy(false);
+    setEditorError(null);
+    setEditorStale(false);
+  }, [allowed, supportedScope, canWrite]);
+
+  useEffect(() => {
+    if (canReadNotes) return;
+    notesSaveRequest.current?.abort();
+    notesSaveRequest.current = null;
+    notesSaveVersion.current += 1;
+    setNotesSaving(false);
+  }, [canReadNotes]);
 
   useEffect(() => {
     if (!allowed || !supportedScope) return;
@@ -195,6 +359,149 @@ function ClientDirectory() {
       });
     return () => controller.abort();
   }, [allowed, supportedScope, request, reload]);
+
+  useEffect(() => {
+    const clientId = selected?.id;
+    const requestReloadKey = cardReloadKey;
+    if (!clientId || !allowed || !supportedScope) {
+      setClientCard(null);
+      setClientCardError(null);
+      setClientCardLoading(false);
+      setNotes(null);
+      setNoteHistory([]);
+      setNotesForClient(null);
+      return;
+    }
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, reload.signal]);
+    setClientCardLoading(true);
+    setClientCardError(null);
+    void request((api, requestSignal) => getClientCard(api, requestSignal, clientId), signal)
+      .then((result) => {
+        if (!signal.aborted && requestReloadKey === cardReloadKeyRef.current) {
+          setClientCard(result);
+          if (editorMode === "edit" && editorBase.current?.id !== result.id) {
+            editorBase.current = result;
+            setEditorResetKey((key) => key + 1);
+          }
+        }
+      })
+      .catch((failure: unknown) => {
+        if (
+          signal.aborted ||
+          requestReloadKey !== cardReloadKeyRef.current ||
+          isAbortError(failure)
+        )
+          return;
+        const apiError = toApiError(failure);
+        if (apiError.status === 403) {
+          setClientCard(null);
+          setSelected(null);
+          setNotes(null);
+          setNoteHistory([]);
+          setNotesForClient(null);
+          editorRequest.current?.abort();
+          editorReloadRequest.current?.abort();
+          editorBase.current = null;
+          editorCommand.current = null;
+          setEditorMode(null);
+          setEditorSaving(false);
+        }
+        setClientCardError(apiError.message);
+      })
+      .finally(() => {
+        if (!signal.aborted && requestReloadKey === cardReloadKeyRef.current)
+          setClientCardLoading(false);
+      });
+    return () => controller.abort();
+  }, [selected?.id, allowed, supportedScope, request, reload, cardReloadKey, editorMode]);
+
+  useEffect(() => {
+    const clientId = selected?.id;
+    const requestReloadKey = cardReloadKey;
+    if (!clientId || !canReadNotes) {
+      setNotes(null);
+      setNoteHistory([]);
+      setNotesForClient(null);
+      setNotesError(null);
+      setNotesLoading(false);
+      return;
+    }
+    const controller = new AbortController();
+    const signal = AbortSignal.any([controller.signal, reload.signal]);
+    setNotesLoading(true);
+    setNotesError(null);
+    void request((api, requestSignal) => getClientNotes(api, requestSignal, clientId), signal)
+      .then((result) => {
+        if (signal.aborted || requestReloadKey !== cardReloadKeyRef.current) return;
+        setNotes(result.notes);
+        setNoteHistory(result.history);
+        setNotesForClient(clientId);
+      })
+      .catch((failure: unknown) => {
+        if (
+          signal.aborted ||
+          requestReloadKey !== cardReloadKeyRef.current ||
+          isAbortError(failure)
+        )
+          return;
+        const apiError = toApiError(failure);
+        if (apiError.status === 403) {
+          setNotes(null);
+          setNoteHistory([]);
+          setNotesForClient(null);
+          notesSaveRequest.current?.abort();
+          notesSaveRequest.current = null;
+          notesSaveVersion.current += 1;
+          setNotesSaving(false);
+        }
+        setNotesError(apiError.message);
+      })
+      .finally(() => {
+        if (!signal.aborted && requestReloadKey === cardReloadKeyRef.current)
+          setNotesLoading(false);
+      });
+    return () => controller.abort();
+  }, [selected?.id, canReadNotes, request, reload, cardReloadKey]);
+
+  useEffect(() => {
+    const selectedClientId = selected?.id ?? null;
+    if (notesSaveClientId.current !== selectedClientId) {
+      notesSaveRequest.current?.abort();
+      notesSaveRequest.current = null;
+      notesSaveClientId.current = null;
+      notesSaveVersion.current += 1;
+      setNotesSaving(false);
+    }
+    return () => {
+      notesSaveRequest.current?.abort();
+      notesSaveVersion.current += 1;
+    };
+  }, [selected?.id]);
+
+  useEffect(() => {
+    const selectedClientId = selected?.id ?? null;
+    if (editorReloadClientId.current !== selectedClientId) {
+      editorReloadRequest.current?.abort();
+      editorReloadRequest.current = null;
+      editorReloadClientId.current = null;
+      setClientCardLoading(false);
+    }
+    if (restoreClientId.current !== selectedClientId) {
+      restoreRequest.current?.abort();
+      restoreRequest.current = null;
+      restoreClientId.current = null;
+      setRestoreBusy(false);
+    }
+  }, [selected?.id]);
+
+  useEffect(() => {
+    if (canReadNotes) return;
+    setNotes(null);
+    setNoteHistory([]);
+    setNotesForClient(null);
+    setNotesError(null);
+  }, [canReadNotes]);
 
   useEffect(() => {
     const background = silentQueryRef.current === JSON.stringify(query) && dataRef.current !== null;
@@ -241,6 +548,12 @@ function ClientDirectory() {
                 setData(null);
                 setOptions(null);
                 setSelected(null);
+                editorRequest.current?.abort();
+                editorReloadRequest.current?.abort();
+                editorBase.current = null;
+                editorCommand.current = null;
+                setEditorMode(null);
+                setEditorSaving(false);
               }
               if (!background) setError(apiError.message);
             }
@@ -291,9 +604,11 @@ function ClientDirectory() {
               setData(result);
               setLoading(false);
               setError(null);
+              if (selectedIdRef.current) setCardReloadKey((key) => key + 1);
               setSelected((previous) =>
                 previous
-                  ? (result.items.find((client) => client.id === previous.id) ?? null)
+                  ? (result.items.find((client) => client.id === previous.id) ??
+                    (editorModeRef.current === "edit" ? previous : null))
                   : null,
               );
             }
@@ -325,6 +640,12 @@ function ClientDirectory() {
             setData(null);
             setOptions(null);
             setSelected(null);
+            editorRequest.current?.abort();
+            editorReloadRequest.current?.abort();
+            editorBase.current = null;
+            editorCommand.current = null;
+            setEditorMode(null);
+            setEditorSaving(false);
           }
           if (dataRef.current === null) setError(apiError.message);
           setLoading(false);
@@ -356,6 +677,241 @@ function ClientDirectory() {
     Number(Boolean(query.q)) +
     Number(query.archive !== "active") +
     Number(Boolean(query.sourceId) || query.withoutSource);
+
+  function beginCreate() {
+    editorCommand.current = null;
+    editorReloadRequest.current?.abort();
+    editorReloadRequest.current = null;
+    setClientCardLoading(false);
+    editorBase.current = null;
+    setEditorError(null);
+    setEditorStale(false);
+    setDuplicateWarning(false);
+    setEditorMode("create");
+  }
+
+  function beginEdit(client: DirectoryClient) {
+    editorCommand.current = null;
+    editorReloadRequest.current?.abort();
+    editorReloadRequest.current = null;
+    setClientCardLoading(false);
+    editorBase.current = clientCard?.id === client.id ? clientCard : null;
+    setSelected(client);
+    setEditorError(null);
+    setEditorStale(false);
+    setDuplicateWarning(false);
+    setEditorMode("edit");
+  }
+
+  function closeEditor() {
+    if (editorSaving) return;
+    editorRequest.current?.abort();
+    editorReloadRequest.current?.abort();
+    editorReloadRequest.current = null;
+    setClientCardLoading(false);
+    restoreRequest.current?.abort();
+    restoreRequest.current = null;
+    editorCommand.current = null;
+    editorBase.current = null;
+    setEditorMode(null);
+    setEditorError(null);
+    setEditorStale(false);
+  }
+
+  async function saveEditor(draft: ClientCardDraft) {
+    const mode = editorMode;
+    const original = editorBase.current;
+    if (!mode || (mode === "edit" && !original)) return;
+    const controller = new AbortController();
+    editorRequest.current?.abort();
+    editorRequest.current = controller;
+    const signature = JSON.stringify({ mode, clientId: original?.id ?? null, original, draft });
+    if (editorCommand.current?.signature !== signature) {
+      editorCommand.current = { signature, commandId: uuidv7(), clientId: uuidv7() };
+    }
+    const command = editorCommand.current;
+    setEditorSaving(true);
+    setEditorError(null);
+    try {
+      const result = await request(async (api, signal) => {
+        if (mode === "create") return createClientCard(api, signal, draft, command);
+        if (!original) throw new Error("Missing client snapshot for update.");
+        const hasDuplicateContacts = await updateClientCard(
+          api,
+          signal,
+          original,
+          draft,
+          command.commandId,
+        );
+        return { client: null, hasDuplicateContacts };
+      }, controller.signal);
+      if (controller.signal.aborted) return;
+      setDuplicateWarning(result.hasDuplicateContacts);
+      setEditorMode(null);
+      editorBase.current = null;
+      editorCommand.current = null;
+      if (result.client) {
+        setSelected(result.client);
+        setClientCard(result.client);
+      }
+      refresh();
+    } catch (failure) {
+      if (controller.signal.aborted || isAbortError(failure)) return;
+      const apiError = toApiError(failure);
+      setEditorStale(apiError.status === 409);
+      setEditorError(
+        apiError.status === 409
+          ? "Карточка изменилась после открытия формы. Загрузите актуальные данные, затем повторите ввод."
+          : apiError.message,
+      );
+    } finally {
+      if (editorRequest.current === controller) editorRequest.current = null;
+      setEditorSaving(false);
+    }
+  }
+
+  async function reloadEditor() {
+    const clientId = editorBase.current?.id ?? selected?.id;
+    if (!clientId) return;
+    const controller = new AbortController();
+    editorReloadRequest.current?.abort();
+    editorReloadRequest.current = controller;
+    editorReloadClientId.current = clientId;
+    setClientCardLoading(true);
+    setEditorError(null);
+    try {
+      const current = await request(
+        (api, signal) => getClientCard(api, signal, clientId),
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        editorModeRef.current !== "edit" ||
+        selectedIdRef.current !== clientId
+      )
+        return;
+      editorBase.current = current;
+      setClientCard(current);
+      setEditorStale(false);
+      setEditorResetKey((key) => key + 1);
+    } catch (failure) {
+      if (
+        !controller.signal.aborted &&
+        !isAbortError(failure) &&
+        selectedIdRef.current === clientId
+      )
+        setEditorError(toApiError(failure).message);
+    } finally {
+      if (editorReloadRequest.current === controller) {
+        editorReloadRequest.current = null;
+        editorReloadClientId.current = null;
+        setClientCardLoading(false);
+      }
+    }
+  }
+
+  async function saveNotes(value: string | null, expected: string | null) {
+    if (!selected || !canWriteNotes) return;
+    const clientId = selected.id;
+    const controller = new AbortController();
+    notesSaveRequest.current?.abort();
+    notesSaveRequest.current = controller;
+    const saveVersion = ++notesSaveVersion.current;
+    const signature = JSON.stringify({ clientId, value, expected });
+    if (notesCommand.current?.signature !== signature) {
+      notesCommand.current = { signature, commandId: uuidv7() };
+    }
+    const commandId = notesCommand.current.commandId;
+    notesSaveClientId.current = clientId;
+    setNotesSaving(true);
+    setNotesError(null);
+    try {
+      await request(
+        (api, signal) => updateClientNotes(api, signal, clientId, value, expected, commandId),
+        controller.signal,
+      );
+      if (
+        controller.signal.aborted ||
+        saveVersion !== notesSaveVersion.current ||
+        selectedIdRef.current !== clientId ||
+        !canReadNotesRef.current
+      )
+        return;
+      notesCommand.current = null;
+      setNotes(value);
+      setNotesForClient(clientId);
+      setNotesResetKey((key) => key + 1);
+      setCardReloadKey((key) => key + 1);
+    } catch (failure) {
+      if (
+        isAbortError(failure) ||
+        saveVersion !== notesSaveVersion.current ||
+        selectedIdRef.current !== clientId ||
+        !canReadNotesRef.current
+      )
+        return;
+      const apiError = toApiError(failure);
+      setNotesError(
+        apiError.status === 409
+          ? "Заметки изменились на сервере. Загрузите актуальную версию и перенесите изменения вручную."
+          : apiError.message,
+      );
+      if (apiError.status === 409) setCardReloadKey((key) => key + 1);
+    } finally {
+      if (saveVersion === notesSaveVersion.current) {
+        if (notesSaveRequest.current === controller) {
+          notesSaveRequest.current = null;
+          notesSaveClientId.current = null;
+        }
+        setNotesSaving(false);
+      }
+    }
+  }
+
+  function reloadNotes() {
+    setNotesResetKey((key) => key + 1);
+    setCardReloadKey((key) => key + 1);
+    setNotesError(null);
+  }
+
+  async function restoreSelected() {
+    if (!selected?.isArchived || !canWrite) return;
+    const clientId = selected.id;
+    const controller = new AbortController();
+    restoreRequest.current?.abort();
+    restoreRequest.current = controller;
+    restoreClientId.current = clientId;
+    if (restoreCommand.current?.clientId !== clientId) {
+      restoreCommand.current = { clientId, commandId: uuidv7() };
+    }
+    const commandId = restoreCommand.current.commandId;
+    setRestoreBusy(true);
+    setClientCardError(null);
+    try {
+      await request(
+        (api, signal) => restoreClientCard(api, signal, clientId, commandId),
+        controller.signal,
+      );
+      if (controller.signal.aborted || selectedIdRef.current !== clientId) return;
+      restoreCommand.current = null;
+      refresh();
+      setCardReloadKey((key) => key + 1);
+    } catch (failure) {
+      if (
+        !controller.signal.aborted &&
+        !isAbortError(failure) &&
+        selectedIdRef.current === clientId
+      )
+        setClientCardError(toApiError(failure).message);
+    } finally {
+      if (restoreRequest.current === controller) {
+        restoreRequest.current = null;
+        restoreClientId.current = null;
+        setRestoreBusy(false);
+      }
+    }
+  }
+
   const columns: DataViewColumn<DirectoryClient>[] = [
     {
       key: "name",
@@ -391,14 +947,47 @@ function ClientDirectory() {
     {
       key: "actions",
       title: "Действия",
-      render: (client) => <QuickActions client={client} onOpen={() => setSelected(client)} />,
+      render: (client) => (
+        <QuickActions
+          client={client}
+          canWrite={canWrite}
+          onOpen={() => setSelected(client)}
+          onEdit={() => beginEdit(client)}
+        />
+      ),
     },
   ];
+  const selectedCard = selected ? (clientCard?.id === selected.id ? clientCard : selected) : null;
+  const editorClient = editorMode === "edit" ? (selectedCard ?? editorBase.current) : null;
+  const serverCardChanged = Boolean(
+    editorMode === "edit" &&
+      editorBase.current &&
+      clientCard?.id === editorBase.current.id &&
+      !sameCardState(editorBase.current, clientCard),
+  );
 
   return (
     <div className="workspace-page directory-page">
       <div className="page-heading">
         <h1>Клиенты</h1>
+        {canWrite ? (
+          <Tooltip
+            title={
+              !options?.sources.length
+                ? "Для создания сначала добавьте источник в справочник."
+                : undefined
+            }
+          >
+            <Button
+              type="primary"
+              icon={<Icon name="plus" />}
+              onClick={beginCreate}
+              disabled={!options?.sources.length}
+            >
+              Добавить клиента
+            </Button>
+          </Tooltip>
+        ) : null}
       </div>
       {!allowed ? (
         <Alert type="warning" title="Нет доступа к списку клиентов" />
@@ -462,10 +1051,10 @@ function ClientDirectory() {
             filters={
               <div className="directory-filters">
                 <label htmlFor={`${filterId}-archive`}>
-                  Работа
+                  Статус
                   <Select
                     id={`${filterId}-archive`}
-                    aria-label="Работа"
+                    aria-label="Статус"
                     value={query.archive}
                     onChange={(archive: DirectoryQuery["archive"]) => change({ archive })}
                     options={[
@@ -505,48 +1094,135 @@ function ClientDirectory() {
             open={selected !== null}
             placement="right"
             size="min(480px, 100vw)"
-            title={selected ? clientName(selected) : "Клиент"}
+            title={selectedCard ? clientName(selectedCard) : "Клиент"}
             onClose={() => setSelected(null)}
             destroyOnHidden
             classNames={{ root: "directory-drawer" }}
           >
-            {selected && (
+            {selectedCard && (
               <div className="directory-profile">
+                <div className="client-profile-actions">
+                  {canWrite ? (
+                    <Tooltip title="Изменить карточку">
+                      <Button
+                        aria-label="Изменить карточку"
+                        icon={<Icon name="edit" />}
+                        onClick={() => beginEdit(selectedCard)}
+                      />
+                    </Tooltip>
+                  ) : null}
+                  {selectedCard.isArchived && canWrite ? (
+                    <Tooltip title="Вернуть в работу">
+                      <Button
+                        type="primary"
+                        aria-label="Вернуть в работу"
+                        icon={<Icon name="restore" />}
+                        loading={restoreBusy}
+                        onClick={restoreSelected}
+                      />
+                    </Tooltip>
+                  ) : null}
+                  <Tooltip title="Проверка связанных записей ещё не подключена.">
+                    <Button
+                      disabled
+                      aria-label="В архив"
+                      icon={<Icon name="archive" />}
+                      aria-describedby="client-archive-reason"
+                    />
+                  </Tooltip>
+                </div>
+                {selectedCard.isArchived ? <Tag>Архив</Tag> : null}
+                {clientCardLoading ? <p role="status">Обновляем карточку…</p> : null}
+                {clientCardError ? (
+                  <Alert
+                    type="error"
+                    showIcon
+                    title={clientCardError}
+                    action={
+                      <Button onClick={() => setCardReloadKey((key) => key + 1)}>Повторить</Button>
+                    }
+                  />
+                ) : null}
+                {duplicateWarning ? (
+                  <Alert
+                    type="warning"
+                    showIcon
+                    title="Есть контакт, совпадающий с контактом другого клиента. Сохранение разрешено."
+                  />
+                ) : null}
+                <Alert
+                  id="client-archive-reason"
+                  type="info"
+                  showIcon
+                  title="Архивирование пока недоступно"
+                  description="Проверка связанных записей ещё не подключена."
+                />
                 <dl className="directory-profile-fields">
                   <div>
-                    <dt>Работа</dt>
-                    <dd>{selected.isArchived ? "Архив" : "В работе"}</dd>
+                    <dt>Статус</dt>
+                    <dd>{selectedCard.isArchived ? "Архив" : "В работе"}</dd>
                   </div>
                   <div>
                     <dt>Источник</dt>
-                    <dd>{selected.sourceName ?? "Не указан"}</dd>
+                    <dd>{selectedCard.sourceName ?? "Не указан"}</dd>
                   </div>
                   <div>
                     <dt>Дата рождения</dt>
                     <dd>
-                      {selected.birthdate
-                        ? birthdayFormat.format(new Date(`${selected.birthdate}T00:00:00Z`))
+                      {selectedCard.birthdate
+                        ? birthdayFormat.format(new Date(`${selectedCard.birthdate}T00:00:00Z`))
                         : "—"}
                     </dd>
                   </div>
                   <div>
                     <dt>Добавлен</dt>
-                    <dd>{dateFormat.format(new Date(selected.createdAt))}</dd>
+                    <dd>{dateFormat.format(new Date(selectedCard.createdAt))}</dd>
                   </div>
                 </dl>
                 <section aria-label="Контакты">
                   <h3>Контакты</h3>
-                  {selected.contacts.length ? (
-                    selected.contacts.map((contact) => (
+                  {selectedCard.contacts.length ? (
+                    selectedCard.contacts.map((contact) => (
                       <Contact key={contact.id} contact={contact} />
                     ))
                   ) : (
                     <p className="directory-muted">Нет контактов</p>
                   )}
                 </section>
+                {canReadNotes && notesForClient === selectedCard.id ? (
+                  <ClientNotesSection
+                    key={`${selectedCard.id}-${notesResetKey}`}
+                    notes={notes}
+                    history={noteHistory}
+                    canEdit={canWriteNotes}
+                    loading={notesLoading}
+                    saving={notesSaving}
+                    error={notesError}
+                    resetKey={notesResetKey}
+                    onSave={saveNotes}
+                    onReload={reloadNotes}
+                  />
+                ) : canReadNotes ? (
+                  <p role="status">Загружаем заметки…</p>
+                ) : null}
               </div>
             )}
           </Drawer>
+          <ClientEditorDrawer
+            open={editorMode !== null}
+            client={editorClient}
+            sourceOptions={options?.sources ?? []}
+            contactKinds={options?.contactKinds ?? []}
+            loading={editorMode === "edit" && clientCardLoading}
+            saving={editorSaving}
+            error={editorError}
+            stale={editorStale || serverCardChanged}
+            hasDuplicateContacts={duplicateWarning}
+            resetKey={editorResetKey}
+            onClose={closeEditor}
+            onSave={saveEditor}
+            onReload={reloadEditor}
+          />
         </>
       )}
     </div>

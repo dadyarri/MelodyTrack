@@ -71,7 +71,9 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
         Assert.Equal("next", written.After);
         Assert.True(denied.IsFailure);
         Assert.Contains(denied.Error.Issues, issue => issue.Error is ModelError.Forbidden);
-        Assert.Equal(written, Assert.Single(Ok(await store.GetHistoryAsync(Client, Token))));
+        var history = Assert.Single(Ok(await store.GetHistoryAsync(Client, Token)));
+        AssertHistoryEntry(written, history);
+        Assert.Equal(written, Ok(await store.FindChangeAsync(written.Id, Token)));
     });
 
     [Fact]
@@ -137,8 +139,8 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
         Assert.Null(Ok(await store.GetCurrentAsync(Client, Token)));
         var history = Ok(await store.GetHistoryAsync(Client, Token));
         Assert.Equal(2, history.Count);
-        Assert.Contains(first, history);
-        Assert.Contains(second, history);
+        AssertHistoryEntry(first, Assert.Single(history, entry => entry.Id == first.Id));
+        AssertHistoryEntry(second, Assert.Single(history, entry => entry.Id == second.Id));
         Assert.Equal(first, Ok(await store.FindChangeAsync(first.Id, Token)));
         var protectedBefore = await database.Query("SELECT protected_before FROM public.client_notes_history WHERE id = @id")
             .WithParameter("id", first.Id).GetSingleAsync<string>(Token);
@@ -161,7 +163,7 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
 
         Assert.True(result.IsFailure);
         Assert.Equal("first", Ok(await store.GetCurrentAsync(Client, Token)));
-        Assert.Equal(first, Assert.Single(Ok(await store.GetHistoryAsync(Client, Token))));
+        AssertHistoryEntry(first, Assert.Single(Ok(await store.GetHistoryAsync(Client, Token))));
     });
 
     [Fact]
@@ -202,7 +204,7 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
         var results = await Task.WhenAll(store.AppendAsync(change, Token), store.AppendAsync(change, Token));
 
         Assert.All(results, result => Assert.Equal(change, Ok(result)));
-        Assert.Equal(change, Assert.Single(Ok(await store.GetHistoryAsync(Client, Token))));
+        AssertHistoryEntry(change, Assert.Single(Ok(await store.GetHistoryAsync(Client, Token))));
     });
 
     [Fact]
@@ -221,7 +223,7 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
     {
         await using var dataSource = NpgsqlDataSource.Create(await fixture.CreateDatabaseAsync(Token));
         var database = new Database(dataSource);
-        foreach (var migration in new[] { "0001_CreateClients.sql", "0003_CreateClientNotesHistory.sql", "0008_CreateStaffPermissions.sql" })
+        foreach (var migration in new[] { "0001_CreateClients.sql", "0003_CreateClientNotesHistory.sql", "0008_CreateStaffPermissions.sql", "0010_CreateStaffAccessTokens.sql", "0011_CreateStaffCredentials.sql" })
         {
             var sql = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", migration), Token);
             await database.Query(sql).ExecuteAsync(Token);
@@ -247,6 +249,15 @@ public sealed class ClientNotesStoreTests(PostgreSqlFixture fixture) : IClassFix
 
     private static ClientNotesWriteCommand Command(string? before, string? after) =>
         new(Guid.NewGuid(), Client, Author, Now, after, before, true);
+
+    private static void AssertHistoryEntry(ClientNotesChange expected, ClientNotesHistoryEntry actual)
+    {
+        Assert.Equal(expected.Id, actual.Id);
+        Assert.Equal("Сотрудник", actual.AuthorName);
+        Assert.Equal(expected.ChangedAt, actual.ChangedAt);
+        Assert.Equal(expected.Before, actual.Before);
+        Assert.Equal(expected.After, actual.After);
+    }
 
     private static async Task<int> WaitForBlockedAsync(Database database, int blockingPid)
     {

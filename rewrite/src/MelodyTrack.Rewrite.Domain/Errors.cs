@@ -51,6 +51,7 @@ public closed record ClientError(string Code) : DomainError(Code)
     public sealed record InvalidContactValue() : ClientError("client.invalid_contact_value");
     public sealed record ContactKindArchived() : ClientError("client.contact_kind_archived");
     public sealed record UsedContactFormat() : ClientError("client.used_contact_format");
+    public sealed record ArchiveDependenciesNotMigrated() : ClientError("client.archive_dependencies_not_migrated");
 }
 
 public closed record VacationError(string Code) : DomainError(Code)

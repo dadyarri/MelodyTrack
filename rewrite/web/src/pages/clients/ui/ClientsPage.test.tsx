@@ -130,7 +130,7 @@ beforeEach(() => {
     vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       return url.pathname.endsWith("/options")
-        ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }] })
+        ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }], contactKinds: [] })
         : jsonResponse(page());
     }),
   );
@@ -141,13 +141,112 @@ afterEach(() => {
 });
 
 describe("client directory page", () => {
+  it("shows card write actions only for effective available grants with a supported current time scope", async () => {
+    const { rerender } = render(<ClientsPage />);
+    await screen.findByText("Тестова Анна");
+    expect(screen.queryByRole("button", { name: "Добавить клиента" })).toBeNull();
+
+    mocks.permissions = [
+      { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
+      { permission: "clientsWrite", allowed: true, dataScope: "own", timeScope: "any" },
+    ];
+    rerender(<ClientsPage />);
+    expect(screen.queryByRole("button", { name: "Добавить клиента" })).toBeNull();
+
+    mocks.permissions = [
+      { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
+      {
+        permission: "clientsWrite",
+        allowed: true,
+        dataScope: "available",
+        timeScope: "currentMonth",
+      },
+    ];
+    rerender(<ClientsPage />);
+    expect(
+      ((await screen.findByRole("button", { name: "Добавить клиента" })) as HTMLButtonElement)
+        .disabled,
+    ).toBe(false);
+  });
+
+  it("reuses create identifiers when the response is lost and the same draft is retried", async () => {
+    mocks.permissions = [
+      { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
+      { permission: "clientsWrite", allowed: true, dataScope: "available", timeScope: "any" },
+    ];
+    const createBodies: Record<string, unknown>[] = [];
+    let createAttempts = 0;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/options"))
+        return jsonResponse({
+          sources: [{ id: ids.source, name: "Рекомендация" }],
+          contactKinds: [],
+        });
+      if (url.pathname.replace(/\/+$/, "") === "/api/clients" && init?.method === "POST") {
+        createBodies.push(
+          JSON.parse(await new Response(init.body).text()) as Record<string, unknown>,
+        );
+        createAttempts += 1;
+        if (createAttempts === 1) throw new TypeError("Failed to fetch");
+        return jsonResponse(
+          {
+            client: { ...client, contacts: [] },
+            hasDuplicateContacts: false,
+          },
+          201,
+        );
+      }
+      return jsonResponse(page());
+    });
+
+    render(<ClientsPage />);
+    await screen.findByText("Тестова Анна");
+    fireEvent.click(screen.getByRole("button", { name: "Добавить клиента" }));
+    fireEvent.change(screen.getByLabelText("Фамилия"), { target: { value: "Новая" } });
+    fireEvent.change(screen.getByLabelText("Имя"), { target: { value: "Клиент" } });
+    const sourceSelects = screen.getAllByRole("combobox", { name: "Источник" });
+    const editorSource = sourceSelects[sourceSelects.length - 1];
+    if (!editorSource) throw new Error("Expected the client editor source selector.");
+    const sourceSurface = editorSource.closest(".ant-select-content");
+    if (!sourceSurface) throw new Error("Expected the client editor source selector surface.");
+    fireEvent.mouseDown(sourceSurface);
+    await waitFor(() => expect(editorSource.getAttribute("aria-expanded")).toBe("true"));
+    const sourcePopup = document.querySelector<HTMLElement>(
+      ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
+    );
+    if (!sourcePopup) throw new Error("Expected the client editor source options to open.");
+    fireEvent.click(
+      within(sourcePopup).getByText("Рекомендация", {
+        selector: ".ant-select-item-option-content",
+      }),
+    );
+    expect(editorSource.closest(".client-editor-field")?.textContent).toContain("Рекомендация");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    await waitFor(() => expect(createBodies).toHaveLength(1));
+    await screen.findByText("Нет соединения с сервером. Повторите попытку.");
+
+    const saveButton = await screen.findByRole("button", { name: /Сохранить/ });
+    await waitFor(() => expect(saveButton.classList.contains("ant-btn-loading")).toBe(false));
+    expect((saveButton as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(saveButton);
+    await waitFor(() => expect(createBodies).toHaveLength(2));
+    expect(createBodies[1]).toEqual(createBodies[0]);
+    expect(createBodies[0]?.commandId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+    expect(createBodies[0]?.clientId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
+    );
+  });
+
   it("updates rows in the background while preserving the search input", async () => {
     const fetchMock = vi.mocked(fetch);
     let currentClient = client;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       return url.pathname.endsWith("/options")
-        ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }] })
+        ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }], contactKinds: [] })
         : jsonResponse(page([currentClient]));
     });
     render(<ClientsPage />);
@@ -177,13 +276,50 @@ describe("client directory page", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  it("keeps an edited draft when an SSE refresh removes the client from the current result", async () => {
+    mocks.permissions = [
+      { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
+      { permission: "clientsWrite", allowed: true, dataScope: "available", timeScope: "any" },
+    ];
+    let listedClients = [client];
+    let detail = client;
+    vi.mocked(fetch).mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith("/options"))
+        return jsonResponse({
+          sources: [{ id: ids.source, name: "Рекомендация" }],
+          contactKinds: [],
+        });
+      if (url.pathname === `/api/clients/${ids.client}`) return jsonResponse(detail);
+      return jsonResponse(page(listedClients, 1, 10, listedClients.length));
+    });
+
+    render(<ClientsPage />);
+    await screen.findByText("Тестова Анна");
+    fireEvent.click(screen.getByRole("button", { name: "Изменить карточку: Тестова Анна" }));
+    const firstName = await screen.findByLabelText("Имя");
+    await waitFor(() => expect((firstName as HTMLInputElement).value).toBe("Анна"));
+    fireEvent.change(firstName, { target: { value: "Черновик" } });
+    listedClients = [];
+    detail = { ...client, firstName: "Изменено на сервере" };
+
+    await act(async () => {
+      for (const listener of dataChanges.listeners) listener();
+    });
+
+    await waitFor(() =>
+      expect((screen.getByLabelText("Имя") as HTMLInputElement).value).toBe("Черновик"),
+    );
+    expect(screen.getByText("Карточка изменилась на сервере. Ваш ввод сохранён.")).toBeTruthy();
+  });
+
   it("refreshes the open client and clears it when the server denies access", async () => {
     const fetchMock = vi.mocked(fetch);
     let currentClient = client;
     let denyDirectory = false;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
-      if (url.pathname.endsWith("/options")) return jsonResponse({ sources: [] });
+      if (url.pathname.endsWith("/options")) return jsonResponse({ sources: [], contactKinds: [] });
       if (denyDirectory) return jsonResponse({}, 403);
       return jsonResponse(page([currentClient]));
     });
@@ -228,7 +364,7 @@ describe("client directory page", () => {
     });
     await screen.findByRole("button", { name: "Сортировка: ФИО" });
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Работа" }));
+    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Статус" }));
     fireEvent.click(
       await screen.findByText("Архив", { selector: ".ant-select-item-option-content" }),
     );
@@ -304,7 +440,7 @@ describe("client directory page", () => {
       vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
         const url = new URL(String(input));
         if (url.pathname.endsWith("/options"))
-          return Promise.resolve(jsonResponse({ sources: [] }));
+          return Promise.resolve(jsonResponse({ sources: [], contactKinds: [] }));
         const query = url.searchParams.get("q");
         if (query === "старый запрос" || query === "новый запрос") {
           pending.push({ query, signal: init?.signal ?? null });
@@ -364,7 +500,10 @@ describe("client directory page", () => {
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
       if (url.pathname.endsWith("/options"))
-        return jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }] });
+        return jsonResponse({
+          sources: [{ id: ids.source, name: "Рекомендация" }],
+          contactKinds: [],
+        });
       if (url.searchParams.get("q") === "ошибка" && !failedOnce) {
         failedOnce = true;
         return jsonResponse({}, 503);
@@ -392,7 +531,7 @@ describe("client directory page", () => {
         return jsonResponse(
           optionRequests.length === 1
             ? {}
-            : { sources: [{ id: ids.source, name: "Рекомендация" }] },
+            : { sources: [{ id: ids.source, name: "Рекомендация" }], contactKinds: [] },
           optionRequests.length === 1 ? 503 : 200,
         );
       }

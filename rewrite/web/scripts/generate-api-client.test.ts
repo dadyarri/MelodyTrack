@@ -88,6 +88,8 @@ describe("rewrite API generation command", () => {
       "/api/releases/**",
       "/api/clients",
       "/api/clients/options",
+      "/api/clients/{clientId}",
+      "/api/clients/{clientId}/**",
       "/api/changes/events",
     ]);
     expect(calls[3]).toEqual(["normalize"]);

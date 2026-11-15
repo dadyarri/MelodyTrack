@@ -91,6 +91,12 @@ p {
   flex-shrink: 0;
   vertical-align: middle;
 }
+.field-required {
+  margin-inline-start: 4px;
+  color: var(--color-muted);
+  font-weight: 400;
+  opacity: 0.65;
+}
 .brand {
   display: inline-flex;
   gap: 9px;

@@ -31,6 +31,12 @@ export type DirectoryPage = {
 };
 export type DirectoryOptions = {
   sources: { id: string; name: string }[];
+  contactKinds: {
+    id: string;
+    name: string;
+    format: "phone" | "email" | "link";
+    isArchived: boolean;
+  }[];
 };
 export type DirectoryQuery = {
   q: string;
@@ -116,11 +122,23 @@ export function readDirectoryPage(value: unknown): DirectoryPage {
   return { items, page, pageSize, totalCount, totalPages };
 }
 export function readDirectoryOptions(value: unknown): DirectoryOptions {
-  if (!isObject(value) || !Array.isArray(value.sources)) throw invalidResponse();
+  if (!isObject(value) || !Array.isArray(value.sources) || !Array.isArray(value.contactKinds))
+    throw invalidResponse();
+  const contactKinds = value.contactKinds;
   return {
     sources: value.sources.map((item: unknown) => {
       if (!isObject(item)) throw invalidResponse();
       return { id: text(item.id), name: text(item.name) };
+    }),
+    contactKinds: contactKinds.map((item: unknown) => {
+      if (!isObject(item)) throw invalidResponse();
+      const kindFormat = format(item.format);
+      return {
+        id: text(item.id),
+        name: text(item.name),
+        format: kindFormat,
+        isArchived: boolean(item.isArchived),
+      };
     }),
   };
 }

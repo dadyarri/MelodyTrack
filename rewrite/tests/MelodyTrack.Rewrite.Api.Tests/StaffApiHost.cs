@@ -42,7 +42,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
 
     internal static async Task<StaffApiHost> StartAsync(Actor.Staff actor, CancellationToken cancellationToken,
         NotesState? notes = null, ExpenseState? expenses = null, DateTimeOffset? now = null,
-        IClientDirectoryStore? directory = null)
+        IClientDirectoryStore? directory = null, IClientCardsStore? cards = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -59,6 +59,8 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         builder.Services.AddSingleton<TimeProvider>(clock);
         builder.Services.AddSingleton<IClientNotesStore>(notes ?? new NotesState(null));
         builder.Services.AddSingleton<ClientNotesService>();
+        builder.Services.AddSingleton<IClientCardsStore>(cards ?? new CardStoreState());
+        builder.Services.AddSingleton<ClientCardsService>();
         builder.Services.AddSingleton<IExpenseStore>(expenses ?? new ExpenseState());
         builder.Services.AddSingleton<ExpenseService>();
         if (directory is not null)
@@ -78,6 +80,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         app.UseAuthorization();
         app.UseDataChangeEvents();
         app.MapClientNotesEndpoints();
+        app.MapClientCardEndpoints();
         app.MapExpensesEndpoints();
         app.MapStaffSessionEndpoints();
         app.MapStaffPoliciesEndpoints();
@@ -268,8 +271,9 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
             Reads++;
             return Task.FromResult(Result.Success<string?, ErrorList>(Current));
         }
-        public Task<Result<IReadOnlyList<ClientNotesChange>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken) =>
-            Task.FromResult(Result.Success<IReadOnlyList<ClientNotesChange>, ErrorList>(History));
+        public Task<Result<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Success<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>(History.Select(item =>
+                new ClientNotesHistoryEntry(item.Id, "teacher", item.ChangedAt, item.Before, item.After)).ToArray()));
         public Task<Result<ClientNotesChange?, ErrorList>> FindChangeAsync(Guid entryId, CancellationToken cancellationToken)
         {
             Reads++;
@@ -281,6 +285,23 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
             History.Add(change);
             return Task.FromResult(Result.Success<ClientNotesChange, ErrorList>(change));
         }
+    }
+
+    internal sealed class CardStoreState : IClientCardsStore
+    {
+        internal bool HasDuplicates { get; init; }
+        public Task<Result<ClientCard, ErrorList>> ReadAsync(ClientId clientId, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Failure<ClientCard, ErrorList>(ErrorList.Single(new ModelError.NotFound(), "clientId")));
+        public Task<Result<ClientCardCommandResult, ErrorList>> CreateAsync(Guid commandId, StaffId authorId, ClientId clientId,
+            ClientCardValues values, byte[] requestFingerprint, DateTimeOffset now, CancellationToken cancellationToken) =>
+            Task.FromResult(Result.Success<ClientCardCommandResult, ErrorList>(new(new(clientId.Value, values.FirstName, values.LastName,
+                values.MiddleName, values.Birthdate, values.SourceId, null, false, now, []), HasDuplicates)));
+        public Task<Result<ClientCardCommandResult, ErrorList>> UpdateAsync(Guid commandId, StaffId authorId, ClientId clientId,
+            ClientCardExpectedState expectedState, ClientCardValues values, byte[] requestFingerprint, DateTimeOffset now,
+            CancellationToken cancellationToken) => Task.FromResult(Result.Success<ClientCardCommandResult, ErrorList>(new(null, HasDuplicates)));
+        public Task<UnitResult<ErrorList>> RestoreAsync(Guid commandId, StaffId authorId, ClientId clientId,
+            byte[] requestFingerprint, DateTimeOffset now, CancellationToken cancellationToken) =>
+            Task.FromResult(UnitResult.Success<ErrorList>());
     }
 
     internal sealed class ExpenseState : IExpenseStore

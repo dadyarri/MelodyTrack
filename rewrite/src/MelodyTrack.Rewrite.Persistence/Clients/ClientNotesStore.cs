@@ -19,22 +19,23 @@ public sealed class ClientNotesStore(Database database, ClientDataProtection pro
     }
 
     /// <summary>Читает защищённые значения истории в устойчивом порядке.</summary>
-    public async Task<Result<IReadOnlyList<ClientNotesChange>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken)
+    public async Task<Result<IReadOnlyList<ClientNotesHistoryEntry>, ErrorList>> GetHistoryAsync(ClientId clientId, CancellationToken cancellationToken)
     {
         var current = await GetCurrentAsync(clientId, cancellationToken);
         if (current.IsFailure) return current.Error;
         var rows = await database.Query("""
-            SELECT id AS "Id", client_id AS "ClientId", author_staff_id AS "AuthorId", changed_at AS "ChangedAt",
-                   protected_before AS "Before", protected_after AS "After"
-            FROM public.client_notes_history WHERE client_id = @clientId ORDER BY changed_at, id
+            SELECT h.id AS "Id", h.client_id AS "ClientId", h.author_staff_id AS "AuthorId", h.changed_at AS "ChangedAt",
+                   h.protected_before AS "Before", h.protected_after AS "After", COALESCE(c.login, 'Сотрудник') AS "AuthorName"
+            FROM public.client_notes_history h LEFT JOIN public.staff_credentials c ON c.staff_id=h.author_staff_id
+            WHERE h.client_id = @clientId ORDER BY h.changed_at, h.id
             """).WithParameter("clientId", clientId.Value).GetAllAsync<HistoryRow>(cancellationToken);
-        var entries = new List<ClientNotesChange>(rows.Count);
+        var entries = new List<ClientNotesHistoryEntry>(rows.Count);
         foreach (var row in rows)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var entry = Restore(row);
             if (entry.IsFailure) return entry.Error;
-            entries.Add(entry.Value);
+            entries.Add(new(entry.Value.Id, row.AuthorName, entry.Value.ChangedAt, entry.Value.Before, entry.Value.After));
         }
         return entries;
     }
@@ -148,5 +149,6 @@ public sealed class ClientNotesStore(Database database, ClientDataProtection pro
         public DateTime ChangedAt { get; init; }
         public string? Before { get; init; }
         public string? After { get; init; }
+        public string AuthorName { get; init; } = "Сотрудник";
     }
 }

@@ -175,9 +175,15 @@ describe("client directory response", () => {
     ).toThrow();
   });
 
-  it("maps source options and rejects an invalid reference row", () => {
-    expect(readDirectoryOptions({ sources: [{ id: "source-a", name: "Рекомендация" }] })).toEqual({
+  it("maps source and contact-kind options and rejects an invalid reference row", () => {
+    expect(
+      readDirectoryOptions({
+        sources: [{ id: "source-a", name: "Рекомендация" }],
+        contactKinds: [],
+      }),
+    ).toEqual({
       sources: [{ id: "source-a", name: "Рекомендация" }],
+      contactKinds: [],
     });
     expect(() => readDirectoryOptions({ sources: [{ id: "source-a", name: "" }] })).toThrow();
   });

@@ -4,6 +4,216 @@
 // @ts-ignore
 import { type AdditionalDataHolder, type ApiError, type DateOnly, type Guid, type Parsable, type ParseNode, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
+export interface ClientArchiveRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The commandId property
+     */
+    commandId?: Guid | null | undefined;
+}
+export interface ClientCard extends AdditionalDataHolder, Parsable {
+    /**
+     * The birthdate property
+     */
+    birthdate?: DateOnly | null | undefined;
+    /**
+     * The contacts property
+     */
+    contacts?: ClientCardContact[] | null | undefined;
+    /**
+     * The createdAt property
+     */
+    createdAt?: Date | null | undefined;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isArchived property
+     */
+    isArchived?: boolean | null | undefined;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null | undefined;
+    /**
+     * The middleName property
+     */
+    middleName?: string | null | undefined;
+    /**
+     * The sourceId property
+     */
+    sourceId?: Guid | null | undefined;
+    /**
+     * The sourceName property
+     */
+    sourceName?: string | null | undefined;
+}
+export interface ClientCardContact extends AdditionalDataHolder, Parsable {
+    /**
+     * The comment property
+     */
+    comment?: string | null | undefined;
+    /**
+     * The format property
+     */
+    format?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isPrimary property
+     */
+    isPrimary?: boolean | null | undefined;
+    /**
+     * The kindId property
+     */
+    kindId?: Guid | null | undefined;
+    /**
+     * The kindName property
+     */
+    kindName?: string | null | undefined;
+    /**
+     * The value property
+     */
+    value?: string | null | undefined;
+}
+export interface ClientCardContactRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The comment property
+     */
+    comment?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isPrimary property
+     */
+    isPrimary?: boolean | null | undefined;
+    /**
+     * The kindId property
+     */
+    kindId?: Guid | null | undefined;
+    /**
+     * The value property
+     */
+    value?: string | null | undefined;
+}
+export interface ClientCardCreateRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The birthdate property
+     */
+    birthdate?: DateOnly | null | undefined;
+    /**
+     * The clientId property
+     */
+    clientId?: Guid | null | undefined;
+    /**
+     * The commandId property
+     */
+    commandId?: Guid | null | undefined;
+    /**
+     * The contacts property
+     */
+    contacts?: ClientCardContactRequest[] | null | undefined;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null | undefined;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null | undefined;
+    /**
+     * The middleName property
+     */
+    middleName?: string | null | undefined;
+    /**
+     * The sourceId property
+     */
+    sourceId?: Guid | null | undefined;
+}
+export interface ClientCardCreateResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The client property
+     */
+    client?: ClientCard | null | undefined;
+    /**
+     * The hasDuplicateContacts property
+     */
+    hasDuplicateContacts?: boolean | null | undefined;
+}
+export interface ClientCardUpdateRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The birthdate property
+     */
+    birthdate?: DateOnly | null | undefined;
+    /**
+     * The commandId property
+     */
+    commandId?: Guid | null | undefined;
+    /**
+     * The contacts property
+     */
+    contacts?: ClientCardContactRequest[] | null | undefined;
+    /**
+     * The expectedState property
+     */
+    expectedState?: ClientCardValuesRequest | null | undefined;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null | undefined;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null | undefined;
+    /**
+     * The middleName property
+     */
+    middleName?: string | null | undefined;
+    /**
+     * The sourceId property
+     */
+    sourceId?: Guid | null | undefined;
+}
+export interface ClientCardUpdateResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The hasDuplicateContacts property
+     */
+    hasDuplicateContacts?: boolean | null | undefined;
+}
+export interface ClientCardValuesRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The birthdate property
+     */
+    birthdate?: DateOnly | null | undefined;
+    /**
+     * The contacts property
+     */
+    contacts?: ClientCardContactRequest[] | null | undefined;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null | undefined;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null | undefined;
+    /**
+     * The middleName property
+     */
+    middleName?: string | null | undefined;
+    /**
+     * The sourceId property
+     */
+    sourceId?: Guid | null | undefined;
+}
 export interface ClientDirectoryContact extends AdditionalDataHolder, Parsable {
     /**
      * The comment property
@@ -136,6 +346,153 @@ export interface ClientDirectorySource extends AdditionalDataHolder, Parsable {
      */
     name?: string | null | undefined;
 }
+export interface ClientLinkCommand extends AdditionalDataHolder, Parsable {
+    /**
+     * The commandId property
+     */
+    commandId?: Guid | null | undefined;
+}
+export interface ClientLinkSecret extends AdditionalDataHolder, Parsable {
+    /**
+     * The secret property
+     */
+    secret?: string | null | undefined;
+}
+export interface ClientNotesCurrentResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The notes property
+     */
+    notes?: string | null | undefined;
+}
+export interface ClientNotesExpectedState extends AdditionalDataHolder, Parsable {
+    /**
+     * The notes property
+     */
+    notes?: string | null | undefined;
+}
+export interface ClientNotesHistoryEntry extends AdditionalDataHolder, Parsable {
+    /**
+     * The after property
+     */
+    after?: string | null | undefined;
+    /**
+     * The authorName property
+     */
+    authorName?: string | null | undefined;
+    /**
+     * The before property
+     */
+    before?: string | null | undefined;
+    /**
+     * The changedAt property
+     */
+    changedAt?: Date | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+}
+export interface ClientNotesHistoryResponse extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: ClientNotesHistoryEntry[] | null | undefined;
+}
+export interface ClientNotesPutRequest extends AdditionalDataHolder, Parsable {
+    /**
+     * The commandId property
+     */
+    commandId?: Guid | null | undefined;
+    /**
+     * The expectedState property
+     */
+    expectedState?: ClientNotesExpectedState | null | undefined;
+    /**
+     * The notes property
+     */
+    notes?: string | null | undefined;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientArchiveRequest}
+ */
+// @ts-ignore
+export function createClientArchiveRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientArchiveRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardContact}
+ */
+// @ts-ignore
+export function createClientCardContactFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardContact;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardContactRequest}
+ */
+// @ts-ignore
+export function createClientCardContactRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardContactRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardCreateRequest}
+ */
+// @ts-ignore
+export function createClientCardCreateRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardCreateRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardCreateResponse}
+ */
+// @ts-ignore
+export function createClientCardCreateResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardCreateResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCard}
+ */
+// @ts-ignore
+export function createClientCardFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCard;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardUpdateRequest}
+ */
+// @ts-ignore
+export function createClientCardUpdateRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardUpdateRequest;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardUpdateResponse}
+ */
+// @ts-ignore
+export function createClientCardUpdateResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardUpdateResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientCardValuesRequest}
+ */
+// @ts-ignore
+export function createClientCardValuesRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientCardValuesRequest;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -189,6 +546,69 @@ export function createClientDirectoryPageFromDiscriminatorValue(parseNode: Parse
 // @ts-ignore
 export function createClientDirectorySourceFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
     return deserializeIntoClientDirectorySource;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientLinkCommand}
+ */
+// @ts-ignore
+export function createClientLinkCommandFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientLinkCommand;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientLinkSecret}
+ */
+// @ts-ignore
+export function createClientLinkSecretFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientLinkSecret;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientNotesCurrentResponse}
+ */
+// @ts-ignore
+export function createClientNotesCurrentResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientNotesCurrentResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientNotesExpectedState}
+ */
+// @ts-ignore
+export function createClientNotesExpectedStateFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientNotesExpectedState;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientNotesHistoryEntry}
+ */
+// @ts-ignore
+export function createClientNotesHistoryEntryFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientNotesHistoryEntry;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientNotesHistoryResponse}
+ */
+// @ts-ignore
+export function createClientNotesHistoryResponseFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientNotesHistoryResponse;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientNotesPutRequest}
+ */
+// @ts-ignore
+export function createClientNotesPutRequestFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientNotesPutRequest;
 }
 /**
  * Creates a new instance of the appropriate class based on discriminator value
@@ -404,6 +824,144 @@ export interface CurrentStaffResponse extends AdditionalDataHolder, Parsable {
 }
 /**
  * The deserialization information for the current model
+ * @param ClientArchiveRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientArchiveRequest(clientArchiveRequest: Partial<ClientArchiveRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "commandId": n => { clientArchiveRequest.commandId = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCard The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCard(clientCard: Partial<ClientCard> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "birthdate": n => { clientCard.birthdate = n.getDateOnlyValue(); },
+        "contacts": n => { clientCard.contacts = n.getCollectionOfObjectValues<ClientCardContact>(createClientCardContactFromDiscriminatorValue); },
+        "createdAt": n => { clientCard.createdAt = n.getDateValue(); },
+        "firstName": n => { clientCard.firstName = n.getStringValue(); },
+        "id": n => { clientCard.id = n.getGuidValue(); },
+        "isArchived": n => { clientCard.isArchived = n.getBooleanValue(); },
+        "lastName": n => { clientCard.lastName = n.getStringValue(); },
+        "middleName": n => { clientCard.middleName = n.getStringValue(); },
+        "sourceId": n => { clientCard.sourceId = n.getGuidValue(); },
+        "sourceName": n => { clientCard.sourceName = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardContact The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardContact(clientCardContact: Partial<ClientCardContact> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "comment": n => { clientCardContact.comment = n.getStringValue(); },
+        "format": n => { clientCardContact.format = n.getStringValue(); },
+        "id": n => { clientCardContact.id = n.getGuidValue(); },
+        "isPrimary": n => { clientCardContact.isPrimary = n.getBooleanValue(); },
+        "kindId": n => { clientCardContact.kindId = n.getGuidValue(); },
+        "kindName": n => { clientCardContact.kindName = n.getStringValue(); },
+        "value": n => { clientCardContact.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardContactRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardContactRequest(clientCardContactRequest: Partial<ClientCardContactRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "comment": n => { clientCardContactRequest.comment = n.getStringValue(); },
+        "id": n => { clientCardContactRequest.id = n.getGuidValue(); },
+        "isPrimary": n => { clientCardContactRequest.isPrimary = n.getBooleanValue(); },
+        "kindId": n => { clientCardContactRequest.kindId = n.getGuidValue(); },
+        "value": n => { clientCardContactRequest.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardCreateRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardCreateRequest(clientCardCreateRequest: Partial<ClientCardCreateRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "birthdate": n => { clientCardCreateRequest.birthdate = n.getDateOnlyValue(); },
+        "clientId": n => { clientCardCreateRequest.clientId = n.getGuidValue(); },
+        "commandId": n => { clientCardCreateRequest.commandId = n.getGuidValue(); },
+        "contacts": n => { clientCardCreateRequest.contacts = n.getCollectionOfObjectValues<ClientCardContactRequest>(createClientCardContactRequestFromDiscriminatorValue); },
+        "firstName": n => { clientCardCreateRequest.firstName = n.getStringValue(); },
+        "lastName": n => { clientCardCreateRequest.lastName = n.getStringValue(); },
+        "middleName": n => { clientCardCreateRequest.middleName = n.getStringValue(); },
+        "sourceId": n => { clientCardCreateRequest.sourceId = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardCreateResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardCreateResponse(clientCardCreateResponse: Partial<ClientCardCreateResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "client": n => { clientCardCreateResponse.client = n.getObjectValue<ClientCard>(createClientCardFromDiscriminatorValue); },
+        "hasDuplicateContacts": n => { clientCardCreateResponse.hasDuplicateContacts = n.getBooleanValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardUpdateRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardUpdateRequest(clientCardUpdateRequest: Partial<ClientCardUpdateRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "birthdate": n => { clientCardUpdateRequest.birthdate = n.getDateOnlyValue(); },
+        "commandId": n => { clientCardUpdateRequest.commandId = n.getGuidValue(); },
+        "contacts": n => { clientCardUpdateRequest.contacts = n.getCollectionOfObjectValues<ClientCardContactRequest>(createClientCardContactRequestFromDiscriminatorValue); },
+        "expectedState": n => { clientCardUpdateRequest.expectedState = n.getObjectValue<ClientCardValuesRequest>(createClientCardValuesRequestFromDiscriminatorValue); },
+        "firstName": n => { clientCardUpdateRequest.firstName = n.getStringValue(); },
+        "lastName": n => { clientCardUpdateRequest.lastName = n.getStringValue(); },
+        "middleName": n => { clientCardUpdateRequest.middleName = n.getStringValue(); },
+        "sourceId": n => { clientCardUpdateRequest.sourceId = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardUpdateResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardUpdateResponse(clientCardUpdateResponse: Partial<ClientCardUpdateResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "hasDuplicateContacts": n => { clientCardUpdateResponse.hasDuplicateContacts = n.getBooleanValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientCardValuesRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientCardValuesRequest(clientCardValuesRequest: Partial<ClientCardValuesRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "birthdate": n => { clientCardValuesRequest.birthdate = n.getDateOnlyValue(); },
+        "contacts": n => { clientCardValuesRequest.contacts = n.getCollectionOfObjectValues<ClientCardContactRequest>(createClientCardContactRequestFromDiscriminatorValue); },
+        "firstName": n => { clientCardValuesRequest.firstName = n.getStringValue(); },
+        "lastName": n => { clientCardValuesRequest.lastName = n.getStringValue(); },
+        "middleName": n => { clientCardValuesRequest.middleName = n.getStringValue(); },
+        "sourceId": n => { clientCardValuesRequest.sourceId = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
  * @param ClientDirectoryContact The instance to deserialize into.
  * @returns {Record<string, (node: ParseNode) => void>}
  */
@@ -490,6 +1048,89 @@ export function deserializeIntoClientDirectorySource(clientDirectorySource: Part
     return {
         "id": n => { clientDirectorySource.id = n.getGuidValue(); },
         "name": n => { clientDirectorySource.name = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientLinkCommand The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientLinkCommand(clientLinkCommand: Partial<ClientLinkCommand> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "commandId": n => { clientLinkCommand.commandId = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientLinkSecret The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientLinkSecret(clientLinkSecret: Partial<ClientLinkSecret> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "secret": n => { clientLinkSecret.secret = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientNotesCurrentResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientNotesCurrentResponse(clientNotesCurrentResponse: Partial<ClientNotesCurrentResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "notes": n => { clientNotesCurrentResponse.notes = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientNotesExpectedState The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientNotesExpectedState(clientNotesExpectedState: Partial<ClientNotesExpectedState> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "notes": n => { clientNotesExpectedState.notes = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientNotesHistoryEntry The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientNotesHistoryEntry(clientNotesHistoryEntry: Partial<ClientNotesHistoryEntry> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "after": n => { clientNotesHistoryEntry.after = n.getStringValue(); },
+        "authorName": n => { clientNotesHistoryEntry.authorName = n.getStringValue(); },
+        "before": n => { clientNotesHistoryEntry.before = n.getStringValue(); },
+        "changedAt": n => { clientNotesHistoryEntry.changedAt = n.getDateValue(); },
+        "id": n => { clientNotesHistoryEntry.id = n.getGuidValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientNotesHistoryResponse The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientNotesHistoryResponse(clientNotesHistoryResponse: Partial<ClientNotesHistoryResponse> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { clientNotesHistoryResponse.items = n.getCollectionOfObjectValues<ClientNotesHistoryEntry>(createClientNotesHistoryEntryFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientNotesPutRequest The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientNotesPutRequest(clientNotesPutRequest: Partial<ClientNotesPutRequest> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "commandId": n => { clientNotesPutRequest.commandId = n.getGuidValue(); },
+        "expectedState": n => { clientNotesPutRequest.expectedState = n.getObjectValue<ClientNotesExpectedState>(createClientNotesExpectedStateFromDiscriminatorValue); },
+        "notes": n => { clientNotesPutRequest.notes = n.getStringValue(); },
     }
 }
 /**
@@ -854,6 +1495,153 @@ export interface ReleasesResponse extends AdditionalDataHolder, Parsable {
 }
 /**
  * Serializes information the current object
+ * @param ClientArchiveRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientArchiveRequest(writer: SerializationWriter, clientArchiveRequest: Partial<ClientArchiveRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientArchiveRequest || isSerializingDerivedType) { return; }
+    writer.writeGuidValue("commandId", clientArchiveRequest.commandId);
+    writer.writeAdditionalData(clientArchiveRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCard The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCard(writer: SerializationWriter, clientCard: Partial<ClientCard> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCard || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("birthdate", clientCard.birthdate);
+    writer.writeCollectionOfObjectValues<ClientCardContact>("contacts", clientCard.contacts, serializeClientCardContact);
+    writer.writeDateValue("createdAt", clientCard.createdAt);
+    writer.writeStringValue("firstName", clientCard.firstName);
+    writer.writeGuidValue("id", clientCard.id);
+    writer.writeBooleanValue("isArchived", clientCard.isArchived);
+    writer.writeStringValue("lastName", clientCard.lastName);
+    writer.writeStringValue("middleName", clientCard.middleName);
+    writer.writeGuidValue("sourceId", clientCard.sourceId);
+    writer.writeStringValue("sourceName", clientCard.sourceName);
+    writer.writeAdditionalData(clientCard.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardContact The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardContact(writer: SerializationWriter, clientCardContact: Partial<ClientCardContact> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardContact || isSerializingDerivedType) { return; }
+    writer.writeStringValue("comment", clientCardContact.comment);
+    writer.writeStringValue("format", clientCardContact.format);
+    writer.writeGuidValue("id", clientCardContact.id);
+    writer.writeBooleanValue("isPrimary", clientCardContact.isPrimary);
+    writer.writeGuidValue("kindId", clientCardContact.kindId);
+    writer.writeStringValue("kindName", clientCardContact.kindName);
+    writer.writeStringValue("value", clientCardContact.value);
+    writer.writeAdditionalData(clientCardContact.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardContactRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardContactRequest(writer: SerializationWriter, clientCardContactRequest: Partial<ClientCardContactRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardContactRequest || isSerializingDerivedType) { return; }
+    writer.writeStringValue("comment", clientCardContactRequest.comment);
+    writer.writeGuidValue("id", clientCardContactRequest.id);
+    writer.writeBooleanValue("isPrimary", clientCardContactRequest.isPrimary);
+    writer.writeGuidValue("kindId", clientCardContactRequest.kindId);
+    writer.writeStringValue("value", clientCardContactRequest.value);
+    writer.writeAdditionalData(clientCardContactRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardCreateRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardCreateRequest(writer: SerializationWriter, clientCardCreateRequest: Partial<ClientCardCreateRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardCreateRequest || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("birthdate", clientCardCreateRequest.birthdate);
+    writer.writeGuidValue("clientId", clientCardCreateRequest.clientId);
+    writer.writeGuidValue("commandId", clientCardCreateRequest.commandId);
+    writer.writeCollectionOfObjectValues<ClientCardContactRequest>("contacts", clientCardCreateRequest.contacts, serializeClientCardContactRequest);
+    writer.writeStringValue("firstName", clientCardCreateRequest.firstName);
+    writer.writeStringValue("lastName", clientCardCreateRequest.lastName);
+    writer.writeStringValue("middleName", clientCardCreateRequest.middleName);
+    writer.writeGuidValue("sourceId", clientCardCreateRequest.sourceId);
+    writer.writeAdditionalData(clientCardCreateRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardCreateResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardCreateResponse(writer: SerializationWriter, clientCardCreateResponse: Partial<ClientCardCreateResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardCreateResponse || isSerializingDerivedType) { return; }
+    writer.writeObjectValue<ClientCard>("client", clientCardCreateResponse.client, serializeClientCard);
+    writer.writeBooleanValue("hasDuplicateContacts", clientCardCreateResponse.hasDuplicateContacts);
+    writer.writeAdditionalData(clientCardCreateResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardUpdateRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardUpdateRequest(writer: SerializationWriter, clientCardUpdateRequest: Partial<ClientCardUpdateRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardUpdateRequest || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("birthdate", clientCardUpdateRequest.birthdate);
+    writer.writeGuidValue("commandId", clientCardUpdateRequest.commandId);
+    writer.writeCollectionOfObjectValues<ClientCardContactRequest>("contacts", clientCardUpdateRequest.contacts, serializeClientCardContactRequest);
+    writer.writeObjectValue<ClientCardValuesRequest>("expectedState", clientCardUpdateRequest.expectedState, serializeClientCardValuesRequest);
+    writer.writeStringValue("firstName", clientCardUpdateRequest.firstName);
+    writer.writeStringValue("lastName", clientCardUpdateRequest.lastName);
+    writer.writeStringValue("middleName", clientCardUpdateRequest.middleName);
+    writer.writeGuidValue("sourceId", clientCardUpdateRequest.sourceId);
+    writer.writeAdditionalData(clientCardUpdateRequest.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardUpdateResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardUpdateResponse(writer: SerializationWriter, clientCardUpdateResponse: Partial<ClientCardUpdateResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardUpdateResponse || isSerializingDerivedType) { return; }
+    writer.writeBooleanValue("hasDuplicateContacts", clientCardUpdateResponse.hasDuplicateContacts);
+    writer.writeAdditionalData(clientCardUpdateResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientCardValuesRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientCardValuesRequest(writer: SerializationWriter, clientCardValuesRequest: Partial<ClientCardValuesRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientCardValuesRequest || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("birthdate", clientCardValuesRequest.birthdate);
+    writer.writeCollectionOfObjectValues<ClientCardContactRequest>("contacts", clientCardValuesRequest.contacts, serializeClientCardContactRequest);
+    writer.writeStringValue("firstName", clientCardValuesRequest.firstName);
+    writer.writeStringValue("lastName", clientCardValuesRequest.lastName);
+    writer.writeStringValue("middleName", clientCardValuesRequest.middleName);
+    writer.writeGuidValue("sourceId", clientCardValuesRequest.sourceId);
+    writer.writeAdditionalData(clientCardValuesRequest.additionalData);
+}
+/**
+ * Serializes information the current object
  * @param ClientDirectoryContact The instance to serialize from.
  * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
  * @param writer Serialization writer to use to serialize this model
@@ -947,6 +1735,96 @@ export function serializeClientDirectorySource(writer: SerializationWriter, clie
     writer.writeGuidValue("id", clientDirectorySource.id);
     writer.writeStringValue("name", clientDirectorySource.name);
     writer.writeAdditionalData(clientDirectorySource.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientLinkCommand The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientLinkCommand(writer: SerializationWriter, clientLinkCommand: Partial<ClientLinkCommand> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientLinkCommand || isSerializingDerivedType) { return; }
+    writer.writeGuidValue("commandId", clientLinkCommand.commandId);
+    writer.writeAdditionalData(clientLinkCommand.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientLinkSecret The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientLinkSecret(writer: SerializationWriter, clientLinkSecret: Partial<ClientLinkSecret> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientLinkSecret || isSerializingDerivedType) { return; }
+    writer.writeStringValue("secret", clientLinkSecret.secret);
+    writer.writeAdditionalData(clientLinkSecret.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientNotesCurrentResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientNotesCurrentResponse(writer: SerializationWriter, clientNotesCurrentResponse: Partial<ClientNotesCurrentResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientNotesCurrentResponse || isSerializingDerivedType) { return; }
+    writer.writeStringValue("notes", clientNotesCurrentResponse.notes);
+    writer.writeAdditionalData(clientNotesCurrentResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientNotesExpectedState The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientNotesExpectedState(writer: SerializationWriter, clientNotesExpectedState: Partial<ClientNotesExpectedState> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientNotesExpectedState || isSerializingDerivedType) { return; }
+    writer.writeStringValue("notes", clientNotesExpectedState.notes);
+    writer.writeAdditionalData(clientNotesExpectedState.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientNotesHistoryEntry The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientNotesHistoryEntry(writer: SerializationWriter, clientNotesHistoryEntry: Partial<ClientNotesHistoryEntry> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientNotesHistoryEntry || isSerializingDerivedType) { return; }
+    writer.writeStringValue("after", clientNotesHistoryEntry.after);
+    writer.writeStringValue("authorName", clientNotesHistoryEntry.authorName);
+    writer.writeStringValue("before", clientNotesHistoryEntry.before);
+    writer.writeDateValue("changedAt", clientNotesHistoryEntry.changedAt);
+    writer.writeGuidValue("id", clientNotesHistoryEntry.id);
+    writer.writeAdditionalData(clientNotesHistoryEntry.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientNotesHistoryResponse The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientNotesHistoryResponse(writer: SerializationWriter, clientNotesHistoryResponse: Partial<ClientNotesHistoryResponse> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientNotesHistoryResponse || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<ClientNotesHistoryEntry>("items", clientNotesHistoryResponse.items, serializeClientNotesHistoryEntry);
+    writer.writeAdditionalData(clientNotesHistoryResponse.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientNotesPutRequest The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientNotesPutRequest(writer: SerializationWriter, clientNotesPutRequest: Partial<ClientNotesPutRequest> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientNotesPutRequest || isSerializingDerivedType) { return; }
+    writer.writeGuidValue("commandId", clientNotesPutRequest.commandId);
+    writer.writeObjectValue<ClientNotesExpectedState>("expectedState", clientNotesPutRequest.expectedState, serializeClientNotesExpectedState);
+    writer.writeStringValue("notes", clientNotesPutRequest.notes);
+    writer.writeAdditionalData(clientNotesPutRequest.additionalData);
 }
 /**
  * Serializes information the current object
