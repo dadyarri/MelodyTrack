@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using MelodyTrack.Rewrite.Application;
 using MelodyTrack.Rewrite.Domain;
 using MelodyTrack.Rewrite.Persistence;
@@ -81,6 +80,149 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
             Assert.Equal("+7 (900) 123-45-67", Assert.Single(page.Items[0].Contacts).Value);
             Assert.Empty(beyond.Items);
             Assert.Equal(1, beyond.TotalCount);
+        });
+    }
+
+    [Fact]
+    public async Task Read_PhoneSearch_RequiresThreeNormalizedDigits()
+    {
+        await WithStore(async store =>
+        {
+            var twoDigits = await store.ReadAsync(new(Q: "+79", Archive: "all"), Token);
+            var threeDigits = await store.ReadAsync(new(Q: "+790", Archive: "all"), Token);
+
+            Assert.Empty(twoDigits.Items);
+            Assert.Equal(Second, Assert.Single(threeDigits.Items).Id);
+        });
+    }
+
+    [Fact]
+    public async Task Read_OrdinaryPagination_ReturnsStableDisjointPagesAndEmptyResults()
+    {
+        await WithStore(async store =>
+        {
+            var first = await store.ReadAsync(new(Archive: "all", Page: 1, PageSize: 1), Token);
+            var second = await store.ReadAsync(new(Archive: "all", Page: 2, PageSize: 1), Token);
+            var third = await store.ReadAsync(new(Archive: "all", Page: 3, PageSize: 1), Token);
+            var emptyPage = await store.ReadAsync(new(Archive: "all", Page: 4, PageSize: 1), Token);
+            var noMatches = await store.ReadAsync(new(Q: "no such synthetic client", Archive: "all"), Token);
+
+            Assert.Equal(3, first.TotalCount);
+            Assert.Equal(3, first.TotalPages);
+            Assert.Equal(3, second.TotalCount);
+            Assert.Equal(3, third.TotalPages);
+            Assert.Equal([First], first.Items.Select(item => item.Id));
+            Assert.Equal([Second], second.Items.Select(item => item.Id));
+            Assert.Equal([Guid.Parse("019a2c63-8c00-7000-8000-000000000003")], third.Items.Select(item => item.Id));
+            Assert.Empty(emptyPage.Items);
+            Assert.Equal(3, emptyPage.TotalCount);
+            Assert.Empty(noMatches.Items);
+            Assert.Equal(0, noMatches.TotalCount);
+            Assert.Equal(0, noMatches.TotalPages);
+        });
+    }
+
+    [Fact]
+    public async Task Read_Contacts_MapsOwnerKindValueCommentAndPrimaryForEachContact()
+    {
+        var secondaryId = Guid.Parse("019a2c63-8c00-7000-8000-000000000033");
+
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: "+7 999 111 22 33", Archive: "all"), Token);
+
+            var entry = Assert.Single(page.Items);
+            Assert.Equal(First, entry.Id);
+            var contacts = entry.Contacts.OrderBy(contact => contact.Id).ToArray();
+            Assert.Collection(contacts,
+                contact =>
+                {
+                    Assert.Equal(Guid.Parse("019a2c63-8c00-7000-8000-000000000031"), contact.Id);
+                    Assert.Equal(Kind, contact.KindId);
+                    Assert.Equal("Synthetic phone", contact.KindName);
+                    Assert.Equal("phone", contact.Format);
+                    Assert.Equal("+7 999 000 00 00", contact.Value);
+                    Assert.Equal("Synthetic comment", contact.Comment);
+                    Assert.True(contact.IsPrimary);
+                },
+                contact =>
+                {
+                    Assert.Equal(secondaryId, contact.Id);
+                    Assert.Equal(Kind, contact.KindId);
+                    Assert.Equal("Synthetic phone", contact.KindName);
+                    Assert.Equal("phone", contact.Format);
+                    Assert.Equal("+7 999 111 22 33", contact.Value);
+                    Assert.Equal("Secondary synthetic contact", contact.Comment);
+                    Assert.False(contact.IsPrimary);
+                });
+        }, async database =>
+        {
+            using var protector = new PersonalDataProtector("test", new Dictionary<string, string>
+            {
+                ["test"] = Convert.ToBase64String(Enumerable.Repeat((byte)29, 32).ToArray())
+            });
+            var protection = new ClientDataProtection(protector);
+            await database.Query("""
+                INSERT INTO public.client_contacts(id,client_id,kind_id,protected_value,protected_comment,is_primary)
+                VALUES (@id,@owner,@kind,@value,@comment,false)
+                """).WithParameter("id", secondaryId).WithParameter("owner", First).WithParameter("kind", Kind)
+                .WithParameter("value", protection.ProtectValue(new(First), new(secondaryId), "+7 999 111 22 33"))
+                .WithParameter("comment", protection.ProtectComment(new(First), new(secondaryId), "Secondary synthetic contact"))
+                .ExecuteAsync(Token);
+        });
+    }
+
+    [Fact]
+    public async Task Read_EmailAndLinkSearch_MapsMatchingContactsToTheirDistinctOwners()
+    {
+        var firstEmailKind = Guid.Parse("019a2c63-8c00-7000-8000-000000000041");
+        var secondEmailKind = Guid.Parse("019a2c63-8c00-7000-8000-000000000042");
+        var linkKind = Guid.Parse("019a2c63-8c00-7000-8000-000000000043");
+        var firstEmail = Guid.Parse("019a2c63-8c00-7000-8000-000000000044");
+        var secondEmail = Guid.Parse("019a2c63-8c00-7000-8000-000000000045");
+        var link = Guid.Parse("019a2c63-8c00-7000-8000-000000000046");
+
+        await WithStore(async store =>
+        {
+            var emailPage = await store.ReadAsync(new(Q: "@synthetic.test", Archive: "all"), Token);
+            var linkPage = await store.ReadAsync(new(Q: "profile.example.test", Archive: "all"), Token);
+
+            Assert.Equal([First, Second], emailPage.Items.Select(item => item.Id));
+            var firstEntry = emailPage.Items.Single(item => item.Id == First);
+            var firstContact = Assert.Single(firstEntry.Contacts, contact => contact.Id == firstEmail);
+            Assert.Equal("first@synthetic.test", firstContact.Value);
+            var secondEntry = emailPage.Items.Single(item => item.Id == Second);
+            var secondContact = Assert.Single(secondEntry.Contacts, contact => contact.Id == secondEmail);
+            Assert.Equal("second@synthetic.test", secondContact.Value);
+            var linkEntry = Assert.Single(linkPage.Items);
+            Assert.Equal(Second, linkEntry.Id);
+            var linkContact = Assert.Single(linkEntry.Contacts, contact => contact.Id == link);
+            Assert.Equal(link, linkContact.Id);
+            Assert.Equal("link", linkContact.Format);
+            Assert.Equal("https://profile.example.test/second", linkContact.Value);
+        }, async database =>
+        {
+            using var protector = new PersonalDataProtector("test", new Dictionary<string, string>
+            {
+                ["test"] = Convert.ToBase64String(Enumerable.Repeat((byte)29, 32).ToArray())
+            });
+            var protection = new ClientDataProtection(protector);
+            await database.Query("""
+                INSERT INTO public.contact_kinds(id,name,format) VALUES
+                    (@firstEmailKind,'Synthetic email first','email'),
+                    (@secondEmailKind,'Synthetic email second','email'),
+                    (@linkKind,'Synthetic profile','link');
+                INSERT INTO public.client_contacts(id,client_id,kind_id,protected_value,is_primary) VALUES
+                    (@firstEmail,@first,@firstEmailKind,@firstValue,true),
+                    (@secondEmail,@second,@secondEmailKind,@secondValue,true),
+                    (@link,@second,@linkKind,@linkValue,true);
+                """).WithParameter("firstEmailKind", firstEmailKind).WithParameter("secondEmailKind", secondEmailKind)
+                .WithParameter("linkKind", linkKind).WithParameter("firstEmail", firstEmail).WithParameter("secondEmail", secondEmail)
+                .WithParameter("link", link).WithParameter("first", First).WithParameter("second", Second)
+                .WithParameter("firstValue", protection.ProtectValue(new(First), new(firstEmail), "first@synthetic.test"))
+                .WithParameter("secondValue", protection.ProtectValue(new(Second), new(secondEmail), "second@synthetic.test"))
+                .WithParameter("linkValue", protection.ProtectValue(new(Second), new(link), "https://profile.example.test/second"))
+                .ExecuteAsync(Token);
         });
     }
 
@@ -199,7 +341,7 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         await database.Query(nameSimilarity).ExecuteAsync(Token);
         using var protector = new PersonalDataProtector("test", new Dictionary<string, string>
         {
-            ["test"] = Convert.ToBase64String(RandomNumberGenerator.GetBytes(32))
+            ["test"] = Convert.ToBase64String(Enumerable.Repeat((byte)29, 32).ToArray())
         });
         var protection = new ClientDataProtection(protector);
         await database.Query("""

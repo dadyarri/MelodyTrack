@@ -41,14 +41,12 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         Assert.True(response.Headers.CacheControl?.NoStore);
         Assert.NotEqual(signedIn.AccessToken, restored.AccessToken);
         Assert.NotEqual(signedIn.RefreshToken, restored.RefreshToken);
-        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie")
-            .Select(value => Microsoft.Net.Http.Headers.SetCookieHeaderValue.Parse(value)),
-            value => value.Name.ToString() == StaffSessionCookies.Name);
-        Assert.Equal(restored.RefreshToken, cookie.Value.ToString());
+        AssertRefreshCookie(response, restored);
         using var identity = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, restored.AccessToken);
         Assert.Equal(HttpStatusCode.OK, identity.StatusCode);
         using var again = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
         Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+        AssertRefreshCookie(again, (await again.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!);
     }
 
     [Theory]
@@ -63,6 +61,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var restored = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
 
         Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        AssertNoRefreshCookie(denied);
         Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
     }
 
@@ -81,6 +80,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        AssertRefreshCookieCleared(response);
         Assert.DoesNotContain(signedIn.RefreshToken!, await response.Content.ReadAsStringAsync(Token));
     }
 
@@ -97,6 +97,7 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        AssertRefreshCookieCleared(response);
         Assert.True(await host.Database.Query("""
             SELECT active_session_id IS NULL FROM public.browser_access_contexts
             WHERE id=(SELECT browser_context_id FROM public.staff_sessions WHERE refresh_hash=@hash)
@@ -121,6 +122,8 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
 
         Assert.Equal(verified ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+        if (verified) AssertRefreshCookie(response, (await response.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!);
+        else AssertRefreshCookieCleared(response);
     }
 
     [Fact]
@@ -1108,7 +1111,10 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     {
         using var response = await host.SendAsync(HttpMethod.Post, path, body, access, browser);
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        return (await response.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!;
+        var credentials = (await response.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!;
+        if (credentials.RefreshToken is null) AssertNoRefreshCookie(response);
+        else AssertRefreshCookie(response, credentials);
+        return credentials;
     }
 
     private static async Task<string> ClientLinkAsync(TestHost host)
@@ -1131,6 +1137,32 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         var now = await host.Database.Query("SELECT clock_timestamp()").GetSingleAsync<DateTime>(Token);
         return new Totp(Base32Encoding.ToBytes(secret)).ComputeTotp(DateTime.SpecifyKind(now, DateTimeKind.Utc).AddSeconds(futureStep ? 30 : 0));
     }
+
+    private static void AssertRefreshCookie(HttpResponseMessage response, StaffCredentialResponse credentials)
+    {
+        Assert.NotNull(credentials.RefreshToken);
+        var cookie = Assert.Single(StaffCookies(response));
+        Assert.Equal(credentials.RefreshToken, cookie.Value.ToString());
+        Assert.True(cookie.HttpOnly);
+        Assert.Equal(Microsoft.Net.Http.Headers.SameSiteMode.Strict, cookie.SameSite);
+        Assert.Equal("/api/auth", cookie.Path.ToString());
+        Assert.Equal(TimeSpan.FromDays(14), cookie.MaxAge);
+    }
+
+    private static void AssertNoRefreshCookie(HttpResponseMessage response) => Assert.Empty(StaffCookies(response));
+
+    private static void AssertRefreshCookieCleared(HttpResponseMessage response)
+    {
+        var cookie = Assert.Single(StaffCookies(response));
+        Assert.Equal(string.Empty, cookie.Value.ToString());
+        Assert.Equal(DateTimeOffset.UnixEpoch, cookie.Expires);
+    }
+
+    private static Microsoft.Net.Http.Headers.SetCookieHeaderValue[] StaffCookies(HttpResponseMessage response) =>
+        response.Headers.TryGetValues("Set-Cookie", out var values)
+            ? values.Select(value => Microsoft.Net.Http.Headers.SetCookieHeaderValue.Parse(value))
+                .Where(cookie => cookie.Name.ToString() == StaffSessionCookies.Name).ToArray()
+            : [];
 
     private async Task<TestHost> HostAsync()
     {

@@ -163,6 +163,17 @@ public sealed class MigrationRunnerTests(PostgreSqlFixture fixture) : IClassFixt
     });
 
     [Fact]
+    public Task Apply_ProductionMigrationChain_InstallsNameSimilarityExtensionThroughRunner() => WithDatabase(async connection =>
+    {
+        var steps = GeneratedMigrations.All;
+        foreach (var step in await MigrationHistory.GetPendingAsync(connection, steps, Token)) await Apply(connection, step);
+
+        Assert.Equal(1, await Scalar<int>(connection, "SELECT levenshtein('synthetic', 'synthetics')"));
+        Assert.Equal(1L, await Scalar<long>(connection, "SELECT count(*) FROM public.schema_migrations WHERE version=15 AND name='0015_EnableClientNameSimilarity.sql'"));
+        Assert.Empty(await MigrationHistory.GetPendingAsync(connection, steps, Token));
+    });
+
+    [Fact]
     public Task Apply_CSharpHandlerFails_RollsBackChanges() => WithDatabase(async connection =>
     {
         var step = Migration(1, "unused") with

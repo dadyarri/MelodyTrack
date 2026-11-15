@@ -15,6 +15,7 @@ public sealed class StaffSessionCookiesTests
     [InlineData("Production", "localhost", "http", true)]
     [InlineData("Development", "localhost", "http", false)]
     [InlineData("Testing", "127.0.0.1", "http", false)]
+    [InlineData("Testing", "[::1]", "http", false)]
     [InlineData("Development", "school.example.test", "http", true)]
     [InlineData("Development", "localhost", "https", true)]
     public void Write_EnvironmentAndTransport_UsesRestrictedPersistentCookie(string environment, string host,

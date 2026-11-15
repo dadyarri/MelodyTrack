@@ -76,6 +76,22 @@ public sealed class ClientDirectoryServiceTests
         Assert.True(query.Validate().IsFailure);
     }
 
+    [Theory]
+    [InlineData(200, true)]
+    [InlineData(201, false)]
+    public async Task Read_QueryLength_EnforcesInclusiveLimit(int length, bool accepted)
+    {
+        var store = new Store();
+        var query = new ClientDirectoryQuery(Q: new string('x', length));
+
+        var result = await new ClientDirectoryService(store).ReadAsync(query,
+            Actor(new(true, PermissionDataScope.Available, PermissionTimeScope.Any)), Token);
+
+        Assert.Equal(accepted, result.IsSuccess);
+        Assert.Equal(accepted ? 1 : 0, store.Reads);
+        if (!accepted) Assert.IsType<OperationError.Validation>(result.Error);
+    }
+
     [Fact]
     public void ReadSorts_MultipleColumns_PreservesPriorityAndDirection()
     {
@@ -118,6 +134,22 @@ public sealed class ClientDirectoryServiceTests
         Assert.Equal(0, store.Reads);
     }
 
+    [Fact]
+    public async Task Read_CancellationDuringStoreIo_ForwardsCallerTokenAndStopsWaiting()
+    {
+        var store = new PendingStore();
+        using var cancellation = new CancellationTokenSource();
+        var operation = new ClientDirectoryService(store).ReadAsync(new(),
+            Actor(new(true, PermissionDataScope.Available, PermissionTimeScope.Any)), cancellation.Token);
+
+        var forwarded = await store.Received.Task.WaitAsync(Token);
+        Assert.Equal(cancellation.Token, forwarded);
+
+        cancellation.Cancel();
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await operation);
+    }
+
     private sealed class Store : IClientDirectoryStore
     {
         internal int Reads;
@@ -135,5 +167,18 @@ public sealed class ClientDirectoryServiceTests
             Reads++;
             return Task.FromResult(new ClientDirectoryOptions([], []));
         }
+    }
+
+    private sealed class PendingStore : IClientDirectoryStore
+    {
+        internal TaskCompletionSource<CancellationToken> Received { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public async Task<ClientDirectoryPage> ReadAsync(ClientDirectoryQuery query, CancellationToken cancellationToken)
+        {
+            Received.TrySetResult(cancellationToken);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("An infinite delay must not complete normally.");
+        }
+        public Task<ClientDirectoryOptions> ReadOptionsAsync(CancellationToken cancellationToken) =>
+            throw new NotSupportedException();
     }
 }

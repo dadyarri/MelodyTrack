@@ -142,6 +142,7 @@ public sealed class StaffSessionEndpointsTests
         using var repeated = await SendAsync(host, HttpMethod.Post, "/api/auth/logout", StaffApiHost.BearerToken);
 
         Assert.Equal(HttpStatusCode.Unauthorized, repeated.StatusCode);
+        Assert.False(repeated.Headers.Contains("Set-Cookie"));
     }
 
     private static async Task<HttpResponseMessage> SendAsync(StaffApiHost host, HttpMethod method, string path, string? bearer)
