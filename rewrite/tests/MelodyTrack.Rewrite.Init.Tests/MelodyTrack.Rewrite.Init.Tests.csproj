@@ -45,6 +45,8 @@
           Link="Schema/0015_EnableClientNameSimilarity.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0016_CreateClientCardCommands.sql"
           Link="Schema/0016_CreateClientCardCommands.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0017_AddClientNameFragmentSearch.sql"
+          Link="Schema/0017_AddClientNameFragmentSearch.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />

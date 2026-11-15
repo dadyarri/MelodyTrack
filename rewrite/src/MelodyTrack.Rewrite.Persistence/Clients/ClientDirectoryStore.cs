@@ -16,14 +16,7 @@ public sealed class ClientDirectoryStore(Database database, ClientDataProtection
             SELECT c.id AS "Id", c.first_name AS "FirstName", c.last_name AS "LastName", c.middle_name AS "MiddleName",
                    c.birthdate::text AS "Birthdate", c.source_id AS "SourceId", s.name AS "SourceName",
                    c.is_archived AS "IsArchived", c.created_at AS "CreatedAt",
-                   CASE
-                     WHEN search.query = '' THEN true
-                     WHEN strpos(search.full_name, search.query) > 0 THEN true
-                     WHEN char_length(search.full_name) <= 255 AND char_length(search.query) <= 255
-                       AND abs(char_length(search.full_name) - char_length(search.query)) <= 3
-                     THEN public.levenshtein_less_equal(search.full_name, search.query, 3) <= 3
-                     ELSE false
-                   END AS "NameMatches"
+                   public.client_name_fragment_matches(search.full_name, search.query) AS "NameMatches"
             FROM public.clients c LEFT JOIN public.client_sources s ON s.id = c.source_id
             CROSS JOIN LATERAL (
                 SELECT lower(btrim(regexp_replace(concat_ws(' ', c.last_name, c.first_name, c.middle_name), '[[:space:]]+', ' ', 'g'))) AS full_name,

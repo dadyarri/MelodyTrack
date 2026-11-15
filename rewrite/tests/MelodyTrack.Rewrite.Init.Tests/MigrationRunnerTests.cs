@@ -170,6 +170,9 @@ public sealed class MigrationRunnerTests(PostgreSqlFixture fixture) : IClassFixt
 
         Assert.Equal(1, await Scalar<int>(connection, "SELECT levenshtein('synthetic', 'synthetics')"));
         Assert.Equal(1L, await Scalar<long>(connection, "SELECT count(*) FROM public.schema_migrations WHERE version=15 AND name='0015_EnableClientNameSimilarity.sql'"));
+        Assert.True(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('богданова полина', 'багд')"));
+        Assert.False(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('богданова полина', 'xxxxанова')"));
+        Assert.Equal(1L, await Scalar<long>(connection, "SELECT count(*) FROM public.schema_migrations WHERE version=17 AND name='0017_AddClientNameFragmentSearch.sql'"));
         Assert.Empty(await MigrationHistory.GetPendingAsync(connection, steps, Token));
     });
 

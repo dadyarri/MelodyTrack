@@ -24,24 +24,27 @@ function normalizedName(value: string): string {
   return value.trim().replace(/\s+/gu, " ").toLocaleLowerCase("ru-RU");
 }
 
-/** Local emulation only: the working directory performs its name search in PostgreSQL. */
-export function demoNameDistance(first: string, second: string): number {
-  const left = Array.from(normalizedName(first));
-  const right = Array.from(normalizedName(second));
-  let previous = Array.from({ length: right.length + 1 }, (_, index) => index);
-  for (let row = 1; row <= left.length; row += 1) {
-    const current = [row];
-    for (let column = 1; column <= right.length; column += 1) {
+/** Edit distance to any fragment, with free text before and after the match. */
+export function demoNameFragmentMatches(name: string, query: string): boolean {
+  const text = Array.from(normalizedName(name));
+  const search = Array.from(normalizedName(query));
+  if (search.length === 0) return true;
+  if (text.length === 0 || search.length > text.length + 3) return false;
+  let previous = Array.from({ length: search.length + 1 }, (_, index) => Math.min(index, 4));
+  for (const character of text) {
+    const current = [0];
+    for (let column = 1; column <= search.length; column += 1) {
       current[column] = Math.min(
-        (previous[column] ?? Number.POSITIVE_INFINITY) + 1,
-        (current[column - 1] ?? Number.POSITIVE_INFINITY) + 1,
-        (previous[column - 1] ?? Number.POSITIVE_INFINITY) +
-          (left[row - 1] === right[column - 1] ? 0 : 1),
+        (previous[column] ?? 4) + 1,
+        (current[column - 1] ?? 4) + 1,
+        (previous[column - 1] ?? 4) + (character === search[column - 1] ? 0 : 1),
+        4,
       );
     }
+    if ((current[search.length] ?? 4) <= 3) return true;
     previous = current;
   }
-  return previous[right.length] ?? left.length;
+  return false;
 }
 
 export function selectDemoClients(query: DemoClientQuery): DemoClient[] {
@@ -49,9 +52,7 @@ export function selectDemoClients(query: DemoClientQuery): DemoClient[] {
   return demoClients
     .filter(
       (client) =>
-        (!search ||
-          normalizedName(client.name).includes(search) ||
-          demoNameDistance(client.name, search) <= 3) &&
+        demoNameFragmentMatches(client.name, search) &&
         (query.source === "all" || client.source === query.source) &&
         (query.archive === "all" || client.archived === (query.archive === "archived")),
     )

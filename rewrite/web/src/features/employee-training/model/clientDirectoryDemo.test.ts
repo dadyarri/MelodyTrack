@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   clientDirectoryExerciseComplete,
   type DemoClientQuery,
-  demoNameDistance,
+  demoNameFragmentMatches,
   selectDemoClients,
 } from "./clientDirectoryDemo";
 
@@ -29,26 +29,36 @@ describe("client directory training", () => {
     expect(clientDirectoryExerciseComplete({ ...target, archive: "all" }, all)).toBe(false);
   });
 
-  it("uses whole normalized names with the three edit boundary", () => {
-    expect(demoNameDistance("  ИВАНОВ   Антон ", "Иванов Антон")).toBe(0);
-    expect(demoNameDistance("Иванов Антон", "Иванов Артём")).toBe(3);
-    expect(demoNameDistance("Иванов Антон", "Иванов Бртём")).toBe(4);
-    expect(demoNameDistance("Артём", "Артем")).toBe(1);
-    expect(demoNameDistance("Иванов 😀", "Иванов")).toBe(2);
+  it("allows up to three edits in any normalized name fragment", () => {
+    expect(demoNameFragmentMatches("  БОГДАНОВА   Полина ", "багд")).toBe(true);
+    expect(demoNameFragmentMatches("Богданова Полина", "бxxxанова")).toBe(true);
+    expect(demoNameFragmentMatches("Богданова Полина", "xxxxанова")).toBe(false);
+    expect(demoNameFragmentMatches("Богданова Полина", "гднава")).toBe(true);
+    expect(demoNameFragmentMatches("Богданова Полина", "богооданова")).toBe(true);
+    expect(demoNameFragmentMatches("Богданова Полина", "нова\tПал")).toBe(true);
+    expect(demoNameFragmentMatches("Иванов Антон", "Иванов Артём")).toBe(true);
+    expect(demoNameFragmentMatches("Артём", "Артем")).toBe(true);
+    expect(demoNameFragmentMatches("😀😀😀😀", "xxxx")).toBe(false);
+    expect(demoNameFragmentMatches("😀 Q", "😀😀😀😀")).toBe(true);
+    expect(demoNameFragmentMatches("😀 Q", "😀😀😀😀😀")).toBe(false);
+    expect(demoNameFragmentMatches("Богданова Полина", "%")).toBe(true);
+    expect(demoNameFragmentMatches("Богданова Полина", "%%%%")).toBe(false);
+    expect(demoNameFragmentMatches("A".repeat(260), `${"A".repeat(197)}BBB`)).toBe(true);
+    expect(demoNameFragmentMatches("A".repeat(260), `${"A".repeat(196)}BBBB`)).toBe(false);
     expect(
       selectDemoClients({ ...target, search: "Иванов Бртём" }).map((client) => client.id),
     ).not.toContain("demo-anton");
   });
 
-  it("finds literal normalized fragments of the full name", () => {
+  it("finds normalized fragments without interpreting wildcard patterns", () => {
     expect(
       selectDemoClients({ ...target, search: "  АНТОН  " }).map((client) => client.id),
-    ).toEqual(["demo-anton"]);
-    expect(selectDemoClients({ ...target, search: "НОВ\tАН" }).map((client) => client.id)).toEqual([
-      "demo-anton",
-    ]);
-    expect(selectDemoClients({ ...target, search: "%" })).toEqual([]);
-    expect(selectDemoClients({ ...target, search: "_" })).toEqual([]);
+    ).toContain("demo-anton");
+    expect(
+      selectDemoClients({ ...target, search: "НОВ\tАН" }).map((client) => client.id),
+    ).toContain("demo-anton");
+    expect(selectDemoClients({ ...target, search: "%%%%" })).toEqual([]);
+    expect(selectDemoClients({ ...target, search: "____" })).toEqual([]);
   });
 
   it("requires the demonstrated result as well as the chosen controls", () => {

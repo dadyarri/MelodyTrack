@@ -54,9 +54,9 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
     [InlineData("  ИВАН  ", true)]
     [InlineData("НОВ\tИВ", true)]
     [InlineData("нович", true)]
-    [InlineData("%", false)]
-    [InlineData("_", false)]
-    [InlineData("Пётр", false)]
+    [InlineData("%%%%", false)]
+    [InlineData("____", false)]
+    [InlineData("Петрович Пётр", false)]
     public async Task Read_NameFragment_MatchesNormalizedLiteralSubstring(string query, bool matches)
     {
         await WithStore(async store =>
@@ -73,6 +73,46 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         });
     }
 
+    [Theory]
+    [InlineData("багд", true)]
+    [InlineData("бxxxанова", true)]
+    [InlineData("xxxxанова", false)]
+    [InlineData("гднава", true)]
+    [InlineData("богооданова", true)]
+    [InlineData("  НОВА\tПАЛ  ", true)]
+    [InlineData("%", true)]
+    [InlineData("_", true)]
+    [InlineData("%%%%", false)]
+    [InlineData("____", false)]
+    public async Task Read_MisspelledNameFragment_AppliesThreeEditsBeforePagination(string query, bool matches)
+    {
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: query, SourceId: Source, PageSize: 1), Token);
+
+            Assert.Equal(matches ? 1 : 0, page.TotalCount);
+            if (!matches) Assert.Empty(page.Items);
+            else Assert.Equal(First, Assert.Single(page.Items).Id);
+        }, async database =>
+        {
+            await database.Query("UPDATE public.clients SET last_name='Богданова',first_name='Полина',middle_name=NULL WHERE id=@id")
+                .WithParameter("id", First).ExecuteAsync(Token);
+        });
+    }
+
+    [Fact]
+    public async Task Read_ShortFragment_DoesNotReduceThreeEditTolerance()
+    {
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: "%", PageSize: 1), Token);
+
+            Assert.Equal(2, page.TotalCount);
+            Assert.Equal(2, page.TotalPages);
+            Assert.Single(page.Items);
+        });
+    }
+
     [Fact]
     public async Task Read_NameLongerThanExtensionLimit_DoesNotTruncateOrFailContactSearch()
     {
@@ -80,15 +120,36 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         {
             var byName = await store.ReadAsync(new(Q: new string('A', 200)), Token);
             var missingName = await store.ReadAsync(new(Q: new string('B', 200)), Token);
+            var misspelledName = await store.ReadAsync(new(Q: new string('A', 257) + "BBB"), Token);
+            var fourEdits = await store.ReadAsync(new(Q: new string('A', 256) + "BBBB"), Token);
             var byContact = await store.ReadAsync(new(Q: "79990000000"), Token);
 
             Assert.Equal(First, Assert.Single(byName.Items).Id);
             Assert.Empty(missingName.Items);
+            Assert.Equal(First, Assert.Single(misspelledName.Items).Id);
+            Assert.Empty(fourEdits.Items);
             Assert.Equal(First, Assert.Single(byContact.Items).Id);
         }, async database =>
         {
             await database.Query("UPDATE public.clients SET last_name=@name WHERE id=@id")
                 .WithParameter("name", new string('A', 260)).WithParameter("id", First).ExecuteAsync(Token);
+        });
+    }
+
+    [Theory]
+    [InlineData("😀😀😀😀", true)]
+    [InlineData("😀😀😀😀😀", false)]
+    public async Task Read_SupplementaryUnicodeFragment_CountsCharactersRatherThanUtf16Units(string query, bool matches)
+    {
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: query, SourceId: Source), Token);
+
+            Assert.Equal(matches ? 1 : 0, page.TotalCount);
+        }, async database =>
+        {
+            await database.Query("UPDATE public.clients SET last_name='😀',first_name='Q',middle_name=NULL WHERE id=@id")
+                .WithParameter("id", First).ExecuteAsync(Token);
         });
     }
 
@@ -114,7 +175,7 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
     {
         await WithStore(async store =>
         {
-            var twoDigits = await store.ReadAsync(new(Q: "+79", Archive: "all"), Token);
+            var twoDigits = await store.ReadAsync(new(Q: "+(7)-(9)", Archive: "all"), Token);
             var threeDigits = await store.ReadAsync(new(Q: "+790", Archive: "all"), Token);
 
             Assert.Empty(twoDigits.Items);
@@ -365,6 +426,8 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         await database.Query(workState).ExecuteAsync(Token);
         var nameSimilarity = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", "0015_EnableClientNameSimilarity.sql"), Token);
         await database.Query(nameSimilarity).ExecuteAsync(Token);
+        var fragmentSearch = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", "0017_AddClientNameFragmentSearch.sql"), Token);
+        await database.Query(fragmentSearch).ExecuteAsync(Token);
         using var protector = new PersonalDataProtector("test", new Dictionary<string, string>
         {
             ["test"] = Convert.ToBase64String(Enumerable.Repeat((byte)29, 32).ToArray())
