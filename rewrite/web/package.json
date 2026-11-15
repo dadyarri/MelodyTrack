@@ -25,6 +25,7 @@
     "@microsoft/kiota-serialization-json": "1.0.0-preview.112",
     "@microsoft/kiota-serialization-multipart": "1.0.0-preview.112",
     "@microsoft/kiota-serialization-text": "1.0.0-preview.112",
+    "@tabler/icons-react": "3.52.0",
     "antd": "6.7.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",

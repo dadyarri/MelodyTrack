@@ -56,41 +56,6 @@ function contactHref(contact: DirectoryContact): string | undefined {
   return undefined;
 }
 
-function ActionIcon({ kind }: { kind: "profile" | "phone" | "email" | "edit" }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      width="18"
-      height="18"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      {kind === "profile" ? (
-        <>
-          <circle cx="12" cy="8" r="4" />
-          <path d="M4 21v-2a8 8 0 0 1 16 0v2" />
-        </>
-      ) : kind === "phone" ? (
-        <path d="m7 3-4 2c0 9 7 16 16 16l2-4-5-3-2 2a12 12 0 0 1-6-6l2-2Z" />
-      ) : kind === "email" ? (
-        <>
-          <rect x="3" y="5" width="18" height="14" rx="2" />
-          <path d="m3 6 9 7 9-7" />
-        </>
-      ) : (
-        <>
-          <path d="m4 16.5-.8 4.3 4.3-.8L20 7.5 16.5 4Z" />
-          <path d="m14.8 5.7 3.5 3.5" />
-        </>
-      )}
-    </svg>
-  );
-}
-
 function Contact({ contact }: { contact: DirectoryContact }) {
   const href = contactHref(contact);
   return (
@@ -141,7 +106,7 @@ function QuickActions({
         title="Открыть карточку"
         onClick={onOpen}
       >
-        <ActionIcon kind="profile" />
+        <Icon name="profile" size={18} />
       </button>
       {canWrite ? (
         <button
@@ -150,17 +115,17 @@ function QuickActions({
           title="Изменить карточку"
           onClick={onEdit}
         >
-          <ActionIcon kind="edit" />
+          <Icon name="edit" size={18} />
         </button>
       ) : null}
       {phoneHref && (
         <a href={phoneHref} aria-label={`Позвонить: ${clientName(client)}`} title="Позвонить">
-          <ActionIcon kind="phone" />
+          <Icon name="phone" size={18} />
         </a>
       )}
       {emailHref && (
         <a href={emailHref} aria-label={`Написать: ${clientName(client)}`} title="Написать письмо">
-          <ActionIcon kind="email" />
+          <Icon name="email" size={18} />
         </a>
       )}
     </div>

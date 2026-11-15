@@ -1,4 +1,5 @@
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
+import { Icon } from "../../Icon";
 import {
   addDays,
   addMonths,
@@ -137,7 +138,7 @@ export function Calendar({
           onKeyDown={closeOnEscape}
           onClick={() => navigate(-1)}
         >
-          ‹
+          <Icon name="previous" size={18} />
         </button>
         <span className="date-time-calendar-month" aria-live="polite">
           {monthFormat.format(dateAsUtc(month))}
@@ -149,7 +150,7 @@ export function Calendar({
           onKeyDown={closeOnEscape}
           onClick={() => navigate(1)}
         >
-          ›
+          <Icon name="next" size={18} />
         </button>
         <button
           type="button"

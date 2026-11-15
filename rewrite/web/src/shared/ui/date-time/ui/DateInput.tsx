@@ -1,5 +1,6 @@
 import { Popover } from "antd";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
+import { Icon } from "../../Icon";
 import { displayDate, parseDateInput, withinDateRange } from "../model/calendar";
 import { Calendar } from "./Calendar";
 import "./date-time.css";
@@ -146,7 +147,7 @@ export function DateInput({
                 input.current?.focus();
               }}
             >
-              ×
+              <Icon name="close" size={18} />
             </button>
           )}
           <button
@@ -158,17 +159,7 @@ export function DateInput({
             aria-expanded={open && !disabled}
             disabled={disabled}
           >
-            <svg
-              viewBox="0 0 24 24"
-              width="18"
-              height="18"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.5"
-              aria-hidden="true"
-            >
-              <path d="M7 3v4m10-4v4M4 10h16M5 5h14a1 1 0 0 1 1 1v14H4V6a1 1 0 0 1 1-1Z" />
-            </svg>
+            <Icon name="calendar" size={18} />
           </button>
         </div>
       </Popover>

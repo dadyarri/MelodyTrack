@@ -1,4 +1,5 @@
 import { useEffect, useId, useState } from "react";
+import { Icon } from "../../Icon";
 import { parseTime } from "../model/calendar";
 import "./date-time.css";
 
@@ -107,7 +108,7 @@ export function TimeInput({
             onChange(null);
           }}
         >
-          ×
+          <Icon name="close" size={18} />
         </button>
       )}
     </fieldset>
