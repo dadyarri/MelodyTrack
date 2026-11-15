@@ -269,9 +269,6 @@ p {
   padding: 32px;
   margin: 0 auto;
 }
-.mobile-navigation {
-  display: none;
-}
 .page-heading {
   margin-bottom: 24px;
 }
@@ -307,9 +304,6 @@ p {
   .workspace-sidebar {
     display: none;
   }
-  .mobile-brand {
-    display: block;
-  }
   .workspace-header {
     gap: 5px;
     padding: max(12px, env(safe-area-inset-top)) 16px 12px;
@@ -319,31 +313,6 @@ p {
   }
   .header-actions .ant-btn {
     min-width: 40px;
-  }
-  .mobile-navigation {
-    display: flex;
-    gap: 24px;
-    padding: 0 20px;
-    border-bottom: 1px solid var(--color-line);
-    background: var(--color-surface);
-  }
-  .mobile-navigation a {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 48px;
-    border-bottom: 2px solid transparent;
-    color: var(--color-muted);
-    text-decoration: none;
-    font-size: 14px;
-  }
-  .mobile-navigation a.active {
-    border-bottom-color: var(--color-primary);
-    color: var(--color-text);
-  }
-  .mobile-navigation .icon {
-    width: 18px;
-    height: 18px;
   }
   .workspace-content {
     padding: 24px 20px calc(24px + var(--safe-bottom));

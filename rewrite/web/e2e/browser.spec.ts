@@ -436,10 +436,15 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   await page.getByLabel("Пароль", { exact: true }).fill("synthetic-password");
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/workspace$/);
+  await page.getByRole("button", { name: "Открыть меню", exact: true }).click();
+  const menu = page.getByRole("dialog", { name: "Меню", exact: true });
+  await expect(menu.getByRole("link", { name: "Клиенты" })).not.toHaveAttribute("title");
   await page
     .getByRole("navigation", { name: "Разделы приложения на телефоне", exact: true })
     .getByRole("link", { name: "Клиенты" })
     .click();
+  await expect(menu).not.toBeVisible();
+  await expect(page.getByRole("button", { name: "Открыть меню", exact: true })).toBeFocused();
   await expect(page.getByRole("heading", { name: "Клиенты", exact: true })).toBeVisible();
   const search = page.getByRole("searchbox", { name: "ФИО или контакт" });
   await search.fill("Синтетический");

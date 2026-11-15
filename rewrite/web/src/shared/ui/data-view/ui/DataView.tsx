@@ -1,5 +1,6 @@
 import { Button, Input, Pagination, Spin } from "antd";
 import { type ReactNode, useEffect, useRef } from "react";
+import { Icon } from "@/shared/ui/Icon";
 import "./data-view.css";
 
 export type DataViewSort = { key: string; direction: "asc" | "desc" };
@@ -8,6 +9,7 @@ export type DataViewColumn<T> = {
   title: string;
   render: (item: T) => ReactNode;
   sortable?: boolean;
+  sortDisabledReason?: string;
 };
 export type DataViewProps<T> = {
   ariaLabel: string;
@@ -62,7 +64,6 @@ export function CollectionDataView<T>({
   const table = useRef<HTMLTableElement>(null);
 
   useEffect(() => {
-    if (loading) return;
     const element = table.current;
     if (!element || !onRowClick) return;
     // Native delegation preserves table semantics. The visible name button supplies keyboard access.
@@ -84,7 +85,7 @@ export function CollectionDataView<T>({
     }
     element.addEventListener("click", activate);
     return () => element.removeEventListener("click", activate);
-  }, [items, rowKey, onRowClick, loading]);
+  }, [items, rowKey, onRowClick]);
 
   function toggleSort(key: string) {
     const selected = sort.find((entry) => entry.key === key);
@@ -135,7 +136,7 @@ export function CollectionDataView<T>({
           <>
             {loading && (
               <div className="data-view-updating" role="status">
-                Обновление…
+                <span className="data-view-sr-only">Обновление…</span>
               </div>
             )}
             <section className="data-view-table-scroll" aria-label={`${ariaLabel}: таблица`}>
@@ -173,16 +174,25 @@ export function CollectionDataView<T>({
                                 className={`data-view-sort${selected ? " data-view-sort-active" : ""}`}
                                 aria-label={`Сортировка: ${column.title}`}
                                 aria-pressed={Boolean(selected)}
+                                disabled={Boolean(column.sortDisabledReason)}
                                 title={
-                                  selected
+                                  column.sortDisabledReason ??
+                                  (selected
                                     ? `${selected.direction === "asc" ? "По возрастанию" : "По убыванию"}, приоритет ${priority + 1}`
-                                    : "Сортировать по возрастанию"
+                                    : "Сортировать по возрастанию")
                                 }
                                 onClick={() => toggleSort(column.key)}
                               >
-                                <span aria-hidden="true">
-                                  {selected ? (selected.direction === "asc" ? "↑" : "↓") : "↕"}
-                                </span>
+                                <Icon
+                                  name={
+                                    selected
+                                      ? selected.direction === "asc"
+                                        ? "sortAscending"
+                                        : "sortDescending"
+                                      : "sort"
+                                  }
+                                  size={18}
+                                />
                                 {selected && <sup aria-hidden="true">{priority + 1}</sup>}
                               </button>
                             )}

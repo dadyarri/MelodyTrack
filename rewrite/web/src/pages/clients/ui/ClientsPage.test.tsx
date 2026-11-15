@@ -152,7 +152,13 @@ beforeEach(() => {
       const url = new URL(String(input));
       return url.pathname.endsWith("/options")
         ? jsonResponse({ sources: [{ id: ids.source, name: "Рекомендация" }], contactKinds: [] })
-        : jsonResponse(page());
+        : jsonResponse(
+            page(
+              [client],
+              Number(url.searchParams.get("page") ?? 1),
+              Number(url.searchParams.get("pageSize") ?? 10),
+            ),
+          );
     }),
   );
 });
@@ -421,7 +427,14 @@ describe("client directory page", () => {
     fireEvent.click(
       await screen.findByText("20 / page", { selector: ".ant-select-item-option-content" }),
     );
-    await screen.findByRole("button", { name: "Сортировка: Статус" });
+    await waitFor(() => {
+      expect(requestUrls(fetchMock).some((url) => url.searchParams.get("pageSize") === "20")).toBe(
+        true,
+      );
+      expect(
+        screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='false']"),
+      ).not.toBeNull();
+    });
     fireEvent.click(within(screen.getByTitle("2")).getByRole("button"));
     await waitFor(() => {
       expect(
@@ -513,10 +526,11 @@ describe("client directory page", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("clears old rows while loading a different search and retries a failed request", async () => {
+  it("keeps rows while a different search loads or fails and retries the request", async () => {
     const fetchMock = vi.mocked(fetch);
     render(<ClientsPage />);
     await screen.findByText("Тестова Анна");
+    const failedResponse = deferred<Response>();
     let failedOnce = false;
     fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
       const url = new URL(String(input));
@@ -527,7 +541,7 @@ describe("client directory page", () => {
         });
       if (url.searchParams.get("q") === "ошибка" && !failedOnce) {
         failedOnce = true;
-        return jsonResponse({}, 503);
+        return failedResponse.promise;
       }
       return jsonResponse(page());
     });
@@ -535,11 +549,23 @@ describe("client directory page", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "ФИО или контакт" }), {
       target: { value: "ошибка" },
     });
+    await waitFor(() => expect(failedOnce).toBe(true));
+    expect(screen.getByRole("button", { name: "Тестова Анна" })).toBeTruthy();
+    expect(screen.getByRole("table", { name: "Клиенты" })).toBeTruthy();
+    expect(
+      screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='true']"),
+    ).not.toBeNull();
+    failedResponse.resolve(jsonResponse({}, 503));
     await screen.findByText("Не удалось загрузить клиентов");
-    expect(screen.queryByText("Тестова Анна")).toBeNull();
+    expect(screen.getByRole("button", { name: "Тестова Анна" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
     await waitFor(() => expect(fetchMock.mock.calls.length).toBeGreaterThan(3));
-    await screen.findByText("Тестова Анна");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='false']"),
+      ).not.toBeNull(),
+    );
+    expect(screen.getByRole("button", { name: "Тестова Анна" })).toBeTruthy();
   });
 
   it("retries failed source options without losing the client list", async () => {

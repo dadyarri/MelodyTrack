@@ -18,6 +18,7 @@ import {
   type ReleaseHistory,
 } from "@/entities/app-release";
 import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
+import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
 import {
   readSeenVersion,
@@ -323,7 +324,13 @@ export function ReleaseNotesProvider({
   );
 }
 
-export function ReleaseVersion() {
+export function ReleaseVersion({
+  onOpen,
+  compact = false,
+}: {
+  onOpen?: () => void;
+  compact?: boolean;
+} = {}) {
   const context = useContext(ReleaseNotesContext);
   if (!context) throw new Error("ReleaseNotesProvider is required.");
   const version = context.current.status === "ready" ? context.current.data.version : null;
@@ -336,12 +343,20 @@ export function ReleaseVersion() {
     <button
       type="button"
       className="release-version"
+      title={compact ? label : undefined}
       disabled={!context.canOpen}
-      onClick={context.openHistory}
+      onClick={() => {
+        onOpen?.();
+        context.openHistory();
+      }}
       aria-label={version ? `Список изменений версии ${version}` : "Список изменений"}
     >
-      {label}
+      {compact ? <Icon name="history" /> : label}
     </button>
+  ) : compact ? (
+    <span className="release-version" title={label} role="img" aria-label={label}>
+      <Icon name="history" />
+    </span>
   ) : (
     <span className="release-version">{label}</span>
   );

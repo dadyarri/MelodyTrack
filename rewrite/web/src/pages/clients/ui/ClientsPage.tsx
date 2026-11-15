@@ -492,11 +492,9 @@ function ClientDirectory() {
   useEffect(() => {
     const background = silentQueryRef.current === JSON.stringify(query) && dataRef.current !== null;
     if (background) silentQueryRef.current = null;
-    else {
-      setData(null);
-      setError(null);
-    }
+    else setError(null);
     if (!allowed || !supportedScope) {
+      setData(null);
       setOptions(null);
       setSelected(null);
       setLoading(false);
@@ -911,16 +909,21 @@ function ClientDirectory() {
       key: "status",
       title: "Статус",
       sortable: true,
-      render: (client) => (client.isArchived ? <Tag>Архив</Tag> : null),
+      render: (client) =>
+        client.isArchived ? <Tag icon={<Icon name="archive" size={14} />}>Архив</Tag> : null,
     },
     {
       key: "lastAttended",
       title: "Последняя запись",
+      sortable: true,
+      sortDisabledReason: "Сортировка недоступна: данные о записях ещё не подключены",
       render: () => <UnknownValue label="Нет данных о последнем посещении" />,
     },
     {
       key: "nextAppointment",
       title: "Следующая запись",
+      sortable: true,
+      sortDisabledReason: "Сортировка недоступна: данные о записях ещё не подключены",
       render: () => <UnknownValue label="Нет данных о ближайшей записи" />,
     },
     {
@@ -993,8 +996,8 @@ function ClientDirectory() {
             rowKey={(client) => client.id}
             onRowClick={setSelected}
             total={data?.totalCount ?? 0}
-            page={query.page}
-            pageSize={query.pageSize}
+            page={data?.page ?? query.page}
+            pageSize={data?.pageSize ?? query.pageSize}
             onPageChange={(page, pageSize) =>
               setQuery((current) => ({
                 ...current,
@@ -1017,10 +1020,21 @@ function ClientDirectory() {
             }
             actions={
               <>
-                <Button onClick={openClientTraining}>Помощь</Button>
-                <Button onClick={refresh} disabled={loading}>
-                  Обновить
-                </Button>
+                <Tooltip title="Помощь">
+                  <Button
+                    aria-label="Помощь"
+                    icon={<Icon name="help" />}
+                    onClick={openClientTraining}
+                  />
+                </Tooltip>
+                <Tooltip title="Обновить">
+                  <Button
+                    aria-label="Обновить"
+                    icon={<Icon name="refresh" />}
+                    onClick={refresh}
+                    disabled={loading}
+                  />
+                </Tooltip>
               </>
             }
             emptyDescription={filterCount ? "По этим условиям клиентов нет" : "Клиентов пока нет"}
@@ -1107,7 +1121,9 @@ function ClientDirectory() {
                     />
                   </Tooltip>
                 </div>
-                {selectedCard.isArchived ? <Tag>Архив</Tag> : null}
+                {selectedCard.isArchived ? (
+                  <Tag icon={<Icon name="archive" size={14} />}>Архив</Tag>
+                ) : null}
                 {clientCardLoading ? <p role="status">Обновляем карточку…</p> : null}
                 {duplicateWarning ? (
                   <Alert

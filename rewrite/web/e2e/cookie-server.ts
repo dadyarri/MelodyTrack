@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 
-const appOrigin = "http://localhost:5174";
+const appOrigin = `http://localhost:${process.env.AGENT_CHECKS_BROWSER_PORT ?? 5174}`;
 const staffId = "019a2c63-8c00-7000-8000-000000000001";
 const cookieName = "synthetic-session";
 const cookiePath = "/api/auth";

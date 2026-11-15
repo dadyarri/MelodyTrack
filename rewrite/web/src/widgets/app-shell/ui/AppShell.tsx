@@ -1,4 +1,4 @@
-import { Button, Dropdown } from "antd";
+import { Button, Drawer, Dropdown } from "antd";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
@@ -42,6 +42,38 @@ function ShellContent({
   const { staff, signOut, error } = useStaffSession();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutFailed, setLogoutFailed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const navigation = (collapsed: boolean) => (
+    <>
+      <NavLink
+        to="/workspace"
+        title={collapsed ? "Главная" : undefined}
+        aria-label="Главная"
+        onClick={() => setMenuOpen(false)}
+      >
+        <Icon name="home" /> <span className="navigation-label">Главная</span>
+      </NavLink>
+      {staff?.permissions.some((grant) => grant.permission === "clientsRead" && grant.allowed) && (
+        <NavLink
+          to="/clients"
+          title={collapsed ? "Клиенты" : undefined}
+          aria-label="Клиенты"
+          onClick={() => setMenuOpen(false)}
+        >
+          <Icon name="users" /> <span className="navigation-label">Клиенты</span>
+        </NavLink>
+      )}
+      <NavLink
+        to="/learning"
+        title={collapsed ? "Обучение" : undefined}
+        aria-label="Обучение"
+        onClick={() => setMenuOpen(false)}
+      >
+        <Icon name="book" /> <span className="navigation-label">Обучение</span>
+      </NavLink>
+    </>
+  );
   const sessionError = error
     ? `${error.message}${error.traceId ? ` · Код обращения: ${error.traceId}` : ""}`
     : logoutFailed
@@ -64,34 +96,44 @@ function ShellContent({
   }
 
   return (
-    <div className="workspace-layout">
+    <div className={`workspace-layout${sidebarCollapsed ? " workspace-layout-collapsed" : ""}`}>
       <aside className="workspace-sidebar">
         <NavLink to="/workspace" className="brand-link">
-          <Brand />
+          <Brand compact={sidebarCollapsed} />
         </NavLink>
-        <nav className="workspace-navigation" aria-label="Разделы приложения">
-          <NavLink to="/workspace">
-            <Icon name="home" /> Главная
-          </NavLink>
-          {staff?.permissions.some(
-            (grant) => grant.permission === "clientsRead" && grant.allowed,
-          ) && (
-            <NavLink to="/clients">
-              <Icon name="users" /> Клиенты
-            </NavLink>
-          )}
-          <NavLink to="/learning">
-            <Icon name="book" /> Обучение
-          </NavLink>
+        <nav
+          id="desktop-app-navigation"
+          className="workspace-navigation"
+          aria-label="Разделы приложения"
+        >
+          {navigation(sidebarCollapsed)}
         </nav>
         <div className="workspace-version-footer">
-          <ReleaseVersion />
+          <ReleaseVersion compact={sidebarCollapsed} />
         </div>
       </aside>
 
       <div className="workspace-main">
         <header className="workspace-header">
+          <Button
+            type="text"
+            className="desktop-menu-toggle"
+            title={sidebarCollapsed ? "Развернуть меню" : undefined}
+            aria-label={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
+            aria-expanded={!sidebarCollapsed}
+            aria-controls="desktop-app-navigation"
+            icon={<Icon name={sidebarCollapsed ? "next" : "previous"} />}
+            onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
+          />
           <div className="mobile-brand">
+            <Button
+              type="text"
+              aria-label="Открыть меню"
+              aria-expanded={menuOpen}
+              aria-controls="mobile-app-navigation"
+              icon={<Icon name="menu" />}
+              onClick={() => setMenuOpen(true)}
+            />
             <Brand />
           </div>
           <div className="header-actions">
@@ -131,34 +173,34 @@ function ShellContent({
                 aria-label={`Меню пользователя ${staff?.login ?? ""}`}
               >
                 <span className="account-greeting">Привет, {staff?.login}</span>
-                <span aria-hidden="true">▾</span>
+                <Icon name="chevronDown" size={16} />
               </Button>
             </Dropdown>
           </div>
         </header>
 
-        <nav className="mobile-navigation" aria-label="Разделы приложения на телефоне">
-          <NavLink to="/workspace">
-            <Icon name="home" /> Главная
-          </NavLink>
-          {staff?.permissions.some(
-            (grant) => grant.permission === "clientsRead" && grant.allowed,
-          ) && (
-            <NavLink to="/clients">
-              <Icon name="users" /> Клиенты
-            </NavLink>
-          )}
-          <NavLink to="/learning">
-            <Icon name="book" /> Обучение
-          </NavLink>
-        </nav>
+        <Drawer
+          title="Меню"
+          placement="left"
+          open={menuOpen}
+          onClose={() => setMenuOpen(false)}
+          className="workspace-mobile-menu"
+          size="min(360px, 100vw)"
+          closeIcon={<Icon name="close" />}
+          footer={<ReleaseVersion onOpen={() => setMenuOpen(false)} />}
+        >
+          <nav
+            id="mobile-app-navigation"
+            className="workspace-navigation"
+            aria-label="Разделы приложения на телефоне"
+          >
+            {navigation(false)}
+          </nav>
+        </Drawer>
 
         <main id="main-content" className="workspace-content">
           <Outlet />
         </main>
-        <div className="mobile-release-footer">
-          <ReleaseVersion />
-        </div>
       </div>
     </div>
   );

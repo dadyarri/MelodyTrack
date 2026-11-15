@@ -28,6 +28,7 @@
   margin-bottom: 12px;
 }
 .data-view-results {
+  position: relative;
   min-height: 160px;
 }
 .data-view-table-scroll {
@@ -80,6 +81,10 @@
   color: var(--color-primary);
   background: var(--color-soft);
 }
+.data-view-sort:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
 .data-view-sort sup {
   font-size: 10px;
 }
@@ -104,8 +109,13 @@
   text-align: center;
 }
 .data-view-updating {
-  margin-bottom: 8px;
-  color: var(--color-muted);
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  inset-inline: 0;
+  height: 2px;
+  background: var(--color-primary);
+  pointer-events: none;
 }
 .data-view-pagination {
   justify-content: space-between;
