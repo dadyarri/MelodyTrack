@@ -3,7 +3,12 @@ import { invalidResponse, isObject } from "@/shared/api";
 
 export const releaseVersionPattern = /^\d{4}\.(?:0[1-9]|1[0-2])\.[1-9]\d*(?:\.[1-9]\d*)?$/;
 
-export type ReleaseChanges = { new: string[]; improved: string[]; fixed: string[]; security: string[] };
+export type ReleaseChanges = {
+  new: string[];
+  improved: string[];
+  fixed: string[];
+  security: string[];
+};
 export type ReleaseEntry = {
   version: string;
   codename: string | null;
@@ -12,7 +17,11 @@ export type ReleaseEntry = {
   parentVersion: string | null;
   changes: ReleaseChanges;
 };
-export type CurrentRelease = { version: string; codename: string | null; codenameMeaning: string | null };
+export type CurrentRelease = {
+  version: string;
+  codename: string | null;
+  codenameMeaning: string | null;
+};
 export type ReleaseHistory = {
   currentVersion: string;
   releases: ReleaseEntry[];
@@ -35,7 +44,8 @@ function optionalText(value: unknown): string | null {
 }
 
 function entries(value: unknown): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !entry.trim())) throw invalidResponse();
+  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || !entry.trim()))
+    throw invalidResponse();
   return value as string[];
 }
 
@@ -48,18 +58,35 @@ function date(value: unknown): string | null {
 
 export function readCurrentRelease(value: unknown): CurrentRelease {
   if (!isObject(value)) throw invalidResponse();
-  return { version: version(value.version), codename: optionalText(value.codename), codenameMeaning: optionalText(value.codenameMeaning) };
+  return {
+    version: version(value.version),
+    codename: optionalText(value.codename),
+    codenameMeaning: optionalText(value.codenameMeaning),
+  };
 }
 
 export function readReleaseHistory(value: unknown): ReleaseHistory {
   if (!isObject(value) || !Array.isArray(value.releases)) throw invalidResponse();
   const { page, pageSize, totalCount, totalPages, hasNextPage } = value;
-  if (typeof page !== "number" || !Number.isSafeInteger(page) || page < 1 ||
-      typeof pageSize !== "number" || !Number.isSafeInteger(pageSize) || pageSize < 1 ||
-      typeof totalCount !== "number" || !Number.isSafeInteger(totalCount) || totalCount < 0 ||
-      typeof totalPages !== "number" || !Number.isSafeInteger(totalPages) || totalPages < 0 ||
-      typeof hasNextPage !== "boolean" || totalPages !== Math.ceil(totalCount / pageSize) ||
-      hasNextPage !== (page < totalPages) || value.releases.length > pageSize) throw invalidResponse();
+  if (
+    typeof page !== "number" ||
+    !Number.isSafeInteger(page) ||
+    page < 1 ||
+    typeof pageSize !== "number" ||
+    !Number.isSafeInteger(pageSize) ||
+    pageSize < 1 ||
+    typeof totalCount !== "number" ||
+    !Number.isSafeInteger(totalCount) ||
+    totalCount < 0 ||
+    typeof totalPages !== "number" ||
+    !Number.isSafeInteger(totalPages) ||
+    totalPages < 0 ||
+    typeof hasNextPage !== "boolean" ||
+    totalPages !== Math.ceil(totalCount / pageSize) ||
+    hasNextPage !== page < totalPages ||
+    value.releases.length > pageSize
+  )
+    throw invalidResponse();
   const releases = value.releases.map((entry: unknown): ReleaseEntry => {
     if (!isObject(entry) || !isObject(entry.changes)) throw invalidResponse();
     return {
@@ -67,9 +94,25 @@ export function readReleaseHistory(value: unknown): ReleaseHistory {
       codename: optionalText(entry.codename),
       codenameMeaning: optionalText(entry.codenameMeaning),
       date: date(entry.date),
-      parentVersion: entry.parentVersion === null || entry.parentVersion === undefined ? null : version(entry.parentVersion),
-      changes: { new: entries(entry.changes.newEscaped), improved: entries(entry.changes.improved), fixed: entries(entry.changes.fixed), security: entries(entry.changes.security) },
+      parentVersion:
+        entry.parentVersion === null || entry.parentVersion === undefined
+          ? null
+          : version(entry.parentVersion),
+      changes: {
+        new: entries(entry.changes.newEscaped),
+        improved: entries(entry.changes.improved),
+        fixed: entries(entry.changes.fixed),
+        security: entries(entry.changes.security),
+      },
     };
   });
-  return { currentVersion: version(value.currentVersion), releases, page, pageSize, totalCount, totalPages, hasNextPage };
+  return {
+    currentVersion: version(value.currentVersion),
+    releases,
+    page,
+    pageSize,
+    totalCount,
+    totalPages,
+    hasNextPage,
+  };
 }

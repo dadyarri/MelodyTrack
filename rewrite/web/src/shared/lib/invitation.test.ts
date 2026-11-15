@@ -17,7 +17,11 @@ describe("invitation address", () => {
   });
 
   it("rejects ambiguous proofs and removes all fragment content", () => {
-    window.history.replaceState(null, "", `/auth/register#invitation=${"A".repeat(64)}&invitation=${"B".repeat(64)}`);
+    window.history.replaceState(
+      null,
+      "",
+      `/auth/register#invitation=${"A".repeat(64)}&invitation=${"B".repeat(64)}`,
+    );
 
     expect(takeInvitationFromAddress()).toBeNull();
     expect(window.location.hash).toBe("");

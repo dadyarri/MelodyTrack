@@ -1,15 +1,19 @@
-import { ConfigProvider, theme } from "antd";
+import { Alert, Button, ConfigProvider, theme } from "antd";
 import ruRU from "antd/locale/ru_RU";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { StaffSessionProvider, useStaffSession } from "@/entities/session";
 import { SignInPage } from "@/pages/sign-in";
 import { type Appearance, readAppearance, saveAppearance } from "@/shared/lib/appearance";
+import { usePopupScrollBoundary } from "@/shared/ui/scroll-boundary";
 
 const AuthenticatedApplication = lazy(() => import("./AuthenticatedApplication"));
-const StaffRegistrationPage = lazy(() => import("@/pages/registration").then((module) => ({ default: module.StaffRegistrationPage })));
+const StaffRegistrationPage = lazy(() =>
+  import("@/pages/registration").then((module) => ({ default: module.StaffRegistrationPage })),
+);
 
 export function App({ invitation = null }: { invitation?: string | null }) {
+  usePopupScrollBoundary();
   const [appearance, setAppearance] = useState<Appearance>(readAppearance);
   const dark = appearance === "dark";
 
@@ -68,7 +72,11 @@ export function App({ invitation = null }: { invitation?: string | null }) {
       <div className="application-root">
         <BrowserRouter>
           <StaffSessionProvider>
-            <ApplicationRoutes invitation={invitation} appearance={appearance} onToggleAppearance={toggleAppearance} />
+            <ApplicationRoutes
+              invitation={invitation}
+              appearance={appearance}
+              onToggleAppearance={toggleAppearance}
+            />
           </StaffSessionProvider>
         </BrowserRouter>
       </div>
@@ -76,22 +84,71 @@ export function App({ invitation = null }: { invitation?: string | null }) {
   );
 }
 
-function ApplicationRoutes(props: { invitation: string | null; appearance: Appearance; onToggleAppearance: () => void }) {
-  const { staff } = useStaffSession();
+function ApplicationRoutes(props: {
+  invitation: string | null;
+  appearance: Appearance;
+  onToggleAppearance: () => void;
+}) {
+  const { staff, status, error, restoreSession } = useStaffSession();
 
   return (
     <Routes>
-      <Route path="/auth/register" element={<Suspense fallback={<div className="employee-training-loading" role="status">Загрузка…</div>}><StaffRegistrationPage {...props} /></Suspense>} />
-      <Route path="*" element={staff ? (
-        <Suspense fallback={<div className="employee-training-loading" role="status">Загрузка…</div>}>
-          <AuthenticatedApplication staffId={staff.staffId} {...props} />
-        </Suspense>
-      ) : (
-        <Routes>
-          <Route path="/sign-in" element={<SignInPage {...props} />} />
-          <Route path="*" element={<Navigate to="/sign-in" replace />} />
-        </Routes>
-      )} />
+      <Route
+        path="/auth/register"
+        element={
+          <Suspense
+            fallback={
+              <div className="employee-training-loading" role="status">
+                Загрузка…
+              </div>
+            }
+          >
+            <StaffRegistrationPage {...props} />
+          </Suspense>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          status === "restoring" ? (
+            <div className="employee-training-loading" role="status">
+              {error ? (
+                <Alert
+                  type="warning"
+                  title="Не удалось восстановить сессию"
+                  description={error.message}
+                  action={
+                    <Button
+                      onClick={() => {
+                        void restoreSession();
+                      }}
+                    >
+                      Повторить
+                    </Button>
+                  }
+                />
+              ) : (
+                "Восстановление сессии…"
+              )}
+            </div>
+          ) : staff ? (
+            <Suspense
+              fallback={
+                <div className="employee-training-loading" role="status">
+                  Загрузка…
+                </div>
+              }
+            >
+              <AuthenticatedApplication staffId={staff.staffId} {...props} />
+            </Suspense>
+          ) : (
+            <Routes>
+              <Route path="/sign-in" element={<SignInPage {...props} />} />
+              <Route path="*" element={<Navigate to="/sign-in" replace />} />
+            </Routes>
+          )
+        }
+      />
     </Routes>
   );
 }

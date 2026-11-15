@@ -10,13 +10,21 @@ export class ApiError extends Error {
   readonly status: number;
   readonly traceId: string | undefined;
   readonly retryAfterSeconds: number | undefined;
+  readonly transient: boolean;
 
-  constructor(message: string, status = 0, traceId?: string, retryAfterSeconds?: number) {
+  constructor(
+    message: string,
+    status = 0,
+    traceId?: string,
+    retryAfterSeconds?: number,
+    transient = status === 0 || status === 429 || (status >= 500 && status <= 599),
+  ) {
     super(message);
     this.name = "ApiError";
     this.status = status;
     this.traceId = traceId;
     this.retryAfterSeconds = retryAfterSeconds;
+    this.transient = transient;
   }
 }
 
@@ -35,7 +43,7 @@ export function isObject(value: unknown): value is Record<string, unknown> {
 }
 
 export function invalidResponse(): ApiError {
-  return new ApiError("Не удалось прочитать ответ сервера.", 502);
+  return new ApiError("Не удалось прочитать ответ сервера.", 502, undefined, undefined, false);
 }
 
 class BrowserRequestOption implements RequestOption {

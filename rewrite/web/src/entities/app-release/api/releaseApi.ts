@@ -6,8 +6,10 @@ export async function getCurrentRelease(signal: AbortSignal) {
 }
 
 export async function getReleaseHistory(page: number, signal: AbortSignal) {
-  return readReleaseHistory(await applicationApi().releases.get({
-    ...apiOptions(signal),
-    queryParameters: { page, pageSize: 2 },
-  }));
+  return readReleaseHistory(
+    await applicationApi().releases.get({
+      ...apiOptions(signal),
+      queryParameters: { page, pageSize: 2 },
+    }),
+  );
 }

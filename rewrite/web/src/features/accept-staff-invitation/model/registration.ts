@@ -5,7 +5,11 @@ export function canSkipAuthenticator(role: StaffIdentity["role"], hasPassword: b
   return role === "teacher" || hasPassword;
 }
 
-export function canSkipPasskey(role: StaffIdentity["role"], hasPassword: boolean, authenticatorConfirmed: boolean): boolean {
+export function canSkipPasskey(
+  role: StaffIdentity["role"],
+  hasPassword: boolean,
+  authenticatorConfirmed: boolean,
+): boolean {
   return hasPassword && (role === "teacher" || authenticatorConfirmed);
 }
 
@@ -23,6 +27,12 @@ export function readPasskeySetup(response: StaffCredentialResponse | undefined) 
 }
 
 export function authenticatorUri(login: string, secret: string): string {
-  const query = new URLSearchParams({ secret, issuer: "MelodyTrack", algorithm: "SHA1", digits: "6", period: "30" });
+  const query = new URLSearchParams({
+    secret,
+    issuer: "MelodyTrack",
+    algorithm: "SHA1",
+    digits: "6",
+    period: "30",
+  });
   return `otpauth://totp/${encodeURIComponent(`MelodyTrack:${login}`)}?${query}`;
 }

@@ -18,14 +18,18 @@ describe("passkey registration", () => {
     class Attestation {
       attestationObject = new Uint8Array([1, 2, 3]).buffer;
       clientDataJSON = new Uint8Array([4, 5, 6]).buffer;
-      getTransports() { return ["internal"]; }
+      getTransports() {
+        return ["internal"];
+      }
     }
     class Credential {
       response = new Attestation();
       rawId = new Uint8Array([7, 8, 9]).buffer;
       id = "BwgJ";
       type = "public-key";
-      getClientExtensionResults() { return {}; }
+      getClientExtensionResults() {
+        return {};
+      }
     }
     const create = vi.fn().mockResolvedValue(new Credential());
     vi.stubGlobal("isSecureContext", true);
@@ -39,9 +43,17 @@ describe("passkey registration", () => {
     expect(create).toHaveBeenCalledOnce();
     const input = create.mock.calls[0]?.[0] as CredentialCreationOptions;
     expect(input.signal).toBe(signal);
-    expect(Array.from(new Uint8Array(input.publicKey?.challenge as ArrayBuffer))).toEqual([1, 2, 3]);
+    expect(Array.from(new Uint8Array(input.publicKey?.challenge as ArrayBuffer))).toEqual([
+      1, 2, 3,
+    ]);
     expect(input.publicKey?.authenticatorSelection?.userVerification).toBe("required");
-    expect(await pending).toEqual({ id: "BwgJ", rawId: "BwgJ", type: "public-key", response: { attestationObject: "AQID", clientDataJSON: "BAUG", transports: ["internal"] }, clientExtensionResults: {} });
+    expect(await pending).toEqual({
+      id: "BwgJ",
+      rawId: "BwgJ",
+      type: "public-key",
+      response: { attestationObject: "AQID", clientDataJSON: "BAUG", transports: ["internal"] },
+      clientExtensionResults: {},
+    });
   });
 
   it("rejects unknown verification settings before calling WebAuthn", async () => {
@@ -49,9 +61,14 @@ describe("passkey registration", () => {
     vi.stubGlobal("isSecureContext", true);
     vi.stubGlobal("PublicKeyCredential", class {});
     vi.stubGlobal("navigator", { credentials: { get: vi.fn(), create } });
-    const malformed = JSON.stringify({ ...JSON.parse(options), authenticatorSelection: { userVerification: "unknown" } });
+    const malformed = JSON.stringify({
+      ...JSON.parse(options),
+      authenticatorSelection: { userVerification: "unknown" },
+    });
 
-    await expect(createPasskeyRegistration(malformed, new AbortController().signal)).rejects.toThrow();
+    await expect(
+      createPasskeyRegistration(malformed, new AbortController().signal),
+    ).rejects.toThrow();
 
     expect(create).not.toHaveBeenCalled();
   });

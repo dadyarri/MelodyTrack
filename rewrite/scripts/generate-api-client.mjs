@@ -23,11 +23,14 @@ run([
   "--include-path", "/api/auth/staff/passkey/**",
   "--include-path", "/api/auth/staff/factor",
   "--include-path", "/api/auth/staff/refresh",
+  "--include-path", "/api/auth/staff/restore",
   "--include-path", "/api/auth/staff/register/**",
   "--include-path", "/api/auth/me",
   "--include-path", "/api/auth/logout",
   "--include-path", "/api/releases",
   "--include-path", "/api/releases/**",
+  "--include-path", "/api/clients",
+  "--include-path", "/api/clients/options",
 ]);
 const normalization = spawnSync(process.execPath, ["web/scripts/normalize-kiota-optionals.ts"], {
   cwd: root,

@@ -57,6 +57,19 @@ a:focus-visible {
 button {
   touch-action: manipulation;
 }
+.ant-select-dropdown,
+.ant-select-dropdown .ant-select-dropdown-list-holder,
+.ant-select-dropdown .ant-select-tree-list-holder,
+.ant-select-dropdown .rc-virtual-list-holder,
+.ant-tree-select-dropdown,
+.ant-tree-select-dropdown .ant-select-tree-list-holder,
+.ant-tree-select-dropdown .rc-virtual-list-holder,
+.ant-dropdown,
+.ant-dropdown-menu,
+.ant-cascader-dropdown,
+.ant-cascader-menu {
+  overscroll-behavior: contain;
+}
 a {
   color: var(--color-primary);
 }

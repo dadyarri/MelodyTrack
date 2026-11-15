@@ -1,7 +1,7 @@
 export {
   ApiError,
-  applicationApi,
   apiOptions,
+  applicationApi,
   invalidResponse,
   isAbortError,
   isObject,

@@ -1,5 +1,5 @@
-import { invalidResponse } from "@/shared/api";
 import type { ReleaseEntry, ReleaseHistory } from "@/entities/app-release";
+import { invalidResponse } from "@/shared/api";
 
 export async function loadUnseenReleases(
   seenVersion: string | null,
@@ -12,9 +12,16 @@ export async function loadUnseenReleases(
     const history = await loadPage(page);
     currentVersion ??= history.currentVersion;
     totalPages ??= history.totalPages;
-    if (history.page !== page || history.currentVersion !== currentVersion || history.totalPages !== totalPages ||
-        (history.hasNextPage && history.releases.length === 0)) throw invalidResponse();
-    const seenIndex = seenVersion ? history.releases.findIndex((entry) => entry.version === seenVersion) : -1;
+    if (
+      history.page !== page ||
+      history.currentVersion !== currentVersion ||
+      history.totalPages !== totalPages ||
+      (history.hasNextPage && history.releases.length === 0)
+    )
+      throw invalidResponse();
+    const seenIndex = seenVersion
+      ? history.releases.findIndex((entry) => entry.version === seenVersion)
+      : -1;
     releases.push(...(seenIndex < 0 ? history.releases : history.releases.slice(0, seenIndex)));
     if (seenIndex >= 0 || !history.hasNextPage) return { currentVersion, releases };
   }

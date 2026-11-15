@@ -12,6 +12,8 @@ import { RefreshRequestBuilderRequestsMetadata, type RefreshRequestBuilder } fro
 // @ts-ignore
 import { RegisterRequestBuilderNavigationMetadata, type RegisterRequestBuilder } from './register/index.js';
 // @ts-ignore
+import { RestoreRequestBuilderRequestsMetadata, type RestoreRequestBuilder } from './restore/index.js';
+// @ts-ignore
 import { type BaseRequestBuilder, type KeysToExcludeForNavigationMetadata, type NavigationMetadata } from '@microsoft/kiota-abstractions';
 
 /**
@@ -38,6 +40,10 @@ export interface StaffRequestBuilder extends BaseRequestBuilder<StaffRequestBuil
      * The register property
      */
     get register(): RegisterRequestBuilder;
+    /**
+     * The restore property
+     */
+    get restore(): RestoreRequestBuilder;
 }
 /**
  * Uri template for the request builder.
@@ -61,6 +67,9 @@ export const StaffRequestBuilderNavigationMetadata: Record<Exclude<keyof StaffRe
     },
     register: {
         navigationMetadata: RegisterRequestBuilderNavigationMetadata,
+    },
+    restore: {
+        requestsMetadata: RestoreRequestBuilderRequestsMetadata,
     },
 };
 /* tslint:enable */

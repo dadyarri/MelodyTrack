@@ -104,5 +104,10 @@ export function readStaffIdentity(value: unknown): StaffIdentity {
       timeScope: entry.timeScope,
     };
   });
-  return { staffId: value.staffId, login: value.login, role: value.role as StaffIdentity["role"], permissions };
+  return {
+    staffId: value.staffId,
+    login: value.login,
+    role: value.role as StaffIdentity["role"],
+    permissions,
+  };
 }

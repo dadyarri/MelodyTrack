@@ -19,8 +19,7 @@ export default defineConfig(({ mode }) => {
         configureServer(server) {
           server.middlewares.use((request, response, next) => {
             const loopbackIp =
-              request.headers.host === "127.0.0.1:5174" ||
-              request.headers.host === "[::1]:5174";
+              request.headers.host === "127.0.0.1:5174" || request.headers.host === "[::1]:5174";
             if (
               loopbackIp &&
               (request.method === "GET" || request.method === "HEAD") &&

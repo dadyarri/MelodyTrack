@@ -4,6 +4,192 @@
 // @ts-ignore
 import { type AdditionalDataHolder, type ApiError, type DateOnly, type Guid, type Parsable, type ParseNode, type SerializationWriter } from '@microsoft/kiota-abstractions';
 
+export interface ClientDirectoryContact extends AdditionalDataHolder, Parsable {
+    /**
+     * The comment property
+     */
+    comment?: string | null | undefined;
+    /**
+     * The format property
+     */
+    format?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isPrimary property
+     */
+    isPrimary?: boolean | null | undefined;
+    /**
+     * The kindId property
+     */
+    kindId?: Guid | null | undefined;
+    /**
+     * The kindName property
+     */
+    kindName?: string | null | undefined;
+    /**
+     * The value property
+     */
+    value?: string | null | undefined;
+}
+export interface ClientDirectoryContactKind extends AdditionalDataHolder, Parsable {
+    /**
+     * The format property
+     */
+    format?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isArchived property
+     */
+    isArchived?: boolean | null | undefined;
+    /**
+     * The name property
+     */
+    name?: string | null | undefined;
+}
+export interface ClientDirectoryEntry extends AdditionalDataHolder, Parsable {
+    /**
+     * The birthdate property
+     */
+    birthdate?: DateOnly | null | undefined;
+    /**
+     * The contacts property
+     */
+    contacts?: ClientDirectoryContact[] | null | undefined;
+    /**
+     * The createdAt property
+     */
+    createdAt?: Date | null | undefined;
+    /**
+     * The firstName property
+     */
+    firstName?: string | null | undefined;
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The isArchived property
+     */
+    isArchived?: boolean | null | undefined;
+    /**
+     * The lastName property
+     */
+    lastName?: string | null | undefined;
+    /**
+     * The middleName property
+     */
+    middleName?: string | null | undefined;
+    /**
+     * The sourceId property
+     */
+    sourceId?: Guid | null | undefined;
+    /**
+     * The sourceName property
+     */
+    sourceName?: string | null | undefined;
+}
+export interface ClientDirectoryOptions extends AdditionalDataHolder, Parsable {
+    /**
+     * The contactKinds property
+     */
+    contactKinds?: ClientDirectoryContactKind[] | null | undefined;
+    /**
+     * The sources property
+     */
+    sources?: ClientDirectorySource[] | null | undefined;
+}
+export interface ClientDirectoryPage extends AdditionalDataHolder, Parsable {
+    /**
+     * The items property
+     */
+    items?: ClientDirectoryEntry[] | null | undefined;
+    /**
+     * The page property
+     */
+    page?: number | null | undefined;
+    /**
+     * The pageSize property
+     */
+    pageSize?: number | null | undefined;
+    /**
+     * The totalCount property
+     */
+    totalCount?: number | null | undefined;
+    /**
+     * The totalPages property
+     */
+    totalPages?: number | null | undefined;
+}
+export interface ClientDirectorySource extends AdditionalDataHolder, Parsable {
+    /**
+     * The id property
+     */
+    id?: Guid | null | undefined;
+    /**
+     * The name property
+     */
+    name?: string | null | undefined;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectoryContact}
+ */
+// @ts-ignore
+export function createClientDirectoryContactFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectoryContact;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectoryContactKind}
+ */
+// @ts-ignore
+export function createClientDirectoryContactKindFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectoryContactKind;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectoryEntry}
+ */
+// @ts-ignore
+export function createClientDirectoryEntryFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectoryEntry;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectoryOptions}
+ */
+// @ts-ignore
+export function createClientDirectoryOptionsFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectoryOptions;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectoryPage}
+ */
+// @ts-ignore
+export function createClientDirectoryPageFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectoryPage;
+}
+/**
+ * Creates a new instance of the appropriate class based on discriminator value
+ * @param parseNode The parse node to use to read the discriminator value and create the object
+ * @returns {ClientDirectorySource}
+ */
+// @ts-ignore
+export function createClientDirectorySourceFromDiscriminatorValue(parseNode: ParseNode | undefined) : ((instance?: Parsable) => Record<string, (node: ParseNode) => void>) {
+    return deserializeIntoClientDirectorySource;
+}
 /**
  * Creates a new instance of the appropriate class based on discriminator value
  * @param parseNode The parse node to use to read the discriminator value and create the object
@@ -215,6 +401,96 @@ export interface CurrentStaffResponse extends AdditionalDataHolder, Parsable {
      * The staffId property
      */
     staffId?: Guid | null | undefined;
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectoryContact The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectoryContact(clientDirectoryContact: Partial<ClientDirectoryContact> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "comment": n => { clientDirectoryContact.comment = n.getStringValue(); },
+        "format": n => { clientDirectoryContact.format = n.getStringValue(); },
+        "id": n => { clientDirectoryContact.id = n.getGuidValue(); },
+        "isPrimary": n => { clientDirectoryContact.isPrimary = n.getBooleanValue(); },
+        "kindId": n => { clientDirectoryContact.kindId = n.getGuidValue(); },
+        "kindName": n => { clientDirectoryContact.kindName = n.getStringValue(); },
+        "value": n => { clientDirectoryContact.value = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectoryContactKind The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectoryContactKind(clientDirectoryContactKind: Partial<ClientDirectoryContactKind> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "format": n => { clientDirectoryContactKind.format = n.getStringValue(); },
+        "id": n => { clientDirectoryContactKind.id = n.getGuidValue(); },
+        "isArchived": n => { clientDirectoryContactKind.isArchived = n.getBooleanValue(); },
+        "name": n => { clientDirectoryContactKind.name = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectoryEntry The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectoryEntry(clientDirectoryEntry: Partial<ClientDirectoryEntry> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "birthdate": n => { clientDirectoryEntry.birthdate = n.getDateOnlyValue(); },
+        "contacts": n => { clientDirectoryEntry.contacts = n.getCollectionOfObjectValues<ClientDirectoryContact>(createClientDirectoryContactFromDiscriminatorValue); },
+        "createdAt": n => { clientDirectoryEntry.createdAt = n.getDateValue(); },
+        "firstName": n => { clientDirectoryEntry.firstName = n.getStringValue(); },
+        "id": n => { clientDirectoryEntry.id = n.getGuidValue(); },
+        "isArchived": n => { clientDirectoryEntry.isArchived = n.getBooleanValue(); },
+        "lastName": n => { clientDirectoryEntry.lastName = n.getStringValue(); },
+        "middleName": n => { clientDirectoryEntry.middleName = n.getStringValue(); },
+        "sourceId": n => { clientDirectoryEntry.sourceId = n.getGuidValue(); },
+        "sourceName": n => { clientDirectoryEntry.sourceName = n.getStringValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectoryOptions The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectoryOptions(clientDirectoryOptions: Partial<ClientDirectoryOptions> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "contactKinds": n => { clientDirectoryOptions.contactKinds = n.getCollectionOfObjectValues<ClientDirectoryContactKind>(createClientDirectoryContactKindFromDiscriminatorValue); },
+        "sources": n => { clientDirectoryOptions.sources = n.getCollectionOfObjectValues<ClientDirectorySource>(createClientDirectorySourceFromDiscriminatorValue); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectoryPage The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectoryPage(clientDirectoryPage: Partial<ClientDirectoryPage> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "items": n => { clientDirectoryPage.items = n.getCollectionOfObjectValues<ClientDirectoryEntry>(createClientDirectoryEntryFromDiscriminatorValue); },
+        "page": n => { clientDirectoryPage.page = n.getNumberValue(); },
+        "pageSize": n => { clientDirectoryPage.pageSize = n.getNumberValue(); },
+        "totalCount": n => { clientDirectoryPage.totalCount = n.getNumberValue(); },
+        "totalPages": n => { clientDirectoryPage.totalPages = n.getNumberValue(); },
+    }
+}
+/**
+ * The deserialization information for the current model
+ * @param ClientDirectorySource The instance to deserialize into.
+ * @returns {Record<string, (node: ParseNode) => void>}
+ */
+// @ts-ignore
+export function deserializeIntoClientDirectorySource(clientDirectorySource: Partial<ClientDirectorySource> | undefined = {}) : Record<string, (node: ParseNode) => void> {
+    return {
+        "id": n => { clientDirectorySource.id = n.getGuidValue(); },
+        "name": n => { clientDirectorySource.name = n.getStringValue(); },
+    }
 }
 /**
  * The deserialization information for the current model
@@ -575,6 +851,102 @@ export interface ReleasesResponse extends AdditionalDataHolder, Parsable {
      * The totalPages property
      */
     totalPages?: number | null | undefined;
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectoryContact The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectoryContact(writer: SerializationWriter, clientDirectoryContact: Partial<ClientDirectoryContact> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectoryContact || isSerializingDerivedType) { return; }
+    writer.writeStringValue("comment", clientDirectoryContact.comment);
+    writer.writeStringValue("format", clientDirectoryContact.format);
+    writer.writeGuidValue("id", clientDirectoryContact.id);
+    writer.writeBooleanValue("isPrimary", clientDirectoryContact.isPrimary);
+    writer.writeGuidValue("kindId", clientDirectoryContact.kindId);
+    writer.writeStringValue("kindName", clientDirectoryContact.kindName);
+    writer.writeStringValue("value", clientDirectoryContact.value);
+    writer.writeAdditionalData(clientDirectoryContact.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectoryContactKind The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectoryContactKind(writer: SerializationWriter, clientDirectoryContactKind: Partial<ClientDirectoryContactKind> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectoryContactKind || isSerializingDerivedType) { return; }
+    writer.writeStringValue("format", clientDirectoryContactKind.format);
+    writer.writeGuidValue("id", clientDirectoryContactKind.id);
+    writer.writeBooleanValue("isArchived", clientDirectoryContactKind.isArchived);
+    writer.writeStringValue("name", clientDirectoryContactKind.name);
+    writer.writeAdditionalData(clientDirectoryContactKind.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectoryEntry The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectoryEntry(writer: SerializationWriter, clientDirectoryEntry: Partial<ClientDirectoryEntry> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectoryEntry || isSerializingDerivedType) { return; }
+    writer.writeDateOnlyValue("birthdate", clientDirectoryEntry.birthdate);
+    writer.writeCollectionOfObjectValues<ClientDirectoryContact>("contacts", clientDirectoryEntry.contacts, serializeClientDirectoryContact);
+    writer.writeDateValue("createdAt", clientDirectoryEntry.createdAt);
+    writer.writeStringValue("firstName", clientDirectoryEntry.firstName);
+    writer.writeGuidValue("id", clientDirectoryEntry.id);
+    writer.writeBooleanValue("isArchived", clientDirectoryEntry.isArchived);
+    writer.writeStringValue("lastName", clientDirectoryEntry.lastName);
+    writer.writeStringValue("middleName", clientDirectoryEntry.middleName);
+    writer.writeGuidValue("sourceId", clientDirectoryEntry.sourceId);
+    writer.writeStringValue("sourceName", clientDirectoryEntry.sourceName);
+    writer.writeAdditionalData(clientDirectoryEntry.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectoryOptions The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectoryOptions(writer: SerializationWriter, clientDirectoryOptions: Partial<ClientDirectoryOptions> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectoryOptions || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<ClientDirectoryContactKind>("contactKinds", clientDirectoryOptions.contactKinds, serializeClientDirectoryContactKind);
+    writer.writeCollectionOfObjectValues<ClientDirectorySource>("sources", clientDirectoryOptions.sources, serializeClientDirectorySource);
+    writer.writeAdditionalData(clientDirectoryOptions.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectoryPage The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectoryPage(writer: SerializationWriter, clientDirectoryPage: Partial<ClientDirectoryPage> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectoryPage || isSerializingDerivedType) { return; }
+    writer.writeCollectionOfObjectValues<ClientDirectoryEntry>("items", clientDirectoryPage.items, serializeClientDirectoryEntry);
+    writer.writeNumberValue("page", clientDirectoryPage.page);
+    writer.writeNumberValue("pageSize", clientDirectoryPage.pageSize);
+    writer.writeNumberValue("totalCount", clientDirectoryPage.totalCount);
+    writer.writeNumberValue("totalPages", clientDirectoryPage.totalPages);
+    writer.writeAdditionalData(clientDirectoryPage.additionalData);
+}
+/**
+ * Serializes information the current object
+ * @param ClientDirectorySource The instance to serialize from.
+ * @param isSerializingDerivedType A boolean indicating whether the serialization is for a derived type.
+ * @param writer Serialization writer to use to serialize this model
+ */
+// @ts-ignore
+export function serializeClientDirectorySource(writer: SerializationWriter, clientDirectorySource: Partial<ClientDirectorySource> | undefined | null = {}, isSerializingDerivedType: boolean = false) : void {
+    if (!clientDirectorySource || isSerializingDerivedType) { return; }
+    writer.writeGuidValue("id", clientDirectorySource.id);
+    writer.writeStringValue("name", clientDirectorySource.name);
+    writer.writeAdditionalData(clientDirectorySource.additionalData);
 }
 /**
  * Serializes information the current object

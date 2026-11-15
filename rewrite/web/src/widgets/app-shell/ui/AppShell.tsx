@@ -20,13 +20,24 @@ export function AppShell({
   const training = useEmployeeTraining();
   if (!staff) return null;
   return (
-    <ReleaseNotesProvider key={staff.staffId} staffId={staff.staffId} canViewHistory={staff.role === "superuser" || staff.role === "administrator"} enabled={training.ready && !training.active}>
+    <ReleaseNotesProvider
+      key={staff.staffId}
+      staffId={staff.staffId}
+      canViewHistory={staff.role === "superuser" || staff.role === "administrator"}
+      enabled={training.ready && !training.active}
+    >
       <ShellContent appearance={appearance} onToggleAppearance={onToggleAppearance} />
     </ReleaseNotesProvider>
   );
 }
 
-function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearance; onToggleAppearance: () => void }) {
+function ShellContent({
+  appearance,
+  onToggleAppearance,
+}: {
+  appearance: Appearance;
+  onToggleAppearance: () => void;
+}) {
   const { staff, signOut, error, clearError } = useStaffSession();
   const [signingOut, setSigningOut] = useState(false);
   const [logoutFailed, setLogoutFailed] = useState(false);
@@ -53,11 +64,20 @@ function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearan
           <NavLink to="/workspace">
             <Icon name="home" /> Главная
           </NavLink>
+          {staff?.permissions.some(
+            (grant) => grant.permission === "clientsRead" && grant.allowed,
+          ) && (
+            <NavLink to="/clients">
+              <Icon name="users" /> Клиенты
+            </NavLink>
+          )}
           <NavLink to="/learning">
             <Icon name="book" /> Обучение
           </NavLink>
         </nav>
-        <div className="workspace-version-footer"><ReleaseVersion /></div>
+        <div className="workspace-version-footer">
+          <ReleaseVersion />
+        </div>
       </aside>
 
       <div className="workspace-main">
@@ -74,9 +94,20 @@ function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearan
                 className: "account-menu",
                 selectable: false,
                 items: [
-                  { key: "theme", label: appearance === "light" ? "Тёмная тема" : "Светлая тема", icon: <Icon name={appearance === "light" ? "moon" : "sun"} />, disabled: signingOut },
+                  {
+                    key: "theme",
+                    label: appearance === "light" ? "Тёмная тема" : "Светлая тема",
+                    icon: <Icon name={appearance === "light" ? "moon" : "sun"} />,
+                    disabled: signingOut,
+                  },
                   { type: "divider" },
-                  { key: "logout", label: "Выйти", icon: <Icon name="logout" />, danger: true, disabled: signingOut },
+                  {
+                    key: "logout",
+                    label: "Выйти",
+                    icon: <Icon name="logout" />,
+                    danger: true,
+                    disabled: signingOut,
+                  },
                 ],
                 onClick: ({ key }) => {
                   if (key === "theme") onToggleAppearance();
@@ -84,8 +115,14 @@ function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearan
                 },
               }}
             >
-              <Button type="text" className="account-menu-trigger" loading={signingOut} aria-label={`Меню пользователя ${staff?.login ?? ""}`}>
-                <span className="account-greeting">Привет, {staff?.login}</span><span aria-hidden="true">▾</span>
+              <Button
+                type="text"
+                className="account-menu-trigger"
+                loading={signingOut}
+                aria-label={`Меню пользователя ${staff?.login ?? ""}`}
+              >
+                <span className="account-greeting">Привет, {staff?.login}</span>
+                <span aria-hidden="true">▾</span>
               </Button>
             </Dropdown>
           </div>
@@ -95,6 +132,13 @@ function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearan
           <NavLink to="/workspace">
             <Icon name="home" /> Главная
           </NavLink>
+          {staff?.permissions.some(
+            (grant) => grant.permission === "clientsRead" && grant.allowed,
+          ) && (
+            <NavLink to="/clients">
+              <Icon name="users" /> Клиенты
+            </NavLink>
+          )}
           <NavLink to="/learning">
             <Icon name="book" /> Обучение
           </NavLink>
@@ -116,7 +160,9 @@ function ShellContent({ appearance, onToggleAppearance }: { appearance: Appearan
           )}
           <Outlet />
         </main>
-        <div className="mobile-release-footer"><ReleaseVersion /></div>
+        <div className="mobile-release-footer">
+          <ReleaseVersion />
+        </div>
       </div>
     </div>
   );

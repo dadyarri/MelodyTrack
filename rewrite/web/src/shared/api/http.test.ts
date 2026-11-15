@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { ApiError, apiOptions, staffApi } from "./http";
+import { ApiError, apiOptions, invalidResponse, staffApi, toApiError } from "./http";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -100,5 +100,30 @@ describe("API transport", () => {
     expect(error).toBeInstanceOf(ApiError);
     expect((error as ApiError).retryAfterSeconds).toBe(15);
     expect(fetch).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([429, 500, 502, 503])(
+    "classifies HTTP %i as a transient server failure",
+    async (status) => {
+      vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status })));
+
+      const error = await staffApi()
+        .staff.refresh.post(
+          { refreshToken: "test-refresh" },
+          apiOptions(new AbortController().signal),
+        )
+        .catch((value: unknown) => value);
+
+      expect(error).toBeInstanceOf(ApiError);
+      expect((error as ApiError).status).toBe(status);
+      expect((error as ApiError).transient).toBe(true);
+    },
+  );
+
+  it("keeps malformed responses distinct from an HTTP gateway failure", () => {
+    expect(invalidResponse().status).toBe(502);
+    expect(invalidResponse().transient).toBe(false);
+    expect(toApiError(new SyntaxError("malformed response")).transient).toBe(false);
+    expect(toApiError(new TypeError("network failure")).transient).toBe(true);
   });
 });

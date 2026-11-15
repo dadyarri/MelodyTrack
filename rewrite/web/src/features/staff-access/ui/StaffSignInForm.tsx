@@ -130,66 +130,80 @@ export function StaffSignInForm() {
         </section>
       ) : (
         <>
-            <Form<PrimaryValues>
-              form={primaryForm}
-              layout="vertical"
-              requiredMark={false}
-              onFinish={submitPrimary}
-              disabled={busy}
+          <Form<PrimaryValues>
+            form={primaryForm}
+            layout="vertical"
+            requiredMark={false}
+            onFinish={submitPrimary}
+            disabled={busy}
+          >
+            <Form.Item
+              name="login"
+              label="Логин"
+              rules={[{ required: true, whitespace: true, message: "Введите ваш логин." }]}
             >
-              <Form.Item
-                name="login"
-                label="Логин"
-                rules={[{ required: true, whitespace: true, message: "Введите ваш логин." }]}
-              >
-                <Input
-                  autoComplete="username"
-                  autoCapitalize="none"
-                  autoCorrect="off"
-                  spellCheck={false}
-                  size="large"
-                />
-              </Form.Item>
-              <Form.Item
-                name="password"
-                label="Пароль"
-                rules={[{ required: true, message: "Введите пароль." }]}
-              >
-                <Input.Password autoComplete="current-password" size="large" />
-              </Form.Item>
-              <Button type="primary" htmlType="submit" size="large" block loading={busy && method === "password"}>
-                Войти
-              </Button>
-            </Form>
-            <section className="staff-access-passkey" aria-label="Вход с ключом доступа">
-              {!passkeysSupported && (
-                <Alert
-                  type="info"
-                  showIcon
-                  title="Ключи доступа здесь недоступны"
-                  description="Откройте приложение по HTTPS или используйте вход по паролю."
-                />
-              )}
-              <Button
-                htmlType="button"
+              <Input
+                autoComplete="username"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 size="large"
-                block
-                loading={session.preparingPasskey || (busy && method === "passkey")}
-                disabled={busy || !session.passkeyReady || !passkeysSupported}
-                onClick={() => {
-                  setMethod("passkey");
-                  primaryForm.resetFields(["password"]);
-                  void session.signInWithPasskey();
-                }}
-              >
-                Войти с ключом
-              </Button>
-              {passkeysSupported && !session.passkeyReady && !session.preparingPasskey && session.error && (
-                <Button block className="staff-access-secondary" onClick={() => void preparePasskey()}>
+              />
+            </Form.Item>
+            <Form.Item
+              name="password"
+              label="Пароль"
+              rules={[{ required: true, message: "Введите пароль." }]}
+            >
+              <Input.Password autoComplete="current-password" size="large" />
+            </Form.Item>
+            <Button
+              type="primary"
+              htmlType="submit"
+              size="large"
+              block
+              loading={busy && method === "password"}
+            >
+              Войти
+            </Button>
+          </Form>
+          <section className="staff-access-passkey" aria-label="Вход с ключом доступа">
+            {!passkeysSupported && (
+              <Alert
+                type="info"
+                showIcon
+                title="Ключи доступа здесь недоступны"
+                description="Откройте приложение по HTTPS или используйте вход по паролю."
+              />
+            )}
+            <Button
+              htmlType="button"
+              size="large"
+              block
+              loading={session.preparingPasskey || (busy && method === "passkey")}
+              aria-label="Войти с ключом"
+              disabled={busy || !session.passkeyReady || !passkeysSupported}
+              onClick={() => {
+                setMethod("passkey");
+                primaryForm.resetFields(["password"]);
+                void session.signInWithPasskey();
+              }}
+            >
+              Войти с ключом
+            </Button>
+            {passkeysSupported &&
+              !session.passkeyReady &&
+              !session.preparingPasskey &&
+              session.error && (
+                <Button
+                  block
+                  className="staff-access-secondary"
+                  onClick={() => void preparePasskey()}
+                >
                   Повторить
                 </Button>
               )}
-            </section>
+          </section>
           {busy && (
             <Button
               type="link"

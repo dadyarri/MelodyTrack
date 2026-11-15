@@ -10,6 +10,7 @@ import {
 import {
   ApiError,
   apiOptions,
+  applicationApi,
   invalidResponse,
   isAbortError,
   type PasskeyChallenge,
@@ -25,8 +26,12 @@ import {
 } from "@/shared/api";
 import { getPasskeyAssertion } from "@/shared/lib/passkeys";
 
-type SessionStatus = "anonymous" | "authenticating" | "authenticated";
+type SessionStatus = "restoring" | "anonymous" | "authenticating" | "authenticated";
 type FactorPresentation = { method: StaffFactor["method"]; canUsePasskey: boolean };
+type RefreshOutcome =
+  | { kind: "refreshed"; accessToken: string }
+  | { kind: "transient"; error: ApiError }
+  | { kind: "ended" };
 type SessionState = {
   staff: StaffIdentity | null;
   status: SessionStatus;
@@ -36,12 +41,22 @@ type SessionState = {
   error: ApiError | null;
 };
 type SessionContextValue = SessionState & {
+  restoreSession(): Promise<void>;
+  /** Read-only GET callback; it may run once more after an active-session refresh. */
+  request<T>(
+    send: (api: ReturnType<typeof applicationApi>, signal: AbortSignal) => Promise<T>,
+    signal: AbortSignal,
+  ): Promise<T>;
   signInWithPassword(login: string, password: string): Promise<void>;
   preparePasskey(): Promise<void>;
   signInWithPasskey(): Promise<void>;
   completeFactor(code: string): Promise<void>;
   completeFactorWithPasskey(): Promise<void>;
-  completeRegistration(challenge: string, authenticatorCode?: string, passkeyResponse?: Record<string, unknown>): Promise<boolean>;
+  completeRegistration(
+    challenge: string,
+    authenticatorCode?: string,
+    passkeyResponse?: Record<string, unknown>,
+  ): Promise<boolean>;
   cancelSignIn(): void;
   signOut(): Promise<void>;
   clearError(): void;
@@ -59,10 +74,74 @@ const SessionContext = createContext<SessionContextValue | null>(null);
 const credentialFailure =
   "Не удалось войти. Проверьте логин и средство входа или начните вход заново.";
 
+type RestoredSession = { tokens: StaffTokens; staff: StaffIdentity };
+let sharedRestoreTask: Promise<RestoredSession> | null = null;
+
+function withSessionCookieLock<T>(operation: () => Promise<T>, signal?: AbortSignal): Promise<T> {
+  signal?.throwIfAborted();
+  const send = () => {
+    signal?.throwIfAborted();
+    return operation();
+  };
+  return navigator.locks?.request
+    ? navigator.locks.request(
+        "melodytrack.staff.restore",
+        { mode: "exclusive", ...(signal ? { signal } : {}) },
+        send,
+      )
+    : send();
+}
+
+function restoreFromCookie(): Promise<RestoredSession> {
+  if (sharedRestoreTask) return sharedRestoreTask;
+  const load = async (): Promise<RestoredSession> => {
+    // A subscriber unmount must not interrupt refresh rotation before Set-Cookie is received.
+    const controller = new AbortController();
+    const outcome = readStaffOutcome(
+      await staffApi().staff.restore.post(apiOptions(controller.signal)),
+    );
+    if (outcome.kind !== "tokens") throw invalidResponse();
+    const identity = readStaffIdentity(
+      await staffApi(outcome.accessToken).me.get(apiOptions(controller.signal)),
+    );
+    if (identity.staffId !== outcome.staffId) throw invalidResponse();
+    return { tokens: outcome, staff: identity };
+  };
+  const task = withSessionCookieLock(load);
+  sharedRestoreTask = task;
+  const settled = () => {
+    if (sharedRestoreTask === task) sharedRestoreTask = null;
+  };
+  void task.then(settled, settled);
+  return task;
+}
+
+function waitForRefresh<T>(task: Promise<T>, signal: AbortSignal): Promise<T> {
+  signal.throwIfAborted();
+  return new Promise((resolve, reject) => {
+    const aborted = () => reject(new DOMException("Request cancelled", "AbortError"));
+    signal.addEventListener("abort", aborted, { once: true });
+    task.then(
+      (outcome) => {
+        signal.removeEventListener("abort", aborted);
+        resolve(outcome);
+      },
+      (error: unknown) => {
+        signal.removeEventListener("abort", aborted);
+        reject(error);
+      },
+    );
+  });
+}
+
 export function StaffSessionProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<SessionState>(initialState);
-  // All credentials and challenges belong to this mounted tab; none are persisted or broadcast.
+  const [state, setState] = useState<SessionState>({ ...initialState, status: "restoring" });
+  // Credential material stays in memory; browser restart recovery uses an HttpOnly server cookie.
   const tokens = useRef<StaffTokens | null>(null);
+  const restoring = useRef(true);
+  const restoreTask = useRef<Promise<void> | null>(null);
+  const restoreAction = useRef<() => Promise<void>>(async () => {});
+  const resourceRequests = useRef(new Set<AbortController>());
   const staff = useRef<StaffIdentity | null>(null);
   const factor = useRef<StaffFactor | null>(null);
   const primaryPasskey = useRef<(PasskeyChallenge & { expiresAt: number }) | null>(null);
@@ -71,9 +150,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const passkeyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const generation = useRef(0);
   const activeRequest = useRef<AbortController | null>(null);
-  const refreshTask = useRef<Promise<void> | null>(null);
+  const refreshTask = useRef<Promise<RefreshOutcome> | null>(null);
+  const lastRefreshOutcome = useRef<RefreshOutcome | null>(null);
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const refreshAction = useRef<() => Promise<void>>(async () => {});
+  const refreshAction = useRef<() => Promise<RefreshOutcome>>(async () => ({ kind: "ended" }));
   const channel = useRef<BroadcastChannel | null>(null);
 
   const stopTimer = useCallback(() => {
@@ -93,9 +173,14 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const clearLocal = useCallback(
     (error: ApiError | null = null) => {
       generation.current += 1;
+      for (const request of resourceRequests.current) request.abort();
+      resourceRequests.current.clear();
       activeRequest.current?.abort();
       activeRequest.current = null;
+      restoreTask.current = null;
+      restoring.current = false;
       refreshTask.current = null;
+      lastRefreshOutcome.current = null;
       stopTimer();
       stopPasskeyPreparation();
       tokens.current = null;
@@ -119,6 +204,52 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     },
     [stopTimer],
   );
+
+  const restoreSession = useCallback((): Promise<void> => {
+    if (restoreTask.current) return restoreTask.current;
+    if (staff.current || factor.current || (activeRequest.current && !restoring.current))
+      return Promise.resolve();
+    generation.current += 1;
+    activeRequest.current?.abort();
+    stopTimer();
+    stopPasskeyPreparation();
+    const id = generation.current;
+    const controller = new AbortController();
+    activeRequest.current = controller;
+    restoring.current = true;
+    setState({ ...initialState, status: "restoring" });
+    const run = async (): Promise<void> => {
+      try {
+        const restored = await waitForRefresh(restoreFromCookie(), controller.signal);
+        if (id !== generation.current || controller.signal.aborted) return;
+        tokens.current = restored.tokens;
+        staff.current = restored.staff;
+        restoring.current = false;
+        setState({ ...initialState, staff: restored.staff, status: "authenticated" });
+        scheduleRefresh(restored.tokens.expiresIn);
+      } catch (error) {
+        if (id !== generation.current || isAbortError(error)) return;
+        const apiError = toApiError(error);
+        if (apiError.status === 401) {
+          clearLocal();
+        } else if (apiError.transient) {
+          setState({ ...initialState, status: "restoring", error: apiError });
+        } else {
+          clearLocal(apiError);
+        }
+      } finally {
+        if (activeRequest.current === controller) activeRequest.current = null;
+        if (restoreTask.current === task) restoreTask.current = null;
+      }
+    };
+    const task = run();
+    restoreTask.current = task;
+    return task;
+  }, [clearLocal, scheduleRefresh, stopPasskeyPreparation, stopTimer]);
+
+  useEffect(() => {
+    restoreAction.current = restoreSession;
+  }, [restoreSession]);
 
   const beginSignIn = useCallback(
     (presentation: FactorPresentation | null = null) => {
@@ -173,9 +304,13 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       const { controller, id } = beginSignIn();
       try {
         const outcome = readStaffOutcome(
-          await staffApi().staff.password.post(
-            { login, password },
-            apiOptions(controller.signal, credentialFailure),
+          await withSessionCookieLock(
+            () =>
+              staffApi().staff.password.post(
+                { login, password },
+                apiOptions(controller.signal, credentialFailure),
+              ),
+            controller.signal,
           ),
         );
         await acceptOutcome(outcome, id, controller);
@@ -187,14 +322,32 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const completeRegistration = useCallback(
-    async (challenge: string, authenticatorCode?: string, passkeyResponse?: Record<string, unknown>): Promise<boolean> => {
+    async (
+      challenge: string,
+      authenticatorCode?: string,
+      passkeyResponse?: Record<string, unknown>,
+    ): Promise<boolean> => {
       const { controller, id } = beginSignIn();
       try {
-        const outcome = readStaffOutcome(await staffApi().staff.register.complete.post({
-          challenge,
-          ...(authenticatorCode ? { authenticatorCode } : {}),
-          ...(passkeyResponse ? { passkeyResponse: { additionalData: passkeyResponse } } : {}),
-        }, apiOptions(controller.signal, "Не удалось завершить регистрацию. Настройте вход заново или войдите, если аккаунт уже создан.")));
+        const outcome = readStaffOutcome(
+          await withSessionCookieLock(
+            () =>
+              staffApi().staff.register.complete.post(
+                {
+                  challenge,
+                  ...(authenticatorCode ? { authenticatorCode } : {}),
+                  ...(passkeyResponse
+                    ? { passkeyResponse: { additionalData: passkeyResponse } }
+                    : {}),
+                },
+                apiOptions(
+                  controller.signal,
+                  "Не удалось завершить регистрацию. Настройте вход заново или войдите, если аккаунт уже создан.",
+                ),
+              ),
+            controller.signal,
+          ),
+        );
         await acceptOutcome(outcome, id, controller);
         return id === generation.current;
       } catch (error) {
@@ -206,8 +359,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   );
 
   const preparePasskey = useCallback(function prepare(): Promise<void> {
-    if (staff.current || factor.current || activeRequest.current) return Promise.resolve();
-    if (primaryPasskey.current && primaryPasskey.current.expiresAt > Date.now()) return Promise.resolve();
+    if (restoring.current || staff.current || factor.current || activeRequest.current)
+      return Promise.resolve();
+    if (primaryPasskey.current && primaryPasskey.current.expiresAt > Date.now())
+      return Promise.resolve();
     if (passkeyTask.current) return passkeyTask.current;
     const controller = new AbortController();
     passkeyRequest.current = controller;
@@ -215,7 +370,9 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     setState((previous) => ({ ...previous, preparingPasskey: true, passkeyReady: false }));
     const task = (async () => {
       try {
-        const challenge = readPasskeyChallenge(await staffApi().staff.passkey.optionsPath.post(apiOptions(controller.signal)));
+        const challenge = readPasskeyChallenge(
+          await staffApi().staff.passkey.optionsPath.post(apiOptions(controller.signal)),
+        );
         if (id !== generation.current || controller.signal.aborted) return;
         primaryPasskey.current = { ...challenge, expiresAt: Date.now() + 240_000 };
         setState((previous) => ({ ...previous, preparingPasskey: false, passkeyReady: true }));
@@ -228,7 +385,12 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
         }, 240_000);
       } catch (error) {
         if (id !== generation.current || isAbortError(error)) return;
-        setState((previous) => ({ ...previous, preparingPasskey: false, passkeyReady: false, error: toApiError(error) }));
+        setState((previous) => ({
+          ...previous,
+          preparingPasskey: false,
+          passkeyReady: false,
+          error: toApiError(error),
+        }));
       } finally {
         if (passkeyRequest.current === controller) {
           passkeyRequest.current = null;
@@ -240,29 +402,30 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     return task;
   }, []);
 
-  const signInWithPasskey = useCallback(
-    async () => {
-      const prepared = primaryPasskey.current;
-      if (!prepared || prepared.expiresAt <= Date.now()) {
-        void preparePasskey();
-        return;
-      }
-      const { controller, id } = beginSignIn();
-      try {
-        const response = await getPasskeyAssertion(prepared.optionsJson, controller.signal);
-        const outcome = readStaffOutcome(
-          await staffApi().staff.passkey.complete.post(
-            { challenge: prepared.challenge, response: { additionalData: response } },
-            apiOptions(controller.signal, credentialFailure),
-          ),
-        );
-        await acceptOutcome(outcome, id, controller);
-      } catch (error) {
-        failSignIn(error, id);
-      }
-    },
-    [acceptOutcome, beginSignIn, failSignIn, preparePasskey],
-  );
+  const signInWithPasskey = useCallback(async () => {
+    const prepared = primaryPasskey.current;
+    if (!prepared || prepared.expiresAt <= Date.now()) {
+      void preparePasskey();
+      return;
+    }
+    const { controller, id } = beginSignIn();
+    try {
+      const response = await getPasskeyAssertion(prepared.optionsJson, controller.signal);
+      const outcome = readStaffOutcome(
+        await withSessionCookieLock(
+          () =>
+            staffApi().staff.passkey.complete.post(
+              { challenge: prepared.challenge, response: { additionalData: response } },
+              apiOptions(controller.signal, credentialFailure),
+            ),
+          controller.signal,
+        ),
+      );
+      await acceptOutcome(outcome, id, controller);
+    } catch (error) {
+      failSignIn(error, id);
+    }
+  }, [acceptOutcome, beginSignIn, failSignIn, preparePasskey]);
 
   const completeFactor = useCallback(
     async (code: string) => {
@@ -274,9 +437,13 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       });
       try {
         const outcome = readStaffOutcome(
-          await staffApi().staff.factor.post(
-            { challenge: pending.challenge, code },
-            apiOptions(controller.signal, "Код не подошёл. Начните вход заново."),
+          await withSessionCookieLock(
+            () =>
+              staffApi().staff.factor.post(
+                { challenge: pending.challenge, code },
+                apiOptions(controller.signal, "Код не подошёл. Начните вход заново."),
+              ),
+            controller.signal,
           ),
         );
         await acceptOutcome(outcome, id, controller);
@@ -297,9 +464,16 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     try {
       const passkeyResponse = await getPasskeyAssertion(pending.optionsJson, controller.signal);
       const outcome = readStaffOutcome(
-        await staffApi().staff.factor.post(
-          { challenge: pending.challenge, passkeyResponse: { additionalData: passkeyResponse } },
-          apiOptions(controller.signal, "Не удалось подтвердить вход. Начните заново."),
+        await withSessionCookieLock(
+          () =>
+            staffApi().staff.factor.post(
+              {
+                challenge: pending.challenge,
+                passkeyResponse: { additionalData: passkeyResponse },
+              },
+              apiOptions(controller.signal, "Не удалось подтвердить вход. Начните заново."),
+            ),
+          controller.signal,
         ),
       );
       await acceptOutcome(outcome, id, controller);
@@ -308,44 +482,43 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [acceptOutcome, beginSignIn, failSignIn]);
 
-  const refreshSession = useCallback((): Promise<void> => {
+  const refreshSession = useCallback((): Promise<RefreshOutcome> => {
     if (refreshTask.current) return refreshTask.current;
     const previousTokens = tokens.current;
-    if (!previousTokens || !staff.current) return Promise.resolve();
+    if (!previousTokens || !staff.current) return Promise.resolve({ kind: "ended" });
     const id = generation.current;
     const controller = new AbortController();
     activeRequest.current = controller;
+    lastRefreshOutcome.current = null;
     stopTimer();
-    const run = async () => {
+    const run = async (): Promise<RefreshOutcome> => {
       try {
-        const outcome = readStaffOutcome(
-          await staffApi().staff.refresh.post(
-            { refreshToken: previousTokens.refreshToken },
-            apiOptions(controller.signal),
-          ),
-        );
-        if (outcome.kind !== "tokens") throw invalidResponse();
-        if (id !== generation.current) return;
-        // Preserve the rotated refresh even if the subsequent identity read loses the connection.
-        tokens.current = outcome;
-        const identity = readStaffIdentity(
-          await staffApi(outcome.accessToken).me.get(apiOptions(controller.signal)),
-        );
+        const restored = await waitForRefresh(restoreFromCookie(), controller.signal);
+        if (id !== generation.current) return { kind: "ended" };
+        const outcome = restored.tokens;
+        const identity = restored.staff;
         if (identity.staffId !== previousTokens.staffId || identity.staffId !== outcome.staffId)
           throw invalidResponse();
-        if (id !== generation.current) return;
+        tokens.current = outcome;
         staff.current = identity;
         setState({ ...initialState, staff: identity, status: "authenticated" });
         scheduleRefresh(outcome.expiresIn);
+        const refreshed: RefreshOutcome = { kind: "refreshed", accessToken: outcome.accessToken };
+        lastRefreshOutcome.current = refreshed;
+        return refreshed;
       } catch (error) {
-        if (id !== generation.current || isAbortError(error)) return;
+        if (id !== generation.current || isAbortError(error)) return { kind: "ended" };
         const apiError = toApiError(error);
-        if (apiError.status === 0) {
+        if (apiError.transient) {
           // Loaded account data remains owned by the same staff member while offline.
           // Retry only on connectivity/focus events; no API polling is introduced.
           setState((current) => ({ ...current, error: apiError }));
+          const unavailable: RefreshOutcome = { kind: "transient", error: apiError };
+          lastRefreshOutcome.current = unavailable;
+          return unavailable;
         } else {
           clearLocal(apiError);
+          return { kind: "ended" };
         }
       } finally {
         if (id === generation.current) refreshTask.current = null;
@@ -375,7 +548,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     activeRequest.current = controller;
     setState((value) => ({ ...value, status: "authenticating", error: null }));
     try {
-      await staffApi(current.accessToken).logout.post(apiOptions(controller.signal));
+      await withSessionCookieLock(
+        () => staffApi(current.accessToken).logout.post(apiOptions(controller.signal)),
+        controller.signal,
+      );
       if (id !== generation.current) return;
       clearLocal();
       channel.current?.postMessage("changed");
@@ -401,7 +577,9 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const revalidate = () => {
-      if (document.visibilityState === "visible" && navigator.onLine) void refreshAction.current();
+      if (document.visibilityState !== "visible" || !navigator.onLine) return;
+      if (restoring.current) void restoreAction.current();
+      else void refreshAction.current();
     };
     let updates: BroadcastChannel | null = null;
     try {
@@ -423,7 +601,10 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     document.addEventListener("visibilitychange", revalidate);
     return () => {
       generation.current += 1;
+      for (const request of resourceRequests.current) request.abort();
+      resourceRequests.current.clear();
       activeRequest.current?.abort();
+      restoreTask.current = null;
       refreshTask.current = null;
       stopTimer();
       stopPasskeyPreparation();
@@ -435,10 +616,95 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     };
   }, [clearLocal, stopTimer, stopPasskeyPreparation]);
 
+  useEffect(() => {
+    void restoreSession();
+  }, [restoreSession]);
+
+  const request = useCallback(
+    async <T,>(
+      send: (api: ReturnType<typeof applicationApi>, signal: AbortSignal) => Promise<T>,
+      signal: AbortSignal,
+    ): Promise<T> => {
+      signal.throwIfAborted();
+      const accountId = staff.current?.staffId;
+      if (!tokens.current || !accountId)
+        throw new ApiError("Сессия завершена. Войдите снова.", 401);
+      const id = generation.current;
+      const controller = new AbortController();
+      resourceRequests.current.add(controller);
+      const combined = AbortSignal.any([signal, controller.signal]);
+      const ensureAccount = () => {
+        combined.throwIfAborted();
+        if (id !== generation.current || staff.current?.staffId !== accountId)
+          throw new DOMException("Session changed", "AbortError");
+      };
+      const wait = async (task: Promise<RefreshOutcome>) => {
+        const outcome = await waitForRefresh(task, combined);
+        ensureAccount();
+        if (outcome.kind === "transient") throw outcome.error;
+        return outcome;
+      };
+      try {
+        if (refreshTask.current) await wait(refreshTask.current);
+        ensureAccount();
+        const current = tokens.current;
+        if (!current) throw new DOMException("Session changed", "AbortError");
+        try {
+          const result = await send(applicationApi(current.accessToken), combined);
+          ensureAccount();
+          return result;
+        } catch (error) {
+          ensureAccount();
+          if (toApiError(error).status !== 401) throw error;
+          let refreshed: RefreshOutcome;
+          if (refreshTask.current) {
+            refreshed = await wait(refreshTask.current);
+          } else if (lastRefreshOutcome.current?.kind === "transient") {
+            // Do not turn failed refreshes into a retry loop on each resource request.
+            throw lastRefreshOutcome.current.error;
+          } else if (
+            lastRefreshOutcome.current?.kind === "refreshed" &&
+            lastRefreshOutcome.current.accessToken === tokens.current?.accessToken &&
+            tokens.current.accessToken !== current.accessToken
+          ) {
+            refreshed = lastRefreshOutcome.current;
+          } else {
+            refreshed = await wait(refreshSession());
+          }
+          ensureAccount();
+          const rotated = tokens.current;
+          if (
+            refreshed.kind !== "refreshed" ||
+            !rotated ||
+            rotated.staffId !== accountId ||
+            rotated.accessToken === current.accessToken ||
+            rotated.accessToken !== refreshed.accessToken
+          ) {
+            const failure = invalidResponse();
+            clearLocal(failure);
+            throw failure;
+          }
+          const result = await send(applicationApi(rotated.accessToken), combined);
+          ensureAccount();
+          return result;
+        }
+      } catch (error) {
+        if (!combined.aborted && id === generation.current && toApiError(error).status === 401)
+          clearLocal(toApiError(error));
+        throw error;
+      } finally {
+        resourceRequests.current.delete(controller);
+      }
+    },
+    [clearLocal, refreshSession],
+  );
+
   return (
     <SessionContext.Provider
       value={{
         ...state,
+        restoreSession,
+        request,
         signInWithPassword,
         preparePasskey,
         signInWithPasskey,

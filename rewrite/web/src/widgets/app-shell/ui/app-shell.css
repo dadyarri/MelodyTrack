@@ -37,6 +37,17 @@
   display: none;
 }
 @media (max-width: 767px) {
+  .mobile-navigation {
+    gap: 8px;
+    padding-inline: 12px;
+  }
+  .mobile-navigation a {
+    flex: 1;
+    justify-content: center;
+    gap: 6px;
+    min-width: 0;
+    white-space: nowrap;
+  }
   .mobile-release-footer {
     display: flex;
     justify-content: center;

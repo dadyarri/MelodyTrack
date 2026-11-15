@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { authenticatorUri, canSkipAuthenticator, canSkipPasskey, readAuthenticatorSetup, readPasskeySetup } from "./registration";
+import {
+  authenticatorUri,
+  canSkipAuthenticator,
+  canSkipPasskey,
+  readAuthenticatorSetup,
+  readPasskeySetup,
+} from "./registration";
 
 describe("invitation registration steps", () => {
   it("keeps an independent factor mandatory for a superuser", () => {
@@ -22,7 +28,13 @@ describe("invitation registration steps", () => {
   });
 
   it("does not retain an authenticator secret in the passkey step", () => {
-    expect(readPasskeySetup({ challenge: "next-test", optionsJson: "{}", authenticatorSecret: "SYNTHETICKEY" })).toEqual({ challenge: "next-test", optionsJson: "{}" });
+    expect(
+      readPasskeySetup({
+        challenge: "next-test",
+        optionsJson: "{}",
+        authenticatorSecret: "SYNTHETICKEY",
+      }),
+    ).toEqual({ challenge: "next-test", optionsJson: "{}" });
   });
 
   it("encodes the account label without changing TOTP parameters", () => {

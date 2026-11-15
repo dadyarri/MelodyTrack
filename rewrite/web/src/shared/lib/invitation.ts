@@ -4,7 +4,11 @@ export function takeInvitationFromAddress(): string | null {
   const invitations = fragment.getAll("invitation");
   // Remove the proof before React, diagnostics, navigation, or browser history can reuse it.
   if (window.location.hash) {
-    window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search);
+    window.history.replaceState(
+      window.history.state,
+      "",
+      window.location.pathname + window.location.search,
+    );
   }
   return invitations.length === 1 && /^[0-9A-F]{64}$/.test(invitations[0] ?? "")
     ? (invitations[0] ?? null)

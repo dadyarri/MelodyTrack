@@ -1,5 +1,5 @@
 {
-  "descriptionHash": "0084A33E337B481C3E14051AC58FE8230A7C143AA1CAA5F092E509EF099E77052182CEBABA7A08AE72138439A2CB8B1924F54CE64DD309DBFE077939295EAE3E",
+  "descriptionHash": "798994C65378217691500FD21A3F49553567094C56596F8A4C0C22E0D197E58101E124E47703EB45369C73616854DFB3931CC32CC6E2045D6E0B236FB97E8F8F",
   "descriptionLocation": "../../../../../src/MelodyTrack.Rewrite.Api/obj/openapi/MelodyTrack.Rewrite.Api.json",
   "lockFileVersion": "1.0.0",
   "kiotaVersion": "1.38.0",
@@ -33,11 +33,14 @@
     "/api/auth/staff/passkey/**",
     "/api/auth/staff/factor",
     "/api/auth/staff/refresh",
+    "/api/auth/staff/restore",
     "/api/auth/staff/register/**",
     "/api/auth/me",
     "/api/auth/logout",
     "/api/releases",
-    "/api/releases/**"
+    "/api/releases/**",
+    "/api/clients",
+    "/api/clients/options"
   ],
   "excludePatterns": [],
   "disabledValidationRules": [],

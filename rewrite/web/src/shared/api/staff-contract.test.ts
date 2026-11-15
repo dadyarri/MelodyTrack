@@ -31,21 +31,28 @@ describe("staff credential contract", () => {
   });
 
   it("rejects an unknown staff role before rendering staff screens", () => {
-    expect(() => readStaffIdentity({ staffId: "id", login: "staff.demo", role: "client", permissions: [] })).toThrow(
-      ApiError,
-    );
+    expect(() =>
+      readStaffIdentity({ staffId: "id", login: "staff.demo", role: "client", permissions: [] }),
+    ).toThrow(ApiError);
   });
 
   it("preserves effective permission scopes from the server", () => {
     const grant = { permission: "scheduleRead", allowed: true, dataScope: "own", timeScope: "all" };
 
-    const staff = readStaffIdentity({ staffId: "staff", login: "staff.demo", role: "teacher", permissions: [grant] });
+    const staff = readStaffIdentity({
+      staffId: "staff",
+      login: "staff.demo",
+      role: "teacher",
+      permissions: [grant],
+    });
 
     expect(staff.permissions).toEqual([grant]);
     expect(staff.login).toBe("staff.demo");
   });
 
   it("rejects an identity without a server account name", () => {
-    expect(() => readStaffIdentity({ staffId: "staff", role: "teacher", permissions: [] })).toThrow(ApiError);
+    expect(() => readStaffIdentity({ staffId: "staff", role: "teacher", permissions: [] })).toThrow(
+      ApiError,
+    );
   });
 });

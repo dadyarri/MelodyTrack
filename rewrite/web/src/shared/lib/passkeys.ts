@@ -112,38 +112,66 @@ export async function getPasskeyAssertion(
 function creationOptions(optionsJson: string): PublicKeyCredentialCreationOptions {
   const value: unknown = JSON.parse(optionsJson);
   if (
-    !isObject(value) || typeof value.challenge !== "string" ||
-    !isObject(value.rp) || typeof value.rp.name !== "string" ||
-    !isObject(value.user) || typeof value.user.id !== "string" ||
-    typeof value.user.name !== "string" || typeof value.user.displayName !== "string" ||
+    !isObject(value) ||
+    typeof value.challenge !== "string" ||
+    !isObject(value.rp) ||
+    typeof value.rp.name !== "string" ||
+    !isObject(value.user) ||
+    typeof value.user.id !== "string" ||
+    typeof value.user.name !== "string" ||
+    typeof value.user.displayName !== "string" ||
     !Array.isArray(value.pubKeyCredParams)
-  ) throw invalidResponse();
-  const pubKeyCredParams = value.pubKeyCredParams.map((entry: unknown): PublicKeyCredentialParameters => {
-    if (!isObject(entry) || entry.type !== "public-key" || typeof entry.alg !== "number" || !Number.isInteger(entry.alg)) throw invalidResponse();
-    return { type: "public-key", alg: entry.alg };
-  });
+  )
+    throw invalidResponse();
+  const pubKeyCredParams = value.pubKeyCredParams.map(
+    (entry: unknown): PublicKeyCredentialParameters => {
+      if (
+        !isObject(entry) ||
+        entry.type !== "public-key" ||
+        typeof entry.alg !== "number" ||
+        !Number.isInteger(entry.alg)
+      )
+        throw invalidResponse();
+      return { type: "public-key", alg: entry.alg };
+    },
+  );
   let excludeCredentials: PublicKeyCredentialDescriptor[] | undefined;
   if (value.excludeCredentials !== undefined) {
     if (!Array.isArray(value.excludeCredentials)) throw invalidResponse();
-    excludeCredentials = value.excludeCredentials.map((entry: unknown): PublicKeyCredentialDescriptor => {
-      if (!isObject(entry) || entry.type !== "public-key" || typeof entry.id !== "string") throw invalidResponse();
-      return { type: "public-key", id: decode(entry.id) };
-    });
+    excludeCredentials = value.excludeCredentials.map(
+      (entry: unknown): PublicKeyCredentialDescriptor => {
+        if (!isObject(entry) || entry.type !== "public-key" || typeof entry.id !== "string")
+          throw invalidResponse();
+        return { type: "public-key", id: decode(entry.id) };
+      },
+    );
   }
   const authenticatorSelection: AuthenticatorSelectionCriteria = {};
   if (value.authenticatorSelection !== undefined) {
     if (!isObject(value.authenticatorSelection)) throw invalidResponse();
-    const { authenticatorAttachment, residentKey, userVerification, requireResidentKey } = value.authenticatorSelection;
+    const { authenticatorAttachment, residentKey, userVerification, requireResidentKey } =
+      value.authenticatorSelection;
     if (authenticatorAttachment !== undefined && authenticatorAttachment !== null) {
-      if (authenticatorAttachment !== "platform" && authenticatorAttachment !== "cross-platform") throw invalidResponse();
+      if (authenticatorAttachment !== "platform" && authenticatorAttachment !== "cross-platform")
+        throw invalidResponse();
       authenticatorSelection.authenticatorAttachment = authenticatorAttachment;
     }
     if (residentKey !== undefined && residentKey !== null) {
-      if (residentKey !== "required" && residentKey !== "preferred" && residentKey !== "discouraged") throw invalidResponse();
+      if (
+        residentKey !== "required" &&
+        residentKey !== "preferred" &&
+        residentKey !== "discouraged"
+      )
+        throw invalidResponse();
       authenticatorSelection.residentKey = residentKey;
     }
     if (userVerification !== undefined && userVerification !== null) {
-      if (userVerification !== "required" && userVerification !== "preferred" && userVerification !== "discouraged") throw invalidResponse();
+      if (
+        userVerification !== "required" &&
+        userVerification !== "preferred" &&
+        userVerification !== "discouraged"
+      )
+        throw invalidResponse();
       authenticatorSelection.userVerification = userVerification;
     }
     if (requireResidentKey !== undefined && requireResidentKey !== null) {
@@ -152,7 +180,14 @@ function creationOptions(optionsJson: string): PublicKeyCredentialCreationOption
     }
   }
   const attestation = value.attestation;
-  if (attestation !== undefined && attestation !== "none" && attestation !== "direct" && attestation !== "indirect" && attestation !== "enterprise") throw invalidResponse();
+  if (
+    attestation !== undefined &&
+    attestation !== "none" &&
+    attestation !== "direct" &&
+    attestation !== "indirect" &&
+    attestation !== "enterprise"
+  )
+    throw invalidResponse();
   return {
     challenge: decode(value.challenge),
     rp: { name: value.rp.name, ...(typeof value.rp.id === "string" ? { id: value.rp.id } : {}) },
@@ -169,15 +204,23 @@ export async function createPasskeyRegistration(
   optionsJson: string,
   signal: AbortSignal,
 ): Promise<Record<string, unknown>> {
-  if (!supportsPasskeys() || !navigator.credentials.create) throw new ApiError("Ключи доступа недоступны. Выберите пароль и аутентификатор.");
+  if (!supportsPasskeys() || !navigator.credentials.create)
+    throw new ApiError("Ключи доступа недоступны. Выберите пароль и аутентификатор.");
   let publicKey: PublicKeyCredentialCreationOptions;
-  try { publicKey = creationOptions(optionsJson); }
-  catch { throw invalidResponse(); }
+  try {
+    publicKey = creationOptions(optionsJson);
+  } catch {
+    throw invalidResponse();
+  }
   try {
     // The prepared button calls this before any network await, preserving Safari's gesture.
     const pending = navigator.credentials.create({ publicKey, signal });
     const credential = await pending;
-    if (!(credential instanceof PublicKeyCredential) || !(credential.response instanceof AuthenticatorAttestationResponse)) throw invalidResponse();
+    if (
+      !(credential instanceof PublicKeyCredential) ||
+      !(credential.response instanceof AuthenticatorAttestationResponse)
+    )
+      throw invalidResponse();
     return {
       id: credential.id,
       rawId: encode(credential.rawId),
@@ -185,13 +228,19 @@ export async function createPasskeyRegistration(
       response: {
         attestationObject: encode(credential.response.attestationObject),
         clientDataJSON: encode(credential.response.clientDataJSON),
-        transports: typeof credential.response.getTransports === "function" ? credential.response.getTransports() : [],
+        transports:
+          typeof credential.response.getTransports === "function"
+            ? credential.response.getTransports()
+            : [],
       },
       clientExtensionResults: credential.getClientExtensionResults(),
     };
   } catch (error) {
     if (isAbortError(error) || error instanceof ApiError) throw error;
-    if (error instanceof DOMException && error.name === "NotAllowedError") throw new ApiError("Создание ключа отменено или истекло. Повторите попытку.");
-    throw new ApiError("Не удалось создать ключ доступа. Выберите другой способ или повторите попытку.");
+    if (error instanceof DOMException && error.name === "NotAllowedError")
+      throw new ApiError("Создание ключа отменено или истекло. Повторите попытку.");
+    throw new ApiError(
+      "Не удалось создать ключ доступа. Выберите другой способ или повторите попытку.",
+    );
   }
 }

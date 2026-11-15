@@ -3,6 +3,8 @@ export const articleId = "staff-access";
 
 export type DemoStep = "signed-out" | "signed-in" | "completed";
 
+export type ClientDirectoryProgress = { version: 1; completed: boolean; deferred: boolean };
+
 export interface TrainingProgress {
   schemaVersion: 1;
   materialVersion: 1;
@@ -10,6 +12,7 @@ export interface TrainingProgress {
   deferred: boolean;
   articleRead: boolean;
   demoStep: DemoStep;
+  clientDirectory: ClientDirectoryProgress;
 }
 
 export function createProgress(staffId: string): TrainingProgress {
@@ -20,6 +23,7 @@ export function createProgress(staffId: string): TrainingProgress {
     deferred: false,
     articleRead: false,
     demoStep: "signed-out",
+    clientDirectory: { version: 1, completed: false, deferred: false },
   };
 }
 
@@ -43,6 +47,19 @@ export function readProgress(value: unknown, staffId: string): TrainingProgress 
   ) {
     throw new Error("Training progress format is unsupported.");
   }
+  const directory = "clientDirectory" in value ? value.clientDirectory : undefined;
+  if (
+    directory !== undefined &&
+    (typeof directory !== "object" ||
+      directory === null ||
+      !("version" in directory) ||
+      directory.version !== 1 ||
+      !("completed" in directory) ||
+      typeof directory.completed !== "boolean" ||
+      !("deferred" in directory) ||
+      typeof directory.deferred !== "boolean")
+  )
+    throw new Error("Client directory training format is unsupported.");
   return {
     schemaVersion: 1,
     materialVersion: trainingVersion,
@@ -50,6 +67,11 @@ export function readProgress(value: unknown, staffId: string): TrainingProgress 
     deferred: value.deferred,
     articleRead: value.articleRead,
     demoStep: value.demoStep as DemoStep,
+    clientDirectory: (directory as ClientDirectoryProgress | undefined) ?? {
+      version: 1,
+      completed: false,
+      deferred: false,
+    },
   };
 }
 
@@ -63,4 +85,22 @@ export function finishDemoSession(current: DemoStep): DemoStep {
 
 export function recordDemoStep(progress: TrainingProgress, demoStep: DemoStep): TrainingProgress {
   return progress.demoStep === "completed" ? progress : { ...progress, demoStep };
+}
+
+export function mergeTrainingProgress(
+  previous: TrainingProgress,
+  next: TrainingProgress,
+): TrainingProgress {
+  if (previous.staffId !== next.staffId) throw new Error("Training accounts do not match.");
+  return {
+    ...next,
+    demoStep: previous.demoStep === "completed" ? "completed" : next.demoStep,
+    articleRead: previous.articleRead || next.articleRead,
+    deferred: previous.deferred || next.deferred,
+    clientDirectory: {
+      version: 1,
+      completed: previous.clientDirectory.completed || next.clientDirectory.completed,
+      deferred: previous.clientDirectory.deferred || next.clientDirectory.deferred,
+    },
+  };
 }

@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { readSeenVersion, releaseNotesSeenKey, writeSeenVersion } from "./releaseNotesStorage";
 
-afterEach(() => { window.localStorage.clear(); vi.restoreAllMocks(); });
+afterEach(() => {
+  window.localStorage.clear();
+  vi.restoreAllMocks();
+});
 
 describe("release notes acknowledgement", () => {
   it("belongs to the account that closed the notes", () => {
@@ -18,8 +21,12 @@ describe("release notes acknowledgement", () => {
   });
 
   it("keeps storage failure out of the application error flow", () => {
-    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => { throw new DOMException("unavailable", "SecurityError"); });
-    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => { throw new DOMException("unavailable", "SecurityError"); });
+    vi.spyOn(Storage.prototype, "setItem").mockImplementation(() => {
+      throw new DOMException("unavailable", "SecurityError");
+    });
+    vi.spyOn(Storage.prototype, "getItem").mockImplementation(() => {
+      throw new DOMException("unavailable", "SecurityError");
+    });
 
     expect(writeSeenVersion("staff-a", "2026.12.1")).toBe(false);
     expect(readSeenVersion("staff-a")).toBeNull();

@@ -13,14 +13,15 @@ import {
 } from "antd";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import {
-  startDemoSession,
   createProgress,
   type DemoStep,
   finishDemoSession,
   recordDemoStep,
+  startDemoSession,
   type TrainingProgress,
 } from "../model/progress";
 import { loadTrainingProgress, saveTrainingProgress } from "../model/storage";
+import { ClientDirectoryArticle, ClientDirectoryExercise } from "./ClientDirectoryTraining";
 import "./employee-training.css";
 
 const { Paragraph, Text, Title } = Typography;
@@ -31,12 +32,15 @@ interface TrainingContextValue {
   ready: boolean;
   active: boolean;
   storageAvailable: boolean;
+  canUseClientDirectory: boolean;
   openTraining: () => void;
   openArticle: () => void;
   markArticleRead: () => void;
   startDemo: () => void;
   finishSession: () => void;
   restartDemo: () => void;
+  openClientTraining: () => void;
+  completeClientTraining: () => void;
 }
 
 const TrainingContext = createContext<TrainingContextValue | null>(null);
@@ -50,29 +54,46 @@ export function useEmployeeTraining(): TrainingContextValue {
 /** Only mount for an authenticated staff identity; never for a client identity. */
 export function EmployeeTrainingProvider({
   staffId,
+  canUseClientDirectory = false,
   children,
 }: {
   staffId: string;
+  canUseClientDirectory?: boolean;
   children: ReactNode;
 }) {
   return (
-    <AccountTraining key={staffId} staffId={staffId}>
+    <AccountTraining key={staffId} staffId={staffId} canUseClientDirectory={canUseClientDirectory}>
       {children}
     </AccountTraining>
   );
 }
 
-function AccountTraining({ staffId, children }: { staffId: string; children: ReactNode }) {
+function AccountTraining({
+  staffId,
+  canUseClientDirectory,
+  children,
+}: {
+  staffId: string;
+  canUseClientDirectory: boolean;
+  children: ReactNode;
+}) {
   const [progress, setProgress] = useState<TrainingProgress | null>(null);
   const [storageAvailable, setStorageAvailable] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [tab, setTab] = useState("exercise");
+  const [module, setModule] = useState<"access" | "clients">("access");
+  const [clientReplay, setClientReplay] = useState(0);
   const [replayStep, setReplayStep] = useState<DemoStep | null>(null);
   const replay = useRef<DemoStep | null>(null);
   const current = useRef<TrainingProgress | null>(null);
   const lifetime = useRef<AbortController | null>(null);
   const canPersist = useRef(true);
   const writes = useRef<Promise<void>>(Promise.resolve());
+  const visibleModal = modalOpen && (module !== "clients" || canUseClientDirectory);
+
+  useEffect(() => {
+    if (module === "clients" && !canUseClientDirectory) setModalOpen(false);
+  }, [module, canUseClientDirectory]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -136,14 +157,17 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
     progress,
     demoStep: replayStep ?? progress?.demoStep ?? null,
     ready: progress !== null,
-    active: modalOpen,
+    active: visibleModal,
     storageAvailable,
+    canUseClientDirectory,
     openTraining: () => {
+      setModule("access");
       startTrainingSession();
       setTab("exercise");
       setModalOpen(true);
     },
     openArticle: () => {
+      setModule("access");
       markArticleRead();
       setTab("article");
       setModalOpen(true);
@@ -155,10 +179,31 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
       else update((record) => recordDemoStep(record, finishDemoSession(record.demoStep)));
     },
     restartDemo: startTrainingSession,
+    openClientTraining: () => {
+      if (!canUseClientDirectory) return;
+      setModule("clients");
+      setTab("exercise");
+      setClientReplay((value) => value + 1);
+      setModalOpen(true);
+    },
+    completeClientTraining: () => {
+      if (!canUseClientDirectory) return;
+      if (!current.current?.clientDirectory.completed) {
+        update((record) => ({
+          ...record,
+          clientDirectory: { ...record.clientDirectory, completed: true },
+        }));
+      }
+    },
   };
 
   function closeTraining() {
-    if (progress?.demoStep !== "completed") {
+    if (module === "clients" && !progress?.clientDirectory.completed) {
+      update((record) => ({
+        ...record,
+        clientDirectory: { ...record.clientDirectory, deferred: true },
+      }));
+    } else if (module === "access" && progress?.demoStep !== "completed") {
       update((record) => ({ ...record, deferred: true }));
     }
     setModalOpen(false);
@@ -168,48 +213,96 @@ function AccountTraining({ staffId, children }: { staffId: string; children: Rea
   return (
     <TrainingContext.Provider value={value}>
       {progress ? (
-        <div inert={modalOpen && progress.demoStep !== "completed"}>{children}</div>
+        <div
+          inert={
+            visibleModal &&
+            (module === "clients"
+              ? !progress.clientDirectory.completed
+              : progress.demoStep !== "completed")
+          }
+        >
+          {children}
+        </div>
       ) : (
         <div className="employee-training-loading" role="status" aria-live="polite">
           <Spin />
           <span>Загрузка…</span>
         </div>
       )}
-      <Modal
-        className="employee-training-modal"
-        style={{ maxWidth: "100vw" }}
-        title="Вход и сессия"
-        open={Boolean(progress) && modalOpen}
-        closable={false}
-        mask={{ closable: false }}
-        keyboard={false}
-        width={760}
-        footer={[
-          <Button key="defer" onClick={closeTraining}>
-            {progress?.demoStep === "completed" ? "К работе" : "Отложить"}
-          </Button>,
-        ]}
-      >
-        {!storageAvailable && <StorageNotice />}
-        <Tabs
-          activeKey={tab}
-          onChange={(key) => {
-            setTab(key);
-            if (key === "article") markArticleRead();
-          }}
-          items={[
-            { key: "exercise", label: "Тренировка", children: <SessionExercise /> },
-            { key: "article", label: "Инструкция", children: <AccessArticle /> },
+      {(module !== "clients" || canUseClientDirectory) && (
+        <Modal
+          className="employee-training-modal"
+          style={{ maxWidth: "100vw" }}
+          title={module === "clients" ? "Список клиентов" : "Вход и сессия"}
+          open={Boolean(progress) && visibleModal}
+          closable={false}
+          mask={{ closable: false }}
+          keyboard={false}
+          width={module === "clients" ? 1040 : 760}
+          footer={[
+            <Button key="defer" onClick={closeTraining}>
+              {(
+                module === "clients"
+                  ? progress?.clientDirectory.completed
+                  : progress?.demoStep === "completed"
+              )
+                ? "К работе"
+                : "Отложить"}
+            </Button>,
           ]}
-        />
-      </Modal>
-      {progress?.deferred && progress.demoStep !== "completed" && !modalOpen && (
-        <div className="employee-training-resume">
-          <Button type="primary" size="large" onClick={value.openTraining}>
-            Продолжить обучение
-          </Button>
-        </div>
+        >
+          {!storageAvailable && <StorageNotice />}
+          <Tabs
+            activeKey={tab}
+            onChange={(key) => {
+              setTab(key);
+              if (key === "article" && module === "access") markArticleRead();
+            }}
+            items={[
+              {
+                key: "exercise",
+                label: "Тренировка",
+                children:
+                  module === "clients" ? (
+                    canUseClientDirectory ? (
+                      <ClientDirectoryExercise
+                        key={clientReplay}
+                        onComplete={value.completeClientTraining}
+                      />
+                    ) : null
+                  ) : (
+                    <SessionExercise />
+                  ),
+              },
+              {
+                key: "article",
+                label: "Инструкция",
+                children: module === "clients" ? <ClientDirectoryArticle /> : <AccessArticle />,
+              },
+            ]}
+          />
+        </Modal>
       )}
+      {progress &&
+        !visibleModal &&
+        ((progress.deferred && progress.demoStep !== "completed") ||
+          (canUseClientDirectory &&
+            progress.clientDirectory.deferred &&
+            !progress.clientDirectory.completed)) && (
+          <div className="employee-training-resume">
+            <Button
+              type="primary"
+              size="large"
+              onClick={
+                progress.deferred && progress.demoStep !== "completed"
+                  ? value.openTraining
+                  : value.openClientTraining
+              }
+            >
+              Продолжить обучение
+            </Button>
+          </div>
+        )}
     </TrainingContext.Provider>
   );
 }
@@ -243,7 +336,9 @@ function SessionExercise() {
         items={[{ title: "Начать" }, { title: "Выйти" }]}
       />
       {demoStep === "signed-out" && (
-        <Button type="primary" onClick={startDemo}>Начать обучение</Button>
+        <Button type="primary" onClick={startDemo}>
+          Начать обучение
+        </Button>
       )}
       {demoStep === "signed-in" && (
         <Card size="small" title="Учебная сессия открыта">
@@ -254,18 +349,14 @@ function SessionExercise() {
             <Button type="primary" onClick={finishSession}>
               Выйти из демонстрации
             </Button>
-            <Button onClick={restartDemo}>
-              Начать заново
-            </Button>
+            <Button onClick={restartDemo}>Начать заново</Button>
           </Space>
         </Card>
       )}
       {completed && (
         <div className="employee-training-exercise">
           <Alert type="success" showIcon title="Тренировка пройдена" />
-          <Button onClick={restartDemo}>
-            Повторить тренировку
-          </Button>
+          <Button onClick={restartDemo}>Повторить тренировку</Button>
         </div>
       )}
     </div>
@@ -288,8 +379,8 @@ function AccessArticle() {
             children: (
               <Paragraph>
                 Откройте полученную ссылку и пройдите шаги: пароль, аутентификатор, ключ доступа.
-                Кнопка пропуска доступна там, где выбранные средства входа и роль это допускают.
-                У суперпользователя и администратора второй фактор обязателен.
+                Кнопка пропуска доступна там, где выбранные средства входа и роль это допускают. У
+                суперпользователя и администратора второй фактор обязателен.
               </Paragraph>
             ),
           },
@@ -319,8 +410,9 @@ function AccessArticle() {
             label: "Завершите сессию на общем устройстве",
             children: (
               <Paragraph>
-                Откройте меню под приветствием в верхней панели и нажмите «Выйти». Закрытие вкладки не завершает сессию на сервере.
-                Выход на этом устройстве не затрагивает другие устройства.
+                Откройте меню под приветствием в верхней панели и нажмите «Выйти». Закрытие вкладки
+                не завершает сессию на сервере. Выход на этом устройстве не затрагивает другие
+                устройства.
               </Paragraph>
             ),
           },
@@ -341,7 +433,14 @@ function AccessArticle() {
 }
 
 export function TrainingWorkspace() {
-  const { progress, storageAvailable, openTraining, markArticleRead } = useEmployeeTraining();
+  const {
+    progress,
+    storageAvailable,
+    canUseClientDirectory,
+    openTraining,
+    openClientTraining,
+    markArticleRead,
+  } = useEmployeeTraining();
   return (
     <div className="employee-training-workspace">
       <div>
@@ -362,7 +461,11 @@ export function TrainingWorkspace() {
       >
         <Space wrap>
           <Button type="primary" onClick={openTraining}>
-            {progress?.demoStep === "completed" ? "Повторить тренировку" : progress?.deferred ? "Продолжить обучение" : "Начать обучение"}
+            {progress?.demoStep === "completed"
+              ? "Повторить тренировку"
+              : progress?.deferred
+                ? "Продолжить обучение"
+                : "Начать обучение"}
           </Button>
         </Space>
       </Card>
@@ -378,6 +481,39 @@ export function TrainingWorkspace() {
           },
         ]}
       />
+      {canUseClientDirectory && (
+        <Card
+          title="Список клиентов"
+          extra={
+            <Tag color={progress?.clientDirectory.completed ? "success" : "processing"}>
+              {progress?.clientDirectory.completed
+                ? "Пройдено"
+                : progress?.clientDirectory.deferred
+                  ? "Отложено"
+                  : "К прохождению"}
+            </Tag>
+          }
+        >
+          <Button type="primary" onClick={openClientTraining}>
+            {progress?.clientDirectory.completed
+              ? "Повторить тренировку"
+              : progress?.clientDirectory.deferred
+                ? "Продолжить обучение"
+                : "Начать обучение"}
+          </Button>
+        </Card>
+      )}
+      {canUseClientDirectory && (
+        <Collapse
+          items={[
+            {
+              key: "clients",
+              label: "Инструкция: список клиентов",
+              children: <ClientDirectoryArticle />,
+            },
+          ]}
+        />
+      )}
     </div>
   );
 }

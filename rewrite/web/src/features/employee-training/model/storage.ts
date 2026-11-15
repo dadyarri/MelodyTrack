@@ -1,4 +1,4 @@
-import { readProgress, type TrainingProgress } from "./progress";
+import { mergeTrainingProgress, readProgress, type TrainingProgress } from "./progress";
 
 const databaseName = "melodytrack-rewrite-training";
 const storeName = "progress";
@@ -109,12 +109,7 @@ export async function saveTrainingProgress(
       try {
         const previous = readProgress(request.result, progress.staffId);
         // A stale tab must not erase completion, article reading or explicit deferral.
-        store.put({
-          ...progress,
-          demoStep: previous.demoStep === "completed" ? "completed" : progress.demoStep,
-          articleRead: previous.articleRead || progress.articleRead,
-          deferred: previous.deferred || progress.deferred,
-        });
+        store.put(mergeTrainingProgress(previous, progress));
       } catch {
         store.transaction.abort();
       }

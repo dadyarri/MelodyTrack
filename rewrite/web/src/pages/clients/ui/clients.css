@@ -1,0 +1,128 @@
+.directory-page {
+  min-width: 0;
+}
+.directory-page .data-view-table {
+  min-width: 820px;
+}
+.directory-page .data-view-table th:first-child {
+  width: 30%;
+}
+.directory-page .data-view-table th:nth-child(2) {
+  width: 12%;
+}
+.directory-page .data-view-table td:last-child {
+  width: 120px;
+}
+.directory-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.directory-filters > label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.directory-filters .ant-select {
+  min-width: 170px;
+}
+.directory-name {
+  display: block;
+  width: 100%;
+  min-height: 32px;
+  padding: 0;
+  border: 0;
+  color: var(--color-text);
+  background: none;
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.directory-name:hover {
+  color: var(--color-primary);
+}
+.directory-unknown {
+  color: var(--color-muted);
+}
+.directory-quick-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.directory-quick-actions button,
+.directory-quick-actions a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  min-height: 32px;
+  border: 0;
+  border-radius: 4px;
+  padding: 6px;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+}
+.directory-quick-actions button:hover,
+.directory-quick-actions a:hover {
+  background: var(--color-elevated);
+}
+.directory-contact {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 16px;
+  overflow-wrap: anywhere;
+}
+.directory-contact-kind,
+.directory-contact-comment,
+.directory-muted {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.directory-profile {
+  display: grid;
+  gap: 28px;
+}
+.directory-profile-fields {
+  display: grid;
+  gap: 16px;
+  margin: 0;
+}
+.directory-profile-fields > div {
+  display: grid;
+  grid-template-columns: 130px minmax(0, 1fr);
+  gap: 16px;
+}
+.directory-profile-fields dt {
+  color: var(--color-muted);
+}
+.directory-profile-fields dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.directory-drawer .ant-drawer-body {
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+@media (max-width: 767px) {
+  .directory-name,
+  .directory-quick-actions button,
+  .directory-quick-actions a {
+    min-height: 44px;
+  }
+  .directory-quick-actions button,
+  .directory-quick-actions a {
+    min-width: 44px;
+  }
+  .directory-filters > label {
+    flex: 1 1 200px;
+  }
+  .directory-filters .ant-select {
+    flex: 1;
+  }
+}
