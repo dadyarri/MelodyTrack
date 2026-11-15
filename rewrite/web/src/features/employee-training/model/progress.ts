@@ -75,18 +75,6 @@ export function readProgress(value: unknown, staffId: string): TrainingProgress 
   };
 }
 
-export function startDemoSession(current: DemoStep): DemoStep {
-  return current === "signed-out" ? "signed-in" : current;
-}
-
-export function finishDemoSession(current: DemoStep): DemoStep {
-  return current === "signed-in" ? "completed" : current;
-}
-
-export function recordDemoStep(progress: TrainingProgress, demoStep: DemoStep): TrainingProgress {
-  return progress.demoStep === "completed" ? progress : { ...progress, demoStep };
-}
-
 export function mergeTrainingProgress(
   previous: TrainingProgress,
   next: TrainingProgress,

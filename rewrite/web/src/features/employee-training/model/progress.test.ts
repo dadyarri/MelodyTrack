@@ -1,22 +1,7 @@
 import { describe, expect, it } from "vitest";
-import {
-  createProgress,
-  finishDemoSession,
-  mergeTrainingProgress,
-  readProgress,
-  recordDemoStep,
-  startDemoSession,
-} from "./progress";
+import { createProgress, mergeTrainingProgress, readProgress } from "./progress";
 
-describe("staff access training", () => {
-  it("requires the demonstrated session to open before the exercise can finish", () => {
-    expect(finishDemoSession("signed-out")).toBe("signed-out");
-    const signedIn = startDemoSession("signed-out");
-
-    expect(signedIn).toBe("signed-in");
-    expect(finishDemoSession(signedIn)).toBe("completed");
-  });
-
+describe("employee training progress compatibility", () => {
   it("keeps reading an article and deferring separate from completing an exercise", () => {
     const progress = { ...createProgress("staff-a"), articleRead: true, deferred: true };
 
@@ -82,25 +67,5 @@ describe("staff access training", () => {
     expect(merged.articleRead).toBe(true);
     expect(merged.deferred).toBe(true);
     expect(merged.clientDirectory).toEqual({ version: 1, completed: true, deferred: true });
-  });
-
-  it("preserves completed training and article history while replaying the demonstration", () => {
-    const completed = {
-      ...createProgress("staff-a"),
-      demoStep: "completed" as const,
-      articleRead: true,
-      deferred: true,
-    };
-
-    const replayStart = recordDemoStep(completed, "signed-out");
-    const signedIn = startDemoSession("signed-out");
-    const replayInProgress = recordDemoStep(replayStart, signedIn);
-    const replayComplete = recordDemoStep(replayInProgress, finishDemoSession(signedIn));
-
-    expect(replayStart).toBe(completed);
-    expect(replayInProgress).toBe(completed);
-    expect(replayComplete).toBe(completed);
-    expect(signedIn).toBe("signed-in");
-    expect(finishDemoSession(signedIn)).toBe("completed");
   });
 });

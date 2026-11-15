@@ -1,4 +1,4 @@
-import { Alert, Button, Input, Radio, Select, Space, Typography } from "antd";
+import { Alert, Button, Collapse, Input, Radio, Select, Space, Typography } from "antd";
 import { useState } from "react";
 import "./clientDirectoryTraining.css";
 import {
@@ -14,6 +14,12 @@ import {
 } from "../model/clientDirectoryDemo";
 
 const { Paragraph, Title } = Typography;
+export type ClientTrainingTopic = "search" | "sorting" | "card";
+export const clientTrainingTitles: Record<ClientTrainingTopic, string> = {
+  search: "Поиск и фильтры",
+  sorting: "Сортировка таблицы",
+  card: "Карточка клиента",
+};
 const initialQuery: DemoClientQuery = {
   search: "",
   source: "all",
@@ -29,8 +35,20 @@ const columns: DataViewColumn<DemoClient>[] = [
   },
 ];
 
-export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void }) {
-  const [query, setQuery] = useState<DemoClientQuery>(initialQuery);
+export function ClientDirectoryExercise({
+  topic,
+  onComplete,
+  onStartTraining,
+}: {
+  topic: ClientTrainingTopic;
+  onComplete: () => void;
+  onStartTraining: (topic: ClientTrainingTopic) => void;
+}) {
+  const startingQuery: DemoClientQuery =
+    topic === "sorting"
+      ? { search: "Иванов Антон", source: "recommendation", archive: "active", direction: "asc" }
+      : { ...initialQuery, direction: "desc" };
+  const [query, setQuery] = useState<DemoClientQuery>(startingQuery);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [completed, setCompleted] = useState(false);
@@ -52,21 +70,23 @@ export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void
 
   const sort: DataViewSort[] = [{ key: "name", direction: query.direction }];
 
+  if (topic === "card") return <ClientCardPractice />;
+
   return (
     <div className="employee-training-exercise">
-      <Alert
-        type="info"
-        title="Учебные клиенты"
-        description="Вымышленные данные. Настоящий список не меняется."
-      />
+      <p className="employee-training-demo-note">
+        <span>Учебные клиенты</span> · Настоящие данные не меняются.
+      </p>
       <Paragraph>
-        Введите полное ФИО «Иванов Антон» и выберите источник «Рекомендация». Оставьте только тех,
-        кто в работе, и расположите ФИО от Я к А. В результате должны остаться Иванов Артём и Иванов
-        Антон: поиск допускает до трёх изменений в полном ФИО.
+        {topic === "search"
+          ? "Введите полное ФИО «Иванов Антон» и выберите источник «Рекомендация». Оставьте только тех, кто в работе. В результате должны остаться Иванов Артём и Иванов Антон: поиск допускает до трёх изменений в полном ФИО. Порядок от Я к А уже выбран."
+          : "Поиск и фильтры уже настроены. Нажмите стрелку в заголовке ФИО и расположите клиентов от Я к А: сначала Иванов Артём, затем Иванов Антон."}
       </Paragraph>
       <CollectionDataView
         ariaLabel="Учебный список клиентов"
-        columns={columns}
+        columns={
+          topic === "search" ? columns.map((column) => ({ ...column, sortable: false })) : columns
+        }
         items={clients.slice((page - 1) * pageSize, page * pageSize)}
         rowKey={(client) => client.id}
         total={clients.length}
@@ -84,7 +104,7 @@ export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void
         }
         activeFilterCount={Number(query.source !== "all") + Number(query.archive !== "all")}
         onResetFilters={() => {
-          setQuery(initialQuery);
+          setQuery(startingQuery);
           setPage(1);
           setAttempted(false);
         }}
@@ -116,7 +136,11 @@ export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void
       {attempted && (
         <Alert
           type="warning"
-          title="Проверьте поиск, источник, состояние работы и порядок фамилий."
+          title={
+            topic === "search"
+              ? "Проверьте поиск, источник и состояние работы."
+              : "Проверьте порядок фамилий: от Я к А."
+          }
         />
       )}
       {completed ? (
@@ -130,7 +154,7 @@ export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void
         <Button
           onClick={() => {
             setCompleted(false);
-            setQuery(initialQuery);
+            setQuery(startingQuery);
             setPage(1);
             setAttempted(false);
           }}
@@ -138,7 +162,14 @@ export function ClientDirectoryExercise({ onComplete }: { onComplete: () => void
           Повторить тренировку
         </Button>
       )}
-      <ClientCardPractice />
+      {completed && topic === "search" && (
+        <Button type="primary" onClick={() => onStartTraining("sorting")}>
+          К сортировке
+        </Button>
+      )}
+      {completed && topic === "sorting" && (
+        <Button onClick={() => onStartTraining("search")}>К поиску и фильтрам</Button>
+      )}
     </div>
   );
 }
@@ -168,11 +199,13 @@ function ClientCardPractice() {
       <Title level={5} id="client-card-practice-heading">
         Учебная карточка
       </Title>
-      <Alert
-        type="info"
-        title="Демонстрационные данные"
-        description="Изменения сохраняются только в этой тренировке и не затрагивают карточки клиентов."
-      />
+      <p className="employee-training-demo-note">
+        Учебная карточка · Настоящие данные не меняются.
+      </p>
+      <Paragraph>
+        Заполните имя, фамилию и источник. При добавлении телефона отметьте его основным, затем
+        сохраните учебную карточку.
+      </Paragraph>
       <Space orientation="vertical" size={12} className="wide">
         <div className="employee-training-field">
           <span>
@@ -269,44 +302,92 @@ function ClientCardPractice() {
   );
 }
 
-export function ClientDirectoryArticle() {
+export function ClientDirectoryArticle({
+  onStartTraining,
+}: {
+  onStartTraining: (topic: ClientTrainingTopic) => void;
+}) {
   return (
     <div className="employee-training-article">
-      <Title level={4}>Список клиентов</Title>
-      <Paragraph>
-        Поиск находит клиентов по любой части ФИО. Для полного ФИО допускается до трёх вставок,
-        удалений или замен символов. Регистр и лишние пробелы не учитываются. Фильтры состояния
-        работы и источника можно сочетать.
-      </Paragraph>
-      <Paragraph>
-        Нажмите стрелку в заголовке колонки. Повторное нажатие меняет направление и затем убирает
-        поле из сортировки. Можно добавить несколько полей; номера у стрелок обозначают их
-        приоритет. Изменение поиска, фильтров и сортировки возвращает на первую страницу.
-      </Paragraph>
-      <Paragraph>
-        Таблица компактная, по умолчанию показывает 10 строк. Нажатие на клиента открывает правую
-        панель с контактами и остальными данными. На телефоне таблицу можно прокручивать по
-        горизонтали. Пустой результат означает, что условиям никто не соответствует; при ошибке
-        загрузки используйте повтор.
-      </Paragraph>
-      <Paragraph>
-        «В работе» и «Архив» описывают состояние работы. Переключение фильтра ничего не архивирует и
-        не восстанавливает.
-      </Paragraph>
-      <Paragraph>
-        В боковой панели видны профиль и список контактов. Если у сотрудника есть эффективное право
-        на запись карточек, он может создать или изменить ФИО, дату рождения, источник и контакты.
-        Для каждого используемого вида контакта требуется один основной контакт; если удалить
-        основной, выберите замену явно. Источник обязателен, список контактов может быть пустым.
-      </Paragraph>
-      <Paragraph>
-        Совпадение телефона или почты только показывает предупреждение и не блокирует сохранение.
-        Заметки и их историю видят сотрудники с соответствующими эффективными правами. Заметки
-        сохраняются с проверкой актуального состояния, поэтому при конфликте сначала загрузите
-        серверную версию. Восстановление доступно для архивных карточек без возврата отозванного
-        доступа; архивирование пока отключено, пока не перенесены проверки зависимостей расписания и
-        финансов.
-      </Paragraph>
+      <Collapse
+        items={[
+          {
+            key: "search",
+            label: "Поиск и фильтры",
+            children: (
+              <div className="employee-training-topic">
+                <Paragraph>
+                  Поиск находит клиентов по любой части ФИО с допуском до трёх вставок, удалений или
+                  замен символов. Например, «багд» находит «Богданова Полина». Регистр и лишние
+                  пробелы не учитываются. Для коротких запросов действует тот же допуск, поэтому
+                  запросы до трёх символов совпадают с любым ФИО. Фильтры состояния работы и
+                  источника можно сочетать.
+                </Paragraph>
+                <Paragraph>
+                  Изменение поиска и фильтров возвращает на первую страницу. Пустой результат
+                  означает, что условиям никто не соответствует; при ошибке загрузки используйте
+                  повтор.
+                </Paragraph>
+                <Button type="primary" onClick={() => onStartTraining("search")}>
+                  Тренировка поиска и фильтров
+                </Button>
+              </div>
+            ),
+          },
+          {
+            key: "sorting",
+            label: "Сортировка таблицы",
+            children: (
+              <div className="employee-training-topic">
+                <Paragraph>
+                  Нажмите стрелку в заголовке колонки. Повторное нажатие меняет направление и затем
+                  убирает поле из сортировки. Можно добавить несколько полей; номера у стрелок
+                  обозначают их приоритет. Изменение сортировки возвращает на первую страницу.
+                  Таблица по умолчанию показывает 10 строк; на телефоне она прокручивается по
+                  горизонтали.
+                </Paragraph>
+                <Button type="primary" onClick={() => onStartTraining("sorting")}>
+                  Тренировка сортировки
+                </Button>
+              </div>
+            ),
+          },
+          {
+            key: "card",
+            label: "Карточка клиента",
+            children: (
+              <div className="employee-training-topic">
+                <Paragraph>
+                  Нажатие на клиента открывает правую панель с контактами и остальными данными. В
+                  боковой панели видны профиль и список контактов. Если у сотрудника есть
+                  эффективное право на запись карточек, он может создать или изменить ФИО, дату
+                  рождения, источник и контакты. Для каждого используемого вида контакта требуется
+                  один основной контакт; при удалении основного контакта выберите замену явно.
+                  Источник обязателен, список контактов может быть пустым. Совпадение телефона или
+                  почты показывает предупреждение и не блокирует сохранение.
+                </Paragraph>
+                <Button type="primary" onClick={() => onStartTraining("card")}>
+                  Тренировка карточки
+                </Button>
+              </div>
+            ),
+          },
+          {
+            key: "status",
+            label: "Состояние работы и заметки",
+            children: (
+              <Paragraph>
+                «В работе» и «Архив» описывают состояние работы. Переключение фильтра ничего не
+                архивирует и не восстанавливает. Заметки и их историю видят сотрудники с
+                соответствующими эффективными правами. Заметки сохраняются с проверкой актуального
+                состояния: при конфликте сначала загрузите серверную версию. Восстановление доступно
+                для архивных карточек без возврата отозванного доступа; архивирование пока отключено
+                до переноса проверок зависимостей расписания и финансов.
+              </Paragraph>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

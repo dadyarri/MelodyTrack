@@ -1,4 +1,11 @@
-import { cleanup, fireEvent, render as renderUi, screen, waitFor } from "@testing-library/react";
+import {
+  cleanup,
+  fireEvent,
+  render as renderUi,
+  screen,
+  waitFor,
+  within,
+} from "@testing-library/react";
 import type { ReactNode } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Notifications } from "@/shared/ui/notifications";
@@ -47,18 +54,6 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function LaunchTraining() {
-  const { openTraining, progress } = useEmployeeTraining();
-  return (
-    <>
-      <button type="button" onClick={openTraining}>
-        Запустить обучение
-      </button>
-      <output>{progress?.demoStep}</output>
-    </>
-  );
-}
-
 function LaunchClientTraining() {
   const { openClientTraining, progress, active } = useEmployeeTraining();
   return (
@@ -74,46 +69,79 @@ function LaunchClientTraining() {
   );
 }
 
-describe("training account entry", () => {
-  it("opens the demo account with one click without credential fields or API requests", async () => {
+describe("legacy access training", () => {
+  it("does not block the workspace or open onboarding from saved access progress", async () => {
     storage.load.mockResolvedValue(createProgress("staff-a"));
     render(
       <EmployeeTrainingProvider staffId="staff-a">
-        <LaunchTraining />
+        <LaunchClientTraining />
+        <TrainingWorkspace />
       </EmployeeTrainingProvider>,
     );
-    const start = await screen.findByRole("button", { name: "Начать обучение" });
 
-    fireEvent.click(start);
+    await waitFor(() => expect(screen.queryByText("Загрузка…")).toBeNull());
 
-    await screen.findByText("Учебная сессия открыта");
-    expect(screen.queryByRole("textbox")).toBeNull();
-    expect(fetch).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Выйти из демонстрации" }));
-    await screen.findByText("Тренировка пройдена");
-    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByLabelText("Учебное окно").textContent).toBe("закрыто");
+    expect(screen.queryByText("Вход и сессия")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Начать обучение" })).toBeNull();
   });
 
-  it("starts a replay from its launch button without replacing completed progress", async () => {
+  it("keeps each exercise launch inside its nested topic accordion", async () => {
     storage.load.mockResolvedValue({
       ...createProgress("staff-a"),
       demoStep: "completed",
-      articleRead: true,
+      clientDirectory: { version: 1, completed: true, deferred: false },
     });
     render(
-      <EmployeeTrainingProvider staffId="staff-a">
-        <LaunchTraining />
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <TrainingWorkspace />
       </EmployeeTrainingProvider>,
     );
-    const launch = await screen.findByRole("button", { name: "Запустить обучение" });
-    await waitFor(() => expect(screen.getByRole("status").textContent).toBe("completed"));
 
+    const topic = await screen.findByRole("button", { name: "Список клиентов" });
+    fireEvent.click(topic);
+    const searchTopic = await screen.findByRole("button", { name: "Поиск и фильтры" });
+    fireEvent.click(searchTopic);
+
+    const launch = await screen.findByRole("button", { name: "Тренировка поиска и фильтров" });
+    expect(searchTopic.parentElement?.contains(launch)).toBe(true);
     fireEvent.click(launch);
 
-    await screen.findByText("Учебная сессия открыта");
-    expect(screen.getByRole("status").textContent).toBe("completed");
+    await screen.findByText("Учебные клиенты");
+    expect(within(screen.getByRole("dialog")).queryByLabelText("Учебная фамилия")).toBeNull();
+  });
+
+  it.each([
+    ["Сортировка таблицы", "Тренировка сортировки", "sorting"],
+    ["Карточка клиента", "Тренировка карточки", "card"],
+  ])("opens only the exercise belonging to %s", async (topic, launch, kind) => {
+    storage.load.mockResolvedValue({
+      ...createProgress("staff-a"),
+      clientDirectory: { version: 1, completed: true, deferred: false },
+    });
+    render(
+      <EmployeeTrainingProvider staffId="staff-a" canUseClientDirectory>
+        <TrainingWorkspace />
+      </EmployeeTrainingProvider>,
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Список клиентов" }));
+    fireEvent.click(await screen.findByRole("button", { name: topic }));
+    fireEvent.click(await screen.findByRole("button", { name: launch }));
+
+    const dialog = within(await screen.findByRole("dialog"));
+    if (kind === "card") {
+      expect(dialog.getByLabelText("Учебная фамилия")).toBeDefined();
+      expect(dialog.queryByRole("searchbox")).toBeNull();
+    } else {
+      expect(dialog.getByRole("button", { name: "Сортировка: ФИО" })).toBeDefined();
+      expect(dialog.getByRole("searchbox", { name: "Поиск" })).toHaveProperty(
+        "value",
+        "Иванов Антон",
+      );
+      expect(dialog.queryByLabelText("Учебная фамилия")).toBeNull();
+    }
     expect(storage.save).not.toHaveBeenCalled();
-    expect(screen.queryByRole("textbox")).toBeNull();
   });
 });
 
@@ -135,9 +163,7 @@ describe("client directory module", () => {
 
     await screen.findByText("Учебные клиенты");
     fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
-    await screen.findByText("Проверьте поиск, источник, состояние работы и порядок фамилий.");
-    fireEvent.click(screen.getByRole("tab", { name: "Инструкция" }));
-    await screen.findByText(/Поиск находит клиентов по любой части ФИО/);
+    await screen.findByText("Проверьте поиск, источник и состояние работы.");
     expect(screen.getByText("clients-incomplete")).toBeDefined();
     expect(storage.save).not.toHaveBeenCalled();
     expect(fetch).not.toHaveBeenCalled();
@@ -213,10 +239,17 @@ describe("client directory module", () => {
     fireEvent.click(
       await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
-
     const result = screen.getByRole("button", { name: "Проверить результат" });
     fireEvent.click(result);
+
+    await screen.findByText("Тренировка пройдена");
+    expect(persisted.clientDirectory.completed).toBe(false);
+    expect(storage.save).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "К сортировке" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Проверить результат" }));
+    await screen.findByText("Проверьте порядок фамилий: от Я к А.");
+    fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
+    fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
 
     await screen.findByText("Тренировка пройдена");
     await waitFor(() => expect(persisted.clientDirectory.completed).toBe(true));
@@ -287,7 +320,11 @@ describe("client directory module", () => {
     fireEvent.click(
       await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
+    fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
+
+    await screen.findByText("Тренировка пройдена");
+    fireEvent.click(screen.getByRole("button", { name: "К сортировке" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Сортировка: ФИО" }));
     fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
 
     await screen.findByText("Тренировка пройдена");

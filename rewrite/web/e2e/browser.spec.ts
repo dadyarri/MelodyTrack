@@ -426,7 +426,10 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
     const storage = await import("../src/features/employee-training/model/storage.ts");
     const model = await import("../src/features/employee-training/model/progress.ts");
     await storage.saveTrainingProgress(
-      { ...model.createProgress(staffId), deferred: true },
+      {
+        ...model.createProgress(staffId),
+        clientDirectory: { version: 1, completed: false, deferred: true },
+      },
       new AbortController().signal,
     );
   }, staffId);
