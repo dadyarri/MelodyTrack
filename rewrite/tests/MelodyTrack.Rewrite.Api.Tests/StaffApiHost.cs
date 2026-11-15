@@ -40,7 +40,8 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
     internal LoginState Logins { get; } = logins;
 
     internal static async Task<StaffApiHost> StartAsync(Actor.Staff actor, CancellationToken cancellationToken,
-        NotesState? notes = null, ExpenseState? expenses = null, DateTimeOffset? now = null)
+        NotesState? notes = null, ExpenseState? expenses = null, DateTimeOffset? now = null,
+        IClientDirectoryStore? directory = null)
     {
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { EnvironmentName = "Testing" });
         builder.WebHost.UseUrls("http://127.0.0.1:0");
@@ -59,6 +60,11 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         builder.Services.AddSingleton<ClientNotesService>();
         builder.Services.AddSingleton<IExpenseStore>(expenses ?? new ExpenseState());
         builder.Services.AddSingleton<ExpenseService>();
+        if (directory is not null)
+        {
+            builder.Services.AddSingleton(directory);
+            builder.Services.AddSingleton<ClientDirectoryService>();
+        }
         builder.Services.AddBrowserAccess();
         builder.Services.AddSingleton<IBrowserAccessStore, BrowserState>();
         builder.Services.AddStaffAuthentication();
@@ -69,6 +75,7 @@ internal sealed class StaffApiHost(WebApplication application, HttpClient client
         app.MapExpensesEndpoints();
         app.MapStaffSessionEndpoints();
         app.MapStaffPoliciesEndpoints();
+        if (directory is not null) app.MapClientDirectoryEndpoints();
         app.MapGet("/_test/identity", (ClaimsPrincipal principal, CurrentStaff current) =>
             TypedResults.Ok(new IdentityProbe(current.Actor.Id.Value,
                 principal.Claims.Select(claim => new ClaimProbe(claim.Type, claim.Value)).ToArray())));

@@ -81,7 +81,12 @@ public static class StaffCredentialEndpoints
         {
             context.HttpContext.Response.Headers.CacheControl = "no-store";
             await context.HttpContext.RequestServices.GetRequiredService<BrowserAccessContext>().EnsureAsync(context.HttpContext.RequestAborted);
-            return await next(context);
+            var result = await next(context);
+            var response = result;
+            while (response is INestedHttpResult nested) response = nested.Result;
+            if (response is IValueHttpResult { Value: StaffCredentialResponse { RefreshToken: { } refresh } })
+                StaffSessionCookies.Write(context.HttpContext, refresh);
+            return result;
         });
 
         Public(routes.MapPost("/register/invitation", async (StaffRegistrationInvitationRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
@@ -112,6 +117,7 @@ public static class StaffCredentialEndpoints
                 : Map(await flows.FactorAsync(request.Challenge!, request.Code, Json(request.PasskeyResponse), ct), true)));
         Public(routes.MapPost("/refresh", async (StaffRefreshRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.RefreshAsync(request.RefreshToken!, false, ct), true)));
+        Public(routes.MapPost("/restore", RestoreAsync).WithName("RestoreStaffSession"));
         Public(routes.MapPost("/resume", async (StaffRefreshRequest request, StaffCredentialFlows flows, CancellationToken ct) =>
             !Present(request.RefreshToken) ? Unauthorized<StaffCredentialResponse>() : Map(await flows.RefreshAsync(request.RefreshToken!, true, ct), true)));
 
@@ -164,6 +170,21 @@ public static class StaffCredentialEndpoints
     }
 
     private static void Public(RouteHandlerBuilder endpoint) => Describe(endpoint.AllowAnonymous().RequireRateLimiting("staff-credentials"));
+
+    public static async Task<Results<Ok<StaffCredentialResponse>, ProblemHttpResult>> RestoreAsync(
+        HttpContext context, StaffCredentialFlows flows, CancellationToken cancellationToken)
+    {
+        if (!StaffSessionCookies.HasTrustedOrigin(context)) return Failure<StaffCredentialResponse>(new OperationError.Forbidden());
+        var refresh = context.Request.Cookies[StaffSessionCookies.Name];
+        if (string.IsNullOrWhiteSpace(refresh))
+        {
+            StaffSessionCookies.Clear(context);
+            return Unauthorized<StaffCredentialResponse>();
+        }
+        var result = await flows.RefreshAsync(refresh, false, cancellationToken);
+        if (result.IsFailure) StaffSessionCookies.Clear(context);
+        return Map(result, true);
+    }
     private static void Describe(RouteHandlerBuilder endpoint) => endpoint.ProducesProblem(400).ProducesProblem(401)
         .ProducesProblem(403).ProducesProblem(404).ProducesProblem(409).ProducesProblem(429);
     private static bool Present(string? value) => !string.IsNullOrWhiteSpace(value);

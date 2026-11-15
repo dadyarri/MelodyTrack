@@ -28,6 +28,118 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     private static CancellationToken Token => TestContext.Current.CancellationToken;
     private const string Password = "Synthetic passphrase 27!";
 
+    [Fact]
+    public async Task Restore_CurrentBrowserCookie_RotatesSessionWithoutJsonCredentials()
+    {
+        await using var host = await HostAsync();
+        var signedIn = await RegisterTeacherAsync(host, "cookie-restored-teacher");
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+        var restored = (await response.Content.ReadFromJsonAsync<StaffCredentialResponse>(Token))!;
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.True(response.Headers.CacheControl?.NoStore);
+        Assert.NotEqual(signedIn.AccessToken, restored.AccessToken);
+        Assert.NotEqual(signedIn.RefreshToken, restored.RefreshToken);
+        var cookie = Assert.Single(response.Headers.GetValues("Set-Cookie")
+            .Select(value => Microsoft.Net.Http.Headers.SetCookieHeaderValue.Parse(value)),
+            value => value.Name.ToString() == StaffSessionCookies.Name);
+        Assert.Equal(restored.RefreshToken, cookie.Value.ToString());
+        using var identity = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, restored.AccessToken);
+        Assert.Equal(HttpStatusCode.OK, identity.StatusCode);
+        using var again = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+        Assert.Equal(HttpStatusCode.OK, again.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("https://foreign.example.test")]
+    public async Task Restore_UntrustedOrigin_RejectsWithoutConsumingCookieSession(string? origin)
+    {
+        await using var host = await HostAsync();
+        await RegisterTeacherAsync(host, "cookie-origin-teacher");
+
+        using var denied = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: origin);
+        using var restored = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+
+        Assert.Equal(HttpStatusCode.Forbidden, denied.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, restored.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Restore_RevokedOrExpiredSession_ReturnsUnauthorized(bool expired)
+    {
+        await using var host = await HostAsync();
+        var signedIn = await RegisterTeacherAsync(host, "cookie-rejected-teacher");
+        var sql = expired
+            ? "UPDATE public.staff_sessions SET refresh_expires_at=clock_timestamp()-INTERVAL '1 second' WHERE refresh_hash=@hash"
+            : "UPDATE public.staff_sessions SET revoked_at=clock_timestamp() WHERE refresh_hash=@hash";
+        await host.Database.Query(sql).WithParameter("hash", OpaqueTokens.Hash(signedIn.RefreshToken!)).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+        Assert.DoesNotContain(signedIn.RefreshToken!, await response.Content.ReadAsStringAsync(Token));
+    }
+
+    [Fact]
+    public async Task Restore_InactiveBrowserSession_DoesNotReactivateRememberedAccount()
+    {
+        await using var host = await HostAsync();
+        var signedIn = await RegisterTeacherAsync(host, "cookie-inactive-teacher");
+        await host.Database.Query("""
+            UPDATE public.browser_access_contexts SET active_kind=NULL,active_session_id=NULL
+            WHERE active_session_id=(SELECT id FROM public.staff_sessions WHERE refresh_hash=@hash)
+            """).WithParameter("hash", OpaqueTokens.Hash(signedIn.RefreshToken!)).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+        Assert.True(await host.Database.Query("""
+            SELECT active_session_id IS NULL FROM public.browser_access_contexts
+            WHERE id=(SELECT browser_context_id FROM public.staff_sessions WHERE refresh_hash=@hash)
+            """).WithParameter("hash", OpaqueTokens.Hash(signedIn.RefreshToken!)).GetSingleAsync<bool>(Token));
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Restore_ProtectedRole_RequiresPreviouslyVerifiedFactor(bool verified)
+    {
+        await using var host = await HostAsync();
+        var invitation = await InviteAsync(host, "administrator");
+        var registration = await BeginRegistrationAsync(host, invitation, "cookie-protected-administrator", authenticator: true);
+        var signedIn = await PostStaffAsync(host, "/api/auth/staff/register/complete", new
+        {
+            challenge = registration.Challenge, authenticatorCode = await CodeAsync(host, registration.AuthenticatorSecret!)
+        });
+        await host.Database.Query("UPDATE public.staff_sessions SET factor_verified=@verified WHERE refresh_hash=@hash")
+            .WithParameter("verified", verified).WithParameter("hash", OpaqueTokens.Hash(signedIn.RefreshToken!)).ExecuteAsync(Token);
+
+        using var response = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+
+        Assert.Equal(verified ? HttpStatusCode.OK : HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Logout_CookieSession_ClearsBrowserRestoreAccess()
+    {
+        await using var host = await HostAsync();
+        var signedIn = await RegisterTeacherAsync(host, "cookie-logout-teacher");
+
+        using var logout = await host.SendAsync(HttpMethod.Post, "/api/auth/logout", null, signedIn.AccessToken);
+        using var restore = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/restore", null, origin: host.Origin);
+
+        Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
+        var cookie = Assert.Single(logout.Headers.GetValues("Set-Cookie")
+            .Select(value => Microsoft.Net.Http.Headers.SetCookieHeaderValue.Parse(value)),
+            value => value.Name.ToString() == StaffSessionCookies.Name);
+        Assert.Equal(DateTimeOffset.UnixEpoch, cookie.Expires);
+        Assert.Equal(HttpStatusCode.Unauthorized, restore.StatusCode);
+    }
+
     [Theory]
     [InlineData("teacher")]
     [InlineData("administrator")]
@@ -1094,14 +1206,17 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         internal static readonly Guid ClientId = Guid.Parse("019a2c63-8c00-7000-8000-000000000002");
         internal Database Database { get; } = database;
         internal HttpClient SuperBrowser { get; } = superBrowser;
+        internal string Origin => client.BaseAddress!.GetLeftPart(UriPartial.Authority);
         internal string SuperToken { get; private set; } = "";
         internal void SetSuperToken(string value) => SuperToken = value;
         internal HttpClient CreateBrowser(bool cookies = true) => new(new HttpClientHandler { UseCookies = cookies }) { BaseAddress = client.BaseAddress };
-        internal async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body, string? access = null, HttpClient? browser = null)
+        internal async Task<HttpResponseMessage> SendAsync(HttpMethod method, string path, object? body, string? access = null,
+            HttpClient? browser = null, string? origin = null)
         {
             using var request = new HttpRequestMessage(method, path);
             if (body is not null) request.Content = JsonContent.Create(body, body.GetType());
             if (access is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", access);
+            if (origin is not null) request.Headers.TryAddWithoutValidation("Origin", origin);
             return await (browser ?? (access == SuperToken ? SuperBrowser : client)).SendAsync(request, Token);
         }
         public async ValueTask DisposeAsync()

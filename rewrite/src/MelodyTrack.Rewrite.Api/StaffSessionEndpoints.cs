@@ -21,6 +21,7 @@ public static class StaffSessionEndpoints
         {
             http.Response.Headers.CacheControl = "no-store";
             var result = await tokens.SignOutAsync(new(current.Actor.Id, current.SessionId), cancellationToken);
+            if (result.IsSuccess) StaffSessionCookies.Clear(http);
             return result.IsSuccess ? Results.NoContent() : Results.Problem(statusCode: 400, title: "Недопустимая сессия");
         }).WithName("SignOutCurrentStaff").Produces(204).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403);
         return endpoints;
