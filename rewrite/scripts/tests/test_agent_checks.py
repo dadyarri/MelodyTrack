@@ -69,6 +69,18 @@ class XmlTests(unittest.TestCase):
     def test_missing_report(self):
         self.assertFalse(checks.parse_xunit(self.path)['complete'])
 
+    def test_multiple_assemblies_accumulate_totals_and_preserve_failures(self):
+        first = xml(('Pass', 'Fail')).removeprefix('<assemblies schema-version="3">').removesuffix('</assemblies>')
+        second = xml(('Pass', 'Skip'), errors=1).removeprefix('<assemblies schema-version="3">').removesuffix('</assemblies>')
+        result = self.parse(f'<assemblies>{first}{second}</assemblies>')
+        self.assertTrue(result['complete'])
+        self.assertEqual(result['totals'], {'total': 4, 'passed': 2, 'failed': 1,
+                                          'skipped': 1, 'not_run': 0, 'errors': 1})
+        self.assertEqual([item['category'] for item in result['failures']], ['test', 'runner'])
+
+    def test_inconsistent_error_counters_never_pass(self):
+        self.assertFalse(self.parse(xml(errors=1).replace('errors="1"', 'errors="0"'))['complete'])
+
     def test_large_report_retains_rare_failures(self):
         result = self.parse(xml(('Pass',) * 3000 + ('Fail', 'Fail')))
         self.assertEqual(result['totals']['passed'], 3000)
@@ -203,6 +215,53 @@ class WorkflowTests(unittest.TestCase):
         self.assertEqual(plan[1]['command'][explicit_index + 1], 'off')
         self.assertNotIn('--logger', plan[1]['command'])
         self.assertNotIn('--', plan[1]['command'])
+
+    def test_build_failure_skips_all_tests_and_preserves_diagnostics(self):
+        def fail_build(command, cwd, log, timeout):
+            log.write_text('file.cs(2,3): error CS1000: synthetic compiler failure\n')
+            return {'command': command, 'exit_code': 3, 'duration_ms': 1,
+                    'log': str(log), 'status': 'command_failed'}
+
+        with patch.object(checks, 'invoke', side_effect=fail_build) as invoke:
+            report = checks.run_checks('all', artifacts=self.artifacts)
+
+        self.assertEqual(invoke.call_count, 1)
+        self.assertEqual(report['status'], 'build_failed')
+        self.assertEqual(report['exit_code'], 3)
+        self.assertEqual([check['status'] for check in report['checks']],
+                         ['build_failed', 'skipped', 'skipped', 'skipped'])
+        self.assertEqual(report['failures'][0]['code'], 'CS1000')
+        self.assertEqual(report['totals']['total'], 0)
+
+    def test_api_failure_does_not_hide_independent_init_results(self):
+        def execute(command, cwd, log, timeout):
+            log.write_text('synthetic log')
+            is_build = command[1] == 'build'
+            is_api = any('Api.Tests.csproj' in argument for argument in command)
+            if not is_build:
+                directory = Path(command[command.index('--results-directory') + 1])
+                (directory / 'result.xunit.xml').write_text(xml(('Fail',) if is_api else ('Pass',)))
+            return {'command': command, 'exit_code': 1 if is_api else 0, 'duration_ms': 1,
+                    'log': str(log), 'status': 'command_failed' if is_api else 'success'}
+
+        with patch.object(checks, 'invoke', side_effect=execute) as invoke:
+            report = checks.run_checks('all', artifacts=self.artifacts)
+
+        self.assertEqual(invoke.call_count, 4)
+        self.assertEqual(report['status'], 'test_failed')
+        self.assertEqual(report['checks'][-1]['status'], 'success')
+        self.assertEqual(report['totals']['passed'], 2)
+        self.assertEqual(report['totals']['failed'], 1)
+
+    def test_report_ids_cannot_escape_artifact_directory(self):
+        for value in ('../outside', '/tmp/report', '.', '..'):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                checks.load_report(value, self.artifacts)
+
+    def test_rerun_refuses_unrepresentable_method_filters(self):
+        with self.assertRaises(ValueError):
+            checks.rerun_filters({'failures': [{'category': 'test', 'check': 'domain',
+                                               'type': 'Tests.Subject', 'method': 'Unsafe*'}]})
 
 
 if __name__ == '__main__':
