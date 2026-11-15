@@ -49,18 +49,18 @@ public static class ClientAuthenticationEndpoints
             .ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
         endpoints.MapDelete("/api/clients/{clientId:guid}/access-link", RevokeLinkAsync).RequireAuthorization(ClientLinkManagementPolicy)
             .WithName("RevokeClientAccessLink").Produces(204).ProducesProblem(400).ProducesProblem(401).ProducesProblem(403).ProducesProblem(404).ProducesProblem(409);
-        endpoints.MapPost("/api/client-auth/sign-in", SignInAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
+        endpoints.MapPost("/api/auth/client/sign-in", SignInAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
             .WithName("SignInClient").Produces<ClientSessionCredentials>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(429);
-        endpoints.MapPost("/api/client-auth/refresh", RefreshAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
+        endpoints.MapPost("/api/auth/client/refresh", RefreshAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
             .WithName("RefreshClientAccess").Produces<ClientSessionCredentials>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(429);
-        endpoints.MapPost("/api/client-auth/activate", ActivateAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
+        endpoints.MapPost("/api/auth/client/activate", ActivateAsync).AllowAnonymous().RequireRateLimiting("client-credentials")
             .WithName("ActivateRememberedClient").Produces<ClientSessionCredentials>().ProducesProblem(400).ProducesProblem(401).ProducesProblem(429);
-        endpoints.MapGet("/api/client-auth/me", (ClaimsPrincipal principal, HttpContext context) =>
+        endpoints.MapGet("/api/auth/client/me", (ClaimsPrincipal principal, HttpContext context) =>
         {
             PreventCaching(context);
             return TypedResults.Ok(new ClientIdentityResponse(ClientAuthenticationHandler.ReadIdentity(principal).ClientId.Value));
         }).RequireAuthorization(ClientAccessPolicy).WithName("GetCurrentClient").Produces<ClientIdentityResponse>().ProducesProblem(401).ProducesProblem(403);
-        endpoints.MapPost("/api/client-auth/logout", SignOutAsync).RequireAuthorization(ClientAccessPolicy)
+        endpoints.MapPost("/api/auth/client/logout", SignOutAsync).RequireAuthorization(ClientAccessPolicy)
             .WithName("SignOutClient").Produces(204).ProducesProblem(401).ProducesProblem(403);
         return endpoints;
     }

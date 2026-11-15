@@ -958,18 +958,18 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
         var staff = await RegisterTeacherAsync(host, "switched-teacher");
         var link = await ClientLinkAsync(host);
 
-        var client = await PostClientAsync(host, "/api/client-auth/sign-in", link);
+        var client = await PostClientAsync(host, "/api/auth/client/sign-in", link);
 
         using var previousAccess = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, staff.AccessToken);
         using var previousRefresh = await host.SendAsync(HttpMethod.Post, "/api/auth/staff/refresh", new { refreshToken = staff.RefreshToken });
-        using var currentAccess = await host.SendAsync(HttpMethod.Get, "/api/client-auth/me", null, client.AccessToken);
+        using var currentAccess = await host.SendAsync(HttpMethod.Get, "/api/auth/client/me", null, client.AccessToken);
         Assert.Equal(HttpStatusCode.Unauthorized, previousAccess.StatusCode);
         Assert.Equal(HttpStatusCode.Forbidden, previousRefresh.StatusCode);
         Assert.Equal(HttpStatusCode.OK, currentAccess.StatusCode);
         var reactivated = await PostStaffAsync(host, "/api/auth/staff/resume", new { refreshToken = staff.RefreshToken });
         Assert.NotNull(reactivated.AccessToken);
-        using var inactiveClient = await host.SendAsync(HttpMethod.Get, "/api/client-auth/me", null, client.AccessToken);
-        using var inactiveClientRefresh = await host.SendAsync(HttpMethod.Post, "/api/client-auth/refresh", new { secret = client.RefreshToken });
+        using var inactiveClient = await host.SendAsync(HttpMethod.Get, "/api/auth/client/me", null, client.AccessToken);
+        using var inactiveClientRefresh = await host.SendAsync(HttpMethod.Post, "/api/auth/client/refresh", new { secret = client.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, inactiveClient.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, inactiveClientRefresh.StatusCode);
     }
@@ -1035,20 +1035,20 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     {
         await using var host = await HostAsync();
         var link = await ClientLinkAsync(host);
-        var first = await PostClientAsync(host, "/api/client-auth/sign-in", link);
+        var first = await PostClientAsync(host, "/api/auth/client/sign-in", link);
         using var secondBrowser = host.CreateBrowser();
-        var second = await PostClientAsync(host, "/api/client-auth/sign-in", link, secondBrowser);
+        var second = await PostClientAsync(host, "/api/auth/client/sign-in", link, secondBrowser);
 
-        using var logout = await host.SendAsync(HttpMethod.Post, "/api/client-auth/logout", null, first.AccessToken);
+        using var logout = await host.SendAsync(HttpMethod.Post, "/api/auth/client/logout", null, first.AccessToken);
 
         Assert.Equal(HttpStatusCode.NoContent, logout.StatusCode);
-        using var oldAccess = await host.SendAsync(HttpMethod.Get, "/api/client-auth/me", null, first.AccessToken);
-        using var oldRefresh = await host.SendAsync(HttpMethod.Post, "/api/client-auth/refresh", new { secret = first.RefreshToken });
-        using var otherDevice = await host.SendAsync(HttpMethod.Get, "/api/client-auth/me", null, second.AccessToken, secondBrowser);
+        using var oldAccess = await host.SendAsync(HttpMethod.Get, "/api/auth/client/me", null, first.AccessToken);
+        using var oldRefresh = await host.SendAsync(HttpMethod.Post, "/api/auth/client/refresh", new { secret = first.RefreshToken });
+        using var otherDevice = await host.SendAsync(HttpMethod.Get, "/api/auth/client/me", null, second.AccessToken, secondBrowser);
         Assert.Equal(HttpStatusCode.Unauthorized, oldAccess.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, oldRefresh.StatusCode);
         Assert.Equal(HttpStatusCode.OK, otherDevice.StatusCode);
-        Assert.NotNull((await PostClientAsync(host, "/api/client-auth/sign-in", link)).AccessToken);
+        Assert.NotNull((await PostClientAsync(host, "/api/auth/client/sign-in", link)).AccessToken);
         using var staff = await host.SendAsync(HttpMethod.Get, "/api/auth/me", null, second.AccessToken, secondBrowser);
         Assert.Equal(HttpStatusCode.Unauthorized, staff.StatusCode);
     }
@@ -1058,24 +1058,24 @@ public sealed class FullAuthenticationEndpointsTests(PostgreSqlFixture fixture) 
     {
         await using var host = await HostAsync();
         var original = await ClientLinkAsync(host);
-        var session = await PostClientAsync(host, "/api/client-auth/sign-in", original);
+        var session = await PostClientAsync(host, "/api/auth/client/sign-in", original);
         var replacement = await ClientLinkAsync(host);
 
-        using var oldLink = await host.SendAsync(HttpMethod.Post, "/api/client-auth/sign-in", new { secret = original });
-        using var oldRefresh = await host.SendAsync(HttpMethod.Post, "/api/client-auth/refresh", new { secret = session.RefreshToken });
+        using var oldLink = await host.SendAsync(HttpMethod.Post, "/api/auth/client/sign-in", new { secret = original });
+        using var oldRefresh = await host.SendAsync(HttpMethod.Post, "/api/auth/client/refresh", new { secret = session.RefreshToken });
         Assert.Equal(HttpStatusCode.Unauthorized, oldLink.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, oldRefresh.StatusCode);
-        var current = await PostClientAsync(host, "/api/client-auth/sign-in", replacement);
+        var current = await PostClientAsync(host, "/api/auth/client/sign-in", replacement);
         await host.Database.Query("UPDATE public.clients SET is_archived=true WHERE id=@id")
             .WithParameter("id", TestHost.ClientId).ExecuteAsync(Token);
         await host.Database.Query("UPDATE public.clients SET is_archived=false WHERE id=@id")
             .WithParameter("id", TestHost.ClientId).ExecuteAsync(Token);
 
-        using var restoredLink = await host.SendAsync(HttpMethod.Post, "/api/client-auth/sign-in", new { secret = replacement });
-        using var restoredSession = await host.SendAsync(HttpMethod.Get, "/api/client-auth/me", null, current.AccessToken);
+        using var restoredLink = await host.SendAsync(HttpMethod.Post, "/api/auth/client/sign-in", new { secret = replacement });
+        using var restoredSession = await host.SendAsync(HttpMethod.Get, "/api/auth/client/me", null, current.AccessToken);
         Assert.Equal(HttpStatusCode.Unauthorized, restoredLink.StatusCode);
         Assert.Equal(HttpStatusCode.Unauthorized, restoredSession.StatusCode);
-        Assert.NotNull((await PostClientAsync(host, "/api/client-auth/sign-in", await ClientLinkAsync(host))).AccessToken);
+        Assert.NotNull((await PostClientAsync(host, "/api/auth/client/sign-in", await ClientLinkAsync(host))).AccessToken);
     }
 
     private static async Task<StaffCredentialResponse> RegisterTeacherAsync(TestHost host, string login, HttpClient? browser = null)

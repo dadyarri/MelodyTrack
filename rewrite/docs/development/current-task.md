@@ -2,22 +2,21 @@
 
 ## Цель и статус
 
-Завершено: усиление автотестов по G1–G12 и аудит всех тестовых областей rewrite, полный итоговый прогон. Ветка `design/melodytrack-v2`.
+Завершено: привести клиентскую авторизацию к `/api/auth/client/*` по явному поручению пользователя. Ветка `design/melodytrack-v2`.
 
 ## Результат и источники
 
-[Основной аудит](../test-quality-audit.md) содержит матрицу областей, закрытие прежних пробелов, источники ожиданий, команды/результаты и ограничения. Подробности: [backend](../test-audit-backend.md), [session](../test-audit-session.md), [UI](../test-audit-ui.md). Нормативные требования не изменялись.
+Все пять маршрутов (sign-in, refresh, activate, me, logout) изменены в `ClientAuthenticationEndpoints.cs`; согласованы HTTP-пути интеграционных тестов и [контракт авторизации](../authentication-api.md). Старый prefix не сохраняется как alias. Правила доступа, сессий и обработчики не изменялись.
 
-Добавлены SQL/HTTP/cookie/миграционные границы, frontend composition и управляемые гонки, завершение обучения, клавиатура, Python/generator/appearance/error boundary tests. Отдельный Playwright набор проверяет настоящие browser механизмы; cookie-запросы проходят через локальный HTTP-сервер. Исправлен найденный дефект фокуса календаря при быстром повторном открытии.
+Клиентская авторизация не входит в include-path генератора frontend API; generated-клиент не затронут. Упоминаний старого prefix в исходниках, тестах, документации и скриптах rewrite не осталось.
 
-## Итоговые проверки
+## Проверки
 
-- Backend `all`: 1014 passed, 0 failed/skipped; полная solution build, 0 warnings/errors. Отчёт `.artifacts/agent-checks/20261115T151358-5188e38a/report.json`.
-- Frontend `verify:fix`: Biome, TypeScript, 155 passed в 25 файлах, production build; известное предупреждение chunk 657 КБ до gzip.
-- Browser: Chromium, desktop/mobile WebKit, 30 passed, 3 платформенных skipped, 0 failed. Отчёт `web/.artifacts/browser/report.json`.
-- Python: 31 passed; structure: 5 skills, 8 agents, 0 errors; `git diff --check` успешен.
-- Реальный импорт/production-данные не использовались. Coverage/mutation score не измерялись. Аппаратный Safari/WebAuthn и browser→реальный API→PostgreSQL acceptance не подтверждены этим набором; границы явно описаны в аудите.
+- `python3 scripts/agent_checks.py plan --scope build`, затем elevated `run --scope build`: exit 0, полная solution собрана без warnings/errors.
+- Артефакт: `.artifacts/agent-checks/20261115T154153-f0be64fc/report.json`.
+- Пользователь сообщил о самостоятельном прогоне backend-тестов после правки. Агент не повторял запуск; команда, количество тестов и артефакты этого прогона не проверялись. Результаты [предыдущего полного аудита](../test-quality-audit.md) относятся к предшествующему snapshot.
+- `git diff --check` успешен.
 
 ## Следующее действие
 
-Согласованная порция завершена. Коммиты создаются по явному поручению пользователя на всю задачу; точный состав и SHA — в Git. Push/release не запрошены. Следующую функциональную порцию автоматически не начинать.
+Правка завершена и фиксируется коммитом по явному поручению пользователя; SHA и состав — в Git. Push не запрошен.
