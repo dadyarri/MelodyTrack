@@ -24,7 +24,7 @@ import {
   updateClientNotes,
 } from "@/features/edit-client";
 import { useEmployeeTraining } from "@/features/employee-training";
-import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
+import { ApiError, isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
 import { uuidv7 } from "@/shared/lib/uuidv7";
 import {
   DataView as CollectionDataView,
@@ -34,6 +34,8 @@ import {
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
 import "./clients.css";
+import { useOfflineStorage } from "@/entities/offline-storage";
+import { acknowledgeNewClientAttempt, prepareNewClientAttempt } from "@/features/edit-client";
 
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "Europe/Moscow",
@@ -205,6 +207,13 @@ export function ClientsPage() {
 
 function ClientDirectory() {
   const { request, staff } = useStaffSession();
+  const offlineStorage = useOfflineStorage();
+  const operationScope = useRef(new AbortController());
+  useEffect(() => {
+    const scope = new AbortController();
+    operationScope.current = scope;
+    return () => scope.abort();
+  }, []);
   const { openClientTraining } = useEmployeeTraining();
   const [query, setQuery] = useState<DirectoryQuery>(initialDirectoryQuery);
   const [data, setData] = useState<DirectoryPage | null>(null);
@@ -223,6 +232,8 @@ function ClientDirectory() {
   const [editorError, setEditorError] = useState<string | null>(null);
   const [editorStale, setEditorStale] = useState(false);
   const [editorResetKey, setEditorResetKey] = useState(0);
+  const [newClientDraftSavedKey, setNewClientDraftSavedKey] = useState(0);
+  const [unconfirmedCreate, setUnconfirmedCreate] = useState(false);
   const [duplicateWarning, setDuplicateWarning] = useState(false);
   const [notes, setNotes] = useState<string | null>(null);
   const [noteHistory, setNoteHistory] = useState<
@@ -700,10 +711,31 @@ function ClientDirectory() {
     setEditorStale(false);
   }
 
-  async function saveEditor(draft: ClientCardDraft) {
+  async function saveEditor(draft: ClientCardDraft, ownsCreationLock = false): Promise<void> {
+    const scope = operationScope.current.signal;
+    if (scope.aborted) return;
     const mode = editorMode;
     const original = editorBase.current;
     if (!mode || (mode === "edit" && !original)) return;
+    if (mode === "create" && offlineStorage?.status === "unlocked" && !ownsCreationLock) {
+      if (!navigator.locks?.request) {
+        setEditorError(
+          "Для безопасного сохранения локальных команд нужен браузер с поддержкой блокировок хранилища.",
+        );
+        return;
+      }
+      try {
+        return await navigator.locks.request(
+          `melodytrack.client-create:${staff?.staffId}`,
+          { signal: scope },
+          () => saveEditor(draft, true),
+        );
+      } catch (failure) {
+        if (!isAbortError(failure))
+          setEditorError("Не удалось начать безопасную отправку. Повторите попытку.");
+        return;
+      }
+    }
     const controller = new AbortController();
     editorRequest.current?.abort();
     editorRequest.current = controller;
@@ -711,23 +743,57 @@ function ClientDirectory() {
     if (editorCommand.current?.signature !== signature) {
       editorCommand.current = { signature, commandId: uuidv7(), clientId: uuidv7() };
     }
-    const command = editorCommand.current;
+    let command = editorCommand.current;
     setEditorSaving(true);
     setEditorError(null);
     try {
-      const result = await request(async (api, signal) => {
-        if (mode === "create") return createClientCard(api, signal, draft, command);
-        if (!original) throw new Error("Missing client snapshot for update.");
-        const hasDuplicateContacts = await updateClientCard(
-          api,
-          signal,
-          original,
-          draft,
-          command.commandId,
-        );
-        return { client: null, hasDuplicateContacts };
-      }, controller.signal);
+      if (mode === "create" && offlineStorage) {
+        if (offlineStorage.status !== "unlocked" && offlineStorage.status !== "missing")
+          throw new ApiError(
+            "Откройте локальные данные в меню пользователя перед созданием клиента.",
+          );
+        if (offlineStorage.status === "unlocked") {
+          const attempt = await prepareNewClientAttempt(offlineStorage, draft);
+          command = { ...command, commandId: attempt.commandId, clientId: attempt.clientId };
+          editorCommand.current = command;
+          setUnconfirmedCreate(true);
+        }
+      }
+      scope.throwIfAborted();
+      const result = await request(
+        async (api, signal) => {
+          if (mode === "create") return createClientCard(api, signal, draft, command);
+          if (!original) throw new Error("Missing client snapshot for update.");
+          const hasDuplicateContacts = await updateClientCard(
+            api,
+            signal,
+            original,
+            draft,
+            command.commandId,
+          );
+          return { client: null, hasDuplicateContacts };
+        },
+        AbortSignal.any([controller.signal, scope]),
+      );
       if (controller.signal.aborted) return;
+      if (mode === "create" && offlineStorage?.status === "unlocked") {
+        try {
+          await acknowledgeNewClientAttempt(offlineStorage, {
+            commandId: command.commandId,
+            clientId: command.clientId,
+            draft,
+          });
+        } catch {
+          setEditorError(
+            "Клиент сохранён на сервере, но локальное подтверждение не записано. Повторите отправку: тот же ключ не создаст второго клиента.",
+          );
+          return;
+        }
+      }
+      if (mode === "create") {
+        setUnconfirmedCreate(false);
+        setNewClientDraftSavedKey((value) => value + 1);
+      }
       setDuplicateWarning(result.hasDuplicateContacts);
       setEditorMode(null);
       editorBase.current = null;
@@ -740,6 +806,24 @@ function ClientDirectory() {
     } catch (failure) {
       if (controller.signal.aborted || isAbortError(failure)) return;
       const apiError = toApiError(failure);
+      if (
+        mode === "create" &&
+        offlineStorage?.status === "unlocked" &&
+        (apiError.status === 400 || apiError.status === 422)
+      ) {
+        try {
+          await offlineStorage.put(
+            `client-create-rejected:${command.commandId}`,
+            { schemaVersion: 1, commandId: command.commandId, clientId: command.clientId, draft },
+            "conflict",
+          );
+          await offlineStorage.remove("new-client-command");
+          setUnconfirmedCreate(false);
+          editorCommand.current = null;
+        } catch {
+          /* Keep the original command locked when durable cleanup fails. */
+        }
+      }
       setEditorStale(apiError.status === 409);
       setEditorError(
         apiError.status === 409
@@ -1201,6 +1285,9 @@ function ClientDirectory() {
             stale={editorStale || serverCardChanged}
             hasDuplicateContacts={duplicateWarning}
             resetKey={editorResetKey}
+            persistNewClientDraft
+            draftSavedKey={newClientDraftSavedKey}
+            unconfirmedCreate={editorMode === "create" && unconfirmedCreate}
             onClose={closeEditor}
             onSave={saveEditor}
             onReload={reloadEditor}

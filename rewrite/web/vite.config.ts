@@ -49,7 +49,47 @@ export default defineConfig(({ mode }) => {
       strictPort: true,
       proxy: { "/api": { target: api.origin, changeOrigin: true } },
     },
-    build: { target: ["chrome109", "edge109", "firefox115", "safari16.4"] },
+    build: {
+      target: ["chrome109", "edge109", "firefox115", "safari16.4"],
+      rolldownOptions: {
+        preserveEntrySignatures: false,
+        output: {
+          strictExecutionOrder: true,
+          codeSplitting: {
+            // Keep route-only dependencies lazy and split large library groups.
+            includeDependenciesRecursively: false,
+            maxSize: 400_000,
+            groups: [
+              {
+                name: "react",
+                test: /[\\/]node_modules[\\/](?:react|react-dom|scheduler)[\\/]/,
+                priority: 40,
+                entriesAware: true,
+              },
+              {
+                name: "api",
+                test: /[\\/]node_modules[\\/]@microsoft[\\/]kiota-/,
+                priority: 30,
+                entriesAware: true,
+              },
+              {
+                name: "icons",
+                test: /[\\/]node_modules[\\/](?:@tabler|@ant-design[\\/]icons[^\\/]*)[\\/]/,
+                priority: 20,
+                entriesAware: true,
+              },
+              {
+                name: "ui",
+                test: /[\\/]node_modules[\\/](?:antd|@ant-design|@rc-component|rc-[^\\/]+)[\\/]/,
+                priority: 10,
+                entriesAware: true,
+              },
+              { name: "vendor", test: /[\\/]node_modules[\\/]/, entriesAware: true },
+            ],
+          },
+        },
+      },
+    },
     test: {
       ...(testFiles ? { include: JSON.parse(testFiles) as string[] } : {}),
       reporters: testReport ? ["default", "json"] : ["default"],

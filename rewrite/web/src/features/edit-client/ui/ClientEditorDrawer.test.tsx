@@ -1,9 +1,17 @@
-import { fireEvent, render as renderUi, screen, within } from "@testing-library/react";
+import { fireEvent, render as renderUi, screen, waitFor, within } from "@testing-library/react";
 import type { ReactNode } from "react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { DirectoryClient } from "@/entities/client-directory";
 import { Notifications } from "@/shared/ui/notifications";
 import { ClientEditorDrawer } from "./ClientEditorDrawer";
+
+const offlineStorageMock = vi.hoisted(() => ({ value: null as unknown }));
+vi.mock("@/entities/offline-storage", () => ({
+  useOfflineStorage: () => offlineStorageMock.value,
+}));
+afterEach(() => {
+  offlineStorageMock.value = null;
+});
 
 function render(ui: ReactNode) {
   return renderUi(ui, {
@@ -59,6 +67,201 @@ const phoneContacts: DirectoryClient["contacts"] = [
 ];
 
 describe("client editor", () => {
+  it("restores an unconfirmed create and offers only its original payload for retry", async () => {
+    const onSave = vi.fn();
+    offlineStorageMock.value = {
+      staffId: "staff",
+      status: "unlocked",
+      get: (id: string) =>
+        Promise.resolve(
+          id === "new-client-command"
+            ? {
+                schemaVersion: 1,
+                commandId: "0192f0e0-1234-7abc-8def-123456789012",
+                clientId: "0192f0e0-1234-7abc-8def-123456789013",
+                draft: {
+                  firstName: "Анна",
+                  lastName: "Иванова",
+                  middleName: null,
+                  birthdate: null,
+                  sourceId: "source",
+                  contacts: [],
+                },
+              }
+            : undefined,
+        ),
+      put: vi.fn().mockResolvedValue(undefined),
+      remove: vi.fn().mockResolvedValue(undefined),
+    };
+    render(
+      <ClientEditorDrawer
+        open
+        client={null}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        persistNewClientDraft
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    const retry = await screen.findByRole("button", { name: "Повторить отправку" });
+    expect(screen.getByLabelText("Имя")).toHaveProperty("value", "Анна");
+    expect(
+      screen.getByText("Предыдущая отправка не подтверждена. Повтор использует ту же команду."),
+    ).not.toBeNull();
+    fireEvent.click(retry);
+
+    await waitFor(() =>
+      expect(onSave).toHaveBeenCalledExactlyOnceWith({
+        firstName: "Анна",
+        lastName: "Иванова",
+        middleName: null,
+        birthdate: null,
+        sourceId: "source",
+        contacts: [],
+      }),
+    );
+    offlineStorageMock.value = null;
+  });
+
+  it("keeps input typed while a saved draft is being restored", async () => {
+    let resolveDraft: ((value: unknown) => void) | undefined;
+    const put = vi.fn().mockResolvedValue(undefined);
+    offlineStorageMock.value = {
+      staffId: "staff",
+      status: "unlocked",
+      get: (id: string) =>
+        id === "new-client-command"
+          ? Promise.resolve(undefined)
+          : new Promise((resolve) => (resolveDraft = resolve)),
+      put,
+      remove: vi.fn().mockResolvedValue(undefined),
+    };
+    render(
+      <ClientEditorDrawer
+        open
+        client={null}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        persistNewClientDraft
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    const firstName = screen.getByRole("textbox", { name: /^Имя$/ });
+    await waitFor(() => expect(firstName.matches(":disabled")).toBe(false));
+    fireEvent.change(firstName, { target: { value: "Введено вручную" } });
+    resolveDraft?.({
+      schemaVersion: 1,
+      firstName: "Из старого черновика",
+      lastName: "Иванова",
+      middleName: null,
+      birthdate: null,
+      sourceId: "source",
+      contacts: [],
+    });
+
+    await waitFor(() => expect((firstName as HTMLInputElement).value).toBe("Введено вручную"));
+    await waitFor(() =>
+      expect(put).toHaveBeenCalledWith(
+        "new-client-draft",
+        expect.objectContaining({ firstName: "Введено вручную", schemaVersion: 1 }),
+        "pending",
+      ),
+    );
+    offlineStorageMock.value = null;
+  });
+
+  it("restores a later draft after a successful save starts a new editor session", async () => {
+    const records = new Map<string, unknown>();
+    const storage = {
+      staffId: "staff",
+      status: "unlocked",
+      get: vi.fn(async (id: string) => records.get(id)),
+      put: vi.fn(async (id: string, value: unknown) => {
+        records.set(id, value);
+      }),
+      remove: vi.fn(async (id: string) => {
+        records.delete(id);
+      }),
+    };
+    offlineStorageMock.value = storage;
+    const props = {
+      client: null,
+      sourceOptions: sources,
+      contactKinds: kinds,
+      persistNewClientDraft: true,
+      onClose: vi.fn(),
+      onSave: vi.fn(),
+    };
+    const { rerender } = render(<ClientEditorDrawer open {...props} />);
+
+    const firstName = await screen.findByRole("textbox", { name: /^Имя$/ });
+    await waitFor(() => expect(firstName.matches(":disabled")).toBe(false));
+    fireEvent.change(firstName, { target: { value: "Новый черновик" } });
+    await waitFor(() => expect(records.has("new-client-draft")).toBe(true));
+
+    rerender(<ClientEditorDrawer open={false} draftSavedKey={1} {...props} />);
+    rerender(<ClientEditorDrawer open draftSavedKey={1} {...props} />);
+
+    await waitFor(() =>
+      expect((screen.getByRole("textbox", { name: /^Имя$/ }) as HTMLInputElement).value).toBe(
+        "Новый черновик",
+      ),
+    );
+    offlineStorageMock.value = null;
+  });
+
+  it("clears the draft from the form when the vault locks", async () => {
+    const put = vi.fn().mockResolvedValue(undefined);
+    const storage = {
+      staffId: "staff",
+      status: "unlocked",
+      get: vi.fn().mockResolvedValue(undefined),
+      put,
+      remove: vi.fn().mockResolvedValue(undefined),
+    };
+    offlineStorageMock.value = storage;
+    const onSave = vi.fn();
+    const { rerender } = render(
+      <ClientEditorDrawer
+        open
+        client={null}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        persistNewClientDraft
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    const firstName = await screen.findByRole("textbox", { name: /^Имя$/ });
+    await waitFor(() => expect(firstName.matches(":disabled")).toBe(false));
+    fireEvent.change(firstName, { target: { value: "Личные данные" } });
+    await waitFor(() => expect(put).toHaveBeenCalled());
+
+    offlineStorageMock.value = { ...storage, status: "blocked", put };
+    rerender(
+      <ClientEditorDrawer
+        open
+        client={null}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        persistNewClientDraft
+        onClose={vi.fn()}
+        onSave={onSave}
+      />,
+    );
+
+    expect((screen.getByRole("textbox", { name: /^Имя$/ }) as HTMLInputElement).value).toBe("");
+    expect(screen.getByRole("textbox", { name: /^Имя$/ }).matches(":disabled")).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
+    expect(onSave).not.toHaveBeenCalled();
+    offlineStorageMock.value = null;
+  });
+
   it("blocks invalid birthday input and saves only after it is corrected", () => {
     const onSave = vi.fn();
     render(

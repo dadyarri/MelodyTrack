@@ -3,6 +3,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
 import { useEmployeeTraining } from "@/features/employee-training";
+import { OfflineStorageDialog } from "@/features/manage-offline-storage";
 import { ReleaseNotesProvider, ReleaseVersion } from "@/features/view-release-notes";
 import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
@@ -44,6 +45,7 @@ function ShellContent({
   const [logoutFailed, setLogoutFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [offlineOpen, setOfflineOpen] = useState(false);
   const navigation = (collapsed: boolean) => (
     <>
       <NavLink
@@ -146,6 +148,10 @@ function ShellContent({
                 selectable: false,
                 items: [
                   {
+                    key: "offline",
+                    label: "Локальные данные",
+                  },
+                  {
                     key: "theme",
                     label: appearance === "light" ? "Тёмная тема" : "Светлая тема",
                     icon: <Icon name={appearance === "light" ? "moon" : "sun"} />,
@@ -162,6 +168,7 @@ function ShellContent({
                 ],
                 onClick: ({ key }) => {
                   if (key === "theme") onToggleAppearance();
+                  if (key === "offline") setOfflineOpen(true);
                   if (key === "logout") void leave();
                 },
               }}
@@ -201,6 +208,7 @@ function ShellContent({
         <main id="main-content" className="workspace-content">
           <Outlet />
         </main>
+        <OfflineStorageDialog open={offlineOpen} onClose={() => setOfflineOpen(false)} />
       </div>
     </div>
   );

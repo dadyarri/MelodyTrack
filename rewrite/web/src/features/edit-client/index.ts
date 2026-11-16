@@ -6,6 +6,7 @@ export {
   updateClientCard,
   updateClientNotes,
 } from "./api/clientCardApi";
+export { acknowledgeNewClientAttempt, prepareNewClientAttempt } from "./model/newClientAttempt";
 export type {
   ClientCardDraft,
   ClientContactDraft,

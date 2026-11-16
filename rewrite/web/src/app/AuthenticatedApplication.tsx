@@ -1,12 +1,17 @@
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Navigate, Route, Routes } from "react-router";
 import { useStaffSession } from "@/entities/session";
 import { EmployeeTrainingProvider, TrainingWorkspace } from "@/features/employee-training";
-import { ClientsPage } from "@/pages/clients";
-import { WorkspacePage } from "@/pages/workspace";
 import { emitDataChange, openDataChanges, startDataChanges } from "@/shared/api/live-data";
 import type { Appearance } from "@/shared/lib/appearance";
 import { AppShell } from "@/widgets/app-shell";
+
+const ClientsPage = lazy(() =>
+  import("@/pages/clients").then((module) => ({ default: module.ClientsPage })),
+);
+const WorkspacePage = lazy(() =>
+  import("@/pages/workspace").then((module) => ({ default: module.WorkspacePage })),
+);
 
 export default function AuthenticatedApplication(props: {
   staffId: string;
@@ -36,18 +41,29 @@ export default function AuthenticatedApplication(props: {
         ) === true
       }
     >
-      <Routes>
-        <Route
-          element={
-            <AppShell appearance={props.appearance} onToggleAppearance={props.onToggleAppearance} />
-          }
-        >
-          <Route path="/workspace" element={<WorkspacePage />} />
-          <Route path="/clients" element={<ClientsPage />} />
-          <Route path="/learning" element={<TrainingWorkspace />} />
-          <Route path="*" element={<Navigate to="/workspace" replace />} />
-        </Route>
-      </Routes>
+      <Suspense
+        fallback={
+          <div className="employee-training-loading" role="status">
+            Загрузка…
+          </div>
+        }
+      >
+        <Routes>
+          <Route
+            element={
+              <AppShell
+                appearance={props.appearance}
+                onToggleAppearance={props.onToggleAppearance}
+              />
+            }
+          >
+            <Route path="/workspace" element={<WorkspacePage />} />
+            <Route path="/clients" element={<ClientsPage />} />
+            <Route path="/learning" element={<TrainingWorkspace />} />
+            <Route path="*" element={<Navigate to="/workspace" replace />} />
+          </Route>
+        </Routes>
+      </Suspense>
     </EmployeeTrainingProvider>
   );
 }

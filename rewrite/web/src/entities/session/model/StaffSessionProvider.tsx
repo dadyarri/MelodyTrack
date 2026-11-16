@@ -63,6 +63,15 @@ type SessionContextValue = SessionState & {
   clearError(): void;
 };
 
+type StaffSessionLifecycleCallbacks = {
+  onAuthenticated?: (
+    identity: StaffIdentity,
+    context: { source: "credential" | "restore"; password?: string },
+  ) => void;
+  onSessionCleared?: () => void;
+  onLogout?: () => void | Promise<void>;
+};
+
 const initialState: SessionState = {
   staff: null,
   status: "anonymous",
@@ -135,7 +144,12 @@ function waitForRefresh<T>(task: Promise<T>, signal: AbortSignal): Promise<T> {
   });
 }
 
-export function StaffSessionProvider({ children }: { children: ReactNode }) {
+export function StaffSessionProvider({
+  children,
+  onAuthenticated,
+  onSessionCleared,
+  onLogout,
+}: { children: ReactNode } & StaffSessionLifecycleCallbacks) {
   const [state, setState] = useState<SessionState>({ ...initialState, status: "restoring" });
   // Credential material stays in memory; browser restart recovery uses an HttpOnly server cookie.
   const tokens = useRef<StaffTokens | null>(null);
@@ -156,6 +170,47 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const refreshAction = useRef<() => Promise<RefreshOutcome>>(async () => ({ kind: "ended" }));
   const channel = useRef<BroadcastChannel | null>(null);
+  const callbacks = useRef({
+    onAuthenticated,
+    onSessionCleared,
+    onLogout,
+  });
+  callbacks.current = { onAuthenticated, onSessionCleared, onLogout };
+  const pendingPassword = useRef<string | null>(null);
+  const pendingPasswordExpiresAt = useRef<number | null>(null);
+  const pendingPasswordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const notify = useCallback((callback: (() => void) | undefined) => {
+    try {
+      callback?.();
+    } catch {
+      // Lifecycle observers must not change authentication outcomes.
+    }
+  }, []);
+
+  const notifyAuthenticated = useCallback(
+    (identity: StaffIdentity, context: { source: "credential" | "restore"; password?: string }) => {
+      try {
+        callbacks.current.onAuthenticated?.(identity, context);
+      } catch {
+        // Lifecycle observers must not change authentication outcomes.
+      }
+    },
+    [],
+  );
+
+  const schedulePasswordExpiry = useCallback((expiresAt: number) => {
+    if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
+    pendingPasswordExpiresAt.current = expiresAt;
+    pendingPasswordTimer.current = setTimeout(
+      () => {
+        pendingPassword.current = null;
+        pendingPasswordExpiresAt.current = null;
+        pendingPasswordTimer.current = null;
+      },
+      Math.max(0, expiresAt - Date.now()),
+    );
+  }, []);
 
   const stopTimer = useCallback(() => {
     if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
@@ -188,9 +243,14 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       staff.current = null;
       factor.current = null;
       primaryPasskey.current = null;
+      pendingPassword.current = null;
+      pendingPasswordExpiresAt.current = null;
+      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
+      pendingPasswordTimer.current = null;
       setState({ ...initialState, error });
+      notify(callbacks.current.onSessionCleared);
     },
-    [stopTimer, stopPasskeyPreparation],
+    [notify, stopTimer, stopPasskeyPreparation],
   );
 
   const scheduleRefresh = useCallback(
@@ -225,6 +285,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
         if (id !== generation.current || controller.signal.aborted) return;
         tokens.current = restored.tokens;
         staff.current = restored.staff;
+        notifyAuthenticated(restored.staff, { source: "restore" });
         restoring.current = false;
         setState({ ...initialState, staff: restored.staff, status: "authenticated" });
         scheduleRefresh(restored.tokens.expiresIn);
@@ -246,21 +307,27 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     const task = run();
     restoreTask.current = task;
     return task;
-  }, [clearLocal, scheduleRefresh, stopPasskeyPreparation, stopTimer]);
+  }, [clearLocal, notifyAuthenticated, scheduleRefresh, stopPasskeyPreparation, stopTimer]);
 
   useEffect(() => {
     restoreAction.current = restoreSession;
   }, [restoreSession]);
 
   const beginSignIn = useCallback(
-    (presentation: FactorPresentation | null = null) => {
+    (presentation: FactorPresentation | null = null, preservePendingPassword = false) => {
+      const password = preservePendingPassword ? pendingPassword.current : null;
+      const passwordExpiresAt = preservePendingPassword ? pendingPasswordExpiresAt.current : null;
       clearLocal();
+      if (password && passwordExpiresAt && passwordExpiresAt > Date.now()) {
+        pendingPassword.current = password;
+        schedulePasswordExpiry(passwordExpiresAt);
+      }
       const controller = new AbortController();
       activeRequest.current = controller;
       setState({ ...initialState, status: "authenticating", factor: presentation });
       return { controller, id: generation.current };
     },
-    [clearLocal],
+    [clearLocal, schedulePasswordExpiry],
   );
 
   const acceptOutcome = useCallback(
@@ -288,13 +355,23 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       primaryPasskey.current = null;
       setState({ ...initialState, staff: identity, status: "authenticated" });
       scheduleRefresh(outcome.expiresIn);
+      const password = pendingPassword.current;
+      pendingPassword.current = null;
+      pendingPasswordExpiresAt.current = null;
+      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
+      pendingPasswordTimer.current = null;
+      notifyAuthenticated(identity, { source: "credential", ...(password ? { password } : {}) });
     },
-    [scheduleRefresh],
+    [notifyAuthenticated, scheduleRefresh],
   );
 
   const failSignIn = useCallback(
     (error: unknown, id: number) => {
-      if (id !== generation.current || isAbortError(error)) return;
+      if (id !== generation.current) return;
+      if (isAbortError(error)) {
+        clearLocal();
+        return;
+      }
       clearLocal(toApiError(error));
     },
     [clearLocal],
@@ -303,6 +380,8 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const signInWithPassword = useCallback(
     async (login: string, password: string) => {
       const { controller, id } = beginSignIn();
+      pendingPassword.current = password;
+      schedulePasswordExpiry(Date.now() + 5 * 60_000);
       try {
         const outcome = readStaffOutcome(
           await withSessionCookieLock(
@@ -319,7 +398,7 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
         failSignIn(error, id);
       }
     },
-    [acceptOutcome, beginSignIn, failSignIn],
+    [acceptOutcome, beginSignIn, failSignIn, schedulePasswordExpiry],
   );
 
   const completeRegistration = useCallback(
@@ -432,10 +511,13 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
     async (code: string) => {
       const pending = factor.current;
       if (!pending) return;
-      const { controller, id } = beginSignIn({
-        method: pending.method,
-        canUsePasskey: Boolean(pending.optionsJson),
-      });
+      const { controller, id } = beginSignIn(
+        {
+          method: pending.method,
+          canUsePasskey: Boolean(pending.optionsJson),
+        },
+        true,
+      );
       try {
         const outcome = readStaffOutcome(
           await withSessionCookieLock(
@@ -458,10 +540,13 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   const completeFactorWithPasskey = useCallback(async () => {
     const pending = factor.current;
     if (!pending?.optionsJson || pending.method !== "authenticatorOrPasskey") return;
-    const { controller, id } = beginSignIn({
-      method: pending.method,
-      canUsePasskey: Boolean(pending.optionsJson),
-    });
+    const { controller, id } = beginSignIn(
+      {
+        method: pending.method,
+        canUsePasskey: Boolean(pending.optionsJson),
+      },
+      true,
+    );
     try {
       const passkeyResponse = await getPasskeyAssertion(pending.optionsJson, controller.signal);
       const outcome = readStaffOutcome(
@@ -535,6 +620,13 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
   }, [refreshSession]);
 
   const signOut = useCallback(async () => {
+    try {
+      await callbacks.current.onLogout?.();
+    } catch {
+      const error = new ApiError("Не удалось закрыть локальные данные. Повторите выход.");
+      setState((value) => ({ ...value, error }));
+      throw error;
+    }
     const current = tokens.current;
     if (!current) {
       clearLocal();
@@ -609,13 +701,18 @@ export function StaffSessionProvider({ children }: { children: ReactNode }) {
       refreshTask.current = null;
       stopTimer();
       stopPasskeyPreparation();
+      pendingPassword.current = null;
+      pendingPasswordExpiresAt.current = null;
+      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
+      pendingPasswordTimer.current = null;
+      notify(callbacks.current.onSessionCleared);
       updates?.close();
       channel.current = null;
       window.removeEventListener("focus", revalidate);
       window.removeEventListener("online", revalidate);
       document.removeEventListener("visibilitychange", revalidate);
     };
-  }, [clearLocal, stopTimer, stopPasskeyPreparation]);
+  }, [clearLocal, notify, stopTimer, stopPasskeyPreparation]);
 
   useEffect(() => {
     void restoreSession();
