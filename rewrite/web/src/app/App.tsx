@@ -1,9 +1,19 @@
 import { Button, ConfigProvider, theme } from "antd";
 import ruRU from "antd/locale/ru_RU";
-import { lazy, Suspense, useLayoutEffect, useState } from "react";
+import {
+  lazy,
+  type ReactNode,
+  Suspense,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useState,
+} from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router";
+import { OfflineStorageProvider, useOfflineStorage } from "@/entities/offline-storage";
 import { StaffSessionProvider, useStaffSession } from "@/entities/session";
 import { SignInPage } from "@/pages/sign-in";
+import type { StaffIdentity } from "@/shared/api";
 import { type Appearance, readAppearance, saveAppearance } from "@/shared/lib/appearance";
 import { Notifications, useErrorNotification } from "@/shared/ui/notifications";
 import { usePopupScrollBoundary } from "@/shared/ui/scroll-boundary";
@@ -76,18 +86,65 @@ export function App({ invitation = null }: { invitation?: string | null }) {
     >
       <div className="application-root">
         <BrowserRouter>
-          <StaffSessionProvider>
-            <ApplicationRoutes
-              invitation={invitation}
-              appearance={appearance}
-              onToggleAppearance={toggleAppearance}
-            />
-          </StaffSessionProvider>
+          <OfflineStorageProvider>
+            <SessionWithOfflineStorage>
+              <ApplicationRoutes
+                invitation={invitation}
+                appearance={appearance}
+                onToggleAppearance={toggleAppearance}
+              />
+            </SessionWithOfflineStorage>
+          </OfflineStorageProvider>
         </BrowserRouter>
         <Notifications appearance={appearance} />
       </div>
     </ConfigProvider>
   );
+}
+
+function SessionWithOfflineStorage({ children }: { children: ReactNode }) {
+  const storage = useOfflineStorage();
+  const authenticate = storage?.authenticate;
+  const onAuthenticated = useCallback(
+    (identity: StaffIdentity, context: { source: "credential" | "restore"; password?: string }) => {
+      authenticate?.(identity.staffId, context);
+    },
+    [authenticate],
+  );
+  return (
+    <StaffSessionProvider
+      onAuthenticated={onAuthenticated}
+      onSessionCleared={() => storage?.clear()}
+      onLogout={() => storage?.logout()}
+    >
+      <OfflineClientAccess />
+      {children}
+    </StaffSessionProvider>
+  );
+}
+
+function OfflineClientAccess() {
+  const { staff } = useStaffSession();
+  const storage = useOfflineStorage();
+  const revoke = storage?.revokeClientAccess;
+  const canRead = staff?.permissions.some(
+    (grant) =>
+      grant.permission === "clientsRead" &&
+      grant.allowed &&
+      grant.dataScope === "available" &&
+      grant.timeScope === "any",
+  );
+  const canWrite = staff?.permissions.some(
+    (grant) =>
+      grant.permission === "clientsWrite" &&
+      grant.allowed &&
+      grant.dataScope === "available" &&
+      ["any", "today", "currentMonth"].includes(grant.timeScope),
+  );
+  useEffect(() => {
+    if (staff && storage?.staffId === staff.staffId && (!canRead || !canWrite)) void revoke?.();
+  }, [staff, storage?.staffId, canRead, canWrite, revoke]);
+  return null;
 }
 
 function ApplicationRoutes(props: {

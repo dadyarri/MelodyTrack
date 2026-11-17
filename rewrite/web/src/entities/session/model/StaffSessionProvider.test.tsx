@@ -97,6 +97,87 @@ afterEach(() => {
 });
 
 describe("staff session", () => {
+  it("passes a password only after the second factor completes", async () => {
+    const onAuthenticated = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(
+        response({ challenge: "factor-proof", factor: "authenticator", optionsJson: null }),
+      )
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const lifecycleWrapper = ({ children }: { children: ReactNode }) => (
+      <StaffSessionProvider onAuthenticated={onAuthenticated}>{children}</StaffSessionProvider>
+    );
+    const { result } = renderHook(useStaffSession, { wrapper: lifecycleWrapper });
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+    await act(() => result.current.signInWithPassword("staff.demo", "private-password"));
+
+    expect(onAuthenticated).not.toHaveBeenCalled();
+    expect(result.current.factor).toEqual({ method: "authenticator", canUsePasskey: false });
+
+    await act(() => result.current.completeFactor("123456"));
+
+    expect(onAuthenticated).toHaveBeenCalledOnce();
+    expect(onAuthenticated).toHaveBeenCalledWith(identity, {
+      source: "credential",
+      password: "private-password",
+    });
+  });
+
+  it("drops a pending password when sign-in is cancelled", async () => {
+    installPasskeyChooser();
+    const onAuthenticated = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(
+        response({ challenge: "factor-proof", factor: "authenticator", optionsJson: null }),
+      )
+      .mockResolvedValueOnce(
+        response({ challenge: "passkey-proof", optionsJson: discoveryOptions }),
+      )
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const lifecycleWrapper = ({ children }: { children: ReactNode }) => (
+      <StaffSessionProvider onAuthenticated={onAuthenticated}>{children}</StaffSessionProvider>
+    );
+    const { result } = renderHook(useStaffSession, { wrapper: lifecycleWrapper });
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+
+    await act(() => result.current.signInWithPassword("staff.demo", "private-password"));
+    act(() => result.current.cancelSignIn());
+    await act(() => result.current.preparePasskey());
+    await act(() => result.current.signInWithPasskey());
+
+    expect(onAuthenticated).toHaveBeenCalledWith(identity, { source: "credential" });
+    expect(onAuthenticated.mock.calls[0]?.[1]).not.toHaveProperty("password");
+  });
+
+  it("identifies cookie restoration without passing a password", async () => {
+    const onAuthenticated = vi.fn();
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity));
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const lifecycleWrapper = ({ children }: { children: ReactNode }) => (
+      <StaffSessionProvider onAuthenticated={onAuthenticated}>{children}</StaffSessionProvider>
+    );
+    renderHook(useStaffSession, { wrapper: lifecycleWrapper });
+
+    await waitFor(() => expect(onAuthenticated).toHaveBeenCalledOnce());
+
+    expect(onAuthenticated).toHaveBeenCalledWith(identity, { source: "restore" });
+  });
+
   it("updates effective permissions in the background without restarting the authenticated session", async () => {
     const updated = {
       ...identity,
@@ -404,6 +485,49 @@ describe("staff session", () => {
     expect(result.current.staff).toEqual(identity);
     expect(result.current.status).toBe("authenticated");
     expect(result.current.error?.message).toContain("Не удалось выйти");
+  });
+
+  it("keeps the session active and retries logout when local data cannot be locked", async () => {
+    const fetch = vi
+      .fn()
+      .mockResolvedValueOnce(new Response("{}", { status: 401 }))
+      .mockResolvedValueOnce(response(credentials))
+      .mockResolvedValueOnce(response(identity))
+      .mockResolvedValueOnce(response({}));
+    const onLogout = vi
+      .fn()
+      .mockRejectedValueOnce(new Error("sensitive local storage detail"))
+      .mockResolvedValueOnce(undefined);
+    vi.stubGlobal("fetch", fetch);
+    vi.stubGlobal("BroadcastChannel", undefined);
+    const lifecycleWrapper = ({ children }: { children: ReactNode }) => (
+      <StaffSessionProvider onLogout={onLogout}>{children}</StaffSessionProvider>
+    );
+    const { result } = renderHook(useStaffSession, { wrapper: lifecycleWrapper });
+    await waitFor(() => expect(fetch).toHaveBeenCalledOnce());
+    await act(() => result.current.signInWithPassword("staff.demo", "demo-password"));
+
+    await act(async () => {
+      await expect(result.current.signOut()).rejects.toMatchObject({
+        name: "ApiError",
+        message: "Не удалось закрыть локальные данные. Повторите выход.",
+      });
+    });
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(onLogout).toHaveBeenCalledOnce();
+    expect(result.current.staff).toEqual(identity);
+    expect(result.current.status).toBe("authenticated");
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    expect(result.current.error?.message).not.toContain("sensitive local storage detail");
+
+    await act(() => result.current.signOut());
+
+    expect(onLogout).toHaveBeenCalledTimes(2);
+    expect(fetch).toHaveBeenCalledTimes(4);
+    expect(new URL(String(fetch.mock.calls[3]?.[0])).pathname).toBe("/api/auth/logout");
+    expect(result.current.staff).toBeNull();
+    expect(result.current.status).toBe("anonymous");
   });
 
   it("refreshes credentials and effective permissions together", async () => {
