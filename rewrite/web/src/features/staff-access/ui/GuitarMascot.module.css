@@ -1,0 +1,204 @@
+.mascot {
+  --guitar-ink: #53371f;
+  --guitar-wood: #d9a45d;
+  --guitar-top: #efc783;
+  --guitar-light: #fff5da;
+  position: absolute;
+  z-index: -2;
+  top: 42%;
+  left: calc(100% - 120px);
+  width: 340px;
+  aspect-ratio: 7 / 6;
+  transform: translateY(-50%) rotate(28deg);
+  pointer-events: none;
+}
+
+.mascot svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.shadow {
+  display: none;
+}
+
+.character {
+  transform-origin: 140px 215px;
+  transform: rotate(var(--guitar-tilt));
+}
+
+.wood,
+.body,
+.hand {
+  fill: var(--guitar-wood);
+  stroke: var(--guitar-ink);
+  stroke-width: 2.5;
+}
+
+.body {
+  fill: var(--guitar-top);
+}
+
+.inlay,
+.grain,
+.rosette {
+  stroke: var(--guitar-ink);
+  stroke-width: 1.2;
+  opacity: 0.35;
+}
+
+.hardware,
+.feet,
+.bridge,
+.brows {
+  stroke: var(--guitar-ink);
+  stroke-width: 3;
+}
+
+.soundhole,
+.pupil {
+  fill: var(--guitar-ink);
+}
+
+.strings {
+  stroke: var(--guitar-light);
+  stroke-width: 0.8;
+  opacity: 0.45;
+}
+
+.cheek {
+  fill: #c57a58;
+  opacity: 0.45;
+}
+
+.eyeWhite,
+.glint {
+  fill: var(--guitar-light);
+}
+
+.pupils {
+  transform: translate(var(--guitar-look-x), var(--guitar-look-y));
+}
+
+.smile {
+  stroke: var(--guitar-light);
+  stroke-width: 2;
+}
+
+.closedEyes {
+  stroke: var(--guitar-ink);
+  stroke-width: 2;
+  opacity: 0;
+}
+
+.arm {
+  stroke: var(--guitar-ink);
+  stroke-width: 5;
+}
+
+.leftArm {
+  transform-origin: 95px 153px;
+}
+
+.rightArm {
+  transform-origin: 185px 153px;
+}
+
+.key {
+  visibility: hidden;
+  fill: #f3c653;
+  stroke: var(--guitar-ink);
+  stroke-width: 3.5;
+}
+
+.keyHole {
+  fill: var(--guitar-light);
+  stroke-width: 2;
+}
+
+.keyOutline {
+  fill: none;
+  stroke-width: 9;
+}
+
+.keyShaft {
+  fill: none;
+  stroke: #f3c653;
+  stroke-width: 3;
+}
+
+.mascot[data-pose="passkey"] .key,
+.mascot[data-pose="success"] .key {
+  visibility: visible;
+}
+
+.mascot[data-pose="passkey"] .rightArm,
+.mascot[data-pose="success"] .rightArm {
+  transform: rotate(-30deg);
+}
+
+.mascot[data-pose="passkey"] .brows {
+  transform: translateY(-3px);
+}
+
+.mascot[data-pose="cover"] .leftArm,
+.mascot[data-pose="peek"] .leftArm {
+  transform: translate(4px, 3px) rotate(110deg);
+}
+
+.mascot[data-pose="cover"] .rightArm {
+  transform: translate(-4px, 3px) rotate(-110deg);
+}
+
+.mascot[data-pose="peek"] .rightArm {
+  transform: translate(-10px, 17px) rotate(-80deg);
+}
+
+.mascot[data-pose="cover"] .pupils,
+.mascot[data-pose="cover"] .eyeWhite,
+.mascot[data-pose="success"] .pupils,
+.mascot[data-pose="success"] .eyeWhite {
+  opacity: 0;
+}
+
+.mascot[data-pose="cover"] .closedEyes,
+.mascot[data-pose="success"] .closedEyes {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .character,
+  .pupils {
+    transition: transform var(--motion-normal, 180ms) ease-out;
+  }
+
+  .leftArm,
+  .rightArm {
+    transition: transform 240ms var(--motion-ease, ease-out);
+  }
+
+  .mascot[data-pose="success"] .character {
+    animation: celebrate 600ms ease-in-out both;
+  }
+}
+
+@keyframes celebrate {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  40% {
+    transform: rotate(-6deg);
+  }
+  70% {
+    transform: rotate(3deg);
+  }
+}
+
+@media (max-width: 1023px) {
+  .mascot {
+    display: none;
+  }
+}

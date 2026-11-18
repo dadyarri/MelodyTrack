@@ -16,7 +16,7 @@ function render(ui: ReactNode) {
 }
 
 const session = vi.hoisted(() => ({
-  status: "anonymous" as "anonymous" | "authenticating",
+  status: "anonymous" as "anonymous" | "authenticating" | "authenticated",
   factor: null as {
     method: "authenticator" | "authenticatorOrPasskey";
     canUsePasskey: boolean;
@@ -77,6 +77,108 @@ afterEach(() => {
 });
 
 describe("staff sign in", () => {
+  it("celebrates a completed sign-in and prevents another attempt during the final gesture", () => {
+    session.status = "authenticated";
+    const view = render(<StaffSignInForm />);
+
+    expect(view.container.querySelector("[data-pose]")?.getAttribute("data-pose")).toBe("success");
+    expect(screen.getByRole("status").textContent).toBe("Вход выполнен");
+    expect((screen.getByRole("button", { name: "Войти" }) as HTMLButtonElement).disabled).toBe(
+      true,
+    );
+    expect(screen.queryByRole("button", { name: "Отменить попытку" })).toBeNull();
+  });
+
+  it("raises a key for passkey entry and keeps it raised while authentication is pending", () => {
+    session.passkeyReady = true;
+    const view = render(<StaffSignInForm />);
+    const button = screen.getByRole("button", { name: "Войти с ключом" });
+    const mascot = view.container.querySelector("[data-pose]") as HTMLElement;
+
+    fireEvent.focus(button);
+    fireEvent.click(button);
+
+    expect(mascot.dataset.pose).toBe("passkey");
+    expect(session.signInWithPasskey).toHaveBeenCalledOnce();
+
+    session.status = "authenticating";
+    view.rerender(<StaffSignInForm />);
+    fireEvent.blur(button);
+
+    expect(mascot.dataset.pose).toBe("passkey");
+
+    session.status = "anonymous";
+    view.rerender(<StaffSignInForm />);
+
+    expect(mascot.dataset.pose).toBe("idle");
+  });
+
+  it("follows the login caret and rests when the field loses focus", () => {
+    const view = render(<StaffSignInForm />);
+    const mascot = view.container.querySelector("[data-pose]") as HTMLElement;
+    const login = screen.getByLabelText("Логин") as HTMLInputElement;
+
+    fireEvent.focus(login);
+    fireEvent.input(login, { target: { value: "music-teacher", selectionStart: 12 } });
+    fireEvent.select(login, { target: { selectionStart: 12 } });
+
+    expect(mascot.dataset.pose).toBe("login");
+    const rightwardLook = mascot.style.getPropertyValue("--guitar-look-x");
+
+    fireEvent.select(login, { target: { selectionStart: 0 } });
+
+    expect(mascot.style.getPropertyValue("--guitar-look-x")).not.toBe(rightwardLook);
+
+    fireEvent.blur(login);
+
+    expect(mascot.dataset.pose).toBe("idle");
+    expect(mascot.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("covers its eyes for a password and peeks only while its visibility is enabled", () => {
+    const view = render(<StaffSignInForm />);
+    const mascot = view.container.querySelector("[data-pose]") as HTMLElement;
+    const password = screen.getByLabelText("Пароль", { exact: true }) as HTMLInputElement;
+
+    fireEvent.focus(password);
+
+    expect(mascot.dataset.pose).toBe("cover");
+    expect(password.type).toBe("password");
+
+    const show = screen.getByRole("button", { name: "Показать пароль" });
+    fireEvent.blur(password, { relatedTarget: show });
+    fireEvent.focus(show, { relatedTarget: password });
+    fireEvent.click(show);
+
+    expect(mascot.dataset.pose).toBe("peek");
+    expect(password.type).toBe("text");
+
+    fireEvent.click(screen.getByRole("button", { name: "Скрыть пароль" }));
+
+    expect(mascot.dataset.pose).toBe("cover");
+    expect(password.type).toBe("password");
+
+    fireEvent.blur(show, { relatedTarget: screen.getByRole("button", { name: "Войти" }) });
+
+    expect(mascot.dataset.pose).toBe("idle");
+  });
+
+  it("covers its eyes again when password entry is restarted after a second factor", () => {
+    const view = render(<StaffSignInForm />);
+    fireEvent.focus(screen.getByLabelText("Пароль", { exact: true }));
+    fireEvent.click(screen.getByRole("button", { name: "Показать пароль" }));
+
+    session.factor = { method: "authenticator", canUsePasskey: false };
+    view.rerender(<StaffSignInForm />);
+    session.factor = null;
+    view.rerender(<StaffSignInForm />);
+    const password = screen.getByLabelText("Пароль", { exact: true }) as HTMLInputElement;
+    fireEvent.focus(password);
+
+    expect(password.type).toBe("password");
+    expect(view.container.querySelector("[data-pose]")?.getAttribute("data-pose")).toBe("cover");
+  });
+
   it("offers passkey below the password form without passing its username", async () => {
     const view = render(<StaffSignInForm />);
     fireEvent.change(screen.getByLabelText("Логин"), {

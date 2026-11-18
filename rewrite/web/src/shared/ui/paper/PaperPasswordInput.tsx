@@ -4,12 +4,14 @@ import styles from "./PaperPasswordInput.module.css";
 
 type PaperPasswordInputProps = ComponentPropsWithRef<"input"> & {
   toggleLabel?: string;
+  onVisibilityChange?: (visible: boolean) => void;
 };
 
 export function PaperPasswordInput({
   className = "",
   disabled = false,
   toggleLabel = "пароль",
+  onVisibilityChange,
   ...props
 }: PaperPasswordInputProps) {
   const [visible, setVisible] = useState(false);
@@ -29,7 +31,10 @@ export function PaperPasswordInput({
         aria-pressed={visible}
         aria-label={`${visible ? "Скрыть" : "Показать"} ${toggleLabel}`}
         title={`${visible ? "Скрыть" : "Показать"} ${toggleLabel}`}
-        onClick={() => setVisible(!visible)}
+        onClick={() => {
+          setVisible(!visible);
+          onVisibilityChange?.(!visible);
+        }}
       >
         <Icon name={visible ? "eyeOff" : "eye"} />
       </button>

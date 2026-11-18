@@ -4,6 +4,7 @@ import { useStaffSession } from "@/entities/session";
 import { supportsPasskeys } from "@/shared/lib/passkeys";
 import { useErrorNotification } from "@/shared/ui/notifications";
 import { PaperButton, PaperInput, PaperPasswordInput } from "@/shared/ui/paper";
+import { GuitarMascot } from "./GuitarMascot";
 import styles from "./StaffSignInForm.module.css";
 
 type PrimaryValues = { login: string; password: string };
@@ -12,9 +13,13 @@ type FactorValues = { code: string };
 export function StaffSignInForm() {
   const session = useStaffSession();
   const [method, setMethod] = useState<"password" | "passkey">("password");
+  const [attention, setAttention] = useState<"idle" | "login" | "password" | "passkey">("idle");
+  const [loginCaret, setLoginCaret] = useState(0);
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const primaryForm = useForm<PrimaryValues>({ defaultValues: { login: "", password: "" } });
   const factorForm = useForm<FactorValues>({ defaultValues: { code: "" } });
-  const busy = session.status === "authenticating";
+  const signedIn = session.status === "authenticated";
+  const busy = session.status === "authenticating" || signedIn;
   const passkeysSupported = supportsPasskeys();
   const { preparePasskey, factor } = session;
   const sessionError = session.error
@@ -61,6 +66,20 @@ export function StaffSignInForm() {
 
   return (
     <div className={styles.form}>
+      <GuitarMascot
+        attention={
+          signedIn
+            ? "success"
+            : busy && method === "passkey"
+              ? "passkey"
+              : busy || (factor && attention !== "passkey")
+                ? "idle"
+                : attention
+        }
+        caret={loginCaret}
+        passwordVisible={passwordVisible}
+      />
+      {signedIn && <p role="status">Вход выполнен</p>}
       {session.factor ? (
         <section aria-labelledby="staff-access-factor-title" className={styles.fields}>
           <h2 id="staff-access-factor-title">Подтвердите вход</h2>
@@ -105,9 +124,12 @@ export function StaffSignInForm() {
               disabled={busy}
               onClick={() => {
                 setMethod("passkey");
+                setAttention("passkey");
                 factorForm.reset();
                 void session.completeFactorWithPasskey();
               }}
+              onFocus={() => setAttention("passkey")}
+              onBlur={() => setAttention("idle")}
             >
               Использовать ключ доступа
             </PaperButton>
@@ -138,11 +160,18 @@ export function StaffSignInForm() {
                 autoCorrect="off"
                 spellCheck={false}
                 disabled={busy}
+                onFocus={(event) => {
+                  setAttention("login");
+                  setLoginCaret(event.currentTarget.selectionStart ?? 0);
+                }}
+                onSelect={(event) => setLoginCaret(event.currentTarget.selectionStart ?? 0)}
+                onInput={(event) => setLoginCaret(event.currentTarget.selectionStart ?? 0)}
                 aria-invalid={Boolean(primaryForm.formState.errors.login) || undefined}
                 aria-describedby={
                   primaryForm.formState.errors.login ? "staff-login-error" : undefined
                 }
                 {...primaryForm.register("login", {
+                  onBlur: () => setAttention("idle"),
                   required: "Введите ваш логин.",
                   validate: (value) => value.trim().length > 0 || "Введите ваш логин.",
                 })}
@@ -153,12 +182,22 @@ export function StaffSignInForm() {
                 </span>
               )}
             </div>
-            <div className={styles.field}>
+            <div
+              className={styles.field}
+              onFocusCapture={(event) => {
+                setAttention("password");
+                setPasswordVisible(event.currentTarget.querySelector("input")?.type === "text");
+              }}
+              onBlurCapture={(event) => {
+                if (!event.currentTarget.contains(event.relatedTarget)) setAttention("idle");
+              }}
+            >
               <label htmlFor="staff-password">Пароль</label>
               <PaperPasswordInput
                 id="staff-password"
                 autoComplete="current-password"
                 disabled={busy}
+                onVisibilityChange={setPasswordVisible}
                 aria-invalid={Boolean(primaryForm.formState.errors.password) || undefined}
                 aria-describedby={
                   primaryForm.formState.errors.password ? "staff-password-error" : undefined
@@ -186,8 +225,11 @@ export function StaffSignInForm() {
               loading={session.preparingPasskey || (busy && method === "passkey")}
               aria-label="Войти с ключом"
               disabled={busy || !session.passkeyReady || !passkeysSupported}
+              onFocus={() => setAttention("passkey")}
+              onBlur={() => setAttention("idle")}
               onClick={() => {
                 setMethod("passkey");
+                setAttention("passkey");
                 primaryForm.resetField("password");
                 void session.signInWithPasskey();
               }}
@@ -203,7 +245,7 @@ export function StaffSignInForm() {
                 </PaperButton>
               )}
           </section>
-          {busy && (
+          {busy && !signedIn && (
             <PaperButton
               className={styles.textButton}
               onClick={() => {

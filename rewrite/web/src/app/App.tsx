@@ -17,6 +17,7 @@ import { Notifications, useErrorNotification } from "@/shared/ui/notifications";
 import { PaperButton } from "@/shared/ui/paper";
 import { usePopupScrollBoundary } from "@/shared/ui/scroll-boundary";
 import styles from "./App.module.css";
+import { useSignInCompletion } from "./useSignInCompletion";
 
 const AuthenticatedApplication = lazy(() => import("./AuthenticatedApplication"));
 const StaffRegistrationPage = lazy(() =>
@@ -108,6 +109,7 @@ function ApplicationRoutes(props: {
   onToggleAppearance: () => void;
 }) {
   const { staff, status, error, restoreSession } = useStaffSession();
+  const finishingSignIn = useSignInCompletion(staff?.staffId ?? null, status);
   useErrorNotification(status === "restoring" ? error?.message : null, {
     title: "Не удалось восстановить сессию",
     retry: () => void restoreSession(),
@@ -142,7 +144,7 @@ function ApplicationRoutes(props: {
                 "Восстановление сессии…"
               )}
             </div>
-          ) : staff ? (
+          ) : staff && !finishingSignIn ? (
             <Suspense
               fallback={
                 <div className={styles.loading} role="status">
