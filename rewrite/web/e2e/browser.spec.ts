@@ -493,33 +493,55 @@ test("calls a synthetic passkey chooser in an active user gesture and handles ca
   expect(await page.evaluate(() => document.documentElement.dataset.activeGesture)).toBe("true");
 });
 
-test("creates a real credential through the browser virtual authenticator", async ({
+test("registers and authenticates with a virtual passkey", async ({
   page,
   context,
   browserName,
 }) => {
-  test.skip(
-    browserName !== "chromium",
-    "Virtual WebAuthn authenticator is exposed through Chromium CDP only.",
-  );
   await installApi(context);
+  // Keep Chromium's native WebAuthn coverage; WebKit uses Playwright's API interception.
   await openProbe(page);
-  const cdp = await context.newCDPSession(page);
-  await cdp.send("WebAuthn.enable");
-  const { authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
-    options: {
-      protocol: "ctap2",
-      transport: "internal",
-      hasResidentKey: true,
-      hasUserVerification: true,
-      isUserVerified: true,
-      automaticPresenceSimulation: true,
-    },
-  });
+  if (browserName !== "chromium") {
+    // Linux WebKit omits these interfaces; Playwright uses their prototypes for virtual responses.
+    await page.evaluate(() => {
+      for (const name of [
+        "PublicKeyCredential",
+        "AuthenticatorAttestationResponse",
+        "AuthenticatorAssertionResponse",
+      ]) {
+        if (!(name in window))
+          Object.defineProperty(window, name, { configurable: true, value: class {} });
+      }
+    });
+    await context.credentials.install();
+  }
+  const cdp = browserName === "chromium" ? await context.newCDPSession(page) : undefined;
+  let authenticatorId: string | undefined;
+  if (cdp) {
+    await cdp.send("WebAuthn.enable");
+    ({ authenticatorId } = await cdp.send("WebAuthn.addVirtualAuthenticator", {
+      options: {
+        protocol: "ctap2",
+        transport: "internal",
+        hasResidentKey: true,
+        hasUserVerification: true,
+        isUserVerified: true,
+        automaticPresenceSimulation: true,
+      },
+    }));
+  }
   try {
     await page.getByRole("button", { name: "Create passkey" }).click();
     await expect(page.getByLabel("result", { exact: true })).toHaveText("created");
-    const { credentials } = await cdp.send("WebAuthn.getCredentials", { authenticatorId });
+    const credentials =
+      cdp && authenticatorId
+        ? (await cdp.send("WebAuthn.getCredentials", { authenticatorId })).credentials.map(
+            (credential) => ({
+              id: Buffer.from(credential.credentialId, "base64").toString("base64url"),
+              rpId: credential.rpId,
+            }),
+          )
+        : await context.credentials.get({ rpId: "localhost" });
     expect(credentials).toHaveLength(1);
     expect(credentials[0]?.rpId).toBe("localhost");
     const assertion = await page.evaluate(async () => {
@@ -531,12 +553,14 @@ test("creates a real credential through the browser virtual authenticator", asyn
     });
     const credential = credentials[0];
     if (!credential) throw new Error("Virtual authenticator has no credential");
-    expect(assertion.id).toBe(Buffer.from(credential.credentialId, "base64").toString("base64url"));
+    expect(assertion.id).toBe(credential.id);
     expect(assertion.response).toMatchObject({
       signature: expect.any(String),
       authenticatorData: expect.any(String),
       clientDataJSON: expect.any(String),
     });
+    // Playwright's API interception does not implement AbortSignal; retain native coverage.
+    if (!cdp || !authenticatorId) return;
     await cdp.send("WebAuthn.setAutomaticPresenceSimulation", { authenticatorId, enabled: false });
     const aborted = await page.evaluate(async () => {
       const { getPasskeyAssertion } = await import("../src/shared/lib/passkeys.ts");
@@ -553,8 +577,10 @@ test("creates a real credential through the browser virtual authenticator", asyn
     });
     expect(aborted).toBe("AbortError");
   } finally {
-    await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
-    await cdp.detach();
+    if (cdp && authenticatorId) {
+      await cdp.send("WebAuthn.removeVirtualAuthenticator", { authenticatorId });
+      await cdp.detach();
+    }
   }
 });
 
@@ -715,14 +741,60 @@ async function containsNativeWheelScrollingAtPopupBoundary(page: Page, context: 
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
 }
 
-test("contains native wheel scrolling without freezing the popup list", async ({
+async function supportsTouchScrollingInPopup(page: Page, context: BrowserContext) {
+  await installApi(context);
+  await openProbe(page);
+  await page.evaluate(() => {
+    document.body.style.height = "3000px";
+  });
+  await page.getByRole("combobox", { name: "Scroll options" }).tap();
+  const list = page.getByRole("option").first().locator("..");
+  await expect(list).toHaveCSS("overflow-y", "auto");
+  await expect(list).toHaveCSS("overscroll-behavior-y", "contain");
+  const scrollPosition = await page.evaluate(() => window.scrollY);
+
+  // Untrusted touch events exercise listeners, not native scrolling. Test layout separately.
+  const points = await list.evaluate((element) => {
+    const bounds = element.getBoundingClientRect();
+    for (const type of ["touchstart", "touchmove"]) {
+      window.addEventListener(
+        type,
+        (event) => element.setAttribute(`data-${type}-prevented`, String(event.defaultPrevented)),
+        { once: true },
+      );
+    }
+    return { x: bounds.left + bounds.width / 2, startY: bounds.bottom - 20, endY: bounds.top + 20 };
+  });
+  for (const type of ["touchstart", "touchmove", "touchend"]) {
+    const touch = {
+      identifier: 1,
+      clientX: points.x,
+      clientY: type === "touchstart" ? points.startY : points.endY,
+    };
+    await list.dispatchEvent(type, {
+      bubbles: true,
+      cancelable: true,
+      touches: type === "touchend" ? [] : [touch],
+      targetTouches: type === "touchend" ? [] : [touch],
+      changedTouches: [touch],
+    });
+  }
+  await expect(list).toHaveAttribute("data-touchstart-prevented", "false");
+  await expect(list).toHaveAttribute("data-touchmove-prevented", "false");
+
+  await page.getByRole("option", { name: "Option 40", exact: true }).scrollIntoViewIfNeeded();
+  await expect.poll(() => list.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  expect(await page.evaluate(() => window.scrollY)).toBe(scrollPosition);
+  await page.getByRole("option", { name: "Option 40", exact: true }).tap();
+  await expect(page.getByLabel("scroll selection", { exact: true })).toHaveText("39");
+  await expect(page.getByRole("combobox", { name: "Scroll options" })).toHaveText("Option 40");
+}
+
+test("keeps the popup list scrollable and contains background scrolling", async ({
   page,
   context,
   isMobile,
 }) => {
-  test.skip(
-    isMobile,
-    "Mobile WebKit does not expose mouse wheel; desktop WebKit covers native wheel.",
-  );
-  await containsNativeWheelScrollingAtPopupBoundary(page, context);
+  if (isMobile) await supportsTouchScrollingInPopup(page, context);
+  else await containsNativeWheelScrollingAtPopupBoundary(page, context);
 });

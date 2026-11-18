@@ -7,6 +7,7 @@ import { PaperAccordion } from "../src/shared/ui/paper/PaperAccordion";
 import { PaperButton } from "../src/shared/ui/paper/PaperButton";
 import { PaperDialog } from "../src/shared/ui/paper/PaperDialog";
 import { PaperPagination } from "../src/shared/ui/paper/PaperPagination";
+import { PaperSelect } from "../src/shared/ui/paper/PaperSelect";
 import { usePopupScrollBoundary } from "../src/shared/ui/scroll-boundary";
 import "../src/app/styles.css";
 
@@ -16,6 +17,7 @@ function Probe() {
   const [result, setResult] = useState("");
   const [pagination, setPagination] = useState<{ page: number; pageSize: number } | null>(null);
   const [motionPreviewOpen, setMotionPreviewOpen] = useState(false);
+  const [scrollOption, setScrollOption] = useState("0");
   usePopupScrollBoundary();
   return (
     <>
@@ -69,6 +71,16 @@ function Probe() {
         Create passkey
       </button>
       <output aria-label="result">{result}</output>
+      <PaperSelect
+        aria-label="Scroll options"
+        value={scrollOption}
+        onValueChange={setScrollOption}
+        options={Array.from({ length: 40 }, (_, index) => ({
+          value: String(index),
+          label: `Option ${index + 1}`,
+        }))}
+      />
+      <output aria-label="scroll selection">{scrollOption}</output>
       <DateInput value={date} onChange={setDate} />
       <output aria-label="date">{date}</output>
       <PaperButton onClick={() => setMotionPreviewOpen(true)}>Motion preview</PaperButton>
