@@ -86,11 +86,7 @@ jobs:
           node-version-file: rewrite/web/.node-version
           cache: npm
           cache-dependency-path: rewrite/web/package-lock.json
-      - name: Install locked dependencies
-        run: npm ci
-      - name: Install Playwright browser and system dependencies
-        run: npx playwright install --with-deps ${{ matrix.browser }}
-      - name: Run Playwright projects
+      - name: Run Playwright projects in Docker
         run: npm run test:browser -- --project '${{ matrix.browser }}*'
 
   frontend-verify:

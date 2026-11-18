@@ -123,6 +123,15 @@ class ProcessTests(unittest.TestCase):
         self.assertEqual(result['status'], 'timeout')
         self.assertNotEqual(result['exit_code'], 0)
 
+    def test_timeout_allows_cleanup_before_termination(self):
+        result = self.invoke('import signal, time, sys; '
+                             'signal.signal(signal.SIGTERM, lambda *_: '
+                             '(print("cleaned", flush=True), sys.exit(0))); '
+                             'time.sleep(30)', 0.5)
+
+        self.assertEqual(result['status'], 'timeout')
+        self.assertIn('cleaned', self.log.read_text())
+
     def test_interruption(self):
         original_wait = subprocess.Popen.wait
         first = True
@@ -137,7 +146,7 @@ class ProcessTests(unittest.TestCase):
         with patch.object(subprocess.Popen, 'wait', interrupt_once):
             result = self.invoke('import time; time.sleep(30)')
         self.assertEqual(result['status'], 'interrupted')
-        self.assertEqual(result['exit_code'], -9)
+        self.assertEqual(result['exit_code'], -15)
 
     def test_build_dedup_keeps_different_errors(self):
         self.log.write_text('file.cs(2,3): error CS1000: broken\n' * 2 +

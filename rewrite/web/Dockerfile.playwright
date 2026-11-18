@@ -1,0 +1,14 @@
+ARG NODE_VERSION=26.7.0
+ARG PLAYWRIGHT_VERSION=1.65.1
+FROM node:${NODE_VERSION}-bookworm-slim AS node
+FROM mcr.microsoft.com/playwright:v${PLAYWRIGHT_VERSION}-noble
+
+COPY --from=node /usr/local/ /usr/local/
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1 MELODYTRACK_PLAYWRIGHT_DOCKER=1 HOME=/tmp
+WORKDIR /workspace/web
+COPY package.json package-lock.json ./
+RUN npm ci --no-audit --no-fund \
+    && mkdir -p node_modules/.vite node_modules/.vite-temp \
+    && chmod 1777 node_modules/.vite node_modules/.vite-temp
+COPY . .
+CMD ["node", "node_modules/@playwright/test/cli.js", "test"]

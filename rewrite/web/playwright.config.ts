@@ -1,5 +1,9 @@
 import { defineConfig, devices } from "@playwright/test";
 
+if (process.env.MELODYTRACK_PLAYWRIGHT_DOCKER !== "1") {
+  throw new Error("Run Playwright in Docker with npm run test:browser");
+}
+
 const artifacts = process.env.AGENT_CHECKS_BROWSER_DIR ?? ".artifacts/browser";
 const baseURL = `http://localhost:${process.env.AGENT_CHECKS_BROWSER_PORT ?? 5174}`;
 const reportFile = process.env.AGENT_CHECKS_BROWSER_DIR ? "result.json" : "report.json";

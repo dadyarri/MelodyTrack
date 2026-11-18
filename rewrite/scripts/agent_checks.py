@@ -119,9 +119,16 @@ def invoke(command, cwd, log, timeout, env=None):
             if process is not None:
                 try:
                     if os.name == 'posix':
-                        os.killpg(process.pid, signal.SIGKILL)
+                        os.killpg(process.pid, signal.SIGTERM)
                     else:
-                        process.kill()
+                        process.terminate()
+                    try:
+                        process.wait(timeout=15)
+                    except subprocess.TimeoutExpired:
+                        if os.name == 'posix':
+                            os.killpg(process.pid, signal.SIGKILL)
+                        else:
+                            process.kill()
                 except ProcessLookupError:
                     pass
                 result['exit_code'] = process.wait()
