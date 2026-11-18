@@ -414,7 +414,7 @@ describe("client directory page", () => {
     const sizeChanger = screen.getAllByRole("combobox").at(-1);
     if (!sizeChanger) throw new Error("Missing page-size selector.");
     fireEvent.click(sizeChanger);
-    const sizeOption = await screen.findByRole("option", { name: "20 на странице" });
+    const sizeOption = await screen.findByRole("option", { name: "20 / страница" });
     fireEvent.pointerDown(sizeOption, { pointerType: "mouse" });
     fireEvent.click(sizeOption);
     await waitFor(() => {

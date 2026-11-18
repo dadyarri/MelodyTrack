@@ -121,7 +121,7 @@ test("renders multiple pages through Vite and changes the page and page size", a
   await page.getByRole("button", { name: "Страница 2", exact: true }).click();
   await expect(page.getByLabel("pagination", { exact: true })).toHaveText("2:10");
   await page.getByRole("combobox", { name: "Строк на странице", exact: true }).click();
-  await page.getByRole("option", { name: "20 на странице", exact: true }).click();
+  await page.getByRole("option", { name: "20 / страница", exact: true }).click();
   await expect(page.getByLabel("pagination", { exact: true })).toHaveText("1:20");
   await expect(page.getByRole("button", { name: "Страница 4", exact: true })).toBeVisible();
 });

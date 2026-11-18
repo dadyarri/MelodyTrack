@@ -41,13 +41,6 @@
   opacity: 0.45;
   pointer-events: none;
 }
-.sizeLabel {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--color-muted);
-  font-size: 13px;
-}
 @media (max-width: 600px) {
   .root {
     justify-content: space-between;

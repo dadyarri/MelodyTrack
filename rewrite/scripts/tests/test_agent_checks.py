@@ -346,6 +346,7 @@ class WorkflowTests(unittest.TestCase):
         directory = self.artifacts / 'not-created'
         plan = checks.plan('all', directory)
         self.assertEqual(len(plan), 4)
+        self.assertIn('-bl:' + str(directory / 'build.binlog'), plan[0]['command'])
         self.assertFalse(directory.exists())
         self.assertIn('--project', plan[1]['command'])
         explicit_index = plan[1]['command'].index('--explicit')

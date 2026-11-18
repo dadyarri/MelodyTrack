@@ -175,7 +175,8 @@ def plan(scope, directory, filters=None, browser_projects=None, browser_port=517
                  **({'targets': filters['tests']} if filters else {})}]
     if scope in ('all', 'build'):
         commands.append({'name': 'build', 'kind': 'build', 'command':
-                         ['dotnet', 'build', 'MelodyTrack.Rewrite.slnx', '--verbosity', 'minimal']})
+                         ['dotnet', 'build', 'MelodyTrack.Rewrite.slnx', '--verbosity', 'minimal',
+                          '-bl:' + str(directory / 'build.binlog')]})
     for item in PROJECTS if scope == 'all' else ([scope] if scope in PROJECTS else []):
         report_dir = directory / item
         command = ['dotnet', 'test', '--project', PROJECTS[item], '--report-xunit-xml',

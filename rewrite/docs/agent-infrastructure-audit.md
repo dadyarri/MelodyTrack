@@ -75,7 +75,7 @@ Git root — родительский `MelodyTrack/`; rewrite — изолиро
 
 ## Технические факты и обнаруженные расхождения
 
-- `global.json` фиксирует SDK `11.0.100-rc.2.26504.105`, MTP; локальный
+- `global.json` фиксирует SDK `11.0.100-rc.3.26522.148`, MTP; локальный
   `Directory.Build.props` — `net11.0`, локальный CPM уже включён.
   Предметная архитектура — C#/Rules/Application/Npgsql/Dapper, не старый EF.
 - Api пока host и преобразование Result/Problem Details, без предметных

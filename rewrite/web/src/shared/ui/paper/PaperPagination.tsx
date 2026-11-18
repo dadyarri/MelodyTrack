@@ -1,4 +1,3 @@
-import { useId } from "react";
 import ReactPaginateImport from "react-paginate";
 import { Icon } from "../Icon";
 import styles from "./PaperPagination.module.css";
@@ -29,7 +28,6 @@ export function PaperPagination({
   showPageSize?: boolean;
 }) {
   const pageCount = Math.ceil(total / pageSize);
-  const pageSizeId = useId();
   return (
     <div className={styles.root}>
       {pageCount > 1 && (
@@ -65,20 +63,16 @@ export function PaperPagination({
         </nav>
       )}
       {showPageSize && (
-        <label className={styles.sizeLabel} htmlFor={pageSizeId}>
-          <span>Строк на странице</span>
-          <PaperSelect
-            id={pageSizeId}
-            aria-label="Строк на странице"
-            value={String(pageSize)}
-            disabled={disabled}
-            options={pageSizeOptions.map((size) => ({
-              value: String(size),
-              label: `${size} на странице`,
-            }))}
-            onValueChange={(value) => onChange(1, Number(value))}
-          />
-        </label>
+        <PaperSelect
+          aria-label="Строк на странице"
+          value={String(pageSize)}
+          disabled={disabled}
+          options={pageSizeOptions.map((size) => ({
+            value: String(size),
+            label: `${size} / страница`,
+          }))}
+          onValueChange={(value) => onChange(1, Number(value))}
+        />
       )}
     </div>
   );

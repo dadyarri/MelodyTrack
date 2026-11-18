@@ -128,7 +128,7 @@ python3 scripts/agent_checks.py details --help
 python3 scripts/agent_checks.py rerun-failed --run <run-id>
 ```
 
-Точный CLI и форматы описаны в `python3 scripts/agent_checks.py --help`. `all` означает build и обычные тестовые проекты rewrite, не продуктовую приёмку, live import или старый монорепозиторий. Проверка данных в реальном источнике — отдельная задача.
+Точный CLI и форматы описаны в `python3 scripts/agent_checks.py --help`. `all` означает build и обычные тестовые проекты rewrite, не продуктовую приёмку, live import или старый монорепозиторий. Проверка данных в реальном источнике — отдельная задача. Сборка в scopes `all` и `build` сохраняет `build.binlog` в каталоге запуска для диагностики MSBuild.
 
 Каждый запуск сохраняет уникальный каталог `.artifacts/agent-checks/`: JSON с версией схемы/командами/status/exit codes/временем/итогами/ошибками и ссылками на артефакты, краткую сводку, полные логи и нативный xUnit XML либо Vitest/Playwright JSON. Успешный запуск требует успешного процесса и полных ненулевых результатов тестов; пропуски названы отдельно. Повреждённый/нулевой отчёт — incomplete; ненулевой неизвестный код — ошибка инструмента с сохранённой неопределённостью, не автоматически дефект приложения. `details --index N` раскрывает одну ошибку; сводка не печатает assertion values и stack traces. Падение Biome/TypeScript/Vite может не дать тестовый JSON: сохраняются статус, exit code и полный лог pipeline.
 
