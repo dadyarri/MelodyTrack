@@ -15,6 +15,13 @@
   opacity: 0.55;
   cursor: default;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .input {
+    transition: border-color var(--motion-fast) ease;
+  }
+}
+
 .input::placeholder {
   color: var(--color-muted);
 }

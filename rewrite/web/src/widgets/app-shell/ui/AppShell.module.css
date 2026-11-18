@@ -136,7 +136,7 @@
   border: 2px solid currentColor;
   border-right-color: transparent;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: spin var(--motion-spinner-duration, 0.8s) linear infinite;
 }
 
 @keyframes spin {
@@ -226,6 +226,30 @@
 .workspaceLayoutCollapsed {
   grid-template-columns: 76px minmax(0, 1fr);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .workspaceNavigation a,
+  .accountMenuTrigger {
+    transition:
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease,
+      border-color var(--motion-fast) ease;
+  }
+
+  .accountMenu {
+    transform-origin: var(--transform-origin);
+    transition:
+      opacity var(--motion-fast) ease,
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  .accountMenu[data-starting-style],
+  .accountMenu[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
+
 .workspaceLayoutCollapsed .workspaceSidebar {
   padding-inline: 8px;
 }

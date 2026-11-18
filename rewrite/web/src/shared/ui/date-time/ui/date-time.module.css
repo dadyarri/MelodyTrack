@@ -192,3 +192,24 @@
   border-top: 1px solid var(--color-line);
   color: var(--color-primary);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dateTimePopover {
+    transform-origin: var(--transform-origin);
+    transition:
+      opacity var(--motion-fast) ease,
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  .dateTimePopover[data-starting-style],
+  .dateTimePopover[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+
+  .dateTimeCalendarDay {
+    transition:
+      background-color var(--motion-fast) ease,
+      color var(--motion-fast) ease;
+  }
+}

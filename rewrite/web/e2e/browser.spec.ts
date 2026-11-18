@@ -126,6 +126,48 @@ test("renders multiple pages through Vite and changes the page and page size", a
   await expect(page.getByRole("button", { name: "Страница 4", exact: true })).toBeVisible();
 });
 
+for (const reducedMotion of ["no-preference", "reduce"] as const) {
+  test(`keeps dialogs and expanding content usable with motion preference ${reducedMotion}`, async ({
+    page,
+    context,
+  }) => {
+    await installApi(context);
+    await page.emulateMedia({ reducedMotion });
+    await openProbe(page);
+    const trigger = page.getByRole("button", { name: "Motion preview", exact: true });
+
+    await trigger.click();
+    const dialog = page.getByRole("dialog", { name: "Motion preview", exact: true });
+    await expect(dialog).toBeVisible();
+    await expect(dialog).toHaveCSS("opacity", "1");
+    await dialog.getByRole("button", { name: "Preview details", exact: true }).click();
+    const done = dialog.getByRole("button", { name: "Done", exact: true });
+    await expect(done).toBeVisible();
+    await done.focus();
+    await expect(done).toBeFocused();
+    const animations = await dialog.evaluate((element) =>
+      element.getAnimations({ subtree: true }).map((animation) => ({
+        duration: animation.effect?.getComputedTiming().duration,
+        state: animation.playState,
+      })),
+    );
+    if (reducedMotion === "reduce") {
+      expect(
+        animations.filter(({ duration, state }) => state === "running" && Number(duration) > 1),
+      ).toEqual([]);
+    }
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+    await trigger.click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Закрыть окно", exact: true }).click();
+    await expect(dialog).toBeHidden();
+    await expect(trigger).toBeFocused();
+  });
+}
+
 test("persists an HttpOnly cookie across reload and removes it on logout", async ({
   page,
   context,

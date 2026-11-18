@@ -18,6 +18,10 @@
   --control-height: 44px;
   --control-radius: 6px;
   --control-font-size: 16px;
+  --motion-fast: 120ms;
+  --motion-normal: 180ms;
+  --motion-panel: 200ms;
+  --motion-ease: cubic-bezier(0.22, 1, 0.36, 1);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
 
@@ -74,11 +78,7 @@ p {
   margin: 0;
 }
 @media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto;
-    animation-duration: 0.01ms;
-    transition-duration: 0.01ms;
+  :root {
+    --motion-spinner-duration: 0s;
   }
 }

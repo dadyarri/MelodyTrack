@@ -35,3 +35,23 @@
 .content {
   padding: 0 16px 16px;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .indicator {
+    transition: transform var(--motion-normal) var(--motion-ease);
+  }
+
+  .panel {
+    height: var(--accordion-panel-height);
+    overflow: hidden;
+    transition:
+      height var(--motion-normal) var(--motion-ease),
+      opacity var(--motion-normal) ease;
+  }
+
+  .panel[data-starting-style],
+  .panel[data-ending-style] {
+    height: 0;
+    opacity: 0;
+  }
+}

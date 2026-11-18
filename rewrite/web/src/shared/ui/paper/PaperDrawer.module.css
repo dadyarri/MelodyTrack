@@ -52,6 +52,30 @@
   overscroll-behavior: contain;
   padding: 24px;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .backdrop {
+    transition: opacity var(--motion-panel) ease;
+  }
+
+  .backdrop[data-starting-style],
+  .backdrop[data-ending-style] {
+    opacity: 0;
+  }
+
+  .drawer {
+    transition:
+      opacity var(--motion-panel) ease,
+      transform var(--motion-panel) var(--motion-ease);
+  }
+
+  .drawer[data-starting-style],
+  .drawer[data-ending-style] {
+    opacity: 0;
+    transform: translateX(var(--drawer-enter-offset, 24px));
+  }
+}
+
 @media (max-width: 767px) {
   .drawer {
     width: 100vw;

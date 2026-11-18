@@ -12,3 +12,14 @@
   background: var(--color-elevated);
   box-shadow: 0 8px 28px rgb(0 0 0 / 18%);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tooltip {
+    transition: opacity var(--motion-fast) ease;
+  }
+
+  .tooltip[data-starting-style],
+  .tooltip[data-ending-style] {
+    opacity: 0;
+  }
+}

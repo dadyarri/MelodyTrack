@@ -83,3 +83,22 @@
   outline: none;
   background: var(--color-soft);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .trigger {
+    transition: border-color var(--motion-fast) ease;
+  }
+
+  .popup {
+    transform-origin: var(--transform-origin);
+    transition:
+      opacity var(--motion-fast) ease,
+      transform var(--motion-fast) var(--motion-ease);
+  }
+
+  .popup[data-starting-style],
+  .popup[data-ending-style] {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+}
