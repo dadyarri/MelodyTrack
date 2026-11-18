@@ -15,40 +15,8 @@
     <ProjectReference Include="../../src/MelodyTrack.Rewrite.Api/MelodyTrack.Rewrite.Api.csproj" />
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <None Update="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0001_CreateClients.sql"
-          Link="Schema/0001_CreateClients.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0002_CreateImportMappings.sql"
-          Link="Schema/0002_CreateImportMappings.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0003_CreateClientNotesHistory.sql"
-          Link="Schema/0003_CreateClientNotesHistory.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0005_CreateMarketingCampaigns.sql"
-          Link="Schema/0005_CreateMarketingCampaigns.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0006_CreateExpenses.sql"
-          Link="Schema/0006_CreateExpenses.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0004_CreateEmployeeTrainingProgress.sql"
-          Link="Schema/0004_CreateEmployeeTrainingProgress.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0008_CreateStaffPermissions.sql"
-          Link="Schema/0008_CreateStaffPermissions.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0009_CreateExpenseAuditMarkers.sql"
-          Link="Schema/0009_CreateExpenseAuditMarkers.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0010_CreateStaffAccessTokens.sql"
-          Link="Schema/0010_CreateStaffAccessTokens.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0011_CreateStaffCredentials.sql"
-          Link="Schema/0011_CreateStaffCredentials.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0012_CreateClientAccessSessions.sql"
-          Link="Schema/0012_CreateClientAccessSessions.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0013_CreateBrowserAccessContexts.sql"
-          Link="Schema/0013_CreateBrowserAccessContexts.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0014_UnifyClientWorkState.sql"
-          Link="Schema/0014_UnifyClientWorkState.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0015_EnableClientNameSimilarity.sql"
-          Link="Schema/0015_EnableClientNameSimilarity.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0016_CreateClientCardCommands.sql"
-          Link="Schema/0016_CreateClientCardCommands.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0017_AddClientNameFragmentSearch.sql"
-          Link="Schema/0017_AddClientNameFragmentSearch.sql" CopyToOutputDirectory="PreserveNewest" />
-    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0018_RespectClientNameWordBoundaries.sql"
-          Link="Schema/0018_RespectClientNameWordBoundaries.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/*.sql"
+          Link="Schema/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />
