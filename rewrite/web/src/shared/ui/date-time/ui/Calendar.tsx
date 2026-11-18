@@ -12,6 +12,7 @@ import {
   todayDate,
   withinDateRange,
 } from "../model/calendar";
+import styles from "./date-time.module.css";
 
 const weekdays = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Вс"];
 const monthFormat = new Intl.DateTimeFormat("ru-RU", {
@@ -78,6 +79,7 @@ export function Calendar({
     };
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       onClose();
     } else if (event.key === "PageUp" || event.key === "PageDown") {
       event.preventDefault();
@@ -115,13 +117,14 @@ export function Calendar({
   function closeOnEscape(event: KeyboardEvent<HTMLButtonElement>) {
     if (event.key === "Escape") {
       event.preventDefault();
+      event.stopPropagation();
       onClose();
     }
   }
 
   return (
-    <dialog open className="date-time-calendar" aria-label="Календарь">
-      <div className="date-time-calendar-heading">
+    <dialog open className={styles.dateTimeCalendar} aria-label="Календарь">
+      <div className={styles.dateTimeCalendarHeading}>
         <button
           type="button"
           aria-label="Предыдущий год"
@@ -140,7 +143,7 @@ export function Calendar({
         >
           <Icon name="previous" size={18} />
         </button>
-        <span className="date-time-calendar-month" aria-live="polite">
+        <span className={styles.dateTimeCalendarMonth} aria-live="polite">
           {monthFormat.format(dateAsUtc(month))}
         </span>
         <button
@@ -162,7 +165,7 @@ export function Calendar({
           »
         </button>
       </div>
-      <table className="date-time-calendar-grid" aria-label="Выбор даты">
+      <table className={styles.dateTimeCalendarGrid} aria-label="Выбор даты">
         <thead>
           <tr>
             {weekdays.map((day) => (
@@ -187,7 +190,7 @@ export function Calendar({
                         else cells.current.delete(iso);
                       }}
                       type="button"
-                      className={`date-time-calendar-day${date.month !== month.month ? " date-time-calendar-outside" : ""}${iso === value ? " date-time-calendar-selected" : ""}`}
+                      className={`${styles.dateTimeCalendarDay}${date.month !== month.month ? ` ${styles.dateTimeCalendarOutside}` : ""}${iso === value ? ` ${styles.dateTimeCalendarSelected}` : ""}`}
                       aria-label={dayFormat.format(dateAsUtc(date))}
                       aria-current={iso === today ? "date" : undefined}
                       aria-pressed={iso === value}
@@ -210,7 +213,7 @@ export function Calendar({
         </tbody>
       </table>
       <button
-        className="date-time-today"
+        className={styles.dateTimeToday}
         type="button"
         disabled={!withinDateRange(today, min, max)}
         onKeyDown={closeOnEscape}

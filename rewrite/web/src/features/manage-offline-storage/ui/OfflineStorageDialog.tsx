@@ -1,12 +1,15 @@
-import { Alert, Button, Checkbox, Input, Modal, Space } from "antd";
 import { useEffect, useRef, useState } from "react";
 import { useOfflineStorage } from "@/entities/offline-storage";
+import { Icon } from "@/shared/ui/Icon";
+import { PaperButton, PaperDialog, PaperInput } from "@/shared/ui/paper";
+import styles from "./OfflineStorageDialog.module.css";
 
 export function OfflineStorageDialog({ open, onClose }: { open: boolean; onClose(): void }) {
   const storage = useOfflineStorage();
   const [secret, setSecret] = useState("");
   const [generated, setGenerated] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [secretVisible, setSecretVisible] = useState(false);
   const [generationError, setGenerationError] = useState(false);
   const previousOwner = useRef(storage?.staffId);
   useEffect(() => {
@@ -16,6 +19,7 @@ export function OfflineStorageDialog({ open, onClose }: { open: boolean; onClose
       setSecret("");
       setGenerated(false);
       setSaved(false);
+      setSecretVisible(false);
       setGenerationError(false);
     }
   }, [open, storage?.status, storage?.staffId]);
@@ -37,41 +41,55 @@ export function OfflineStorageDialog({ open, onClose }: { open: boolean; onClose
   }
 
   return (
-    <Modal
+    <PaperDialog
       open={open}
       title="Локальные данные"
-      onCancel={onClose}
-      footer={<Button onClick={onClose}>Закрыть</Button>}
-      destroyOnHidden
+      onClose={onClose}
+      footer={<PaperButton onClick={onClose}>Закрыть</PaperButton>}
+      className={styles.dialog}
     >
-      <Space orientation="vertical" size="middle" style={{ width: "100%" }}>
+      <div className={styles.content}>
         <p>
           Черновик нового клиента сохраняется на этом устройстве в зашифрованном виде. На сервер он
           отправляется только кнопкой «Сохранить» в карточке.
         </p>
-        {storage.status === "unlocked" ? <Alert type="success" title="Хранилище открыто" /> : null}
+        {storage.status === "unlocked" ? (
+          <p className={styles.success} role="status">
+            Хранилище открыто
+          </p>
+        ) : null}
         {checking ? <p role="status">Открываем локальные данные…</p> : null}
-        {storage.error ? <Alert type="warning" title={storage.error} /> : null}
+        {storage.error ? (
+          <p className={styles.warning} role="alert">
+            {storage.error}
+          </p>
+        ) : null}
         {missing ? (
           <>
             <p>
               При входе с паролем хранилище создаётся и открывается автоматически. Для входа без
               пароля сохраните отдельный ключ в надёжном месте: приложение его не запоминает.
             </p>
-            <Button onClick={generateKey}>Создать отдельный ключ</Button>
+            <PaperButton onClick={generateKey}>Создать отдельный ключ</PaperButton>
             {generated ? (
               <>
-                <Input.TextArea
+                <textarea
                   aria-label="Отдельный ключ локальных данных"
+                  className={styles.generatedSecret}
                   readOnly
                   value={secret}
                   rows={3}
                   autoComplete="off"
                   spellCheck={false}
                 />
-                <Checkbox checked={saved} onChange={(event) => setSaved(event.target.checked)}>
-                  Ключ сохранён в надёжном месте
-                </Checkbox>
+                <label className={styles.savedConfirmation}>
+                  <input
+                    type="checkbox"
+                    checked={saved}
+                    onChange={(event) => setSaved(event.target.checked)}
+                  />
+                  <span>Ключ сохранён в надёжном месте</span>
+                </label>
               </>
             ) : null}
           </>
@@ -81,39 +99,49 @@ export function OfflineStorageDialog({ open, onClose }: { open: boolean; onClose
               Введите пароль, которым хранилище было открыто впервые, или отдельный ключ. После
               сброса пароля для старых данных нужен прежний секрет.
             </p>
-            <Input.Password
-              aria-label="Пароль или ключ локальных данных"
-              autoComplete="off"
-              value={secret}
-              onChange={(event) => setSecret(event.target.value)}
-              onPressEnter={() => {
-                if (secret) void storage.unlock(secret);
-              }}
-            />
+            <div className={styles.secretInputRow}>
+              <PaperInput
+                aria-label="Пароль или ключ локальных данных"
+                type={secretVisible ? "text" : "password"}
+                autoComplete="off"
+                value={secret}
+                onChange={(event) => setSecret(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && secret) void storage.unlock(secret);
+                }}
+              />
+              <PaperButton
+                size="small"
+                aria-label={secretVisible ? "Скрыть пароль или ключ" : "Показать пароль или ключ"}
+                title={secretVisible ? "Скрыть пароль или ключ" : "Показать пароль или ключ"}
+                aria-pressed={secretVisible}
+                icon={<Icon name={secretVisible ? "eyeOff" : "eye"} />}
+                onClick={() => setSecretVisible((visible) => !visible)}
+              />
+            </div>
           </>
         ) : null}
         {generationError ? (
-          <Alert
-            type="error"
-            title="Не удалось создать ключ. Проверьте доступность защищённого соединения."
-          />
+          <p className={styles.error} role="alert">
+            Не удалось создать ключ. Проверьте доступность защищённого соединения.
+          </p>
         ) : null}
         {canUnlock ? (
-          <Button
-            type="primary"
+          <PaperButton
+            variant="primary"
             disabled={!secret || (missing && (!generated || !saved))}
             loading={checking}
             onClick={() => void storage.unlock(secret)}
           >
             {missing ? "Включить хранение" : "Открыть хранилище"}
-          </Button>
+          </PaperButton>
         ) : null}
         <p>
           Выход закрывает доступ во всех вкладках и сохраняет данные. Без пароля или отдельного
           ключа прочитать их нельзя. Шифрование не защищает открытую вкладку от вредоносных
           расширений.
         </p>
-      </Space>
-    </Modal>
+      </div>
+    </PaperDialog>
   );
 }

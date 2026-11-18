@@ -1,0 +1,11 @@
+.page {
+  min-width: 0;
+}
+.heading {
+  margin-bottom: 24px;
+}
+.heading h1 {
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 600;
+}

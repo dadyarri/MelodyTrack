@@ -1,0 +1,77 @@
+.dialog {
+  max-width: 560px;
+}
+
+.content {
+  display: grid;
+  gap: 16px;
+  line-height: 1.55;
+}
+
+.secretInputRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.secretInputRow > input {
+  flex: 1;
+}
+
+.generatedSecret {
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius, 6px);
+  padding: 10px 12px;
+  font: inherit;
+  font-size: var(--control-font-size, 16px);
+  color: var(--color-text);
+  background: var(--color-elevated);
+}
+
+.generatedSecret:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 1px;
+}
+
+.savedConfirmation {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: 44px;
+  padding: 8px 0;
+  cursor: pointer;
+}
+
+.savedConfirmation input {
+  width: 20px;
+  height: 20px;
+  flex: 0 0 auto;
+  margin: 2px 0 0;
+  accent-color: var(--color-primary);
+}
+
+.savedConfirmation input:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.success,
+.warning,
+.error {
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius, 6px);
+  padding: 12px;
+  background: var(--color-elevated);
+}
+
+.success {
+  border-color: var(--color-success);
+}
+
+.warning,
+.error {
+  border-color: var(--color-error);
+}

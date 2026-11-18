@@ -1,0 +1,189 @@
+.client-editor-form {
+  display: grid;
+  gap: 18px;
+  min-width: 0;
+  margin: 0;
+  border: 0;
+  padding: 8px 0 24px;
+}
+.client-editor-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.client-editor-field > span {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.client-editor-contacts {
+  display: grid;
+  gap: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--color-line);
+}
+.client-editor-section-heading,
+.client-editor-contact-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.client-editor-section-heading h3 {
+  margin: 0;
+  font-size: 16px;
+}
+.client-editor-contact {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--color-line);
+  border-radius: 8px;
+}
+.client-editor-primary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  color: var(--color-text);
+}
+.client-editor-contact-actions > button,
+.client-editor-section-heading > button {
+  min-height: 40px;
+}
+.client-notes {
+  display: grid;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--color-line);
+}
+.client-note-text {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.client-note-history {
+  display: grid;
+  gap: 10px;
+  margin-top: 8px;
+}
+.client-note-history h4 {
+  margin: 0;
+  font-size: 14px;
+}
+.client-note-history-entry {
+  display: grid;
+  gap: 5px;
+  padding-left: 12px;
+  border-left: 2px solid var(--color-line);
+}
+.client-note-history-entry time {
+  color: var(--color-muted);
+  font-size: 12px;
+}
+.client-note-history-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 4px 12px;
+}
+.client-note-history-entry p {
+  margin: 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.client-editor-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.client-editor-draft {
+  display: grid;
+  gap: 10px;
+}
+
+.client-editor-message {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin: 0;
+  padding: 10px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  color: var(--color-text);
+}
+
+.client-editor-message > p {
+  margin: 0;
+}
+
+.client-editor-message-warning {
+  background: var(--color-soft);
+}
+
+.client-editor-message-error {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.client-notes-input {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.client-notes-input textarea {
+  width: 100%;
+  min-height: 76px;
+  resize: none;
+  overflow-y: hidden;
+  line-height: 24px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius, 6px);
+  padding: 10px 12px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: var(--control-font-size, 16px);
+}
+
+.client-notes-input textarea:focus-visible {
+  outline: 3px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.client-notes-input > span {
+  justify-self: end;
+  color: var(--color-muted);
+  font-size: 12px;
+}
+
+.client-note-history-list {
+  display: grid;
+  gap: 12px;
+}
+
+.client-notes-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.directory-muted {
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.field-required {
+  margin-inline-start: 4px;
+  color: var(--color-muted);
+  font-weight: 400;
+  opacity: 0.65;
+}
+@media (max-width: 767px) {
+  .client-editor-contact {
+    padding: 12px;
+  }
+}

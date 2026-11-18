@@ -74,13 +74,13 @@ export default defineConfig(({ mode }) => {
               },
               {
                 name: "icons",
-                test: /[\\/]node_modules[\\/](?:@tabler|@ant-design[\\/]icons[^\\/]*)[\\/]/,
+                test: /[\\/]node_modules[\\/]@tabler[\\/]/,
                 priority: 20,
                 entriesAware: true,
               },
               {
                 name: "ui",
-                test: /[\\/]node_modules[\\/](?:antd|@ant-design|@rc-component|rc-[^\\/]+)[\\/]/,
+                test: /[\\/]node_modules[\\/](?:@base-ui|react-hook-form|react-paginate|qrcode.react)[\\/]/,
                 priority: 10,
                 entriesAware: true,
               },

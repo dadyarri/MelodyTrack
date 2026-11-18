@@ -1,31 +1,31 @@
-.app-notifications[data-sonner-toaster] {
+.notifications[data-sonner-toaster] {
   font-family: inherit;
   --border-radius: 6px;
 }
 
-.app-notifications [data-sonner-toast][data-styled="true"] {
+.notifications [data-sonner-toast][data-styled="true"] {
   background: var(--color-elevated);
   color: var(--color-text);
   border-color: var(--color-line);
   font-size: 14px;
 }
 
-.app-notifications [data-sonner-toast][data-styled="true"] [data-description] {
+.notifications [data-sonner-toast][data-styled="true"] [data-description] {
   color: var(--color-muted);
 }
 
-.app-notifications [data-sonner-toast][data-type="error"] [data-icon] {
+.notifications [data-sonner-toast][data-type="error"] [data-icon] {
   color: var(--color-error);
 }
 
-.app-notifications [data-sonner-toast][data-styled="true"] [data-button] {
+.notifications [data-sonner-toast][data-styled="true"] [data-button] {
   min-height: 44px;
   background: var(--color-primary);
   color: var(--color-elevated);
   font-size: 14px;
 }
 
-.app-notifications [data-sonner-toast] [data-close-button] {
+.notifications [data-sonner-toast] [data-close-button] {
   width: 32px;
   height: 32px;
   background: var(--color-elevated);
@@ -33,13 +33,13 @@
   border-color: var(--color-line);
 }
 
-.app-notifications [data-sonner-toast] [data-close-button]:hover {
+.notifications [data-sonner-toast] [data-close-button]:hover {
   background: var(--color-surface);
   border-color: var(--color-primary);
 }
 
-.app-notifications [data-sonner-toast]:focus-visible,
-.app-notifications [data-sonner-toast] button:focus-visible {
+.notifications [data-sonner-toast]:focus-visible,
+.notifications [data-sonner-toast] button:focus-visible {
   outline: 3px solid var(--color-primary);
   outline-offset: 3px;
 }

@@ -78,13 +78,13 @@ describe("client notes", () => {
     fireEvent.click(historyButton);
 
     expect(historyButton.getAttribute("aria-expanded")).toBe("true");
-    const historyEntry = document.querySelector(".client-note-history-entry");
-    expect(historyEntry?.textContent).toContain("Было: Старая заметка");
-    expect(historyEntry?.textContent).toContain("Стало: заметки очищены");
+    const historyEntry = screen.getByRole("article");
+    expect(historyEntry.textContent).toContain("Было: Старая заметка");
+    expect(historyEntry.textContent).toContain("Стало: заметки очищены");
     expect(screen.getByText("Сотрудник").textContent).toBe("Сотрудник");
 
     fireEvent.click(historyButton);
 
-    expect(document.querySelector(".client-note-history-entry")).toBeNull();
+    expect(screen.queryByRole("article")).toBeNull();
   });
 });

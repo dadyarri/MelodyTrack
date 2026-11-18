@@ -1,4 +1,4 @@
-import { Button, Drawer, Dropdown } from "antd";
+import { Menu } from "@base-ui/react/menu";
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
@@ -9,7 +9,8 @@ import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
-import "./app-shell.css";
+import { PaperButton, PaperDrawer } from "@/shared/ui/paper";
+import styles from "./AppShell.module.css";
 
 export function AppShell({
   appearance,
@@ -54,7 +55,7 @@ function ShellContent({
         aria-label="Главная"
         onClick={() => setMenuOpen(false)}
       >
-        <Icon name="home" /> <span className="navigation-label">Главная</span>
+        <Icon name="home" /> <span className={styles.navigationLabel}>Главная</span>
       </NavLink>
       {staff?.permissions.some((grant) => grant.permission === "clientsRead" && grant.allowed) && (
         <NavLink
@@ -63,7 +64,7 @@ function ShellContent({
           aria-label="Клиенты"
           onClick={() => setMenuOpen(false)}
         >
-          <Icon name="users" /> <span className="navigation-label">Клиенты</span>
+          <Icon name="users" /> <span className={styles.navigationLabel}>Клиенты</span>
         </NavLink>
       )}
       <NavLink
@@ -72,7 +73,7 @@ function ShellContent({
         aria-label="Обучение"
         onClick={() => setMenuOpen(false)}
       >
-        <Icon name="book" /> <span className="navigation-label">Обучение</span>
+        <Icon name="book" /> <span className={styles.navigationLabel}>Обучение</span>
       </NavLink>
     </>
   );
@@ -98,28 +99,29 @@ function ShellContent({
   }
 
   return (
-    <div className={`workspace-layout${sidebarCollapsed ? " workspace-layout-collapsed" : ""}`}>
-      <aside className="workspace-sidebar">
-        <NavLink to="/workspace" className="brand-link">
+    <div
+      className={`${styles.workspaceLayout} ${sidebarCollapsed ? styles.workspaceLayoutCollapsed : ""}`}
+    >
+      <aside className={styles.workspaceSidebar}>
+        <NavLink to="/workspace" className={styles.brandLink ?? ""}>
           <Brand compact={sidebarCollapsed} />
         </NavLink>
         <nav
           id="desktop-app-navigation"
-          className="workspace-navigation"
+          className={styles.workspaceNavigation}
           aria-label="Разделы приложения"
         >
           {navigation(sidebarCollapsed)}
         </nav>
-        <div className="workspace-version-footer">
+        <div className={styles.workspaceVersionFooter}>
           <ReleaseVersion compact={sidebarCollapsed} />
         </div>
       </aside>
 
-      <div className="workspace-main">
-        <header className="workspace-header">
-          <Button
-            type="text"
-            className="desktop-menu-toggle"
+      <div className={styles.workspaceMain}>
+        <header className={styles.workspaceHeader}>
+          <PaperButton
+            className={styles.desktopMenuToggle}
             title={sidebarCollapsed ? "Развернуть меню" : undefined}
             aria-label={sidebarCollapsed ? "Развернуть меню" : "Свернуть меню"}
             aria-expanded={!sidebarCollapsed}
@@ -127,9 +129,9 @@ function ShellContent({
             icon={<Icon name={sidebarCollapsed ? "next" : "previous"} />}
             onClick={() => setSidebarCollapsed((collapsed) => !collapsed)}
           />
-          <div className="mobile-brand">
-            <Button
-              type="text"
+          <div className={styles.mobileBrand}>
+            <PaperButton
+              className={styles.mobileMenuTrigger}
               aria-label="Открыть меню"
               aria-expanded={menuOpen}
               aria-controls="mobile-app-navigation"
@@ -138,74 +140,75 @@ function ShellContent({
             />
             <Brand />
           </div>
-          <div className="header-actions">
-            <Dropdown
-              trigger={["click"]}
-              placement="bottomRight"
-              disabled={signingOut}
-              menu={{
-                className: "account-menu",
-                selectable: false,
-                items: [
-                  {
-                    key: "offline",
-                    label: "Локальные данные",
-                  },
-                  {
-                    key: "theme",
-                    label: appearance === "light" ? "Тёмная тема" : "Светлая тема",
-                    icon: <Icon name={appearance === "light" ? "moon" : "sun"} />,
-                    disabled: signingOut,
-                  },
-                  { type: "divider" },
-                  {
-                    key: "logout",
-                    label: "Выйти",
-                    icon: <Icon name="logout" />,
-                    danger: true,
-                    disabled: signingOut,
-                  },
-                ],
-                onClick: ({ key }) => {
-                  if (key === "theme") onToggleAppearance();
-                  if (key === "offline") setOfflineOpen(true);
-                  if (key === "logout") void leave();
-                },
-              }}
-            >
-              <Button
-                type="text"
-                className="account-menu-trigger"
-                loading={signingOut}
+          <div className={styles.headerActions}>
+            <Menu.Root>
+              <Menu.Trigger
+                type="button"
+                disabled={signingOut}
                 aria-label={`Меню пользователя ${staff?.login ?? ""}`}
+                className={styles.accountMenuTrigger}
               >
-                <span className="account-greeting">Привет, {staff?.login}</span>
+                <span className={styles.accountGreeting}>Привет, {staff?.login}</span>
+                {signingOut ? <span className={styles.signOutLoading} aria-hidden="true" /> : null}
                 <Icon name="chevronDown" size={16} />
-              </Button>
-            </Dropdown>
+              </Menu.Trigger>
+              <Menu.Portal>
+                <Menu.Positioner
+                  className={styles.menuPositioner}
+                  side="bottom"
+                  align="end"
+                  sideOffset={6}
+                >
+                  <Menu.Popup className={styles.accountMenu} data-popup-scroll-boundary>
+                    <Menu.Item
+                      className={styles.menuItem}
+                      disabled={signingOut}
+                      onClick={() => setOfflineOpen(true)}
+                    >
+                      <Icon name="database" />
+                      Локальные данные
+                    </Menu.Item>
+                    <Menu.Item
+                      className={styles.menuItem}
+                      disabled={signingOut}
+                      onClick={onToggleAppearance}
+                    >
+                      <Icon name={appearance === "light" ? "moon" : "sun"} />
+                      {appearance === "light" ? "Тёмная тема" : "Светлая тема"}
+                    </Menu.Item>
+                    <Menu.Separator className={styles.menuSeparator} />
+                    <Menu.Item
+                      className={`${styles.menuItem} ${styles.dangerItem}`}
+                      disabled={signingOut}
+                      onClick={() => void leave()}
+                    >
+                      <Icon name="logout" />
+                      Выйти
+                    </Menu.Item>
+                  </Menu.Popup>
+                </Menu.Positioner>
+              </Menu.Portal>
+            </Menu.Root>
           </div>
         </header>
 
-        <Drawer
+        <PaperDrawer
           title="Меню"
-          placement="left"
           open={menuOpen}
           onClose={() => setMenuOpen(false)}
-          className="workspace-mobile-menu"
-          size="min(360px, 100vw)"
-          closeIcon={<Icon name="close" />}
+          className={styles.mobileMenu}
           footer={<ReleaseVersion onOpen={() => setMenuOpen(false)} />}
         >
           <nav
             id="mobile-app-navigation"
-            className="workspace-navigation"
+            className={`${styles.workspaceNavigation} ${styles.mobileNavigation}`}
             aria-label="Разделы приложения на телефоне"
           >
             {navigation(false)}
           </nav>
-        </Drawer>
+        </PaperDrawer>
 
-        <main id="main-content" className="workspace-content">
+        <main id="main-content" className={styles.workspaceContent}>
           <Outlet />
         </main>
         <OfflineStorageDialog open={offlineOpen} onClose={() => setOfflineOpen(false)} />

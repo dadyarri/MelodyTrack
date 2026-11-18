@@ -1,5 +1,3 @@
-import { Button, ConfigProvider, theme } from "antd";
-import ruRU from "antd/locale/ru_RU";
 import {
   lazy,
   type ReactNode,
@@ -16,7 +14,9 @@ import { SignInPage } from "@/pages/sign-in";
 import type { StaffIdentity } from "@/shared/api";
 import { type Appearance, readAppearance, saveAppearance } from "@/shared/lib/appearance";
 import { Notifications, useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton } from "@/shared/ui/paper";
 import { usePopupScrollBoundary } from "@/shared/ui/scroll-boundary";
+import styles from "./App.module.css";
 
 const AuthenticatedApplication = lazy(() => import("./AuthenticatedApplication"));
 const StaffRegistrationPage = lazy(() =>
@@ -26,7 +26,6 @@ const StaffRegistrationPage = lazy(() =>
 export function App({ invitation = null }: { invitation?: string | null }) {
   usePopupScrollBoundary();
   const [appearance, setAppearance] = useState<Appearance>(readAppearance);
-  const dark = appearance === "dark";
 
   useLayoutEffect(() => {
     document.documentElement.dataset.appearance = appearance;
@@ -41,64 +40,20 @@ export function App({ invitation = null }: { invitation?: string | null }) {
     setAppearance((current) => (current === "light" ? "dark" : "light"));
 
   return (
-    <ConfigProvider
-      locale={ruRU}
-      theme={{
-        algorithm: dark ? theme.darkAlgorithm : theme.defaultAlgorithm,
-        cssVar: { prefix: "mt" },
-        token: {
-          colorPrimary: dark ? "#d0a35b" : "#8b6226",
-          colorInfo: dark ? "#b78d4a" : "#6f6942",
-          colorSuccess: dark ? "#7ca46d" : "#5f7b4b",
-          colorWarning: dark ? "#d4a24f" : "#a87322",
-          colorError: dark ? "#d27a70" : "#9b4a3c",
-          colorText: dark ? "#f1e7d1" : "#33271a",
-          colorTextSecondary: dark ? "#bcae94" : "#746550",
-          colorBgBase: dark ? "#15120f" : "#f4e8c8",
-          colorBgContainer: dark ? "#1f1914" : "#f8edcf",
-          colorBgElevated: dark ? "#261f18" : "#fbf3dc",
-          colorFillAlter: dark ? "#31271d" : "#efe1be",
-          colorBorder: dark ? "#5d4a35" : "#d4c19a",
-          colorBorderSecondary: dark ? "#463727" : "#e8dcc2",
-          borderRadius: 6,
-          fontFamily: "'IBM Plex Sans', 'Segoe UI', sans-serif",
-          fontSize: 15,
-          controlHeight: 44,
-        },
-        components: {
-          Button: {
-            primaryShadow: "none",
-            defaultShadow: "none",
-            dangerShadow: "none",
-            defaultBg: dark ? "#261f18" : "#fbf3dc",
-          },
-          Input: {
-            activeBg: dark ? "#261f18" : "#fbf3dc",
-            hoverBg: dark ? "#261f18" : "#fbf3dc",
-          },
-          Modal: {
-            headerBg: dark ? "#1f1914" : "#f8edcf",
-            contentBg: dark ? "#1f1914" : "#f8edcf",
-            footerBg: dark ? "#1f1914" : "#f8edcf",
-          },
-        },
-      }}
-    >
-      <div className="application-root">
-        <BrowserRouter>
-          <OfflineStorageProvider>
-            <SessionWithOfflineStorage>
-              <ApplicationRoutes
-                invitation={invitation}
-                appearance={appearance}
-                onToggleAppearance={toggleAppearance}
-              />
-            </SessionWithOfflineStorage>
-          </OfflineStorageProvider>
-        </BrowserRouter>
-        <Notifications appearance={appearance} />
-      </div>
-    </ConfigProvider>
+    <div className={styles.root}>
+      <BrowserRouter>
+        <OfflineStorageProvider>
+          <SessionWithOfflineStorage>
+            <ApplicationRoutes
+              invitation={invitation}
+              appearance={appearance}
+              onToggleAppearance={toggleAppearance}
+            />
+          </SessionWithOfflineStorage>
+        </OfflineStorageProvider>
+      </BrowserRouter>
+      <Notifications appearance={appearance} />
+    </div>
   );
 }
 
@@ -165,7 +120,7 @@ function ApplicationRoutes(props: {
         element={
           <Suspense
             fallback={
-              <div className="employee-training-loading" role="status">
+              <div className={styles.loading} role="status">
                 Загрузка…
               </div>
             }
@@ -178,11 +133,11 @@ function ApplicationRoutes(props: {
         path="*"
         element={
           status === "restoring" ? (
-            <div className="employee-training-loading" role="status">
+            <div className={styles.loading} role="status">
               {error ? (
-                <Button onClick={() => void restoreSession()}>
+                <PaperButton onClick={() => void restoreSession()}>
                   Повторить восстановление сессии
-                </Button>
+                </PaperButton>
               ) : (
                 "Восстановление сессии…"
               )}
@@ -190,7 +145,7 @@ function ApplicationRoutes(props: {
           ) : staff ? (
             <Suspense
               fallback={
-                <div className="employee-training-loading" role="status">
+                <div className={styles.loading} role="status">
                   Загрузка…
                 </div>
               }

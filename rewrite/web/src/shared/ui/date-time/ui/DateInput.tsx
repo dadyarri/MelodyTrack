@@ -1,9 +1,9 @@
-import { Popover } from "antd";
+import { Popover } from "@base-ui/react/popover";
 import { type KeyboardEvent, useEffect, useId, useRef, useState } from "react";
 import { Icon } from "../../Icon";
 import { displayDate, parseDateInput, withinDateRange } from "../model/calendar";
 import { Calendar } from "./Calendar";
-import "./date-time.css";
+import styles from "./date-time.module.css";
 
 function dateInputError(draft: string, min?: string, max?: string): string {
   if (!draft.trim()) return "";
@@ -42,6 +42,9 @@ export function DateInput({
   const [calendarAutoFocus, setCalendarAutoFocus] = useState(true);
   const input = useRef<HTMLInputElement>(null);
   const trigger = useRef<HTMLButtonElement>(null);
+  const anchor = useRef<HTMLDivElement>(null);
+  const calendarPopup = useRef<HTMLDivElement>(null);
+  const returnToInput = useRef(false);
 
   useEffect(() => {
     setDraft(displayDate(value));
@@ -76,10 +79,15 @@ export function DateInput({
     }
     if (event.key === "ArrowDown" && event.altKey) {
       event.preventDefault();
+      returnToInput.current = true;
       setCalendarAutoFocus(true);
       setOpen(true);
     }
     if (event.key === "Escape") {
+      if (open) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       setDraft(displayDate(value));
       setInvalid(false);
       setOpen(false);
@@ -87,40 +95,20 @@ export function DateInput({
   }
 
   return (
-    <div className="date-time-field">
-      <Popover
-        trigger="click"
-        placement="bottomLeft"
+    <div className={styles.dateTimeField}>
+      <Popover.Root
         open={open && !disabled}
         onOpenChange={(next) => {
-          if (next) setCalendarAutoFocus(true);
+          if (next) {
+            setCalendarAutoFocus(true);
+            returnToInput.current = false;
+          }
           setOpen(next);
         }}
-        destroyOnHidden
-        fresh
-        content={
-          <Calendar
-            value={value}
-            min={min}
-            max={max}
-            autoFocus={open && calendarAutoFocus}
-            onSelect={(selected) => {
-              setDraft(displayDate(selected));
-              setInvalid(false);
-              input.current?.setCustomValidity("");
-              onChange(selected);
-              setOpen(false);
-              input.current?.focus();
-            }}
-            onClose={() => {
-              setOpen(false);
-              trigger.current?.focus();
-            }}
-          />
-        }
       >
         <div
-          className={`date-time-input${invalid ? " date-time-input-invalid" : ""}${disabled ? " date-time-input-disabled" : ""}`}
+          ref={anchor}
+          className={`${styles.dateTimeInput}${invalid ? ` ${styles.dateTimeInputInvalid}` : ""}${disabled ? ` ${styles.dateTimeInputDisabled}` : ""}`}
         >
           <input
             ref={input}
@@ -144,6 +132,7 @@ export function DateInput({
             onKeyDown={keyboard}
             onClick={(event) => {
               event.stopPropagation();
+              returnToInput.current = true;
               setCalendarAutoFocus(false);
               setOpen(true);
             }}
@@ -151,7 +140,7 @@ export function DateInput({
           {(draft || value) && (
             <button
               type="button"
-              className="date-time-clear"
+              className={styles.dateTimeClear}
               aria-label={`${label}: очистить`}
               disabled={disabled}
               onClick={(event) => {
@@ -159,6 +148,7 @@ export function DateInput({
                 setDraft("");
                 setInvalid(false);
                 input.current?.setCustomValidity("");
+                returnToInput.current = true;
                 setOpen(false);
                 onChange(null);
                 input.current?.focus();
@@ -167,21 +157,64 @@ export function DateInput({
               <Icon name="close" size={18} />
             </button>
           )}
-          <button
+          <Popover.Trigger
             ref={trigger}
             type="button"
-            className="date-time-calendar-trigger"
             aria-label={`${label}: открыть календарь`}
             aria-haspopup="dialog"
             aria-expanded={open && !disabled}
             disabled={disabled}
           >
             <Icon name="calendar" size={18} />
-          </button>
+          </Popover.Trigger>
         </div>
-      </Popover>
+        <Popover.Portal>
+          <Popover.Positioner
+            anchor={anchor}
+            align="start"
+            sideOffset={6}
+            className={styles.dateTimePositioner}
+          >
+            <Popover.Popup
+              ref={calendarPopup}
+              className={styles.dateTimePopover}
+              role="presentation"
+              data-popup-scroll-boundary=""
+              initialFocus={() =>
+                calendarAutoFocus
+                  ? (calendarPopup.current?.querySelector<HTMLButtonElement>(
+                      `.${styles.dateTimeCalendarDay}[tabindex='0']`,
+                    ) ?? false)
+                  : false
+              }
+              finalFocus={() => (returnToInput.current ? input.current : trigger.current)}
+            >
+              <Calendar
+                value={value}
+                min={min}
+                max={max}
+                autoFocus={open && calendarAutoFocus}
+                onSelect={(selected) => {
+                  setDraft(displayDate(selected));
+                  setInvalid(false);
+                  input.current?.setCustomValidity("");
+                  onChange(selected);
+                  returnToInput.current = true;
+                  setOpen(false);
+                  input.current?.focus();
+                }}
+                onClose={() => {
+                  returnToInput.current = false;
+                  setOpen(false);
+                  trigger.current?.focus();
+                }}
+              />
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
       {invalid && (
-        <span id={`${inputId}-error`} className="date-time-error" role="alert">
+        <span id={`${inputId}-error`} className={styles.dateTimeError} role="alert">
           Введите допустимую дату в формате ДД.ММ.ГГГГ.
         </span>
       )}

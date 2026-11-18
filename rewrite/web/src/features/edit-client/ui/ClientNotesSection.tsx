@@ -1,7 +1,8 @@
-import { Alert, Button, Input, Space, Tooltip } from "antd";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton, PaperTooltip } from "@/shared/ui/paper";
+import styles from "./client-editor.module.css";
 
 export type ClientNoteHistoryEntry = {
   id: string;
@@ -44,6 +45,7 @@ export function ClientNotesSection({
   const [value, setValue] = useState(notes ?? "");
   const [historyOpen, setHistoryOpen] = useState(false);
   const historyId = useId();
+  const notesInput = useRef<HTMLTextAreaElement>(null);
   const previousResetKey = useRef(resetKey);
   const changed = (value || null) !== initial;
   const stale = changed && notes !== initial;
@@ -59,88 +61,128 @@ export function ClientNotesSection({
     setValue(notes ?? "");
   }, [changed, notes, resetKey]);
 
+  useLayoutEffect(() => {
+    const input = notesInput.current;
+    if (!input) return;
+    function resizeToContent() {
+      if (!input) return;
+      input.style.height = "auto";
+      const styles = window.getComputedStyle(input);
+      const lineHeight = Number.parseFloat(styles.lineHeight);
+      const padding =
+        Number.parseFloat(styles.paddingTop) + Number.parseFloat(styles.paddingBottom);
+      const borders =
+        Number.parseFloat(styles.borderTopWidth) + Number.parseFloat(styles.borderBottomWidth);
+      const maxHeight = (Number.isFinite(lineHeight) ? lineHeight : 24) * 10 + padding + borders;
+      const contentHeight = input.scrollHeight + borders;
+      input.style.height = `${Math.min(contentHeight, maxHeight)}px`;
+      input.style.overflowY = contentHeight > maxHeight ? "auto" : "hidden";
+    }
+    resizeToContent();
+    let width = input.getBoundingClientRect().width;
+    const observer = new ResizeObserver(() => {
+      const nextWidth = input.getBoundingClientRect().width;
+      if (nextWidth === width) return;
+      width = nextWidth;
+      resizeToContent();
+    });
+    observer.observe(input);
+    return () => observer.disconnect();
+  });
+
   return (
-    <section className="client-notes" aria-labelledby="client-notes-heading">
-      <div className="client-editor-section-heading">
+    <section className={styles["client-notes"]} aria-labelledby="client-notes-heading">
+      <div className={styles["client-editor-section-heading"]}>
         <h3 id="client-notes-heading">Заметки</h3>
-        <div className="client-notes-actions">
-          <Tooltip title="История изменений">
-            <Button
+        <div className={styles["client-notes-actions"]}>
+          <PaperTooltip title="История изменений">
+            <PaperButton
               aria-label="История изменений заметок"
               aria-expanded={historyOpen}
               aria-controls={historyId}
               icon={<Icon name="history" />}
               onClick={() => setHistoryOpen((open) => !open)}
             />
-          </Tooltip>
+          </PaperTooltip>
           {canEdit && changed ? (
-            <Tooltip title="Сохранить заметки">
-              <Button
-                type="primary"
+            <PaperTooltip title="Сохранить заметки">
+              <PaperButton
+                variant="primary"
                 aria-label="Сохранить"
                 icon={<Icon name="check" />}
                 onClick={() => onSave(value || null, initial)}
                 loading={saving}
                 disabled={loading || stale}
               />
-            </Tooltip>
+            </PaperTooltip>
           ) : null}
         </div>
       </div>
       {stale ? (
-        <Alert
-          type="warning"
-          showIcon
-          title="Заметки изменились на сервере."
-          action={
-            <Button size="small" onClick={onReload}>
-              Загрузить актуальные данные
-            </Button>
-          }
-        />
+        <div
+          className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+          role="status"
+        >
+          <p>Заметки изменились на сервере.</p>
+          <PaperButton size="small" onClick={onReload}>
+            Загрузить актуальные данные
+          </PaperButton>
+        </div>
       ) : null}
-      {conflict ? <Alert type="error" showIcon title={error} /> : null}
+      {conflict ? (
+        <p
+          className={`${styles["client-editor-message"]} ${styles["client-editor-message-error"]}`}
+          role="alert"
+        >
+          {error}
+        </p>
+      ) : null}
       {canEdit ? (
-        <Input.TextArea
-          aria-label="Заметки клиента"
-          value={value}
-          autoSize={{ minRows: 3, maxRows: 10 }}
-          showCount
-          disabled={loading || saving}
-          onChange={(event) => setValue(event.target.value)}
-        />
+        <div className={styles["client-notes-input"]}>
+          <textarea
+            ref={notesInput}
+            aria-label="Заметки клиента"
+            value={value}
+            rows={3}
+            disabled={loading || saving}
+            onChange={(event) => setValue(event.target.value)}
+          />
+          <span aria-live="polite">{value.length}</span>
+        </div>
       ) : (
-        <p className="client-note-text">
-          {notes || <span className="directory-muted">Заметок пока нет</span>}
+        <p className={styles["client-note-text"]}>
+          {notes || <span className={styles["directory-muted"]}>Заметок пока нет</span>}
         </p>
       )}
       {loading ? <p role="status">Загрузка заметок…</p> : null}
       {historyOpen ? (
-        <div id={historyId} className="client-note-history">
+        <div id={historyId} className={styles["client-note-history"]}>
           <h4>История изменений</h4>
           {!loading && history.length === 0 ? (
-            <p className="directory-muted">Изменений пока нет</p>
+            <p className={styles["directory-muted"]}>Изменений пока нет</p>
           ) : null}
           {history.length > 0 ? (
-            <Space orientation="vertical" size={12} className="wide">
+            <div className={styles["client-note-history-list"]}>
               {history.map((entry) => (
-                <article className="client-note-history-entry" key={entry.id}>
-                  <div className="client-note-history-meta">
+                <article className={styles["client-note-history-entry"]} key={entry.id}>
+                  <div className={styles["client-note-history-meta"]}>
                     <span>{entry.authorName}</span>
                     <time dateTime={entry.changedAt}>
                       {dateTime.format(new Date(entry.changedAt))}
                     </time>
                   </div>
                   <p>
-                    <span className="client-note-history-label">Было: </span>
-                    {entry.before || <span className="directory-muted">пусто</span>}
+                    <span>Было: </span>
+                    {entry.before || <span className={styles["directory-muted"]}>пусто</span>}
                     <br />
-                    <span className="client-note-history-label">Стало: </span>
-                    {entry.after || <span className="directory-muted">заметки очищены</span>}
+                    <span>Стало: </span>
+                    {entry.after || (
+                      <span className={styles["directory-muted"]}>заметки очищены</span>
+                    )}
                   </p>
                 </article>
               ))}
-            </Space>
+            </div>
           ) : null}
         </div>
       ) : null}

@@ -21,6 +21,24 @@ function DateTimeForm({ onChange }: { onChange: (value: string | null) => void }
 }
 
 describe("date and time inputs", () => {
+  it("closes the calendar from manual input without dismissing the containing form", async () => {
+    const parentKeyDown = vi.fn();
+    render(
+      <dialog open onKeyDown={parentKeyDown} aria-label="Форма клиента">
+        <DateInput value="2026-11-12" onChange={vi.fn()} aria-label="Дата" />
+      </dialog>,
+    );
+    const input = screen.getByRole("textbox", { name: "Дата" });
+    input.focus();
+    fireEvent.click(input);
+    await screen.findByRole("dialog", { name: "Календарь" });
+
+    fireEvent.keyDown(input, { key: "Escape" });
+
+    expect(parentKeyDown).not.toHaveBeenCalled();
+    expect(document.activeElement).toBe(input);
+  });
+
   it("opens the calendar on an ordinary click of the calendar button", async () => {
     render(<DateInput value="2026-11-12" onChange={vi.fn()} aria-label="Дата" />);
     expect(screen.queryByRole("dialog", { name: "Календарь" })).toBeNull();

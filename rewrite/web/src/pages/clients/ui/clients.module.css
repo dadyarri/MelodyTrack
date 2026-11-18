@@ -1,3 +1,7 @@
+.workspace-page {
+  display: grid;
+  gap: 24px;
+}
 .directory-page {
   min-width: 0;
 }
@@ -9,17 +13,20 @@
 }
 .directory-page .page-heading h1 {
   margin: 0;
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 600;
 }
-.directory-page .data-view-table {
+.directory-page table {
   min-width: 820px;
 }
-.directory-page .data-view-table th:first-child {
+.directory-page table th:first-child {
   width: 30%;
 }
-.directory-page .data-view-table th:nth-child(2) {
+.directory-page table th:nth-child(2) {
   width: 12%;
 }
-.directory-page .data-view-table td:last-child {
+.directory-page table td:last-child {
   width: 120px;
 }
 .directory-filters {
@@ -35,7 +42,7 @@
   color: var(--color-muted);
   font-size: 13px;
 }
-.directory-filters .ant-select {
+.directory-filters button[role="combobox"] {
   min-width: 170px;
 }
 .directory-name {
@@ -97,15 +104,13 @@
   display: grid;
   gap: 28px;
 }
-.client-profile-actions,
-.client-notes-actions {
+.client-profile-actions {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
-.client-profile-actions .ant-btn,
-.client-notes-actions .ant-btn {
+.client-profile-actions button {
   min-width: 40px;
   min-height: 40px;
 }
@@ -126,105 +131,6 @@
   margin: 0;
   overflow-wrap: anywhere;
 }
-.directory-drawer .ant-drawer-body {
-  overscroll-behavior: contain;
-  -webkit-overflow-scrolling: touch;
-}
-.client-editor-form {
-  display: grid;
-  gap: 18px;
-  min-width: 0;
-  margin: 0;
-  border: 0;
-  padding: 8px 0 24px;
-}
-.client-editor-field {
-  display: grid;
-  gap: 6px;
-  color: var(--color-muted);
-  font-size: 13px;
-}
-.client-editor-field > span {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-.client-editor-contacts {
-  display: grid;
-  gap: 14px;
-  padding-top: 8px;
-  border-top: 1px solid var(--color-line);
-}
-.client-editor-section-heading,
-.client-editor-contact-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.client-editor-section-heading h3 {
-  margin: 0;
-  font-size: 16px;
-}
-.client-editor-contact {
-  display: grid;
-  gap: 12px;
-  padding: 14px;
-  border: 1px solid var(--color-line);
-  border-radius: 8px;
-}
-.client-editor-primary {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  min-height: 40px;
-  color: var(--color-text);
-}
-.client-editor-contact-actions > button,
-.client-editor-section-heading > button {
-  min-height: 40px;
-}
-.client-notes {
-  display: grid;
-  gap: 12px;
-  padding-top: 20px;
-  border-top: 1px solid var(--color-line);
-}
-.client-note-text {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-.client-note-history {
-  display: grid;
-  gap: 10px;
-  margin-top: 8px;
-}
-.client-note-history h4 {
-  margin: 0;
-  font-size: 14px;
-}
-.client-note-history-entry {
-  display: grid;
-  gap: 5px;
-  padding-left: 12px;
-  border-left: 2px solid var(--color-line);
-}
-.client-note-history-entry time {
-  color: var(--color-muted);
-  font-size: 12px;
-}
-.client-note-history-meta {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 4px 12px;
-}
-.client-note-history-entry p {
-  margin: 0;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
 @media (max-width: 767px) {
   .directory-page .page-heading {
     flex-wrap: wrap;
@@ -241,15 +147,32 @@
   .directory-filters > label {
     flex: 1 1 200px;
   }
-  .directory-filters .ant-select {
+  .directory-filters button[role="combobox"] {
     flex: 1;
   }
-  .client-editor-contact {
-    padding: 12px;
-  }
-  .client-profile-actions .ant-btn,
-  .client-notes-actions .ant-btn {
+  .client-profile-actions button {
     min-width: 44px;
     min-height: 44px;
   }
+}
+
+.profileDrawer {
+  width: min(480px, 100vw);
+}
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border: 1px solid var(--color-line);
+  border-radius: 4px;
+  font-size: 13px;
+}
+.notice {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius);
+  background: var(--color-soft);
 }

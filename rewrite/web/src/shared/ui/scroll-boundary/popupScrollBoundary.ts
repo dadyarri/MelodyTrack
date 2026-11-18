@@ -1,7 +1,4 @@
-const popupSelector =
-  ".ant-select-dropdown, .ant-tree-select-dropdown, .ant-dropdown, .ant-cascader-dropdown";
-const virtualHolderSelector =
-  ".ant-select-dropdown-list-holder, .ant-select-tree-list-holder, .rc-virtual-list-holder";
+const popupSelector = "[data-popup-scroll-boundary]";
 
 export function attachPopupScrollBoundary(document: Document): () => void {
   const onWheel = (event: WheelEvent) => {
@@ -21,16 +18,13 @@ export function attachPopupScrollBoundary(document: Document): () => void {
 
     for (let element: Element | null = target; element; element = element.parentElement) {
       const overflow = window.getComputedStyle(element).overflowY;
-      const scrollable =
-        overflow === "auto" ||
-        overflow === "scroll" ||
-        (overflow === "hidden" && element.matches(virtualHolderSelector));
+      const scrollable = overflow === "auto" || overflow === "scroll";
       const remaining = element.scrollHeight - element.clientHeight - element.scrollTop;
       if (scrollable && (event.deltaY < 0 ? element.scrollTop > 0 : remaining > 1)) return;
       if (element === popup) break;
     }
 
-    // Virtual lists release wheel events at their limits despite overflow: hidden.
+    // Keep wheel gestures at the popup boundary from scrolling the background.
     event.preventDefault();
   };
 

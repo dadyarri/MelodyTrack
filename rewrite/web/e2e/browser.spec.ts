@@ -79,7 +79,11 @@ async function installApi(context: BrowserContext) {
     if (path.startsWith("/api/auth/")) return route.continue({ url: `${server.origin}${path}` });
     if (path === "/api/changes/events") return route.continue({ url: `${server.origin}${path}` });
     const json = (body: unknown, headers = {}) => route.fulfill({ json: body, headers });
-    if (path.endsWith("/clients/options")) return json({ sources: [], contactKinds: [] });
+    if (path.endsWith("/clients/options"))
+      return json({
+        sources: [{ id: "019a2c63-8c00-7000-8000-000000000005", name: "Сайт" }],
+        contactKinds: [],
+      });
     if (path === `/api/clients/${client().id}`) return json(client());
     if (path.endsWith("/clients"))
       return json({
@@ -105,6 +109,22 @@ async function openProbe(page: Page) {
   await page.goto("/e2e/harness.html");
   await expect(page.getByLabel("session", { exact: true })).toHaveText("anonymous:");
 }
+
+test("renders multiple pages through Vite and changes the page and page size", async ({
+  page,
+  context,
+}) => {
+  await installApi(context);
+  await openProbe(page);
+
+  await page.getByRole("button", { name: "Show pagination", exact: true }).click();
+  await page.getByRole("button", { name: "Страница 2", exact: true }).click();
+  await expect(page.getByLabel("pagination", { exact: true })).toHaveText("2:10");
+  await page.getByRole("combobox", { name: "Строк на странице", exact: true }).click();
+  await page.getByRole("option", { name: "20 на странице", exact: true }).click();
+  await expect(page.getByLabel("pagination", { exact: true })).toHaveText("1:20");
+  await expect(page.getByRole("button", { name: "Страница 4", exact: true })).toBeVisible();
+});
 
 test("persists an HttpOnly cookie across reload and removes it on logout", async ({
   page,
@@ -320,6 +340,91 @@ test("keeps the calendar within a narrow viewport and returns keyboard focus", a
   await expect(page.getByRole("button", { name: "Дата: открыть календарь" })).toBeFocused();
 });
 
+test("keeps client editor popups keyboard-dismissable inside its mobile drawer", async ({
+  page,
+  context,
+}) => {
+  await installApi(context);
+  await context.route("**/api/auth/me", (route) =>
+    route.fulfill({
+      json: {
+        staffId,
+        login: "browser.synthetic",
+        role: "teacher",
+        permissions: [
+          { permission: "clientsRead", allowed: true, dataScope: "available", timeScope: "any" },
+          { permission: "clientsWrite", allowed: true, dataScope: "available", timeScope: "any" },
+        ],
+      },
+    }),
+  );
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.addInitScript(() => {
+    localStorage.setItem("melodytrack.rewrite.appearance", "dark");
+  });
+  await openProbe(page);
+  await page.evaluate(async (staffId) => {
+    const storage = await import("../src/features/employee-training/model/storage.ts");
+    const model = await import("../src/features/employee-training/model/progress.ts");
+    await storage.saveTrainingProgress(
+      {
+        ...model.createProgress(staffId),
+        clientDirectory: { version: 1, completed: false, deferred: true },
+      },
+      new AbortController().signal,
+    );
+  }, staffId);
+  await page.goto("/clients");
+  await page.getByLabel("Логин", { exact: true }).fill("browser.synthetic");
+  await page.getByLabel("Пароль", { exact: true }).fill("synthetic-password");
+  await page.getByRole("button", { name: "Войти", exact: true }).click();
+  await expect(page).toHaveURL(/\/workspace$/);
+  await page.getByRole("button", { name: "Открыть меню", exact: true }).click();
+  await page
+    .getByRole("navigation", { name: "Разделы приложения на телефоне", exact: true })
+    .getByRole("link", { name: "Клиенты" })
+    .click();
+  await page.getByRole("button", { name: "Изменить карточку: Синтетический Клиент" }).click();
+
+  const drawer = page.getByRole("dialog", { name: "Изменить карточку", exact: true });
+  await expect(drawer).toBeVisible();
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+  const drawerBounds = await drawer.boundingBox();
+  if (!drawerBounds) throw new Error("Client editor has no visible bounds");
+  expect(drawerBounds.width).toBeLessThanOrEqual(390.5);
+
+  const source = drawer.getByRole("combobox", { name: "Источник", exact: true });
+  await source.click();
+  const options = page.getByRole("listbox");
+  await expect(options.getByRole("option", { name: "Сайт", exact: true })).toBeVisible();
+  await page.keyboard.press("Escape");
+  await expect(options).toBeHidden();
+  await expect(drawer).toBeVisible();
+  await expect(source).toBeFocused();
+
+  const calendarTrigger = drawer.getByRole("button", {
+    name: "Дата рождения: открыть календарь",
+    exact: true,
+  });
+  await calendarTrigger.click();
+  const calendar = page.getByRole("dialog", { name: "Календарь", exact: true });
+  await expect(calendar).toBeVisible();
+  const calendarBounds = await calendar.boundingBox();
+  if (!calendarBounds) throw new Error("Calendar has no visible bounds");
+  expect(calendarBounds.x).toBeGreaterThanOrEqual(0);
+  expect(calendarBounds.x + calendarBounds.width).toBeLessThanOrEqual(390);
+  await page.keyboard.press("Escape");
+  await expect(calendar).toBeHidden();
+  await expect(drawer).toBeVisible();
+  await expect(calendarTrigger).toBeFocused();
+
+  await drawer.getByRole("button", { name: "Закрыть", exact: true }).click();
+  await expect(drawer).toBeHidden();
+  await expect(
+    page.getByRole("dialog", { name: "Синтетический Клиент", exact: true }),
+  ).toBeVisible();
+});
+
 test("calls a synthetic passkey chooser in an active user gesture and handles cancellation", async ({
   page,
   context,
@@ -437,6 +542,10 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.getByLabel("Логин", { exact: true }).fill("browser.synthetic");
   await page.getByLabel("Пароль", { exact: true }).fill("synthetic-password");
+  await page.getByRole("button", { name: "Показать пароль", exact: true }).click();
+  await expect(page.getByLabel("Пароль", { exact: true })).toHaveAttribute("type", "text");
+  await page.getByRole("button", { name: "Скрыть пароль", exact: true }).click();
+  await expect(page.getByLabel("Пароль", { exact: true })).toHaveAttribute("type", "password");
   await page.getByRole("button", { name: "Войти", exact: true }).click();
   await expect(page).toHaveURL(/\/workspace$/);
   await page.getByRole("button", { name: "Открыть меню", exact: true }).click();
@@ -452,7 +561,7 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   const search = page.getByRole("searchbox", { name: "ФИО или контакт" });
   await search.fill("Синтетический");
   await expect(page.getByRole("row", { name: /Синтетический Клиент/ })).toBeVisible();
-  await page.locator(".workspace-layout").evaluate((element) => {
+  await page.getByRole("main").evaluate((element) => {
     (element as HTMLElement).style.minHeight = "1600px";
   });
   await page.evaluate(() => window.scrollTo(0, 160));
@@ -489,7 +598,9 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   await page.getByRole("row", { name: /Синтетический Обновлённый/ }).click();
   await cardLoaded;
   const drawer = page.getByRole("dialog");
-  await expect(drawer.getByRole("status")).toHaveCount(0);
+  await expect(drawer.getByRole("status").filter({ hasText: "Обновляем карточку…" })).toHaveCount(
+    0,
+  );
   await expect(drawer.getByRole("alert").filter({ hasText: "Повторить" })).toHaveCount(0);
   await expect(drawer.getByRole("button", { name: "В архив", exact: true })).toBeDisabled();
   await expect(drawer.getByText("Тестовый контакт")).toBeVisible();
@@ -503,6 +614,22 @@ test("composes sign-in, protected routing, client details and sign-out on a mobi
   expect(box.width).toBeLessThanOrEqual(390.5);
   await drawer.getByRole("button", { name: "Закрыть", exact: true }).click();
   await page.getByRole("button", { name: "Меню пользователя browser.synthetic" }).click();
+  const localData = page.getByRole("menuitem", { name: "Локальные данные" });
+  await expect(localData.locator("svg")).toHaveCount(1);
+  await localData.click();
+  const localDataDialog = page.getByRole("dialog", { name: "Локальные данные" });
+  await expect(localDataDialog).toBeVisible();
+  const localDataBounds = await localDataDialog.boundingBox();
+  if (!localDataBounds) throw new Error("Local data dialog has no visible bounds");
+  expect(localDataBounds.width).toBeLessThanOrEqual(390.5);
+  await page.keyboard.press("Escape");
+  await expect(localDataDialog).toBeHidden();
+  const accountMenu = page.getByRole("button", { name: "Меню пользователя browser.synthetic" });
+  await expect(accountMenu).toBeFocused();
+  await accountMenu.click();
+  await page.getByRole("menuitem", { name: "Тёмная тема" }).click();
+  await expect(page.locator("html")).toHaveAttribute("data-appearance", "dark");
+  await accountMenu.click();
   await page.getByRole("menuitem", { name: "Выйти" }).click();
   await expect(page).toHaveURL(/\/sign-in$/);
   await page.reload();
@@ -529,21 +656,14 @@ test("redirects loopback HTML navigation while preserving the route and query", 
   expect(apiResponse.status()).not.toBe(307);
 });
 
-test("contains native wheel scrolling at a popup boundary without freezing its list", async ({
-  page,
-  context,
-  isMobile,
-}) => {
-  test.skip(
-    isMobile,
-    "Mobile WebKit does not expose mouse wheel; desktop WebKit covers native wheel.",
-  );
+async function containsNativeWheelScrollingAtPopupBoundary(page: Page, context: BrowserContext) {
   await installApi(context);
   await openProbe(page);
   await page.evaluate(() => {
     document.body.style.height = "3000px";
     const popup = document.createElement("div");
-    popup.className = "ant-select-dropdown";
+    popup.setAttribute("data-testid", "scroll-boundary-popup");
+    popup.setAttribute("data-popup-scroll-boundary", "");
     popup.style.cssText =
       "position:fixed;top:100px;left:10px;width:200px;height:100px;overflow:auto";
     popup.innerHTML = '<div style="height:600px">Synthetic options</div>';
@@ -551,10 +671,9 @@ test("contains native wheel scrolling at a popup boundary without freezing its l
   });
   await page.mouse.move(60, 150);
   await page.mouse.wheel(0, 100);
-  await expect
-    .poll(() => page.locator(".ant-select-dropdown").evaluate((element) => element.scrollTop))
-    .toBeGreaterThan(0);
-  await page.locator(".ant-select-dropdown").evaluate((element) => {
+  const popup = page.getByTestId("scroll-boundary-popup");
+  await expect.poll(() => popup.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
+  await popup.evaluate((element) => {
     element.scrollTop = element.scrollHeight;
   });
   await page.mouse.wheel(0, 300);
@@ -563,4 +682,16 @@ test("contains native wheel scrolling at a popup boundary without freezing its l
     () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
   );
   expect(await page.evaluate(() => window.scrollY)).toBe(0);
+}
+
+test("contains native wheel scrolling without freezing the popup list", async ({
+  page,
+  context,
+  isMobile,
+}) => {
+  test.skip(
+    isMobile,
+    "Mobile WebKit does not expose mouse wheel; desktop WebKit covers native wheel.",
+  );
+  await containsNativeWheelScrollingAtPopupBoundary(page, context);
 });

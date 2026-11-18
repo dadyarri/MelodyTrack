@@ -1,6 +1,5 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "antd/dist/reset.css";
 import { App } from "./app/App";
 import { AppErrorBoundary } from "./app/AppErrorBoundary";
 import { takeInvitationFromAddress } from "./shared/lib/invitation";

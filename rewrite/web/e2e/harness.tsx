@@ -3,12 +3,15 @@ import { createRoot } from "react-dom/client";
 import { StaffSessionProvider, useStaffSession } from "../src/entities/session";
 import { createPasskeyRegistration } from "../src/shared/lib/passkeys";
 import { DateInput } from "../src/shared/ui/date-time";
+import { PaperPagination } from "../src/shared/ui/paper/PaperPagination";
 import { usePopupScrollBoundary } from "../src/shared/ui/scroll-boundary";
+import "../src/app/styles.css";
 
 function Probe() {
   const session = useStaffSession();
   const [date, setDate] = useState<string | null>("2026-11-15");
   const [result, setResult] = useState("");
+  const [pagination, setPagination] = useState<{ page: number; pageSize: number } | null>(null);
   usePopupScrollBoundary();
   return (
     <>
@@ -64,6 +67,21 @@ function Probe() {
       <output aria-label="result">{result}</output>
       <DateInput value={date} onChange={setDate} />
       <output aria-label="date">{date}</output>
+      <button type="button" onClick={() => setPagination({ page: 1, pageSize: 10 })}>
+        Show pagination
+      </button>
+      {pagination && (
+        <>
+          <PaperPagination
+            {...pagination}
+            total={65}
+            onChange={(page, pageSize) => setPagination({ page, pageSize })}
+          />
+          <output aria-label="pagination">
+            {pagination.page}:{pagination.pageSize}
+          </output>
+        </>
+      )}
     </>
   );
 }

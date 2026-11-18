@@ -1,11 +1,11 @@
 import { Toaster } from "sonner";
 import type { Appearance } from "@/shared/lib/appearance";
-import "./notifications.css";
+import styles from "./notifications.module.css";
 
 export function Notifications({ appearance }: { appearance: Appearance }) {
   return (
     <Toaster
-      className="app-notifications"
+      className={styles.notifications ?? ""}
       theme={appearance}
       position="bottom-right"
       closeButton

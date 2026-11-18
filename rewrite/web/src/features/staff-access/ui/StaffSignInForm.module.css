@@ -1,0 +1,60 @@
+.form,
+.fields {
+  display: grid;
+  gap: 20px;
+  width: 100%;
+  min-width: 0;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fieldError {
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.fields > button,
+.passkey > button {
+  width: 100%;
+}
+
+.description {
+  color: var(--color-muted);
+  line-height: 1.6;
+}
+
+.passkey {
+  display: grid;
+  gap: 12px;
+  border-top: 1px solid var(--color-line);
+  padding-top: 20px;
+}
+
+.secondary {
+  width: 100%;
+}
+
+.textButton {
+  justify-self: start;
+  min-height: 44px;
+  padding-inline: 0;
+  border: 0;
+  color: var(--color-primary);
+  background: transparent;
+}
+
+.info {
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius, 6px);
+  padding: 12px;
+  color: var(--color-muted);
+  line-height: 1.5;
+}

@@ -19,6 +19,7 @@
     "verify:fix": "npm run format && npm run typecheck && npm run test && vite build"
   },
   "dependencies": {
+    "@base-ui/react": "1.9.0",
     "@microsoft/kiota-abstractions": "1.0.0-preview.112",
     "@microsoft/kiota-http-fetchlibrary": "1.0.0-preview.112",
     "@microsoft/kiota-serialization-form": "1.0.0-preview.112",
@@ -26,9 +27,11 @@
     "@microsoft/kiota-serialization-multipart": "1.0.0-preview.112",
     "@microsoft/kiota-serialization-text": "1.0.0-preview.112",
     "@tabler/icons-react": "3.52.0",
-    "antd": "6.7.0",
+    "qrcode.react": "4.2.0",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-hook-form": "7.92.0",
+    "react-paginate": "8.3.0",
     "react-router": "8.5.1",
     "sonner": "2.0.8"
   },

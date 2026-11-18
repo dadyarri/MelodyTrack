@@ -1,19 +1,18 @@
-import { Alert, Button, Collapse, Input, Radio, Select, Space, Typography } from "antd";
 import { useState } from "react";
-import "./clientDirectoryTraining.css";
 import {
   DataView as CollectionDataView,
   type DataViewColumn,
   type DataViewSort,
 } from "@/shared/ui/data-view";
+import { PaperAccordion, PaperButton, PaperSelect } from "@/shared/ui/paper";
 import {
   clientDirectoryExerciseComplete,
   type DemoClient,
   type DemoClientQuery,
   selectDemoClients,
 } from "../model/clientDirectoryDemo";
+import styles from "./client-directory-training.module.css";
 
-const { Paragraph, Title } = Typography;
 export type ClientTrainingTopic = "search" | "sorting" | "card";
 export const clientTrainingTitles: Record<ClientTrainingTopic, string> = {
   search: "Поиск и фильтры",
@@ -73,15 +72,15 @@ export function ClientDirectoryExercise({
   if (topic === "card") return <ClientCardPractice />;
 
   return (
-    <div className="employee-training-exercise">
-      <p className="employee-training-demo-note">
+    <div className={styles.exercise}>
+      <p className={styles.demoNote}>
         <span>Учебные клиенты</span> · Настоящие данные не меняются.
       </p>
-      <Paragraph>
+      <p>
         {topic === "search"
           ? "Введите полное ФИО «Иванов Антон» и выберите источник «Рекомендация». Оставьте только тех, кто в работе. В результате должны остаться Иванов Артём и Иванов Антон: поиск допускает до трёх изменений в полном ФИО. Порядок от Я к А уже выбран."
           : "Поиск и фильтры уже настроены. Нажмите стрелку в заголовке ФИО и расположите клиентов от Я к А: сначала Иванов Артём, затем Иванов Антон."}
-      </Paragraph>
+      </p>
       <CollectionDataView
         ariaLabel="Учебный список клиентов"
         columns={
@@ -109,49 +108,52 @@ export function ClientDirectoryExercise({
           setAttempted(false);
         }}
         filters={
-          <Space wrap>
-            <Select
+          <div className={styles.filters}>
+            <PaperSelect
               aria-label="Учебный источник"
               value={query.source}
-              onChange={(source: DemoClientQuery["source"]) => changeQuery({ source })}
+              onValueChange={(source) =>
+                changeQuery({ source: source as DemoClientQuery["source"] })
+              }
               options={[
                 { value: "all", label: "Все источники" },
                 { value: "recommendation", label: "Рекомендация" },
                 { value: "website", label: "Сайт" },
               ]}
             />
-            <Select
+            <PaperSelect
               aria-label="Учебное состояние работы"
               value={query.archive}
-              onChange={(archive: DemoClientQuery["archive"]) => changeQuery({ archive })}
+              onValueChange={(archive) =>
+                changeQuery({ archive: archive as DemoClientQuery["archive"] })
+              }
               options={[
                 { value: "all", label: "Все" },
                 { value: "active", label: "В работе" },
                 { value: "archived", label: "Архив" },
               ]}
             />
-          </Space>
+          </div>
         }
       />
       {attempted && (
-        <Alert
-          type="warning"
-          title={
-            topic === "search"
-              ? "Проверьте поиск, источник и состояние работы."
-              : "Проверьте порядок фамилий: от Я к А."
-          }
-        />
+        <p role="alert" className={styles.warning}>
+          {topic === "search"
+            ? "Проверьте поиск, источник и состояние работы."
+            : "Проверьте порядок фамилий: от Я к А."}
+        </p>
       )}
       {completed ? (
-        <Alert type="success" title="Тренировка пройдена" />
+        <p role="status" className={styles.success}>
+          Тренировка пройдена
+        </p>
       ) : (
-        <Button type="primary" onClick={checkResult}>
+        <PaperButton variant="primary" onClick={checkResult}>
           Проверить результат
-        </Button>
+        </PaperButton>
       )}
       {completed && (
-        <Button
+        <PaperButton
           onClick={() => {
             setCompleted(false);
             setQuery(startingQuery);
@@ -160,15 +162,15 @@ export function ClientDirectoryExercise({
           }}
         >
           Повторить тренировку
-        </Button>
+        </PaperButton>
       )}
       {completed && topic === "search" && (
-        <Button type="primary" onClick={() => onStartTraining("sorting")}>
+        <PaperButton variant="primary" onClick={() => onStartTraining("sorting")}>
           К сортировке
-        </Button>
+        </PaperButton>
       )}
       {completed && topic === "sorting" && (
-        <Button onClick={() => onStartTraining("search")}>К поиску и фильтрам</Button>
+        <PaperButton onClick={() => onStartTraining("search")}>К поиску и фильтрам</PaperButton>
       )}
     </div>
   );
@@ -192,29 +194,22 @@ function ClientCardPractice() {
   }
 
   return (
-    <section
-      className="employee-training-card-practice"
-      aria-labelledby="client-card-practice-heading"
-    >
-      <Title level={5} id="client-card-practice-heading">
-        Учебная карточка
-      </Title>
-      <p className="employee-training-demo-note">
-        Учебная карточка · Настоящие данные не меняются.
-      </p>
-      <Paragraph>
+    <section className={styles.cardPractice} aria-labelledby="client-card-practice-heading">
+      <h3 id="client-card-practice-heading">Учебная карточка</h3>
+      <p className={styles.demoNote}>Учебная карточка · Настоящие данные не меняются.</p>
+      <p>
         Заполните имя, фамилию и источник. При добавлении телефона отметьте его основным, затем
         сохраните учебную карточку.
-      </Paragraph>
-      <Space orientation="vertical" size={12} className="wide">
-        <div className="employee-training-field">
+      </p>
+      <div className={styles.cardFields}>
+        <div className={styles.field}>
           <span>
             Фамилия
-            <span className="field-required" aria-hidden="true">
+            <span className={styles.required} aria-hidden="true">
               *
             </span>
           </span>
-          <Input
+          <input
             aria-label="Учебная фамилия"
             value={lastName}
             onChange={(event) => {
@@ -223,14 +218,14 @@ function ClientCardPractice() {
             }}
           />
         </div>
-        <div className="employee-training-field">
+        <div className={styles.field}>
           <span>
             Имя
-            <span className="field-required" aria-hidden="true">
+            <span className={styles.required} aria-hidden="true">
               *
             </span>
           </span>
-          <Input
+          <input
             aria-label="Учебное имя"
             value={firstName}
             onChange={(event) => {
@@ -239,18 +234,18 @@ function ClientCardPractice() {
             }}
           />
         </div>
-        <div className="employee-training-field">
+        <div className={styles.field}>
           <span>
             Источник
-            <span className="field-required" aria-hidden="true">
+            <span className={styles.required} aria-hidden="true">
               *
             </span>
           </span>
-          <Select
+          <PaperSelect
             aria-label="Учебный источник карточки"
             value={source || null}
             placeholder="Выберите источник"
-            onChange={(next: string) => {
+            onValueChange={(next) => {
               setSource(next);
               setSaved(false);
             }}
@@ -260,9 +255,9 @@ function ClientCardPractice() {
             ]}
           />
         </div>
-        <div className="employee-training-field">
+        <div className={styles.field}>
           <span>Телефон</span>
-          <Input
+          <input
             aria-label="Учебный телефон"
             value={contact}
             onChange={(event) => {
@@ -272,32 +267,37 @@ function ClientCardPractice() {
           />
         </div>
         {contact.trim() ? (
-          <Radio
-            checked={primary}
-            onChange={() => {
-              setPrimary(true);
-              setSaved(false);
-            }}
-          >
+          <label className={styles.radio}>
+            <input
+              type="radio"
+              checked={primary}
+              onChange={() => {
+                setPrimary(true);
+                setSaved(false);
+              }}
+            />
             Основной контакт
-          </Radio>
+          </label>
         ) : null}
         {issue ? (
-          <Alert
-            type="warning"
-            title="Укажите имя, фамилию и источник; добавленный контакт отметьте основным."
-          />
+          <p role="alert" className={styles.warning}>
+            Укажите имя, фамилию и источник; добавленный контакт отметьте основным.
+          </p>
         ) : null}
-        {saved ? <Alert type="success" title="Учебная карточка сохранена." /> : null}
-        <Button type="primary" onClick={saveDemoCard}>
+        {saved ? (
+          <p role="status" className={styles.success}>
+            Учебная карточка сохранена.
+          </p>
+        ) : null}
+        <PaperButton variant="primary" onClick={saveDemoCard}>
           Сохранить учебную карточку
-        </Button>
-        <Alert
-          type="warning"
-          title="Архивирование временно недоступно"
-          description="Оно будет включено после переноса зависимостей расписания и финансов."
-        />
-      </Space>
+        </PaperButton>
+        <p className={styles.warning}>
+          <strong>Архивирование временно недоступно</strong>
+          <br />
+          Оно будет включено после переноса зависимостей расписания и финансов.
+        </p>
+      </div>
     </section>
   );
 }
@@ -308,56 +308,56 @@ export function ClientDirectoryArticle({
   onStartTraining: (topic: ClientTrainingTopic) => void;
 }) {
   return (
-    <div className="employee-training-article">
-      <Collapse
+    <div className={styles.article}>
+      <PaperAccordion
         items={[
           {
-            key: "search",
-            label: "Поиск и фильтры",
-            children: (
-              <div className="employee-training-topic">
-                <Paragraph>
+            value: "search",
+            title: "Поиск и фильтры",
+            content: (
+              <div className={styles.topic}>
+                <p>
                   Поиск находит клиентов по любой части ФИО с допуском до трёх вставок, удалений или
                   замен символов. Например, «багд» находит «Богданова Полина». Регистр и лишние
                   пробелы не учитываются. Для коротких запросов действует тот же допуск, поэтому
                   запросы до трёх символов совпадают с любым ФИО. Фильтры состояния работы и
                   источника можно сочетать.
-                </Paragraph>
-                <Paragraph>
+                </p>
+                <p>
                   Изменение поиска и фильтров возвращает на первую страницу. Пустой результат
                   означает, что условиям никто не соответствует; при ошибке загрузки используйте
                   повтор.
-                </Paragraph>
-                <Button type="primary" onClick={() => onStartTraining("search")}>
+                </p>
+                <PaperButton variant="primary" onClick={() => onStartTraining("search")}>
                   Тренировка поиска и фильтров
-                </Button>
+                </PaperButton>
               </div>
             ),
           },
           {
-            key: "sorting",
-            label: "Сортировка таблицы",
-            children: (
-              <div className="employee-training-topic">
-                <Paragraph>
+            value: "sorting",
+            title: "Сортировка таблицы",
+            content: (
+              <div className={styles.topic}>
+                <p>
                   Нажмите стрелку в заголовке колонки. Повторное нажатие меняет направление и затем
                   убирает поле из сортировки. Можно добавить несколько полей; номера у стрелок
                   обозначают их приоритет. Изменение сортировки возвращает на первую страницу.
                   Таблица по умолчанию показывает 10 строк; на телефоне она прокручивается по
                   горизонтали.
-                </Paragraph>
-                <Button type="primary" onClick={() => onStartTraining("sorting")}>
+                </p>
+                <PaperButton variant="primary" onClick={() => onStartTraining("sorting")}>
                   Тренировка сортировки
-                </Button>
+                </PaperButton>
               </div>
             ),
           },
           {
-            key: "card",
-            label: "Карточка клиента",
-            children: (
-              <div className="employee-training-topic">
-                <Paragraph>
+            value: "card",
+            title: "Карточка клиента",
+            content: (
+              <div className={styles.topic}>
+                <p>
                   Нажатие на клиента открывает правую панель с контактами и остальными данными. В
                   боковой панели видны профиль и список контактов. Если у сотрудника есть
                   эффективное право на запись карточек, он может создать или изменить ФИО, дату
@@ -365,25 +365,25 @@ export function ClientDirectoryArticle({
                   один основной контакт; при удалении основного контакта выберите замену явно.
                   Источник обязателен, список контактов может быть пустым. Совпадение телефона или
                   почты показывает предупреждение и не блокирует сохранение.
-                </Paragraph>
-                <Button type="primary" onClick={() => onStartTraining("card")}>
+                </p>
+                <PaperButton variant="primary" onClick={() => onStartTraining("card")}>
                   Тренировка карточки
-                </Button>
+                </PaperButton>
               </div>
             ),
           },
           {
-            key: "status",
-            label: "Состояние работы и заметки",
-            children: (
-              <Paragraph>
+            value: "status",
+            title: "Состояние работы и заметки",
+            content: (
+              <p>
                 «В работе» и «Архив» описывают состояние работы. Переключение фильтра ничего не
                 архивирует и не восстанавливает. Заметки и их историю видят сотрудники с
                 соответствующими эффективными правами. Заметки сохраняются с проверкой актуального
                 состояния: при конфликте сначала загрузите серверную версию. Восстановление доступно
                 для архивных карточек без возврата отозванного доступа; архивирование пока отключено
                 до переноса проверок зависимостей расписания и финансов.
-              </Paragraph>
+              </p>
             ),
           },
         ]}

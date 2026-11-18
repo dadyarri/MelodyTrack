@@ -1,0 +1,74 @@
+.exercise,
+.article,
+.topic {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.demoNote {
+  margin: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.filters {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.warning,
+.success {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+}
+.warning {
+  color: var(--color-warning, var(--color-text));
+  background: var(--color-warning-soft, var(--color-soft));
+}
+.success {
+  color: var(--color-primary);
+  background: var(--color-soft);
+}
+.cardPractice {
+  display: grid;
+  gap: 16px;
+  padding: 18px;
+  border: 1px solid var(--color-line);
+  border-radius: 10px;
+}
+.cardFields {
+  display: grid;
+  gap: 12px;
+}
+.field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+.field input:not([type="radio"]) {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  color: var(--color-text);
+  background: var(--color-surface);
+  font: inherit;
+  font-size: 16px;
+}
+.required {
+  color: var(--color-danger, #b42318);
+}
+.radio {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+}
+@media (max-width: 600px) {
+  .exercise,
+  .article,
+  .topic {
+    gap: 16px;
+  }
+}

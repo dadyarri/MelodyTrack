@@ -1,4 +1,3 @@
-import { Alert, Button } from "antd";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { useStaffSession } from "@/entities/session";
@@ -7,6 +6,8 @@ import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton } from "@/shared/ui/paper";
+import styles from "./StaffRegistrationPage.module.css";
 
 export function StaffRegistrationPage({
   invitation,
@@ -24,36 +25,34 @@ export function StaffRegistrationPage({
   useEffect(() => {
     if (!staff) setMustSignOut(false);
   }, [staff]);
+
   return (
-    <main className="sign-in-layout">
-      <section className="sign-in-panel registration-panel" aria-labelledby="registration-heading">
-        <header className="sign-in-topbar">
+    <main className={styles.layout}>
+      <section className={styles.panel} aria-labelledby="registration-heading">
+        <header className={styles.topbar}>
           <Brand />
-          <Button
-            type="text"
-            className="appearance-toggle"
+          <PaperButton
+            className={styles.appearanceToggle}
             icon={<Icon name={appearance === "light" ? "moon" : "sun"} />}
             onClick={onToggleAppearance}
             aria-label={appearance === "light" ? "Включить тёмную тему" : "Включить светлую тему"}
           />
         </header>
-        <div className="sign-in-content">
-          <div className="sign-in-intro">
+        <div className={styles.content}>
+          <div className={styles.intro}>
             <h1 id="registration-heading">Принять приглашение</h1>
           </div>
           {!invitation ? (
-            <Alert
-              type="warning"
-              showIcon
-              title="Нужна ссылка приглашения"
-              description="Откройте исходную ссылку, полученную от суперпользователя."
-            />
+            <p className={styles.warning} role="alert">
+              <strong>Нужна ссылка приглашения</strong>
+              <span>Откройте исходную ссылку, полученную от суперпользователя.</span>
+            </p>
           ) : mustSignOut && staff ? (
-            <div className="registration-form">
+            <div className={styles.signOut}>
               <p>Для регистрации другого аккаунта сначала выйдите из текущего.</p>
-              <Button onClick={() => void signOut()} loading={status === "authenticating"}>
+              <PaperButton onClick={() => void signOut()} loading={status === "authenticating"}>
                 Выйти из текущего аккаунта
-              </Button>
+              </PaperButton>
             </div>
           ) : (
             <StaffInvitationForm
@@ -61,7 +60,7 @@ export function StaffRegistrationPage({
               onComplete={() => navigate("/sign-in", { replace: true })}
             />
           )}
-          <div className="sign-in-help">
+          <div className={styles.help}>
             <Link to="/sign-in">{staff ? "Вернуться к работе" : "Ко входу"}</Link>
           </div>
         </div>

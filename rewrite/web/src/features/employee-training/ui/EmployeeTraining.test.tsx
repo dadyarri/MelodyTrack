@@ -33,6 +33,12 @@ function render(ui: ReactNode) {
   });
 }
 
+async function chooseSelectOption(name: string) {
+  const option = await screen.findByRole("option", { name });
+  fireEvent.pointerDown(option, { pointerType: "mouse" });
+  fireEvent.click(option);
+}
+
 beforeEach(() => {
   storage.load.mockReset();
   storage.save.mockReset().mockResolvedValue(undefined);
@@ -105,9 +111,10 @@ describe("legacy access training", () => {
     fireEvent.click(searchTopic);
 
     const launch = await screen.findByRole("button", { name: "Тренировка поиска и фильтров" });
-    expect(searchTopic.parentElement?.contains(launch)).toBe(true);
+    expect(searchTopic.getAttribute("aria-expanded")).toBe("true");
     fireEvent.click(launch);
 
+    await screen.findByRole("dialog", { name: "Список клиентов · Поиск и фильтры" });
     await screen.findByText("Учебные клиенты");
     expect(within(screen.getByRole("dialog")).queryByLabelText("Учебная фамилия")).toBeNull();
   });
@@ -231,14 +238,10 @@ describe("client directory module", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Поиск" }), {
       target: { value: "Иванов Антон" },
     });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебный источник" }));
-    fireEvent.click(
-      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
-    );
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
-    fireEvent.click(
-      await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Учебный источник" }));
+    await chooseSelectOption("Рекомендация");
+    fireEvent.click(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
+    await chooseSelectOption("В работе");
     const result = screen.getByRole("button", { name: "Проверить результат" });
     fireEvent.click(result);
 
@@ -312,14 +315,10 @@ describe("client directory module", () => {
     fireEvent.change(screen.getByRole("searchbox", { name: "Поиск" }), {
       target: { value: "Иванов Антон" },
     });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебный источник" }));
-    fireEvent.click(
-      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
-    );
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
-    fireEvent.click(
-      await screen.findByText("В работе", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Учебный источник" }));
+    await chooseSelectOption("Рекомендация");
+    fireEvent.click(screen.getByRole("combobox", { name: "Учебное состояние работы" }));
+    await chooseSelectOption("В работе");
     fireEvent.click(screen.getByRole("button", { name: "Проверить результат" }));
 
     await screen.findByText("Тренировка пройдена");

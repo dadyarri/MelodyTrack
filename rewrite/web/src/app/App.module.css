@@ -1,0 +1,38 @@
+.root {
+  min-height: 100dvh;
+  background: var(--color-page);
+  color: var(--color-text);
+}
+.loading {
+  display: grid;
+  place-items: center;
+  min-height: 180px;
+  padding: 24px;
+  color: var(--color-muted);
+}
+.loadError {
+  max-width: 580px;
+  margin: 15vh auto;
+  padding: 28px;
+  line-height: 1.6;
+}
+.loadError p {
+  margin-top: 16px;
+  color: var(--color-muted);
+}
+.textAction {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-align: left;
+}
+.textAction:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}

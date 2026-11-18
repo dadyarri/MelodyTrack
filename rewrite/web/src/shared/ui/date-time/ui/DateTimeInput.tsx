@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { parseDateTime } from "../model/calendar";
 import { DateInput, type DateInputProps } from "./DateInput";
+import styles from "./date-time.module.css";
 import { TimeInput } from "./TimeInput";
 
 export type DateTimeInputProps = DateInputProps;
@@ -46,7 +47,7 @@ export function DateTimeInput({
   }
 
   return (
-    <fieldset className="date-time-combined" aria-label={label}>
+    <fieldset className={styles.dateTimeCombined} aria-label={label}>
       <DateInput
         value={date}
         onChange={changeDate}

@@ -235,26 +235,16 @@ describe("client directory page", () => {
     const sourceSelects = screen.getAllByRole("combobox", { name: "Источник" });
     const editorSource = sourceSelects[sourceSelects.length - 1];
     if (!editorSource) throw new Error("Expected the client editor source selector.");
-    const sourceSurface = editorSource.closest(".ant-select-content");
-    if (!sourceSurface) throw new Error("Expected the client editor source selector surface.");
-    fireEvent.mouseDown(sourceSurface);
+    fireEvent.click(editorSource);
     await waitFor(() => expect(editorSource.getAttribute("aria-expanded")).toBe("true"));
-    const sourcePopup = document.querySelector<HTMLElement>(
-      ".ant-select-dropdown:not(.ant-select-dropdown-hidden)",
-    );
-    if (!sourcePopup) throw new Error("Expected the client editor source options to open.");
-    fireEvent.click(
-      within(sourcePopup).getByText("Рекомендация", {
-        selector: ".ant-select-item-option-content",
-      }),
-    );
-    expect(editorSource.closest(".client-editor-field")?.textContent).toContain("Рекомендация");
+    fireEvent.click(await screen.findByRole("option", { name: "Рекомендация" }));
+    expect(editorSource.textContent).toContain("Рекомендация");
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
     await waitFor(() => expect(createBodies).toHaveLength(1));
     await screen.findByText("Нет соединения с сервером. Повторите попытку.");
 
     const saveButton = await screen.findByRole("button", { name: /Сохранить/ });
-    await waitFor(() => expect(saveButton.classList.contains("ant-btn-loading")).toBe(false));
+    await waitFor(() => expect(saveButton.getAttribute("aria-busy")).not.toBe("true"));
     expect((saveButton as HTMLButtonElement).disabled).toBe(false);
     fireEvent.click(saveButton);
     await waitFor(() => expect(createBodies).toHaveLength(2));
@@ -391,15 +381,15 @@ describe("client directory page", () => {
     });
     await screen.findByRole("button", { name: "Сортировка: ФИО" });
 
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Статус" }));
-    fireEvent.click(
-      await screen.findByText("Архив", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Статус" }));
+    const archiveOption = await screen.findByRole("option", { name: "Архив" });
+    fireEvent.pointerDown(archiveOption, { pointerType: "mouse" });
+    fireEvent.click(archiveOption);
     await screen.findByRole("button", { name: "Сортировка: ФИО" });
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Источник" }));
-    fireEvent.click(
-      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Источник" }));
+    const sourceOption = await screen.findByRole("option", { name: "Рекомендация" });
+    fireEvent.pointerDown(sourceOption, { pointerType: "mouse" });
+    fireEvent.click(sourceOption);
     await screen.findByRole("button", { name: "Сортировка: ФИО" });
     fireEvent.click(screen.getByRole("button", { name: "Сортировка: ФИО" }));
     await screen.findByRole("button", { name: "Сортировка: ФИО" });
@@ -423,10 +413,10 @@ describe("client directory page", () => {
 
     const sizeChanger = screen.getAllByRole("combobox").at(-1);
     if (!sizeChanger) throw new Error("Missing page-size selector.");
-    fireEvent.mouseDown(sizeChanger);
-    fireEvent.click(
-      await screen.findByText("20 / page", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(sizeChanger);
+    const sizeOption = await screen.findByRole("option", { name: "20 на странице" });
+    fireEvent.pointerDown(sizeOption, { pointerType: "mouse" });
+    fireEvent.click(sizeOption);
     await waitFor(() => {
       expect(requestUrls(fetchMock).some((url) => url.searchParams.get("pageSize") === "20")).toBe(
         true,
@@ -435,7 +425,7 @@ describe("client directory page", () => {
         screen.getByRole("region", { name: "Клиенты" }).querySelector("[aria-busy='false']"),
       ).not.toBeNull();
     });
-    fireEvent.click(within(screen.getByTitle("2")).getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Страница 2" }));
     await waitFor(() => {
       expect(
         requestUrls(fetchMock).some(
@@ -589,18 +579,16 @@ describe("client directory page", () => {
     await screen.findByText("Тестова Анна");
     await screen.findByText("Не удалось загрузить источники");
     const sourceSelect = screen.getByRole("combobox", { name: "Источник" });
-    fireEvent.mouseDown(sourceSelect);
+    fireEvent.click(sourceSelect);
     expect(screen.queryByRole("listbox")).toBeNull();
-    expect(
-      screen.queryByText("Без источника", { selector: ".ant-select-item-option-content" }),
-    ).toBeNull();
+    expect(screen.queryByRole("option", { name: "Без источника" })).toBeNull();
 
     fireEvent.click(screen.getByRole("button", { name: "Повторить" }));
     await waitFor(() => expect(optionRequests).toHaveLength(2));
-    fireEvent.mouseDown(screen.getByRole("combobox", { name: "Источник" }));
-    fireEvent.click(
-      await screen.findByText("Рекомендация", { selector: ".ant-select-item-option-content" }),
-    );
+    fireEvent.click(screen.getByRole("combobox", { name: "Источник" }));
+    const sourceOption = await screen.findByRole("option", { name: "Рекомендация" });
+    fireEvent.pointerDown(sourceOption, { pointerType: "mouse" });
+    fireEvent.click(sourceOption);
 
     await waitFor(() => {
       expect(

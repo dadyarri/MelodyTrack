@@ -1,5 +1,4 @@
-import { Alert, Button, Drawer, Select, Tag, Tooltip } from "antd";
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useId, useRef, useState } from "react";
 import {
   clientName,
   type DirectoryClient,
@@ -11,14 +10,17 @@ import {
   getClientDirectoryOptions,
   initialDirectoryQuery,
 } from "@/entities/client-directory";
+import { useOfflineStorage } from "@/entities/offline-storage";
 import { useStaffSession } from "@/entities/session";
 import {
+  acknowledgeNewClientAttempt,
   type ClientCardDraft,
   ClientEditorDrawer,
   ClientNotesSection,
   createClientCard,
   getClientCard,
   getClientNotes,
+  prepareNewClientAttempt,
   restoreClientCard,
   updateClientCard,
   updateClientNotes,
@@ -33,9 +35,8 @@ import {
 } from "@/shared/ui/data-view";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
-import "./clients.css";
-import { useOfflineStorage } from "@/entities/offline-storage";
-import { acknowledgeNewClientAttempt, prepareNewClientAttempt } from "@/features/edit-client";
+import { PaperButton, PaperDrawer, PaperSelect, PaperTooltip } from "@/shared/ui/paper";
+import styles from "./clients.module.css";
 
 const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "Europe/Moscow",
@@ -43,6 +44,25 @@ const dateFormat = new Intl.DateTimeFormat("ru-RU", {
   timeStyle: "short",
 });
 const birthdayFormat = new Intl.DateTimeFormat("ru-RU", { timeZone: "UTC", dateStyle: "medium" });
+
+function ClientNotice({
+  title,
+  description,
+  id,
+  tone = "info",
+}: {
+  title: ReactNode;
+  description?: ReactNode;
+  id?: string;
+  tone?: "info" | "warning";
+}) {
+  return (
+    <div id={id} className={styles.notice} role={tone === "warning" ? "alert" : "status"}>
+      <p>{title}</p>
+      {description ? <p>{description}</p> : null}
+    </div>
+  );
+}
 
 function contactHref(contact: DirectoryContact): string | undefined {
   if (contact.format === "phone") {
@@ -62,8 +82,8 @@ function contactHref(contact: DirectoryContact): string | undefined {
 function Contact({ contact }: { contact: DirectoryContact }) {
   const href = contactHref(contact);
   return (
-    <div className="directory-contact">
-      <span className="directory-contact-kind">
+    <div className={styles["directory-contact"]}>
+      <span className={styles["directory-contact-kind"]}>
         {contact.kindName}
         {contact.isPrimary ? " · основной" : ""}
       </span>
@@ -77,7 +97,9 @@ function Contact({ contact }: { contact: DirectoryContact }) {
       ) : (
         <span>{contact.value}</span>
       )}
-      {contact.comment && <span className="directory-contact-comment">{contact.comment}</span>}
+      {contact.comment && (
+        <span className={styles["directory-contact-comment"]}>{contact.comment}</span>
+      )}
     </div>
   );
 }
@@ -102,7 +124,7 @@ function QuickActions({
   const phoneHref = phone && contactHref(phone);
   const emailHref = email && contactHref(email);
   return (
-    <div className="directory-quick-actions">
+    <div className={styles["directory-quick-actions"]}>
       <button
         type="button"
         aria-label={`Открыть карточку: ${clientName(client)}`}
@@ -137,7 +159,7 @@ function QuickActions({
 
 function UnknownValue({ label }: { label: string }) {
   return (
-    <span className="directory-unknown" role="img" aria-label={label} title={label}>
+    <span className={styles["directory-unknown"]} role="img" aria-label={label} title={label}>
       —
     </span>
   );
@@ -984,7 +1006,11 @@ function ClientDirectory() {
       title: "ФИО",
       sortable: true,
       render: (client) => (
-        <button type="button" className="directory-name" onClick={() => setSelected(client)}>
+        <button
+          type="button"
+          className={styles["directory-name"]}
+          onClick={() => setSelected(client)}
+        >
           {clientName(client)}
         </button>
       ),
@@ -994,7 +1020,12 @@ function ClientDirectory() {
       title: "Статус",
       sortable: true,
       render: (client) =>
-        client.isArchived ? <Tag icon={<Icon name="archive" size={14} />}>Архив</Tag> : null,
+        client.isArchived ? (
+          <span className={styles.tag}>
+            <Icon name="archive" size={14} />
+            Архив
+          </span>
+        ) : null,
     },
     {
       key: "lastAttended",
@@ -1038,33 +1069,39 @@ function ClientDirectory() {
   );
 
   return (
-    <div className="workspace-page directory-page">
-      <div className="page-heading">
+    <div className={`${styles["workspace-page"]} ${styles["directory-page"]}`}>
+      <div className={styles["page-heading"]}>
         <h1>Клиенты</h1>
         {canWrite ? (
-          <Tooltip
+          <PaperTooltip
             title={
               !options?.sources.length
                 ? "Для создания сначала добавьте источник в справочник."
                 : undefined
             }
           >
-            <Button
-              type="primary"
+            <PaperButton
+              variant="primary"
               icon={<Icon name="plus" />}
               onClick={beginCreate}
               disabled={!options?.sources.length}
+              aria-describedby={!options?.sources.length ? "client-source-required" : undefined}
             >
               Добавить клиента
-            </Button>
-          </Tooltip>
+            </PaperButton>
+          </PaperTooltip>
         ) : null}
       </div>
+      {canWrite && !options?.sources.length && (
+        <p id="client-source-required" className={styles["directory-muted"]}>
+          Для создания сначала добавьте источник в справочник.
+        </p>
+      )}
       {!allowed ? (
-        <Alert type="warning" title="Нет доступа к списку клиентов" />
+        <ClientNotice tone="warning" title="Нет доступа к списку клиентов" />
       ) : !supportedScope ? (
-        <Alert
-          type="info"
+        <ClientNotice
+          tone="info"
           title={
             permission?.dataScope === "own"
               ? "Список своих клиентов станет доступен после подключения расписания"
@@ -1104,33 +1141,35 @@ function ClientDirectory() {
             }
             actions={
               <>
-                <Tooltip title="Помощь">
-                  <Button
+                <PaperTooltip title="Помощь">
+                  <PaperButton
                     aria-label="Помощь"
                     icon={<Icon name="help" />}
                     onClick={openClientTraining}
                   />
-                </Tooltip>
-                <Tooltip title="Обновить">
-                  <Button
+                </PaperTooltip>
+                <PaperTooltip title="Обновить">
+                  <PaperButton
                     aria-label="Обновить"
                     icon={<Icon name="refresh" />}
                     onClick={refresh}
                     disabled={loading}
                   />
-                </Tooltip>
+                </PaperTooltip>
               </>
             }
             emptyDescription={filterCount ? "По этим условиям клиентов нет" : "Клиентов пока нет"}
             filters={
-              <div className="directory-filters">
+              <div className={styles["directory-filters"]}>
                 <label htmlFor={`${filterId}-archive`}>
                   Статус
-                  <Select
+                  <PaperSelect
                     id={`${filterId}-archive`}
                     aria-label="Статус"
                     value={query.archive}
-                    onChange={(archive: DirectoryQuery["archive"]) => change({ archive })}
+                    onValueChange={(archive) =>
+                      change({ archive: archive as DirectoryQuery["archive"] })
+                    }
                     options={[
                       { value: "active", label: "В работе" },
                       { value: "archived", label: "Архив" },
@@ -1140,12 +1179,12 @@ function ClientDirectory() {
                 </label>
                 <label htmlFor={`${filterId}-source`}>
                   Источник
-                  <Select
+                  <PaperSelect
                     id={`${filterId}-source`}
                     aria-label="Источник"
                     value={query.withoutSource ? "missing" : query.sourceId || "all"}
                     disabled={!options}
-                    onChange={(source: string) =>
+                    onValueChange={(source) =>
                       change({
                         sourceId: source === "all" || source === "missing" ? "" : source,
                         withoutSource: source === "missing",
@@ -1164,66 +1203,64 @@ function ClientDirectory() {
               </div>
             }
           />
-          <Drawer
-            open={selected !== null}
-            placement="right"
-            size="min(480px, 100vw)"
+          <PaperDrawer
+            open={selected !== null && editorMode === null}
             title={selectedCard ? clientName(selectedCard) : "Клиент"}
             onClose={() => setSelected(null)}
-            destroyOnHidden
-            classNames={{ root: "directory-drawer" }}
+            className={styles.profileDrawer}
           >
             {selectedCard && (
-              <div className="directory-profile">
-                <div className="client-profile-actions">
+              <div className={styles["directory-profile"]}>
+                <div className={styles["client-profile-actions"]}>
                   {canWrite ? (
-                    <Tooltip title="Изменить карточку">
-                      <Button
+                    <PaperTooltip title="Изменить карточку">
+                      <PaperButton
                         aria-label="Изменить карточку"
                         icon={<Icon name="edit" />}
                         onClick={() => beginEdit(selectedCard)}
                       />
-                    </Tooltip>
+                    </PaperTooltip>
                   ) : null}
                   {selectedCard.isArchived && canWrite ? (
-                    <Tooltip title="Вернуть в работу">
-                      <Button
-                        type="primary"
+                    <PaperTooltip title="Вернуть в работу">
+                      <PaperButton
+                        variant="primary"
                         aria-label="Вернуть в работу"
                         icon={<Icon name="restore" />}
                         loading={restoreBusy}
                         onClick={restoreSelected}
                       />
-                    </Tooltip>
+                    </PaperTooltip>
                   ) : null}
-                  <Tooltip title="Проверка связанных записей ещё не подключена.">
-                    <Button
+                  <PaperTooltip title="Проверка связанных записей ещё не подключена.">
+                    <PaperButton
                       disabled
                       aria-label="В архив"
                       icon={<Icon name="archive" />}
                       aria-describedby="client-archive-reason"
                     />
-                  </Tooltip>
+                  </PaperTooltip>
                 </div>
                 {selectedCard.isArchived ? (
-                  <Tag icon={<Icon name="archive" size={14} />}>Архив</Tag>
+                  <span className={styles.tag}>
+                    <Icon name="archive" size={14} />
+                    Архив
+                  </span>
                 ) : null}
                 {clientCardLoading ? <p role="status">Обновляем карточку…</p> : null}
                 {duplicateWarning ? (
-                  <Alert
-                    type="warning"
-                    showIcon
+                  <ClientNotice
+                    tone="warning"
                     title="Есть контакт, совпадающий с контактом другого клиента. Сохранение разрешено."
                   />
                 ) : null}
-                <Alert
+                <ClientNotice
                   id="client-archive-reason"
-                  type="info"
-                  showIcon
+                  tone="info"
                   title="Архивирование пока недоступно"
                   description="Проверка связанных записей ещё не подключена."
                 />
-                <dl className="directory-profile-fields">
+                <dl className={styles["directory-profile-fields"]}>
                   <div>
                     <dt>Статус</dt>
                     <dd>{selectedCard.isArchived ? "Архив" : "В работе"}</dd>
@@ -1252,7 +1289,7 @@ function ClientDirectory() {
                       <Contact key={contact.id} contact={contact} />
                     ))
                   ) : (
-                    <p className="directory-muted">Нет контактов</p>
+                    <p className={styles["directory-muted"]}>Нет контактов</p>
                   )}
                 </section>
                 {canReadNotes && notesForClient === selectedCard.id ? (
@@ -1273,7 +1310,7 @@ function ClientDirectory() {
                 ) : null}
               </div>
             )}
-          </Drawer>
+          </PaperDrawer>
           <ClientEditorDrawer
             open={editorMode !== null}
             client={editorClient}

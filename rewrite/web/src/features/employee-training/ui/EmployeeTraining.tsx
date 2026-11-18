@@ -1,6 +1,6 @@
-import { Button, Collapse, Modal, Spin, Typography } from "antd";
 import { createContext, type ReactNode, useContext, useEffect, useRef, useState } from "react";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperAccordion, PaperButton, PaperDialog } from "@/shared/ui/paper";
 import { createProgress, type TrainingProgress } from "../model/progress";
 import { loadTrainingProgress, saveTrainingProgress } from "../model/storage";
 import {
@@ -9,9 +9,7 @@ import {
   type ClientTrainingTopic,
   clientTrainingTitles,
 } from "./ClientDirectoryTraining";
-import "./employee-training.css";
-
-const { Paragraph, Title } = Typography;
+import styles from "./employee-training.module.css";
 
 interface TrainingContextValue {
   progress: TrainingProgress | null;
@@ -185,26 +183,22 @@ function AccountTraining({
       {progress ? (
         <div inert={visibleModal && !progress.clientDirectory.completed}>{children}</div>
       ) : (
-        <div className="employee-training-loading" role="status" aria-live="polite">
-          <Spin />
+        <div className={styles.loading} role="status" aria-live="polite">
+          <span className={styles.spinner} aria-hidden="true" />
           <span>Загрузка…</span>
         </div>
       )}
       {canUseClientDirectory && (
-        <Modal
-          className="employee-training-modal"
-          style={{ maxWidth: "100vw" }}
+        <PaperDialog
+          className={styles.trainingDialog}
           title={`Список клиентов · ${clientTrainingTitles[clientTopic]}`}
           open={Boolean(progress) && visibleModal}
-          closable={false}
-          mask={{ closable: false }}
-          keyboard={false}
-          width={1040}
-          footer={[
-            <Button key="defer" onClick={closeTraining}>
+          onClose={closeTraining}
+          footer={
+            <PaperButton onClick={closeTraining}>
               {progress?.clientDirectory.completed ? "К работе" : "Отложить"}
-            </Button>,
-          ]}
+            </PaperButton>
+          }
         >
           <ClientDirectoryExercise
             key={clientReplay}
@@ -217,17 +211,17 @@ function AccountTraining({
               }
             }}
           />
-        </Modal>
+        </PaperDialog>
       )}
       {progress &&
         canUseClientDirectory &&
         !visibleModal &&
         progress.clientDirectory.deferred &&
         !progress.clientDirectory.completed && (
-          <div className="employee-training-resume">
-            <Button type="primary" size="large" onClick={value.openClientTraining}>
+          <div className={styles.resume}>
+            <PaperButton variant="primary" onClick={value.openClientTraining}>
               Продолжить обучение
-            </Button>
+            </PaperButton>
           </div>
         )}
     </TrainingContext.Provider>
@@ -237,22 +231,22 @@ function AccountTraining({
 export function TrainingWorkspace() {
   const { canUseClientDirectory, openClientTrainingTopic } = useEmployeeTraining();
   return (
-    <div className="employee-training-workspace">
+    <div className={styles.workspace}>
       <div>
-        <Title level={2}>Обучение</Title>
+        <h2>Обучение</h2>
       </div>
       {canUseClientDirectory && (
-        <Collapse
+        <PaperAccordion
           items={[
             {
-              key: "clients",
-              label: "Список клиентов",
-              children: (
-                <div className="employee-training-topic">
-                  <Paragraph>
+              value: "clients",
+              title: "Список клиентов",
+              content: (
+                <div className={styles.topic}>
+                  <p>
                     Здесь собраны правила поиска, фильтрации, сортировки и работы с карточкой
                     клиента. Каждый раздел раскрывается отдельно.
-                  </Paragraph>
+                  </p>
                   <ClientDirectoryArticle onStartTraining={openClientTrainingTopic} />
                 </div>
               ),

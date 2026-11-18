@@ -1,4 +1,3 @@
-import { Alert, Button, Drawer, Input, Select, Space, Tooltip } from "antd";
 import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import type { DirectoryClient } from "@/entities/client-directory";
 import { useOfflineStorage } from "@/entities/offline-storage";
@@ -6,12 +5,14 @@ import { uuidv7 } from "@/shared/lib/uuidv7";
 import { DateInput } from "@/shared/ui/date-time";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton, PaperDrawer, PaperInput, PaperSelect, PaperTooltip } from "@/shared/ui/paper";
 import {
   isNewClientCommand,
   isNewClientDraft,
   type NewClientCommandDraft,
   toStoredNewClientDraft,
 } from "../model/newClientDraft";
+import styles from "./client-editor.module.css";
 
 export type ClientContactKind = {
   id: string;
@@ -663,63 +664,60 @@ export function ClientEditorDrawer({
     setDraftError(null);
   }
 
+  const saveDisabled =
+    loading ||
+    stale ||
+    !vaultAccessAllowed ||
+    commandCheckPending ||
+    (persistNewClientDraft && offlineStorage?.status === "unlocked" && !draftReady) ||
+    (pendingDelivery && !pendingCommandRestored);
+
   return (
-    <Drawer
+    <PaperDrawer
       open={open}
-      placement="right"
-      size="min(560px, 100vw)"
       title={client ? "Изменить карточку" : "Новый клиент"}
       onClose={() => void closeEditor()}
-      destroyOnHidden
-      classNames={{ root: "directory-drawer" }}
-      extra={
-        <Space>
-          <Button onClick={() => void closeEditor()} disabled={saving}>
+      footer={
+        <div className={styles["client-editor-footer"]}>
+          <PaperButton onClick={() => void closeEditor()} disabled={saving}>
             Отмена
-          </Button>
-          <Button
-            type="primary"
-            htmlType="submit"
+          </PaperButton>
+          <PaperButton
+            variant="primary"
+            type="submit"
             form={formId}
             loading={saving}
-            disabled={
-              loading ||
-              stale ||
-              !vaultAccessAllowed ||
-              commandCheckPending ||
-              (persistNewClientDraft && offlineStorage?.status === "unlocked" && !draftReady) ||
-              (pendingDelivery && !pendingCommandRestored)
-            }
+            disabled={saveDisabled}
           >
             {pendingDelivery ? "Повторить отправку" : "Сохранить"}
-          </Button>
-        </Space>
+          </PaperButton>
+        </div>
       }
     >
       {loading ? <p role="status">Загрузка карточки…</p> : null}
       {stale ? (
-        <Alert
-          type="warning"
-          showIcon
-          title="Карточка изменилась на сервере. Ваш ввод сохранён."
-          action={
-            onReload ? (
-              <Button size="small" onClick={onReload}>
-                Загрузить актуальные данные
-              </Button>
-            ) : undefined
-          }
-        />
+        <div
+          className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+          role="status"
+        >
+          <p>Карточка изменилась на сервере. Ваш ввод сохранён.</p>
+          {onReload ? (
+            <PaperButton size="small" onClick={onReload}>
+              Загрузить актуальные данные
+            </PaperButton>
+          ) : null}
+        </div>
       ) : null}
       {hasDuplicateContacts ? (
-        <Alert
-          type="warning"
-          showIcon
-          title="Один из контактов уже указан у другого клиента. Карточки не объединены."
-        />
+        <p
+          className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+          role="status"
+        >
+          Один из контактов уже указан у другого клиента. Карточки не объединены.
+        </p>
       ) : null}
       {persistNewClientDraft && client === null && open ? (
-        <section aria-label="Локальный черновик">
+        <section className={styles["client-editor-draft"]} aria-label="Локальный черновик">
           {offlineStorage?.status === "unlocked" ? (
             <p role="status">
               {draftSaving
@@ -727,32 +725,40 @@ export function ClientEditorDrawer({
                 : "Черновик хранится зашифрованным на устройстве и не отправляется автоматически."}
             </p>
           ) : offlineStorage?.status === "missing" ? (
-            <Alert
-              type="warning"
-              showIcon
-              title="Локальное сохранение отключено. Создайте ключ в меню «Локальные данные», чтобы восстановить черновик после перезапуска."
-            />
+            <p
+              className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+              role="status"
+            >
+              Локальное сохранение отключено. Создайте ключ в меню «Локальные данные», чтобы
+              восстановить черновик после перезапуска.
+            </p>
           ) : (
             <p role="status">Локальный черновик будет доступен после разблокировки хранилища.</p>
           )}
-          {draftError ? <Alert type="error" showIcon title={draftError} /> : null}
+          {draftError ? (
+            <p
+              className={`${styles["client-editor-message"]} ${styles["client-editor-message-error"]}`}
+              role="alert"
+            >
+              {draftError}
+            </p>
+          ) : null}
           {pendingDelivery ? (
-            <Alert
-              type="warning"
-              showIcon
-              title="Предыдущая отправка не подтверждена. Повтор использует ту же команду."
-              action={
-                pendingCommand && !pendingCommandRestored ? (
-                  <Button size="small" onClick={restorePendingCommand}>
-                    Восстановить отправку
-                  </Button>
-                ) : undefined
-              }
-            />
+            <div
+              className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+              role="status"
+            >
+              <p>Предыдущая отправка не подтверждена. Повтор использует ту же команду.</p>
+              {pendingCommand && !pendingCommandRestored ? (
+                <PaperButton size="small" onClick={restorePendingCommand}>
+                  Восстановить отправку
+                </PaperButton>
+              ) : null}
+            </div>
           ) : null}
           {draftPresent ? (
-            <Button
-              danger
+            <PaperButton
+              variant="danger"
               onClick={() => void removeDraft()}
               disabled={
                 draftSaving ||
@@ -763,13 +769,17 @@ export function ClientEditorDrawer({
               }
             >
               Удалить черновик
-            </Button>
+            </PaperButton>
           ) : null}
         </section>
       ) : null}
       {validation ? (
-        <div id={`${formId}-error`}>
-          <Alert type="warning" showIcon title={validation.message} />
+        <div
+          id={`${formId}-error`}
+          className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
+          role="alert"
+        >
+          {validation.message}
         </div>
       ) : null}
       <form
@@ -783,7 +793,7 @@ export function ClientEditorDrawer({
         }}
       >
         <fieldset
-          className="client-editor-form"
+          className={styles["client-editor-form"]}
           disabled={
             loading ||
             saving ||
@@ -795,49 +805,47 @@ export function ClientEditorDrawer({
             !vaultAccessAllowed
           }
         >
-          <div className="client-editor-field">
+          <div className={styles["client-editor-field"]}>
             <span>
               Фамилия
-              <span className="field-required" aria-hidden="true">
+              <span className={styles["field-required"]} aria-hidden="true">
                 *
               </span>
             </span>
-            <Input
+            <PaperInput
               aria-label="Фамилия"
               aria-required="true"
               {...fieldValidation("lastName")}
-              status={validation?.fields.includes("lastName") ? "error" : ""}
               autoComplete="family-name"
               value={draft.lastName}
               onChange={(event) => update("lastName", event.target.value)}
             />
           </div>
-          <div className="client-editor-field">
+          <div className={styles["client-editor-field"]}>
             <span>
               Имя
-              <span className="field-required" aria-hidden="true">
+              <span className={styles["field-required"]} aria-hidden="true">
                 *
               </span>
             </span>
-            <Input
+            <PaperInput
               aria-label="Имя"
               aria-required="true"
               {...fieldValidation("firstName")}
-              status={validation?.fields.includes("firstName") ? "error" : ""}
               autoComplete="given-name"
               value={draft.firstName}
               onChange={(event) => update("firstName", event.target.value)}
             />
           </div>
-          <div className="client-editor-field">
+          <div className={styles["client-editor-field"]}>
             <span>Отчество</span>
-            <Input
+            <PaperInput
               aria-label="Отчество"
               value={draft.middleName ?? ""}
               onChange={(event) => update("middleName", event.target.value)}
             />
           </div>
-          <div className="client-editor-field">
+          <div className={styles["client-editor-field"]}>
             <span>Дата рождения</span>
             <DateInput
               aria-label="Дата рождения"
@@ -846,37 +854,36 @@ export function ClientEditorDrawer({
               onChange={(value) => update("birthdate", value)}
             />
           </div>
-          <div className="client-editor-field">
+          <div className={styles["client-editor-field"]}>
             <span>
               Источник
-              <span className="field-required" aria-hidden="true">
+              <span className={styles["field-required"]} aria-hidden="true">
                 *
               </span>
             </span>
-            <Select
+            <PaperSelect
               aria-label="Источник"
               aria-required="true"
               {...fieldValidation("sourceId")}
-              status={validation?.fields.includes("sourceId") ? "error" : ""}
               value={draft.sourceId || null}
               placeholder="Выберите источник"
               options={sourceOptions.map((source) => ({ value: source.id, label: source.name }))}
-              onChange={(sourceId: string) => update("sourceId", sourceId)}
+              onValueChange={(sourceId) => update("sourceId", sourceId)}
             />
           </div>
-          <section className="client-editor-contacts" aria-label="Контакты">
-            <div className="client-editor-section-heading">
+          <section className={styles["client-editor-contacts"]} aria-label="Контакты">
+            <div className={styles["client-editor-section-heading"]}>
               <h3>Контакты</h3>
-              <Button
+              <PaperButton
                 icon={<Icon name="plus" />}
                 onClick={addContact}
                 disabled={!contactKinds.some((kind) => !kind.isArchived)}
               >
                 Добавить контакт
-              </Button>
+              </PaperButton>
             </div>
             {!draft.contacts.length ? (
-              <p className="directory-muted">Контакты можно добавить позже.</p>
+              <p className={styles["directory-muted"]}>Контакты можно добавить позже.</p>
             ) : null}
             {draft.contacts.map((contact, index) => {
               const currentKind = contactKinds.find((kind) => kind.id === contact.kindId);
@@ -884,37 +891,35 @@ export function ClientEditorDrawer({
                 (kind) => !kind.isArchived || kind.id === contact.kindId,
               );
               return (
-                <div className="client-editor-contact" key={contact.id}>
-                  <div className="client-editor-field">
+                <div className={styles["client-editor-contact"]} key={contact.id}>
+                  <div className={styles["client-editor-field"]}>
                     <span>
                       Вид контакта
-                      <span className="field-required" aria-hidden="true">
+                      <span className={styles["field-required"]} aria-hidden="true">
                         *
                       </span>
                     </span>
-                    <Select
+                    <PaperSelect
                       aria-label={`Вид контакта ${index + 1}`}
                       aria-required="true"
                       {...fieldValidation(`kind-${contact.id}`)}
-                      status={validation?.fields.includes(`kind-${contact.id}`) ? "error" : ""}
                       value={contact.kindId || null}
                       placeholder="Выберите вид"
                       options={kindOptions.map((kind) => ({ value: kind.id, label: kind.name }))}
-                      onChange={(kindId: string) => updateContact(index, { kindId })}
+                      onValueChange={(kindId) => updateContact(index, { kindId })}
                     />
                   </div>
-                  <div className="client-editor-field">
+                  <div className={styles["client-editor-field"]}>
                     <span>
                       Значение
-                      <span className="field-required" aria-hidden="true">
+                      <span className={styles["field-required"]} aria-hidden="true">
                         *
                       </span>
                     </span>
-                    <Input
+                    <PaperInput
                       aria-label={`Значение контакта ${index + 1}`}
                       aria-required="true"
                       {...fieldValidation(`value-${contact.id}`)}
-                      status={validation?.fields.includes(`value-${contact.id}`) ? "error" : ""}
                       type={currentKind?.format === "email" ? "email" : "text"}
                       autoComplete={
                         currentKind?.format === "phone"
@@ -927,16 +932,16 @@ export function ClientEditorDrawer({
                       onChange={(event) => updateContact(index, { value: event.target.value })}
                     />
                   </div>
-                  <div className="client-editor-field">
+                  <div className={styles["client-editor-field"]}>
                     <span>Комментарий</span>
-                    <Input
+                    <PaperInput
                       aria-label={`Комментарий контакта ${index + 1}`}
                       value={contact.comment ?? ""}
                       onChange={(event) => updateContact(index, { comment: event.target.value })}
                     />
                   </div>
-                  <div className="client-editor-contact-actions">
-                    <label className="client-editor-primary">
+                  <div className={styles["client-editor-contact-actions"]}>
+                    <label className={styles["client-editor-primary"]}>
                       <input
                         type="radio"
                         {...fieldValidation(`primary-${contact.id}`)}
@@ -947,9 +952,9 @@ export function ClientEditorDrawer({
                       />{" "}
                       Основной
                     </label>
-                    <Tooltip title="Удалить контакт">
-                      <Button
-                        danger
+                    <PaperTooltip title="Удалить контакт">
+                      <PaperButton
+                        variant="danger"
                         aria-label="Удалить"
                         icon={<Icon name="trash" />}
                         onClick={() =>
@@ -959,7 +964,7 @@ export function ClientEditorDrawer({
                           )
                         }
                       />
-                    </Tooltip>
+                    </PaperTooltip>
                   </div>
                 </div>
               );
@@ -967,6 +972,6 @@ export function ClientEditorDrawer({
           </section>
         </fieldset>
       </form>
-    </Drawer>
+    </PaperDrawer>
   );
 }

@@ -1,7 +1,9 @@
+import styles from "./WorkspacePage.module.css";
+
 export function WorkspacePage() {
   return (
-    <div className="workspace-page">
-      <div className="page-heading">
+    <div className={styles.page}>
+      <div className={styles.heading}>
         <h1>Главная</h1>
       </div>
     </div>

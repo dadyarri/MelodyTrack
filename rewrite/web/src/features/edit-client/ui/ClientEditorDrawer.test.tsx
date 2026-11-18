@@ -391,7 +391,7 @@ describe("client editor", () => {
     );
   });
 
-  it("allows saving a client without contacts", () => {
+  it("allows saving a client without contacts", async () => {
     const onSave = vi.fn();
     render(
       <ClientEditorDrawer
@@ -406,8 +406,8 @@ describe("client editor", () => {
 
     fireEvent.change(screen.getByLabelText("Фамилия"), { target: { value: "Иванова" } });
     fireEvent.change(screen.getByLabelText("Имя"), { target: { value: " Анна " } });
-    fireEvent.mouseDown(screen.getByLabelText("Источник"));
-    fireEvent.click(screen.getByText("Рекомендация"));
+    fireEvent.click(screen.getByLabelText("Источник"));
+    fireEvent.click(await screen.findByRole("option", { name: "Рекомендация" }));
     fireEvent.click(screen.getByRole("button", { name: "Сохранить" }));
 
     expect(onSave).toHaveBeenCalledWith({

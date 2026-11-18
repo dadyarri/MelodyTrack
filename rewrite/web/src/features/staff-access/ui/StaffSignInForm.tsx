@@ -1,18 +1,19 @@
-import { Alert, Button, Form, Input, Typography } from "antd";
 import { useEffect, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useStaffSession } from "@/entities/session";
 import { supportsPasskeys } from "@/shared/lib/passkeys";
 import { useErrorNotification } from "@/shared/ui/notifications";
-import "./StaffSignInForm.css";
+import { PaperButton, PaperInput, PaperPasswordInput } from "@/shared/ui/paper";
+import styles from "./StaffSignInForm.module.css";
 
-type PrimaryValues = { login: string; password?: string };
+type PrimaryValues = { login: string; password: string };
 type FactorValues = { code: string };
 
 export function StaffSignInForm() {
   const session = useStaffSession();
   const [method, setMethod] = useState<"password" | "passkey">("password");
-  const [primaryForm] = Form.useForm<PrimaryValues>();
-  const [factorForm] = Form.useForm<FactorValues>();
+  const primaryForm = useForm<PrimaryValues>({ defaultValues: { login: "", password: "" } });
+  const factorForm = useForm<FactorValues>({ defaultValues: { code: "" } });
   const busy = session.status === "authenticating";
   const passkeysSupported = supportsPasskeys();
   const { preparePasskey, factor } = session;
@@ -46,166 +47,172 @@ export function StaffSignInForm() {
   const submitPrimary = (values: PrimaryValues) => {
     setMethod("password");
     const login = values.login.trim();
-    const password = values.password ?? "";
-    primaryForm.resetFields(["password"]);
+    const password = values.password;
+    primaryForm.resetField("password");
     void session.signInWithPassword(login, password);
   };
 
   const submitFactor = (values: FactorValues) => {
+    setMethod("password");
     const code = values.code;
-    factorForm.resetFields();
+    factorForm.reset();
     void session.completeFactor(code);
   };
 
   return (
-    <div className="staff-access-form">
+    <div className={styles.form}>
       {session.factor ? (
-        <section aria-labelledby="staff-access-factor-title">
-          <Typography.Title level={3} id="staff-access-factor-title">
-            Подтвердите вход
-          </Typography.Title>
-          <Typography.Paragraph type="secondary">
-            Введите код из приложения-аутентификатора.
-          </Typography.Paragraph>
-          <Form<FactorValues>
-            form={factorForm}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={submitFactor}
-            disabled={busy}
+        <section aria-labelledby="staff-access-factor-title" className={styles.fields}>
+          <h2 id="staff-access-factor-title">Подтвердите вход</h2>
+          <p className={styles.description}>Введите код из приложения-аутентификатора.</p>
+          <form
+            className={styles.fields}
+            onSubmit={factorForm.handleSubmit(submitFactor)}
+            noValidate
           >
-            <Form.Item
-              name="code"
-              label="Код подтверждения"
-              rules={[
-                { required: true, message: "Введите код из приложения-аутентификатора." },
-                { pattern: /^\d{6}$/, message: "Код состоит из шести цифр." },
-              ]}
-            >
-              <Input
+            <div className={styles.field}>
+              <label htmlFor="staff-factor-code">Код подтверждения</label>
+              <PaperInput
+                id="staff-factor-code"
                 autoComplete="one-time-code"
                 inputMode="numeric"
                 maxLength={6}
                 autoFocus
                 placeholder="000000"
-                size="large"
+                disabled={busy}
+                aria-invalid={Boolean(factorForm.formState.errors.code) || undefined}
+                aria-describedby={
+                  factorForm.formState.errors.code ? "staff-factor-code-error" : undefined
+                }
+                {...factorForm.register("code", {
+                  required: "Введите код из приложения-аутентификатора.",
+                  pattern: { value: /^\d{6}$/, message: "Код состоит из шести цифр." },
+                })}
               />
-            </Form.Item>
-            <Button type="primary" htmlType="submit" block size="large" loading={busy}>
+              {factorForm.formState.errors.code && (
+                <span id="staff-factor-code-error" className={styles.fieldError} role="alert">
+                  {factorForm.formState.errors.code.message}
+                </span>
+              )}
+            </div>
+            <PaperButton type="submit" variant="primary" loading={busy}>
               Подтвердить вход
-            </Button>
-          </Form>
+            </PaperButton>
+          </form>
           {session.factor.canUsePasskey && (
-            <Button
-              block
-              size="large"
-              disabled={busy || !passkeysSupported}
-              className="staff-access-secondary"
+            <PaperButton
+              className={styles.secondary}
+              disabled={busy}
               onClick={() => {
-                factorForm.resetFields();
+                setMethod("passkey");
+                factorForm.reset();
                 void session.completeFactorWithPasskey();
               }}
             >
               Использовать ключ доступа
-            </Button>
+            </PaperButton>
           )}
-          <Button
-            type="link"
+          <PaperButton
+            className={styles.textButton}
             onClick={() => {
-              factorForm.resetFields();
+              factorForm.reset();
               session.cancelSignIn();
             }}
           >
             Начать вход заново
-          </Button>
+          </PaperButton>
         </section>
       ) : (
         <>
-          <Form<PrimaryValues>
-            form={primaryForm}
-            layout="vertical"
-            requiredMark={false}
-            onFinish={submitPrimary}
-            disabled={busy}
+          <form
+            className={styles.fields}
+            onSubmit={primaryForm.handleSubmit(submitPrimary)}
+            noValidate
           >
-            <Form.Item
-              name="login"
-              label="Логин"
-              rules={[{ required: true, whitespace: true, message: "Введите ваш логин." }]}
-            >
-              <Input
+            <div className={styles.field}>
+              <label htmlFor="staff-login">Логин</label>
+              <PaperInput
+                id="staff-login"
                 autoComplete="username"
                 autoCapitalize="none"
                 autoCorrect="off"
                 spellCheck={false}
-                size="large"
+                disabled={busy}
+                aria-invalid={Boolean(primaryForm.formState.errors.login) || undefined}
+                aria-describedby={
+                  primaryForm.formState.errors.login ? "staff-login-error" : undefined
+                }
+                {...primaryForm.register("login", {
+                  required: "Введите ваш логин.",
+                  validate: (value) => value.trim().length > 0 || "Введите ваш логин.",
+                })}
               />
-            </Form.Item>
-            <Form.Item
-              name="password"
-              label="Пароль"
-              rules={[{ required: true, message: "Введите пароль." }]}
-            >
-              <Input.Password autoComplete="current-password" size="large" />
-            </Form.Item>
-            <Button
-              type="primary"
-              htmlType="submit"
-              size="large"
-              block
-              loading={busy && method === "password"}
-            >
+              {primaryForm.formState.errors.login && (
+                <span id="staff-login-error" className={styles.fieldError} role="alert">
+                  {primaryForm.formState.errors.login.message}
+                </span>
+              )}
+            </div>
+            <div className={styles.field}>
+              <label htmlFor="staff-password">Пароль</label>
+              <PaperPasswordInput
+                id="staff-password"
+                autoComplete="current-password"
+                disabled={busy}
+                aria-invalid={Boolean(primaryForm.formState.errors.password) || undefined}
+                aria-describedby={
+                  primaryForm.formState.errors.password ? "staff-password-error" : undefined
+                }
+                {...primaryForm.register("password", { required: "Введите пароль." })}
+              />
+              {primaryForm.formState.errors.password && (
+                <span id="staff-password-error" className={styles.fieldError} role="alert">
+                  {primaryForm.formState.errors.password.message}
+                </span>
+              )}
+            </div>
+            <PaperButton type="submit" variant="primary" loading={busy && method === "password"}>
               Войти
-            </Button>
-          </Form>
-          <section className="staff-access-passkey" aria-label="Вход с ключом доступа">
+            </PaperButton>
+          </form>
+          <section className={styles.passkey} aria-label="Вход с ключом доступа">
             {!passkeysSupported && (
-              <Alert
-                type="info"
-                showIcon
-                title="Ключи доступа здесь недоступны"
-                description="Откройте приложение по HTTPS или используйте вход по паролю."
-              />
+              <p className={styles.info} role="status">
+                Ключи доступа здесь недоступны. Откройте приложение по HTTPS или используйте вход по
+                паролю.
+              </p>
             )}
-            <Button
-              htmlType="button"
-              size="large"
-              block
+            <PaperButton
               loading={session.preparingPasskey || (busy && method === "passkey")}
               aria-label="Войти с ключом"
               disabled={busy || !session.passkeyReady || !passkeysSupported}
               onClick={() => {
                 setMethod("passkey");
-                primaryForm.resetFields(["password"]);
+                primaryForm.resetField("password");
                 void session.signInWithPasskey();
               }}
             >
               Войти с ключом
-            </Button>
+            </PaperButton>
             {passkeysSupported &&
               !session.passkeyReady &&
               !session.preparingPasskey &&
               session.error && (
-                <Button
-                  block
-                  className="staff-access-secondary"
-                  onClick={() => void preparePasskey()}
-                >
+                <PaperButton className={styles.secondary} onClick={() => void preparePasskey()}>
                   Повторить
-                </Button>
+                </PaperButton>
               )}
           </section>
           {busy && (
-            <Button
-              type="link"
-              block
+            <PaperButton
+              className={styles.textButton}
               onClick={() => {
-                primaryForm.resetFields(["password"]);
+                primaryForm.resetField("password");
                 session.cancelSignIn();
               }}
             >
               Отменить попытку
-            </Button>
+            </PaperButton>
           )}
         </>
       )}

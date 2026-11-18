@@ -5,6 +5,7 @@ import { EmployeeTrainingProvider, TrainingWorkspace } from "@/features/employee
 import { emitDataChange, openDataChanges, startDataChanges } from "@/shared/api/live-data";
 import type { Appearance } from "@/shared/lib/appearance";
 import { AppShell } from "@/widgets/app-shell";
+import styles from "./App.module.css";
 
 const ClientsPage = lazy(() =>
   import("@/pages/clients").then((module) => ({ default: module.ClientsPage })),
@@ -43,7 +44,7 @@ export default function AuthenticatedApplication(props: {
     >
       <Suspense
         fallback={
-          <div className="employee-training-loading" role="status">
+          <div className={styles.loading} role="status">
             Загрузка…
           </div>
         }

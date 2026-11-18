@@ -8,12 +8,11 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-function popup(scrollTop: number, className = "ant-select-dropdown-list-holder") {
+function popup(scrollTop: number) {
   const root = document.createElement("div");
-  root.className = "ant-select-dropdown";
+  root.dataset.popupScrollBoundary = "";
   const holder = document.createElement("div");
-  holder.className = className;
-  holder.style.overflowY = "hidden";
+  holder.style.overflowY = "auto";
   Object.defineProperties(holder, {
     clientHeight: { value: 100 },
     scrollHeight: { value: 300 },
@@ -32,7 +31,20 @@ function wheel(target: Element, init: WheelEventInit = {}) {
 }
 
 describe("popup scroll boundary", () => {
-  it("contains outward wheel movement at both virtual-list boundaries", () => {
+  it("contains library-independent popup boundaries while preserving list movement", () => {
+    const holder = popup(0);
+    const root = holder.parentElement;
+    if (!root) throw new Error("Expected popup parent");
+    root.setAttribute("role", "listbox");
+
+    expect(wheel(holder, { deltaY: -40 }).defaultPrevented).toBe(true);
+    expect(wheel(holder).defaultPrevented).toBe(false);
+    holder.scrollTop = 200;
+    expect(wheel(holder).defaultPrevented).toBe(true);
+    expect(wheel(holder, { deltaY: -40 }).defaultPrevented).toBe(false);
+  });
+
+  it("contains outward wheel movement at both list boundaries", () => {
     const holder = popup(0);
 
     const upward = wheel(holder, { deltaY: -40 });
@@ -75,9 +87,7 @@ describe("popup scroll boundary", () => {
 
   it("contains dropdown-menu boundaries and releases its listener on cleanup", () => {
     const holder = popup(0);
-    holder.parentElement?.classList.replace("ant-select-dropdown", "ant-dropdown");
-    holder.className = "ant-dropdown-menu";
-    holder.style.overflowY = "auto";
+    holder.parentElement?.setAttribute("role", "menu");
     holder.scrollTop = 200;
 
     expect(wheel(holder).defaultPrevented).toBe(true);

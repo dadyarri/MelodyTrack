@@ -215,7 +215,7 @@ describe("release notes", () => {
     await act(async () => {
       for (const listener of dataChanges.listeners) listener();
     });
-    await screen.findByRole("button", { name: "Список изменений версии 2026.12.2" });
+    await screen.findByText("Версия 2026.12.2");
     await waitFor(() => expect(api.history.mock.calls.length).toBeGreaterThan(1));
     expect(screen.getByRole("dialog")).toBe(dialog);
     expect(screen.getByText("Полная переработка системы")).toBe(existingChange);
@@ -299,9 +299,6 @@ describe("release notes", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Понятно" }));
 
-    const closingDialog = screen.getByRole("dialog");
-    await waitFor(() => expect(closingDialog.className).toContain("ant-zoom-leave-active"));
-    fireEvent.transitionEnd(closingDialog);
     await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
     expect(window.localStorage.getItem(releaseNotesSeenKey("staff-a"))).toBeNull();
     expect(Storage.prototype.setItem).toHaveBeenCalled();

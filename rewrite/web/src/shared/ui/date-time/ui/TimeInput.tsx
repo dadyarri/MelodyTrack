@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from "react";
 import { Icon } from "../../Icon";
 import { parseTime } from "../model/calendar";
-import "./date-time.css";
+import styles from "./date-time.module.css";
 
 export type TimeInputProps = {
   value: string | null;
@@ -53,7 +53,7 @@ export function TimeInput({
 
   return (
     <fieldset
-      className={`date-time-clock${disabled ? " date-time-input-disabled" : ""}`}
+      className={`${styles.dateTimeClock}${disabled ? ` ${styles.dateTimeInputDisabled}` : ""}`}
       aria-label={label}
     >
       <select
@@ -99,7 +99,7 @@ export function TimeInput({
       {(hour || minute) && (
         <button
           type="button"
-          className="date-time-clear"
+          className={styles.dateTimeClear}
           aria-label={`${label}: очистить`}
           disabled={disabled}
           onClick={() => {

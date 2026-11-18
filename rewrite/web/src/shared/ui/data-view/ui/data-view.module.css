@@ -1,68 +1,73 @@
-.data-view {
+.dataView {
   min-width: 0;
 }
-.data-view-toolbar,
-.data-view-toolbar-actions,
-.data-view-filterbar,
-.data-view-pagination {
+.toolbar,
+.toolbarActions,
+.filterbar,
+.pagination {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-wrap: wrap;
 }
-.data-view-toolbar {
+.toolbar {
   justify-content: space-between;
   margin-bottom: 12px;
 }
-.data-view-search {
+.search {
   flex: 1 1 240px;
   max-width: 420px;
-}
-.data-view-search input {
+  min-height: 40px;
+  padding: 8px 12px;
+  border: 1px solid var(--color-line);
+  border-radius: 6px;
+  color: inherit;
+  background: var(--color-surface);
+  font: inherit;
   font-size: 16px;
 }
-.data-view-toolbar-actions {
+.toolbarActions {
   margin-left: auto;
 }
-.data-view-filterbar {
+.filterbar {
   margin-bottom: 12px;
 }
-.data-view-results {
+.results {
   position: relative;
   min-height: 160px;
 }
-.data-view-table-scroll {
+.tableScroll {
   overflow-x: auto;
   overscroll-behavior-x: contain;
   -webkit-overflow-scrolling: touch;
   border: 1px solid var(--color-line);
   border-radius: 6px;
 }
-.data-view-table {
+.table {
   width: 100%;
   border-collapse: collapse;
   text-align: left;
   line-height: 1.4;
   font-size: 14px;
 }
-.data-view-table th,
-.data-view-table td {
+.table th,
+.table td {
   padding: 6px 12px;
   vertical-align: middle;
 }
-.data-view-table th {
+.table th {
   font-weight: 500;
   background: var(--color-sidebar);
   color: var(--color-muted);
   white-space: nowrap;
 }
-.data-view-heading {
+.heading {
   display: flex;
   align-items: center;
   gap: 6px;
   min-height: 32px;
 }
-.data-view-sort {
+.sort {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -77,27 +82,27 @@
   cursor: pointer;
   font: inherit;
 }
-.data-view-sort-active {
+.sortActive {
   color: var(--color-primary);
   background: var(--color-soft);
 }
-.data-view-sort:disabled {
+.sort:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }
-.data-view-sort sup {
+.sort sup {
   font-size: 10px;
 }
-.data-view-table-interactive tbody tr {
+.tableInteractive tbody tr {
   cursor: pointer;
 }
-.data-view-table tbody tr + tr {
+.table tbody tr + tr {
   border-top: 1px solid var(--color-line);
 }
-.data-view-table tbody tr:hover {
+.table tbody tr:hover {
   background: var(--color-soft);
 }
-.data-view-state {
+.state {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -108,7 +113,20 @@
   color: var(--color-muted);
   text-align: center;
 }
-.data-view-updating {
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-line);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.updating {
   position: absolute;
   z-index: 1;
   top: 0;
@@ -117,15 +135,15 @@
   background: var(--color-primary);
   pointer-events: none;
 }
-.data-view-pagination {
+.pagination {
   justify-content: space-between;
   margin-top: 12px;
 }
-.data-view-count {
+.count {
   color: var(--color-muted);
   font-size: 13px;
 }
-.data-view-sr-only {
+.srOnly {
   position: absolute;
   width: 1px;
   height: 1px;
@@ -137,14 +155,11 @@
   border: 0;
 }
 @media (max-width: 767px) {
-  .data-view-sort {
+  .sort {
     min-width: 44px;
     min-height: 44px;
   }
-  .data-view-search {
+  .search {
     max-width: none;
-  }
-  .data-view-pagination .ant-pagination {
-    row-gap: 12px;
   }
 }

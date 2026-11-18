@@ -1,7 +1,7 @@
-import { Button, Input, Pagination, Spin } from "antd";
 import { type ReactNode, useEffect, useRef } from "react";
 import { Icon } from "@/shared/ui/Icon";
-import "./data-view.css";
+import { PaperButton, PaperPagination } from "@/shared/ui/paper";
+import styles from "./data-view.module.css";
 
 export type DataViewSort = { key: string; direction: "asc" | "desc" };
 export type DataViewColumn<T> = {
@@ -99,52 +99,49 @@ export function CollectionDataView<T>({
   }
 
   return (
-    <section className="data-view" aria-label={ariaLabel}>
-      <div className="data-view-toolbar">
-        <Input
+    <section className={styles.dataView} aria-label={ariaLabel}>
+      <div className={styles.toolbar}>
+        <input
           type="search"
-          className="data-view-search"
-          allowClear
+          className={styles.search}
           value={search}
           onChange={(event) => onSearchChange(event.target.value)}
           placeholder={searchPlaceholder}
           aria-label={searchPlaceholder}
         />
-        <div className="data-view-toolbar-actions">{actions}</div>
+        <div className={styles.toolbarActions}>{actions}</div>
       </div>
       {(filters || activeFilterCount > 0) && (
-        <div className="data-view-filterbar">
+        <div className={styles.filterbar}>
           {filters}
           {activeFilterCount > 0 && onResetFilters && (
-            <Button type="text" onClick={onResetFilters}>
-              Сбросить ({activeFilterCount})
-            </Button>
+            <PaperButton onClick={onResetFilters}>Сбросить ({activeFilterCount})</PaperButton>
           )}
         </div>
       )}
-      <div className="data-view-results" aria-busy={loading}>
+      <div className={styles.results} aria-busy={loading}>
         {loading && items.length === 0 ? (
-          <div className="data-view-state" role="status">
-            <Spin />
+          <div className={styles.state} role="status">
+            <span className={styles.spinner} aria-hidden="true" />
             <span>Загрузка…</span>
           </div>
         ) : items.length === 0 ? (
-          <div className="data-view-state" role="status">
+          <div className={styles.state} role="status">
             {error ?? emptyDescription}
           </div>
         ) : (
           <>
             {loading && (
-              <div className="data-view-updating" role="status">
-                <span className="data-view-sr-only">Обновление…</span>
+              <div className={styles.updating} role="status">
+                <span className={styles.srOnly}>Обновление…</span>
               </div>
             )}
-            <section className="data-view-table-scroll" aria-label={`${ariaLabel}: таблица`}>
+            <section className={styles.tableScroll} aria-label={`${ariaLabel}: таблица`}>
               <table
                 ref={table}
-                className={`data-view-table${onRowClick ? " data-view-table-interactive" : ""}`}
+                className={`${styles.table}${onRowClick ? ` ${styles.tableInteractive}` : ""}`}
               >
-                <caption className="data-view-sr-only">{ariaLabel}</caption>
+                <caption className={styles.srOnly}>{ariaLabel}</caption>
                 <thead>
                   <tr>
                     {columns.map((column) => {
@@ -166,12 +163,12 @@ export function CollectionDataView<T>({
                               : undefined
                           }
                         >
-                          <div className="data-view-heading">
+                          <div className={styles.heading}>
                             <span>{column.title}</span>
                             {column.sortable && (
                               <button
                                 type="button"
-                                className={`data-view-sort${selected ? " data-view-sort-active" : ""}`}
+                                className={`${styles.sort}${selected ? ` ${styles.sortActive}` : ""}`}
                                 aria-label={`Сортировка: ${column.title}`}
                                 aria-pressed={Boolean(selected)}
                                 disabled={Boolean(column.sortDisabledReason)}
@@ -216,25 +213,20 @@ export function CollectionDataView<T>({
           </>
         )}
       </div>
-      <div className="data-view-pagination">
-        <span className="data-view-count" aria-live="polite">
+      <div className={styles.pagination}>
+        <span className={styles.count} aria-live="polite">
           {loading && items.length === 0
             ? ""
             : items.length === 0
               ? `Всего: ${total}`
               : `${(page - 1) * pageSize + 1}–${Math.min((page - 1) * pageSize + items.length, total)} из ${total}`}
         </span>
-        <Pagination
-          current={page}
+        <PaperPagination
+          page={page}
           pageSize={pageSize}
           total={total}
-          pageSizeOptions={[10, 20, 50, 100]}
-          showSizeChanger
-          responsive
           disabled={loading}
-          onChange={(nextPage, nextSize) =>
-            onPageChange(nextSize === pageSize ? nextPage : 1, nextSize)
-          }
+          onChange={onPageChange}
         />
       </div>
     </section>

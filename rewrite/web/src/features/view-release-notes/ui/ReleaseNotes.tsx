@@ -1,4 +1,3 @@
-import { Button, Empty, Modal, Pagination, Skeleton } from "antd";
 import {
   createContext,
   type ReactNode,
@@ -20,13 +19,14 @@ import {
 import { isAbortError, subscribeDataChanges, toApiError } from "@/shared/api";
 import { Icon } from "@/shared/ui/Icon";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton, PaperDialog, PaperPagination } from "@/shared/ui/paper";
 import {
   readSeenVersion,
   releaseNotesSeenKey,
   writeSeenVersion,
 } from "../model/releaseNotesStorage";
 import { loadUnseenReleases } from "../model/unseenReleases";
-import "./release-notes.css";
+import styles from "./release-notes.module.css";
 
 type LoadState<T> = { status: "loading" } | { status: "error" } | { status: "ready"; data: T };
 type ReleaseNotesContextValue = {
@@ -285,41 +285,44 @@ export function ReleaseNotesProvider({
       value={{ current, canViewHistory, canOpen: enabled && canViewHistory, openHistory }}
     >
       {children}
-      <Modal
+      <PaperDialog
         open={open}
         title="Что нового"
-        className="release-notes-modal"
-        onCancel={close}
+        className={styles.dialog}
+        onClose={close}
         footer={
-          <Button type="primary" onClick={close}>
+          <PaperButton variant="primary" onClick={close}>
             Понятно
-          </Button>
+          </PaperButton>
         }
       >
         {open &&
           (automaticOpen ? (
             <ReleaseList releases={currentUnseen?.releases ?? []} />
           ) : history.status === "loading" ? (
-            <Skeleton active paragraph={{ rows: 4 }} />
+            <div className={styles.loading} role="status">
+              Загрузка списка изменений…
+            </div>
           ) : history.status === "error" ? (
-            <div className="release-notes-empty" role="status">
+            <div className={styles.empty} role="status">
               Список изменений пока недоступен.
             </div>
           ) : (
             <>
               <ReleaseList releases={history.data.releases} />
               {history.data.totalPages > 1 && (
-                <Pagination
-                  current={history.data.page}
+                <PaperPagination
+                  page={history.data.page}
                   pageSize={history.data.pageSize}
                   total={history.data.totalCount}
-                  showSizeChanger={false}
+                  showPageSize={false}
+                  ariaLabel="Страницы списка изменений"
                   onChange={(page) => setHistoryRequest({ page })}
                 />
               )}
             </>
           ))}
-      </Modal>
+      </PaperDialog>
     </ReleaseNotesContext.Provider>
   );
 }
@@ -342,7 +345,7 @@ export function ReleaseVersion({
   return context.canViewHistory ? (
     <button
       type="button"
-      className="release-version"
+      className={styles.version}
       title={compact ? label : undefined}
       disabled={!context.canOpen}
       onClick={() => {
@@ -354,11 +357,11 @@ export function ReleaseVersion({
       {compact ? <Icon name="history" /> : label}
     </button>
   ) : compact ? (
-    <span className="release-version" title={label} role="img" aria-label={label}>
+    <span className={styles.version} title={label} role="img" aria-label={label}>
       <Icon name="history" />
     </span>
   ) : (
-    <span className="release-version">{label}</span>
+    <span className={styles.version}>{label}</span>
   );
 }
 
@@ -370,9 +373,10 @@ const groups: Array<[keyof ReleaseChanges, string]> = [
 ];
 
 function ReleaseList({ releases }: { releases: ReleaseEntry[] }) {
-  if (!releases.length) return <Empty description="Опубликованных изменений пока нет" />;
+  if (!releases.length)
+    return <div className={styles.empty}>Опубликованных изменений пока нет</div>;
   return (
-    <div className="release-notes-list">
+    <div className={styles.list}>
       {releases.map((release) => (
         <section key={release.version}>
           <h3>
@@ -381,7 +385,7 @@ function ReleaseList({ releases }: { releases: ReleaseEntry[] }) {
             {release.codename ? ` — ${release.codename}` : ""}
           </h3>
           {release.codenameMeaning && (
-            <p className="release-codename-meaning">{release.codenameMeaning}</p>
+            <p className={styles.codenameMeaning}>{release.codenameMeaning}</p>
           )}
           {release.date && (
             <time dateTime={release.date}>
@@ -393,7 +397,7 @@ function ReleaseList({ releases }: { releases: ReleaseEntry[] }) {
           {groups.map(
             ([key, label]) =>
               release.changes[key].length > 0 && (
-                <div className="release-change-group" key={key}>
+                <div className={styles.changeGroup} key={key}>
                   <h4>{label}</h4>
                   <ul>
                     {release.changes[key].map((change) => (

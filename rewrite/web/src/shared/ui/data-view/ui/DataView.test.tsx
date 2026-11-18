@@ -153,7 +153,7 @@ describe("data view", () => {
     render(<CollectionDataView {...initial} />);
 
     fireEvent.change(screen.getByRole("searchbox"), { target: { value: "совпадение" } });
-    fireEvent.click(within(screen.getByTitle("2")).getByRole("button"));
+    fireEvent.click(screen.getByRole("button", { name: "Страница 2" }));
 
     expect(initial.onSearchChange).toHaveBeenCalledWith("совпадение");
     expect(initial.onPageChange).toHaveBeenCalledWith(2, 20);

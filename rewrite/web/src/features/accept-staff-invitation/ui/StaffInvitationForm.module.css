@@ -1,0 +1,164 @@
+.form,
+.fields,
+.authenticator,
+.passkey {
+  display: grid;
+  gap: 16px;
+  min-width: 0;
+}
+
+.field {
+  display: grid;
+  gap: 8px;
+}
+
+.field label {
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.fieldError {
+  color: var(--color-error);
+  font-size: 13px;
+}
+
+.actions {
+  display: grid;
+  gap: 12px;
+}
+
+.actions > button,
+.passkey > button {
+  width: 100%;
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 100px;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--color-line);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.steps {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.steps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  color: var(--color-muted);
+  font-size: 13px;
+}
+
+.steps li.currentStep {
+  color: var(--color-text);
+  font-weight: 600;
+}
+
+.stepNumber {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--color-line);
+  border-radius: 50%;
+}
+
+.currentStep .stepNumber {
+  border-color: var(--color-primary);
+  color: var(--color-elevated);
+  background: var(--color-primary);
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+.info,
+.warning,
+.error {
+  border: 1px solid var(--color-line);
+  border-radius: var(--control-radius, 6px);
+  padding: 12px;
+  line-height: 1.5;
+}
+
+.info {
+  color: var(--color-muted);
+}
+
+.warning,
+.error {
+  border-color: var(--color-error);
+  color: var(--color-error);
+}
+
+.authenticator h2,
+.passkey h2 {
+  font-size: 18px;
+}
+
+.authenticator p,
+.passkey p {
+  line-height: 1.6;
+  color: var(--color-muted);
+}
+
+.qr {
+  justify-self: center;
+  max-width: 100%;
+  border-radius: var(--control-radius, 6px);
+  padding: 8px;
+  background: #ffffff;
+}
+
+.qr svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.textButton {
+  justify-self: start;
+  min-height: 44px;
+  padding-inline: 0;
+  border: 0;
+  color: var(--color-primary);
+  background: transparent;
+}
+
+@media (max-width: 767px) {
+  .steps {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

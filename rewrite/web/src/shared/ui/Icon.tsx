@@ -9,6 +9,9 @@ import {
   IconChevronDown,
   IconChevronLeft,
   IconChevronRight,
+  IconDatabase,
+  IconEye,
+  IconEyeOff,
   IconHelp,
   IconHistory,
   IconHome,
@@ -28,6 +31,7 @@ import {
   IconUsers,
   IconX,
 } from "@tabler/icons-react";
+import styles from "./Icon.module.css";
 
 const icons = {
   home: IconHome,
@@ -52,6 +56,9 @@ const icons = {
   previous: IconChevronLeft,
   next: IconChevronRight,
   chevronDown: IconChevronDown,
+  database: IconDatabase,
+  eye: IconEye,
+  eyeOff: IconEyeOff,
   help: IconHelp,
   menu: IconMenu2,
   refresh: IconRefresh,
@@ -66,7 +73,7 @@ export function Icon({ name, size }: { name: IconName; size?: number }) {
   const Component = icons[name];
   return (
     <Component
-      className="icon"
+      className={styles.icon}
       size={size ?? 20}
       style={size === undefined ? undefined : { width: size, height: size }}
       stroke={1.7}

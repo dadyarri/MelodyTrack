@@ -1,5 +1,6 @@
-import { Alert, Button, Form, Grid, Input, QRCode, Spin, Steps } from "antd";
+import { QRCodeSVG } from "qrcode.react";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useForm } from "react-hook-form";
 import { useStaffSession } from "@/entities/session";
 import {
   apiOptions,
@@ -11,6 +12,7 @@ import {
 } from "@/shared/api";
 import { createPasskeyRegistration, supportsPasskeys } from "@/shared/lib/passkeys";
 import { useErrorNotification } from "@/shared/ui/notifications";
+import { PaperButton, PaperInput, PaperPasswordInput } from "@/shared/ui/paper";
 import {
   authenticatorUri,
   canSkipAuthenticator,
@@ -18,7 +20,7 @@ import {
   readAuthenticatorSetup,
   readPasskeySetup,
 } from "../model/registration";
-import "./registration.css";
+import styles from "./StaffInvitationForm.module.css";
 
 type Preview =
   | { kind: "loading" }
@@ -29,7 +31,10 @@ type Setup = (
   | ({ step: "authenticator" } & ReturnType<typeof readAuthenticatorSetup>)
   | ({ step: "passkey"; authenticatorConfirmed: boolean } & ReturnType<typeof readPasskeySetup>)
 ) & { login: string; hasPassword: boolean };
-type Credentials = { login: string; password?: string; confirmation?: string };
+type Credentials = { login: string; password: string; confirmation: string };
+type FactorValues = { code: string };
+
+const steps = ["Пароль", "Аутентификатор", "Ключ доступа"];
 
 export function StaffInvitationForm({
   invitation,
@@ -38,10 +43,11 @@ export function StaffInvitationForm({
   invitation: string;
   onComplete: () => void;
 }) {
-  const screens = Grid.useBreakpoint();
   const session = useStaffSession();
-  const [form] = Form.useForm<Credentials>();
-  const [codeForm] = Form.useForm<{ code: string }>();
+  const form = useForm<Credentials>({
+    defaultValues: { login: "", password: "", confirmation: "" },
+  });
+  const codeForm = useForm<FactorValues>({ defaultValues: { code: "" } });
   const [preview, setPreview] = useState<Preview>({ kind: "loading" });
   const [setup, setSetup] = useState<Setup | null>(null);
   const [busy, setBusy] = useState(false);
@@ -115,13 +121,14 @@ export function StaffInvitationForm({
 
   async function begin(values: Credentials, hasPassword: boolean) {
     if (preview.kind !== "ready" || busy) return;
+    const login = values.login.trim();
     const { controller, id } = startRequest();
     try {
       const response = await staffApi().staff.register.optionsPath.post(
         {
           link: invitation,
-          login: values.login.trim(),
-          ...(hasPassword ? { password: values.password ?? "" } : {}),
+          login,
+          ...(hasPassword ? { password: values.password } : {}),
           authenticator: true,
           secondFactor: false,
         },
@@ -134,14 +141,15 @@ export function StaffInvitationForm({
       setSetup({
         step: "authenticator",
         ...readAuthenticatorSetup(response),
-        login: values.login.trim(),
+        login,
         hasPassword,
       });
     } catch (issue) {
       if (id === generation.current && !isAbortError(issue)) setError(toApiError(issue).message);
     } finally {
       if (id === generation.current) {
-        form.resetFields(["password", "confirmation"]);
+        form.resetField("password");
+        form.resetField("confirmation");
         setBusy(false);
       }
     }
@@ -149,12 +157,9 @@ export function StaffInvitationForm({
 
   async function skipPassword() {
     if (busy || !passkeysAvailable) return;
-    try {
-      const values = await form.validateFields(["login"]);
-      await begin({ login: values.login }, false);
-    } catch {
-      // Form displays its own login validation; password fields are deliberately not validated.
-    }
+    const isLoginValid = await form.trigger("login");
+    if (!isLoginValid) return;
+    await begin({ login: form.getValues("login"), password: "", confirmation: "" }, false);
   }
 
   async function confirmAuthenticator(skip: boolean, code?: string) {
@@ -173,8 +178,7 @@ export function StaffInvitationForm({
       );
       if (id !== generation.current) return;
       const next = readPasskeySetup(response);
-      codeForm.resetFields();
-      // The confirmed secret and code do not survive the transition to the passkey step.
+      codeForm.reset();
       setSetup({
         step: "passkey",
         ...next,
@@ -184,7 +188,7 @@ export function StaffInvitationForm({
       });
     } catch (issue) {
       if (id === generation.current && !isAbortError(issue)) {
-        codeForm.resetFields();
+        codeForm.reset();
         setSetup(null);
         setError(`${toApiError(issue).message} Начните настройку заново.`);
       }
@@ -202,7 +206,7 @@ export function StaffInvitationForm({
       return;
     const { controller, id } = startRequest();
     try {
-      // Server options were prepared by the preceding step; this call preserves Safari's gesture.
+      // Start WebAuthn before the first await so Safari keeps the user gesture.
       const response = withPasskey
         ? await createPasskeyRegistration(setup.optionsJson, controller.signal)
         : undefined;
@@ -232,7 +236,9 @@ export function StaffInvitationForm({
     request.current?.abort();
     if (providerPending.current) cancelSignIn();
     providerPending.current = false;
-    if (setup?.step === "authenticator") codeForm.resetFields();
+    if (setup?.step === "authenticator") codeForm.reset();
+    form.resetField("password");
+    form.resetField("confirmation");
     setSetup(null);
     setBusy(false);
     setError(null);
@@ -241,145 +247,189 @@ export function StaffInvitationForm({
 
   if (preview.kind === "loading")
     return (
-      <div role="status" className="registration-loading">
-        <Spin />
+      <div role="status" className={styles.loading}>
+        <span className={styles.spinner} aria-hidden="true" />
         <span>Проверка приглашения…</span>
       </div>
     );
   if (preview.kind === "invalid")
     return (
-      <div className="registration-form">
-        <Alert type="error" showIcon title="Приглашение недействительно или уже использовано." />
-        <Button onClick={loadPreview}>Проверить снова</Button>
+      <div className={styles.form}>
+        <p className={styles.error} role="alert">
+          Приглашение недействительно или уже использовано.
+        </p>
+        <PaperButton onClick={loadPreview}>Проверить снова</PaperButton>
       </div>
     );
 
   if (preview.kind === "failed")
     return (
-      <div className="registration-form">
-        <Button onClick={loadPreview}>Проверить снова</Button>
+      <div className={styles.form}>
+        <PaperButton onClick={loadPreview}>Проверить снова</PaperButton>
       </div>
     );
 
+  const currentStep = !setup ? 0 : setup.step === "authenticator" ? 1 : 2;
+
   return (
-    <div className="registration-form">
-      <Steps
-        size="small"
-        orientation={screens.md ? "horizontal" : "vertical"}
-        responsive={false}
-        styles={{ itemTitle: { whiteSpace: "nowrap" } }}
-        current={!setup ? 0 : setup.step === "authenticator" ? 1 : 2}
-        items={[{ title: "Пароль" }, { title: "Аутентификатор" }, { title: "Ключ доступа" }]}
-      />
+    <div className={styles.form}>
+      <ol className={styles.steps} aria-label="Этапы регистрации">
+        {steps.map((step, index) => (
+          <li
+            key={step}
+            aria-current={index === currentStep ? "step" : undefined}
+            className={index === currentStep ? styles.currentStep : undefined}
+          >
+            <span className={styles.stepNumber}>{index + 1}</span>
+            <span>{step}</span>
+            {index === currentStep && <span className={styles.visuallyHidden}>Текущий этап</span>}
+          </li>
+        ))}
+      </ol>
       {!passkeysAvailable && !setup && (
-        <Alert
-          type="info"
-          showIcon
-          title="Ключи доступа недоступны. Используйте пароль и аутентификатор."
-        />
+        <p className={styles.info} role="status">
+          Ключи доступа недоступны. Используйте пароль и аутентификатор.
+        </p>
       )}
       {!setup ? (
-        <Form
-          form={form}
-          layout="vertical"
-          requiredMark={false}
-          onFinish={(values) => void begin(values, true)}
+        <form
+          className={styles.fields}
+          onSubmit={form.handleSubmit((values) => begin(values, true))}
+          noValidate
         >
-          <Form.Item
-            name="login"
-            label="Логин"
-            rules={[
-              {
-                required: true,
-                whitespace: true,
-                max: 256,
-                message: "Введите логин до 256 символов.",
-              },
-            ]}
-          >
-            <Input
+          <div className={styles.field}>
+            <label htmlFor="registration-login">Логин</label>
+            <PaperInput
+              id="registration-login"
               autoComplete="username"
               autoCapitalize="none"
               spellCheck={false}
               disabled={busy}
+              aria-invalid={Boolean(form.formState.errors.login) || undefined}
+              aria-describedby={
+                form.formState.errors.login ? "registration-login-error" : undefined
+              }
+              {...form.register("login", {
+                required: "Введите логин до 256 символов.",
+                validate: (value) =>
+                  (value.trim().length > 0 && value.trim().length <= 256) ||
+                  "Введите логин до 256 символов.",
+              })}
             />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label="Пароль"
-            rules={[{ required: true, min: 8, max: 1024, message: "От 8 до 1024 символов." }]}
-          >
-            <Input.Password autoComplete="new-password" disabled={busy} />
-          </Form.Item>
-          <Form.Item
-            name="confirmation"
-            label="Повторите пароль"
-            dependencies={["password"]}
-            rules={[
-              { required: true, message: "Повторите пароль." },
-              ({ getFieldValue }) => ({
-                validator: (_, value: string | undefined) =>
-                  value === getFieldValue("password")
-                    ? Promise.resolve()
-                    : Promise.reject(new Error("Пароли не совпадают.")),
-              }),
-            ]}
-          >
-            <Input.Password autoComplete="new-password" disabled={busy} />
-          </Form.Item>
-          <div className="registration-actions">
-            <Button type="primary" htmlType="submit" block loading={busy}>
-              Продолжить
-            </Button>
-            <Button block disabled={busy || !passkeysAvailable} onClick={() => void skipPassword()}>
-              Пропустить пароль
-            </Button>
+            {form.formState.errors.login && (
+              <span id="registration-login-error" className={styles.fieldError} role="alert">
+                {form.formState.errors.login.message}
+              </span>
+            )}
           </div>
-        </Form>
+          <div className={styles.field}>
+            <label htmlFor="registration-password">Пароль</label>
+            <PaperPasswordInput
+              id="registration-password"
+              autoComplete="new-password"
+              disabled={busy}
+              aria-invalid={Boolean(form.formState.errors.password) || undefined}
+              aria-describedby={
+                form.formState.errors.password ? "registration-password-error" : undefined
+              }
+              {...form.register("password", {
+                required: "От 8 до 1024 символов.",
+                minLength: { value: 8, message: "От 8 до 1024 символов." },
+                maxLength: { value: 1024, message: "От 8 до 1024 символов." },
+              })}
+            />
+            {form.formState.errors.password && (
+              <span id="registration-password-error" className={styles.fieldError} role="alert">
+                {form.formState.errors.password.message}
+              </span>
+            )}
+          </div>
+          <div className={styles.field}>
+            <label htmlFor="registration-confirmation">Повторите пароль</label>
+            <PaperPasswordInput
+              id="registration-confirmation"
+              toggleLabel="подтверждение пароля"
+              autoComplete="new-password"
+              disabled={busy}
+              aria-invalid={Boolean(form.formState.errors.confirmation) || undefined}
+              aria-describedby={
+                form.formState.errors.confirmation ? "registration-confirmation-error" : undefined
+              }
+              {...form.register("confirmation", {
+                required: "Повторите пароль.",
+                validate: (value) => value === form.getValues("password") || "Пароли не совпадают.",
+              })}
+            />
+            {form.formState.errors.confirmation && (
+              <span id="registration-confirmation-error" className={styles.fieldError} role="alert">
+                {form.formState.errors.confirmation.message}
+              </span>
+            )}
+          </div>
+          <div className={styles.actions}>
+            <PaperButton type="submit" variant="primary" loading={busy}>
+              Продолжить
+            </PaperButton>
+            <PaperButton disabled={busy || !passkeysAvailable} onClick={() => void skipPassword()}>
+              Пропустить пароль
+            </PaperButton>
+          </div>
+        </form>
       ) : setup.step === "authenticator" ? (
-        <section className="registration-authenticator" aria-labelledby="authenticator-heading">
+        <section className={styles.authenticator} aria-labelledby="authenticator-heading">
           <h2 id="authenticator-heading">Добавьте аутентификатор</h2>
           <p>Отсканируйте QR-код в приложении-аутентификаторе или введите ключ вручную.</p>
-          <div className="registration-qr">
-            <QRCode
-              type="svg"
+          <div className={styles.qr}>
+            <QRCodeSVG
               value={authenticatorUri(setup.login, setup.authenticatorSecret)}
               size={180}
-              color="#000000"
               bgColor="#ffffff"
+              fgColor="#000000"
             />
           </div>
-          <label htmlFor="registration-authenticator-secret">Ключ аутентификатора</label>
-          <Input
-            id="registration-authenticator-secret"
-            readOnly
-            value={setup.authenticatorSecret}
-            autoComplete="off"
-          />
-          <Form
-            form={codeForm}
-            layout="vertical"
-            onFinish={(values) => void confirmAuthenticator(false, values.code)}
+          <div className={styles.field}>
+            <label htmlFor="registration-authenticator-secret">Ключ аутентификатора</label>
+            <PaperInput
+              id="registration-authenticator-secret"
+              readOnly
+              value={setup.authenticatorSecret}
+              autoComplete="off"
+            />
+          </div>
+          <form
+            className={styles.fields}
+            onSubmit={codeForm.handleSubmit((values) => confirmAuthenticator(false, values.code))}
+            noValidate
           >
-            <Form.Item
-              name="code"
-              label="Код из приложения"
-              rules={[{ required: true, pattern: /^\d{6}$/, message: "Введите шестизначный код." }]}
-            >
-              <Input
+            <div className={styles.field}>
+              <label htmlFor="registration-code">Код из приложения</label>
+              <PaperInput
+                id="registration-code"
                 autoComplete="one-time-code"
                 inputMode="numeric"
                 maxLength={6}
                 disabled={busy}
+                aria-invalid={Boolean(codeForm.formState.errors.code) || undefined}
+                aria-describedby={
+                  codeForm.formState.errors.code ? "registration-code-error" : undefined
+                }
+                {...codeForm.register("code", {
+                  required: "Введите шестизначный код.",
+                  pattern: { value: /^\d{6}$/, message: "Введите шестизначный код." },
+                })}
               />
-            </Form.Item>
-            <div className="registration-actions">
-              <Button type="primary" htmlType="submit" block loading={busy}>
+              {codeForm.formState.errors.code && (
+                <span id="registration-code-error" className={styles.fieldError} role="alert">
+                  {codeForm.formState.errors.code.message}
+                </span>
+              )}
+            </div>
+            <div className={styles.actions}>
+              <PaperButton type="submit" variant="primary" loading={busy}>
                 Подтвердить код
-              </Button>
+              </PaperButton>
               {canSkipAuthenticator(preview.role, setup.hasPassword) && (
-                <Button
-                  block
+                <PaperButton
                   disabled={
                     busy ||
                     (!passkeysAvailable && !(preview.role === "teacher" && setup.hasPassword))
@@ -387,38 +437,39 @@ export function StaffInvitationForm({
                   onClick={() => void confirmAuthenticator(true)}
                 >
                   Пропустить аутентификатор
-                </Button>
+                </PaperButton>
               )}
             </div>
-          </Form>
-          <Button type="text" onClick={restart}>
+          </form>
+          <PaperButton className={styles.textButton} onClick={restart}>
             Начать заново
-          </Button>
+          </PaperButton>
         </section>
       ) : (
-        <section className="registration-passkey" aria-labelledby="passkey-heading">
+        <section className={styles.passkey} aria-labelledby="passkey-heading">
           <h2 id="passkey-heading">Создайте ключ доступа</h2>
           <p>Браузер предложит сохранить ключ на устройстве или в менеджере паролей.</p>
           {!passkeysAvailable && (
-            <Alert type="warning" showIcon title="Ключи доступа недоступны в этом браузере." />
+            <p className={styles.warning} role="status">
+              Ключи доступа недоступны в этом браузере.
+            </p>
           )}
-          <Button
-            type="primary"
-            block
+          <PaperButton
+            variant="primary"
             loading={busy}
             disabled={!passkeysAvailable}
             onClick={() => void finish(true)}
           >
             Создать ключ и войти
-          </Button>
+          </PaperButton>
           {canSkipPasskey(preview.role, setup.hasPassword, setup.authenticatorConfirmed) && (
-            <Button block disabled={busy} onClick={() => void finish(false)}>
+            <PaperButton disabled={busy} onClick={() => void finish(false)}>
               Пропустить ключ доступа
-            </Button>
+            </PaperButton>
           )}
-          <Button type="text" onClick={restart}>
+          <PaperButton className={styles.textButton} onClick={restart}>
             Начать заново
-          </Button>
+          </PaperButton>
         </section>
       )}
     </div>

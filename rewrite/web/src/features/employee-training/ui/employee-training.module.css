@@ -1,0 +1,55 @@
+.loading {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 24px;
+}
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--color-line);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.workspace,
+.topic {
+  display: grid;
+  gap: 20px;
+  min-width: 0;
+}
+.workspace {
+  max-width: 900px;
+}
+.resume {
+  position: fixed;
+  right: max(20px, env(safe-area-inset-right));
+  bottom: max(20px, env(safe-area-inset-bottom));
+  z-index: 900;
+  max-width: calc(100vw - 40px);
+}
+.trainingDialog {
+  width: min(1040px, calc(100vw - 32px));
+}
+@media (max-width: 600px) {
+  .trainingDialog {
+    inset: 0;
+    width: 100vw;
+    max-height: 100dvh;
+    transform: none;
+    border-radius: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .workspace,
+  .topic {
+    gap: 16px;
+  }
+}
