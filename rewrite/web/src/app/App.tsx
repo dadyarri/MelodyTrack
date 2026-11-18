@@ -62,7 +62,7 @@ function SessionWithOfflineStorage({ children }: { children: ReactNode }) {
   const storage = useOfflineStorage();
   const authenticate = storage?.authenticate;
   const onAuthenticated = useCallback(
-    (identity: StaffIdentity, context: { source: "credential" | "restore"; password?: string }) => {
+    (identity: StaffIdentity, context: { source: "credential" | "restore" }) => {
       authenticate?.(identity.staffId, context);
     },
     [authenticate],

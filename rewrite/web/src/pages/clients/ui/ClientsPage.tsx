@@ -770,9 +770,9 @@ function ClientDirectory() {
     setEditorError(null);
     try {
       if (mode === "create" && offlineStorage) {
-        if (offlineStorage.status !== "unlocked" && offlineStorage.status !== "missing")
+        if (offlineStorage.status !== "unlocked")
           throw new ApiError(
-            "Откройте локальные данные в меню пользователя перед созданием клиента.",
+            "Локальное хранилище недоступно. Создание клиента временно недоступно.",
           );
         if (offlineStorage.status === "unlocked") {
           const attempt = await prepareNewClientAttempt(offlineStorage, draft);

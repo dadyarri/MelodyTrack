@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("encrypts account data, applies retention and rejects stale or tampered storage", async ({
+test("isolates account data, applies retention and blocks access after logout", async ({
   page,
 }) => {
   const databaseName = `offline-vault-${Date.now()}-${Math.random()}`;
@@ -23,82 +23,35 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
     } = await import("../src/shared/offline/index");
     const staffId = "019a2c63-8c00-7000-8000-000000000051";
     const otherStaffId = "019a2c63-8c00-7000-8000-000000000052";
-    const secret = "synthetic-login-secret";
-    const sensitive = "Synthetic Client Note 5f2903b4";
+    const note = "Synthetic Client Note 5f2903b4";
     const now = Date.now();
-    const vault = await createOfflineVault({ staffId, secret, databaseName: name });
-    await vault.put({ id: "old-cache", value: { note: sensitive }, kind: "cache" });
-    await vault.put({ id: "recent-cache", value: { note: sensitive }, kind: "cache" });
-    await vault.put({
-      id: "pinned-cache",
-      value: { note: sensitive },
-      kind: "cache",
-      pinned: true,
-    });
-    await vault.put({ id: "pending", value: { note: sensitive }, kind: "pending" });
-    await vault.put({ id: "conflict", value: { note: sensitive }, kind: "conflict" });
-    await vault.put({
-      id: "old-applied",
-      value: { note: sensitive },
-      kind: "applied",
-      sentAt: now,
-    });
+    const vault = await createOfflineVault({ staffId, databaseName: name });
+    await vault.put({ id: "old-cache", value: { note }, kind: "cache" });
+    await vault.put({ id: "recent-cache", value: { note }, kind: "cache" });
+    await vault.put({ id: "pinned-cache", value: { note }, kind: "cache", pinned: true });
+    await vault.put({ id: "pending", value: { note }, kind: "pending" });
+    await vault.put({ id: "conflict", value: { note }, kind: "conflict" });
+    await vault.put({ id: "old-applied", value: { note }, kind: "applied", sentAt: now });
     await vault.put({
       id: "recent-applied",
-      value: { note: sensitive },
+      value: { note },
       kind: "applied",
       sentAt: now + 10 * 24 * 60 * 60 * 1000,
     });
     const originalNow = Date.now;
     Date.now = () => now - 31 * 24 * 60 * 60 * 1000;
-    await vault.put({ id: "expired-on-read-cache", value: { note: sensitive }, kind: "cache" });
+    await vault.put({ id: "expired-on-read-cache", value: { note }, kind: "cache" });
     Date.now = originalNow;
     await vault.put({
       id: "expired-on-read-applied",
-      value: { note: sensitive },
+      value: { note },
       kind: "applied",
       sentAt: now - 31 * 24 * 60 * 60 * 1000,
     });
 
-    const storageSnapshot = await new Promise<{ records: unknown[]; vaults: unknown[] }>(
-      (resolve, reject) => {
-        const request = indexedDB.open(name, 1);
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => {
-          const database = request.result;
-          const transaction = database.transaction(["records", "vaults"], "readonly");
-          const records = transaction.objectStore("records").getAll();
-          const vaults = transaction.objectStore("vaults").getAll();
-          transaction.onerror = () => reject(transaction.error);
-          transaction.oncomplete = () => {
-            resolve({ records: records.result, vaults: vaults.result });
-            database.close();
-          };
-        };
-      },
-    );
-    const serializedStorage = JSON.stringify(storageSnapshot);
-    const recordMetadataOnly = storageSnapshot.records.every(
-      (row) =>
-        JSON.stringify(Object.keys(row as object).sort()) ===
-        JSON.stringify(["ciphertext", "id", "iv", "ownerKey", "schemaVersion"]),
-    );
-    const wrongSecretRejected = await unlockOfflineVault({
-      staffId,
-      secret: "wrong-secret",
-      databaseName: name,
-    }).then(
-      () => false,
-      (error: unknown) => error instanceof OfflineVaultCorruptError,
-    );
-    const otherAccount = await createOfflineVault({
-      staffId: otherStaffId,
-      secret,
-      databaseName: name,
-    });
+    const otherAccount = await createOfflineVault({ staffId: otherStaffId, databaseName: name });
     const otherAccountCannotRead = (await otherAccount.get("pending")) === undefined;
-
-    const reopened = await unlockOfflineVault({ staffId, secret, databaseName: name });
+    const reopened = await unlockOfflineVault({ staffId, databaseName: name });
     const expiredCacheRemovedOnRead = (await reopened.get("expired-on-read-cache")) === undefined;
     const expiredCommandRemovedOnRead =
       (await reopened.get("expired-on-read-applied")) === undefined;
@@ -114,49 +67,20 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
       accessedCacheExpiredAfterWindow: (await reopened.get("recent-cache")) === undefined,
     };
 
-    const ownerDigest = new Uint8Array(
-      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(staffId)),
-    );
-    const ownerKey = Array.from(ownerDigest, (byte) => byte.toString(16).padStart(2, "0")).join("");
-    await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(name, 1);
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => {
-        const database = request.result;
-        const transaction = database.transaction("records", "readwrite");
-        const store = transaction.objectStore("records");
-        const read = store.get([ownerKey, "pending"]);
-        read.onsuccess = () => {
-          const envelope = read.result;
-          envelope.ciphertext[0] ^= 1;
-          store.put(envelope);
-        };
-        transaction.oncomplete = () => {
-          database.close();
-          resolve();
-        };
-        transaction.onerror = () => reject(transaction.error);
-      };
-    });
-    const tamperRejected = await reopened.get("pending").then(
-      () => false,
-      (error: unknown) => error instanceof OfflineVaultCorruptError,
-    );
-
     const locked = reopened;
     locked.lock();
     const lockRejected = await locked.get("pending").then(
       () => false,
       (error: unknown) => error instanceof OfflineVaultLockedError,
     );
-    const staleWriter = await unlockOfflineVault({ staffId, secret, databaseName: name });
+    const staleWriter = await unlockOfflineVault({ staffId, databaseName: name });
     await setOfflineVaultBlocked(staffId, true, name);
     const blockedReadRejected = await staleWriter.get("pinned-cache").then(
       () => false,
       (error: unknown) => error instanceof OfflineVaultAccessBlockedError,
     );
     const blockedWriteRejected = await staleWriter
-      .put({ id: "blocked-write", value: { note: sensitive }, kind: "pending" })
+      .put({ id: "blocked-write", value: { note }, kind: "pending" })
       .then(
         () => false,
         (error: unknown) => error instanceof OfflineVaultAccessBlockedError,
@@ -167,15 +91,20 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
     );
     await deleteOfflineVault(staffId, name);
     const staleWriteRejected = await staleWriter
-      .put({ id: "after-delete", value: { note: sensitive }, kind: "pending" })
+      .put({ id: "after-delete", value: { note }, kind: "pending" })
       .then(
         () => false,
         () => true,
       );
     const vaultDeleted = !(await hasOfflineVault(staffId, name));
     const markerSurvivedDeletion = await isOfflineVaultBlocked(staffId, name);
+
+    const ownerDigest = new Uint8Array(
+      await crypto.subtle.digest("SHA-256", new TextEncoder().encode(staffId)),
+    );
+    const ownerKey = Array.from(ownerDigest, (byte) => byte.toString(16).padStart(2, "0")).join("");
     await new Promise<void>((resolve, reject) => {
-      const request = indexedDB.open(name, 1);
+      const request = indexedDB.open(name);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const database = request.result;
@@ -197,7 +126,7 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
       (error: unknown) => error instanceof OfflineVaultCorruptError,
     );
     const malformedMarkerPreserved = await new Promise<boolean>((resolve, reject) => {
-      const request = indexedDB.open(name, 1);
+      const request = indexedDB.open(name);
       request.onerror = () => reject(request.error);
       request.onsuccess = () => {
         const database = request.result;
@@ -233,19 +162,12 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
     otherAccount.lock();
     staleWriter.lock();
     return {
-      plaintextAbsent:
-        !serializedStorage.includes(sensitive) &&
-        !serializedStorage.includes(secret) &&
-        !serializedStorage.includes(staffId),
-      recordMetadataOnly,
-      wrongSecretRejected,
       otherAccountCannotRead,
       beforeExpiry,
       afterExpiry,
       expiredCacheRemovedOnRead,
       expiredCommandRemovedOnRead,
       preserved,
-      tamperRejected,
       lockRejected,
       staleWriteRejected,
       vaultDeleted,
@@ -268,9 +190,6 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
     };
   }, databaseName);
 
-  expect(result.plaintextAbsent).toBe(true);
-  expect(result.recordMetadataOnly).toBe(true);
-  expect(result.wrongSecretRejected).toBe(true);
   expect(result.otherAccountCannotRead).toBe(true);
   expect(result.beforeExpiry).toBe(0);
   expect(result.afterExpiry).toBe(3);
@@ -284,7 +203,6 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
     expiredApplied: true,
     accessedCacheExpiredAfterWindow: true,
   });
-  expect(result.tamperRejected).toBe(true);
   expect(result.lockRejected).toBe(true);
   expect(result.staleWriteRejected).toBe(true);
   expect(result.vaultDeleted).toBe(true);
@@ -304,4 +222,130 @@ test("encrypts account data, applies retention and rejects stale or tampered sto
   expect(result.purgeFlagSurvivesRestartRead).toBe(true);
   expect(result.successfulDeletionClearedPurgeFlag).toBe(true);
   expect(result.successfulDeletionPreservedBlock).toBe(true);
+});
+
+test("discards legacy encrypted records and keeps account access markers during upgrade", async ({
+  page,
+}) => {
+  const databaseName = `offline-upgrade-${Date.now()}-${Math.random()}`;
+  await page.route("**/api/**", (route) => route.fulfill({ status: 404 }));
+  await page.goto("/e2e/harness.html");
+
+  const result = await page.evaluate(async (name) => {
+    const {
+      createOfflineVault,
+      hasOfflineVault,
+      isOfflineVaultBlocked,
+      needsOfflineVaultDeletion,
+      setOfflineVaultBlocked,
+    } = await import("../src/shared/offline/index");
+    const staffIds = [
+      "019a2c63-8c00-7000-8000-000000000071",
+      "019a2c63-8c00-7000-8000-000000000072",
+    ] as const;
+    const ownerKeys = await Promise.all(
+      staffIds.map(async (staffId) => {
+        const digest = new Uint8Array(
+          await crypto.subtle.digest("SHA-256", new TextEncoder().encode(staffId)),
+        );
+        return Array.from(digest, (byte) => byte.toString(16).padStart(2, "0")).join("");
+      }),
+    );
+    const firstOwnerKey = ownerKeys[0];
+    if (!firstOwnerKey) throw new Error("Missing owner key for the first test account");
+    await new Promise<void>((resolve, reject) => {
+      const request = indexedDB.open(name, 1);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        database.createObjectStore("vaults", { keyPath: "ownerKey" });
+        const records = database.createObjectStore("records", { keyPath: ["ownerKey", "id"] });
+        records.createIndex("byOwner", "ownerKey", { unique: false });
+        database.createObjectStore("access", { keyPath: "ownerKey" });
+      };
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction(["vaults", "records", "access"], "readwrite");
+        const vaults = transaction.objectStore("vaults");
+        const records = transaction.objectStore("records");
+        const access = transaction.objectStore("access");
+        for (const ownerKey of ownerKeys) {
+          vaults.put({
+            ownerKey,
+            schemaVersion: 1,
+            iterations: 600_000,
+            salt: [],
+            iv: [],
+            ciphertext: [],
+          });
+          records.put({ ownerKey, id: "legacy", schemaVersion: 1, iv: [], ciphertext: [] });
+        }
+        access.put({ ownerKey: ownerKeys[0], blocked: true });
+        access.put({ ownerKey: ownerKeys[1], blocked: false, purgeRequired: true });
+        transaction.oncomplete = () => {
+          database.close();
+          resolve();
+        };
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+
+    const firstBlocked = await isOfflineVaultBlocked(staffIds[0], name);
+    const secondBlocked = await isOfflineVaultBlocked(staffIds[1], name);
+    const secondNeedsDeletion = await needsOfflineVaultDeletion(staffIds[1], name);
+    const legacyVaultsPresent =
+      (await hasOfflineVault(staffIds[0], name)) || (await hasOfflineVault(staffIds[1], name));
+    const legacyRecordsRemain = await new Promise<boolean>((resolve, reject) => {
+      const request = indexedDB.open(name);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction(["records", "vaults"], "readonly");
+        const records = transaction.objectStore("records").count();
+        const vaults = transaction.objectStore("vaults").count();
+        transaction.oncomplete = () => {
+          database.close();
+          resolve(records.result !== 0 || vaults.result !== 0);
+        };
+        transaction.onerror = () => reject(transaction.error);
+      };
+    });
+
+    await setOfflineVaultBlocked(staffIds[0], false, name);
+    const vault = await createOfflineVault({ staffId: staffIds[0], databaseName: name });
+    const plainValue = "Synthetic local value 91ae2";
+    await vault.put({ id: "plain-record", value: { note: plainValue }, kind: "pending" });
+    const plainValueStored = await new Promise<boolean>((resolve, reject) => {
+      const request = indexedDB.open(name);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction("records", "readonly");
+        const read = transaction.objectStore("records").get([firstOwnerKey, "plain-record"]);
+        read.onerror = () => reject(read.error);
+        read.onsuccess = () => {
+          database.close();
+          resolve(JSON.stringify(read.result).includes(plainValue));
+        };
+      };
+    });
+    vault.lock();
+    return {
+      firstBlocked,
+      secondBlocked,
+      secondNeedsDeletion,
+      legacyVaultsPresent,
+      legacyRecordsRemain,
+      plainValueStored,
+    };
+  }, databaseName);
+
+  expect(result).toEqual({
+    firstBlocked: true,
+    secondBlocked: true,
+    secondNeedsDeletion: true,
+    legacyVaultsPresent: false,
+    legacyRecordsRemain: false,
+    plainValueStored: true,
+  });
 });

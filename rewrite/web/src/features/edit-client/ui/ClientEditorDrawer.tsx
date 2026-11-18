@@ -172,7 +172,7 @@ export function ClientEditorDrawer({
   function isDraftSubmitAllowed() {
     if (!persistNewClientDraft || client !== null || !open) return true;
     const storage = offlineStorageRef.current;
-    return storage === null || storage.status === "missing" || storage.status === "unlocked";
+    return storage === null || storage.status === "unlocked";
   }
 
   const vaultAccessAllowed =
@@ -180,7 +180,6 @@ export function ClientEditorDrawer({
     client !== null ||
     !open ||
     offlineStorage === null ||
-    offlineStorage.status === "missing" ||
     offlineStorage.status === "unlocked";
 
   const canPersistDraft =
@@ -197,11 +196,7 @@ export function ClientEditorDrawer({
       offlineStorageStaffId !== null &&
       observedStaffId.current !== offlineStorageStaffId;
     observedStaffId.current = offlineStorageStaffId ?? null;
-    if (
-      !staffChanged &&
-      (offlineStorageStatus === "missing" || offlineStorageStatus === "unlocked")
-    )
-      return;
+    if (!staffChanged && offlineStorageStatus === "unlocked") return;
 
     ++restoreGeneration.current;
     for (const cancel of closeWaitCancels.current) cancel();
@@ -722,18 +717,18 @@ export function ClientEditorDrawer({
             <p role="status">
               {draftSaving
                 ? "Сохраняем черновик на устройстве…"
-                : "Черновик хранится зашифрованным на устройстве и не отправляется автоматически."}
+                : "Черновик хранится на этом устройстве и не отправляется автоматически."}
             </p>
-          ) : offlineStorage?.status === "missing" ? (
-            <p
-              className={`${styles["client-editor-message"]} ${styles["client-editor-message-warning"]}`}
-              role="status"
-            >
-              Локальное сохранение отключено. Создайте ключ в меню «Локальные данные», чтобы
-              восстановить черновик после перезапуска.
+          ) : offlineStorage?.status === "error" ? (
+            <p role="alert">
+              Локальное хранилище недоступно. Черновик на этом устройстве не сохранён.
+            </p>
+          ) : offlineStorage?.status === "blocked" ? (
+            <p role="alert">
+              Локальные данные закрыты после выхода. Черновик на этом устройстве недоступен.
             </p>
           ) : (
-            <p role="status">Локальный черновик будет доступен после разблокировки хранилища.</p>
+            <p role="status">Подготавливаем локальное хранилище…</p>
           )}
           {draftError ? (
             <p

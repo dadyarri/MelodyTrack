@@ -58,7 +58,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("error"));
@@ -68,7 +67,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
@@ -79,7 +77,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
@@ -91,7 +88,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(mocks.remove).toHaveBeenCalledTimes(2));
@@ -105,34 +101,30 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
     expect(mocks.unlock).toHaveBeenCalledTimes(2);
   });
-  it("automatically opens the account vault with the successful login password", async () => {
+  it("automatically opens the account vault after credential sign-in", async () => {
     const hook = renderHook(useOfflineStorage, { wrapper });
 
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
 
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
-    expect(mocks.unlock).toHaveBeenCalledWith({ staffId, secret: "synthetic-password" });
+    expect(mocks.unlock).toHaveBeenCalledWith({ staffId });
     expect(mocks.mark).toHaveBeenCalledWith(staffId, false);
   });
-  it("does not reopen a logged out vault through a restored cookie and a local secret", async () => {
+  it("does not reopen a logged out vault through a restored cookie", async () => {
     mocks.blocked.mockResolvedValue(true);
     const hook = renderHook(useOfflineStorage, { wrapper });
 
     act(() => hook.result.current?.authenticate(staffId, { source: "restore" }));
     await waitFor(() => expect(hook.result.current?.status).toBe("blocked"));
-    await act(async () => hook.result.current?.unlock("synthetic-password"));
-
     expect(hook.result.current?.status).toBe("blocked");
     expect(mocks.unlock).not.toHaveBeenCalled();
     expect(mocks.create).not.toHaveBeenCalled();
@@ -143,7 +135,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
@@ -162,7 +153,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
@@ -189,7 +179,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(mocks.unlock).toHaveBeenCalled());
@@ -208,7 +197,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate(staffId, {
         source: "credential",
-        password: "synthetic-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));
@@ -217,7 +205,6 @@ describe("account offline storage", () => {
     act(() =>
       hook.result.current?.authenticate("019a2c63-8c00-7000-8000-000000000062", {
         source: "credential",
-        password: "synthetic-other-password",
       }),
     );
     await waitFor(() => expect(hook.result.current?.status).toBe("unlocked"));

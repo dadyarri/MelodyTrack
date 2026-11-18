@@ -1,16 +1,12 @@
-const schemaVersion = 1;
+const schemaVersion = 2;
 const defaultDatabaseName = "melodytrack-rewrite-offline-v1";
 const vaultStoreName = "vaults";
 const recordStoreName = "records";
 const accessStoreName = "access";
-const keyIterations = 600_000;
-const keySaltBytes = 16;
-const ivBytes = 12;
-const dataKeyBytes = 32;
-const maximumCiphertextBytes = 5 * 1024 * 1024 + 16;
 const cacheRetentionMs = 30 * 24 * 60 * 60 * 1000;
 const appliedRetentionMs = 30 * 24 * 60 * 60 * 1000;
 const compareAttempts = 5;
+const maximumRecordBytes = 5 * 1024 * 1024;
 
 export type OfflineRecordKind = "cache" | "applied" | "pending" | "conflict";
 
@@ -26,7 +22,6 @@ export interface OfflineRecord<T = unknown> {
 
 export interface OfflineVaultOptions {
   readonly staffId: string;
-  readonly secret: string;
   readonly databaseName?: string;
 }
 
@@ -44,6 +39,32 @@ export interface OfflineVault {
   delete(id: string): Promise<void>;
   prune(now?: number): Promise<number>;
   lock(): void;
+}
+
+interface VaultMarker {
+  readonly ownerKey: string;
+  readonly schemaVersion: number;
+  readonly generation: number;
+  readonly active: boolean;
+}
+
+interface RecordEnvelope {
+  readonly ownerKey: string;
+  readonly id: string;
+  readonly schemaVersion: number;
+  readonly generation: number;
+  readonly value: unknown;
+  readonly kind: OfflineRecordKind;
+  readonly pinned: boolean;
+  readonly storedAt: number;
+  readonly lastAccessedAt: number;
+  readonly sentAt?: number;
+}
+
+interface AccessMarker {
+  readonly ownerKey: string;
+  readonly blocked: boolean;
+  readonly purgeRequired?: boolean;
 }
 
 export class OfflineVaultAlreadyExistsError extends Error {
@@ -69,73 +90,32 @@ export class OfflineVaultAccessBlockedError extends Error {
 
 export class OfflineVaultCorruptError extends Error {
   constructor() {
-    super("The offline vault could not be opened with this secret or contains invalid data.");
+    super("The offline data has an unsupported or invalid format.");
     this.name = "OfflineVaultCorruptError";
   }
-}
-
-interface VaultEnvelope {
-  readonly ownerKey: string;
-  readonly schemaVersion: number;
-  readonly iterations: number;
-  readonly salt: Uint8Array;
-  readonly iv: Uint8Array;
-  readonly ciphertext: Uint8Array;
-}
-
-interface RecordEnvelope {
-  readonly ownerKey: string;
-  readonly id: string;
-  readonly schemaVersion: number;
-  readonly iv: Uint8Array;
-  readonly ciphertext: Uint8Array;
-}
-
-interface RecordPayload {
-  readonly value: unknown;
-  readonly kind: OfflineRecordKind;
-  readonly pinned: boolean;
-  readonly storedAt: number;
-  readonly lastAccessedAt: number;
-  readonly sentAt?: number;
-}
-
-function getCrypto(): Crypto {
-  if (typeof crypto === "undefined" || !crypto.subtle) {
-    throw new Error("Secure offline storage is unavailable in this browser.");
-  }
-  return crypto;
 }
 
 function assertStaffId(staffId: string): void {
   if (!staffId.trim()) throw new TypeError("staffId is required.");
 }
 
-function assertSecret(secret: string): void {
-  if (!secret) throw new TypeError("secret is required.");
-}
-
 function assertId(id: string): void {
   if (!id) throw new TypeError("Record id is required.");
+}
+
+async function ownerKeyFor(staffId: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(staffId));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 function accessMarkerState(
   value: unknown,
   ownerKey: string,
-): {
-  blocked: boolean;
-  purgeRequired: boolean;
-  malformed: boolean;
-} {
+): { blocked: boolean; purgeRequired: boolean; malformed: boolean } {
   if (value === undefined) return { blocked: false, purgeRequired: false, malformed: false };
-  if (!value || typeof value !== "object") {
+  if (!value || typeof value !== "object")
     return { blocked: true, purgeRequired: false, malformed: true };
-  }
-  const marker = value as {
-    ownerKey?: unknown;
-    blocked?: unknown;
-    purgeRequired?: unknown;
-  };
+  const marker = value as Partial<AccessMarker>;
   const malformed =
     marker.ownerKey !== ownerKey ||
     typeof marker.blocked !== "boolean" ||
@@ -152,29 +132,38 @@ function accessMarkerBlocks(value: unknown, ownerKey: string): boolean {
   return accessMarkerState(value, ownerKey).blocked;
 }
 
-function randomBytes(length: number): Uint8Array {
-  return getCrypto().getRandomValues(new Uint8Array(length));
-}
-
-function asArrayBuffer(bytes: Uint8Array): ArrayBuffer {
-  return Uint8Array.from(bytes).buffer;
-}
-
-function isByteArray(
-  value: unknown,
-  minimumLength: number,
-  exactLength?: number,
-): value is Uint8Array {
+function isVaultMarker(value: unknown, ownerKey: string): value is VaultMarker {
+  if (!value || typeof value !== "object") return false;
+  const marker = value as Partial<VaultMarker>;
   return (
-    value instanceof Uint8Array &&
-    value.byteLength >= minimumLength &&
-    (exactLength === undefined || value.byteLength === exactLength)
+    marker.ownerKey === ownerKey &&
+    marker.schemaVersion === schemaVersion &&
+    Number.isSafeInteger(marker.generation) &&
+    (marker.generation ?? 0) >= 0 &&
+    typeof marker.active === "boolean"
   );
 }
 
-async function ownerKeyFor(staffId: string): Promise<string> {
-  const digest = await getCrypto().subtle.digest("SHA-256", new TextEncoder().encode(staffId));
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+function isRecordKind(kind: unknown): kind is OfflineRecordKind {
+  return kind === "cache" || kind === "applied" || kind === "pending" || kind === "conflict";
+}
+
+function isRecordEnvelope(value: unknown, ownerKey: string, id: string): value is RecordEnvelope {
+  if (!value || typeof value !== "object") return false;
+  const record = value as Partial<RecordEnvelope>;
+  return (
+    record.ownerKey === ownerKey &&
+    record.id === id &&
+    record.schemaVersion === schemaVersion &&
+    Number.isSafeInteger(record.generation) &&
+    (record.generation ?? -1) >= 0 &&
+    isRecordKind(record.kind) &&
+    typeof record.pinned === "boolean" &&
+    Number.isFinite(record.storedAt) &&
+    Number.isFinite(record.lastAccessedAt) &&
+    (record.sentAt === undefined || Number.isFinite(record.sentAt)) &&
+    Object.hasOwn(value, "value")
+  );
 }
 
 function openDatabase(databaseName: string): Promise<IDBDatabase> {
@@ -184,8 +173,9 @@ function openDatabase(databaseName: string): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(databaseName, schemaVersion);
     let blocked = false;
-    request.onupgradeneeded = () => {
+    request.onupgradeneeded = (event) => {
       const database = request.result;
+      const transaction = request.transaction;
       if (!database.objectStoreNames.contains(vaultStoreName)) {
         database.createObjectStore(vaultStoreName, { keyPath: "ownerKey" });
       }
@@ -194,9 +184,15 @@ function openDatabase(databaseName: string): Promise<IDBDatabase> {
           keyPath: ["ownerKey", "id"],
         });
         records.createIndex("byOwner", "ownerKey", { unique: false });
+      } else if (event.oldVersion < schemaVersion) {
+        transaction?.objectStore(recordStoreName).clear();
       }
       if (!database.objectStoreNames.contains(accessStoreName)) {
         database.createObjectStore(accessStoreName, { keyPath: "ownerKey" });
+      }
+      if (event.oldVersion < schemaVersion) {
+        // Legacy records are encrypted and intentionally discarded during the format change.
+        transaction?.objectStore(vaultStoreName).clear();
       }
     };
     request.onerror = () => reject(new Error("Offline storage could not be opened."));
@@ -263,262 +259,97 @@ async function readValue<T>(
   );
 }
 
-function keyAad(ownerKey: string): Uint8Array {
-  return new TextEncoder().encode(`melodytrack-offline-key:${schemaVersion}:${ownerKey}`);
-}
-
-function recordAad(staffId: string, id: string): Uint8Array {
-  return new TextEncoder().encode(`melodytrack-offline-record:${schemaVersion}:${staffId}:${id}`);
-}
-
-async function deriveWrappingKey(secret: string, salt: Uint8Array): Promise<CryptoKey> {
-  const material = await getCrypto().subtle.importKey(
-    "raw",
-    new TextEncoder().encode(secret),
-    "PBKDF2",
-    false,
-    ["deriveKey"],
-  );
-  return getCrypto().subtle.deriveKey(
-    { name: "PBKDF2", hash: "SHA-256", salt: asArrayBuffer(salt), iterations: keyIterations },
-    material,
-    { name: "AES-GCM", length: 256 },
-    false,
-    ["encrypt", "decrypt"],
-  );
-}
-
-async function createVaultMaterial(
+function toEnvelope(
   ownerKey: string,
-  secret: string,
-): Promise<{ envelope: VaultEnvelope; dataKey: CryptoKey }> {
-  const dataKey = randomBytes(dataKeyBytes);
-  const salt = randomBytes(keySaltBytes);
-  const iv = randomBytes(ivBytes);
-  try {
-    const wrappingKey = await deriveWrappingKey(secret, salt);
-    const ciphertext = new Uint8Array(
-      await getCrypto().subtle.encrypt(
-        { name: "AES-GCM", iv: asArrayBuffer(iv), additionalData: asArrayBuffer(keyAad(ownerKey)) },
-        wrappingKey,
-        asArrayBuffer(dataKey),
-      ),
-    );
-    const dataCryptoKey = await getCrypto().subtle.importKey(
-      "raw",
-      asArrayBuffer(dataKey),
-      { name: "AES-GCM" },
-      false,
-      ["encrypt", "decrypt"],
-    );
-    return {
-      envelope: { ownerKey, schemaVersion, iterations: keyIterations, salt, iv, ciphertext },
-      dataKey: dataCryptoKey,
-    };
-  } finally {
-    dataKey.fill(0);
-  }
-}
-
-function isVaultEnvelope(value: unknown, ownerKey: string): value is VaultEnvelope {
-  if (!value || typeof value !== "object") return false;
-  const envelope = value as Partial<VaultEnvelope>;
-  return (
-    envelope.ownerKey === ownerKey &&
-    envelope.schemaVersion === schemaVersion &&
-    envelope.iterations === keyIterations &&
-    isByteArray(envelope.salt, keySaltBytes, keySaltBytes) &&
-    isByteArray(envelope.iv, ivBytes, ivBytes) &&
-    isByteArray(envelope.ciphertext, dataKeyBytes + 16, dataKeyBytes + 16)
-  );
-}
-
-function isRecordEnvelope(value: unknown, ownerKey: string, id: string): value is RecordEnvelope {
-  if (!value || typeof value !== "object") return false;
-  const envelope = value as Partial<RecordEnvelope>;
-  return (
-    envelope.ownerKey === ownerKey &&
-    envelope.id === id &&
-    envelope.schemaVersion === schemaVersion &&
-    isByteArray(envelope.iv, ivBytes, ivBytes) &&
-    isByteArray(envelope.ciphertext, 16) &&
-    envelope.ciphertext.byteLength <= maximumCiphertextBytes
-  );
-}
-
-async function unlockDataKey(secret: string, envelope: VaultEnvelope): Promise<CryptoKey> {
-  try {
-    const wrappingKey = await deriveWrappingKey(secret, envelope.salt);
-    const rawKey = new Uint8Array(
-      await getCrypto().subtle.decrypt(
-        {
-          name: "AES-GCM",
-          iv: asArrayBuffer(envelope.iv),
-          additionalData: asArrayBuffer(keyAad(envelope.ownerKey)),
-        },
-        wrappingKey,
-        asArrayBuffer(envelope.ciphertext),
-      ),
-    );
-    if (rawKey.byteLength !== dataKeyBytes) {
-      rawKey.fill(0);
-      throw new OfflineVaultCorruptError();
-    }
-    try {
-      return await getCrypto().subtle.importKey(
-        "raw",
-        asArrayBuffer(rawKey),
-        { name: "AES-GCM" },
-        false,
-        ["encrypt", "decrypt"],
-      );
-    } finally {
-      rawKey.fill(0);
-    }
-  } catch {
-    throw new OfflineVaultCorruptError();
-  }
-}
-
-function validPayload(value: unknown): value is RecordPayload {
-  if (!value || typeof value !== "object") return false;
-  const payload = value as Partial<RecordPayload>;
-  return (
-    ["cache", "applied", "pending", "conflict"].includes(String(payload.kind)) &&
-    typeof payload.pinned === "boolean" &&
-    Number.isFinite(payload.storedAt) &&
-    Number.isFinite(payload.lastAccessedAt) &&
-    (payload.sentAt === undefined || Number.isFinite(payload.sentAt)) &&
-    Object.hasOwn(payload, "value")
-  );
-}
-
-async function encryptRecord(
-  ownerKey: string,
-  staffId: string,
-  id: string,
-  dataKey: CryptoKey,
-  payload: RecordPayload,
-): Promise<RecordEnvelope> {
-  const serialized = JSON.stringify(payload);
+  generation: number,
+  record: {
+    readonly id: string;
+    readonly value: unknown;
+    readonly kind: OfflineRecordKind;
+    readonly pinned?: boolean;
+    readonly storedAt: number;
+    readonly lastAccessedAt: number;
+    readonly sentAt?: number;
+  },
+): RecordEnvelope {
+  const serialized = JSON.stringify(record.value);
   if (serialized === undefined)
     throw new TypeError("Offline record value must be JSON serializable.");
-  if (!validPayload(JSON.parse(serialized))) {
-    throw new TypeError("Offline record does not contain a supported value.");
-  }
-  const plaintext = new TextEncoder().encode(serialized);
-  if (plaintext.byteLength > maximumCiphertextBytes - 16) {
+  if (new TextEncoder().encode(serialized).byteLength > maximumRecordBytes)
     throw new RangeError("Offline record exceeds the supported size limit.");
-  }
-  const iv = randomBytes(ivBytes);
-  const ciphertext = new Uint8Array(
-    await getCrypto().subtle.encrypt(
-      {
-        name: "AES-GCM",
-        iv: asArrayBuffer(iv),
-        additionalData: asArrayBuffer(recordAad(staffId, id)),
-      },
-      dataKey,
-      plaintext,
-    ),
-  );
-  return { ownerKey, id, schemaVersion, iv, ciphertext };
+  return {
+    ownerKey,
+    id: record.id,
+    schemaVersion,
+    generation,
+    value: JSON.parse(serialized) as unknown,
+    kind: record.kind,
+    pinned: record.pinned ?? false,
+    storedAt: record.storedAt,
+    lastAccessedAt: record.lastAccessedAt,
+    ...(record.sentAt === undefined ? {} : { sentAt: record.sentAt }),
+  };
 }
 
-async function decryptRecord(
-  staffId: string,
-  id: string,
-  dataKey: CryptoKey,
-  envelope: unknown,
-  ownerKey: string,
-): Promise<RecordPayload> {
-  if (!isRecordEnvelope(envelope, ownerKey, id)) throw new OfflineVaultCorruptError();
-  try {
-    const plaintext = await getCrypto().subtle.decrypt(
-      {
-        name: "AES-GCM",
-        iv: asArrayBuffer(envelope.iv),
-        additionalData: asArrayBuffer(recordAad(staffId, id)),
-      },
-      dataKey,
-      asArrayBuffer(envelope.ciphertext),
-    );
-    const payload: unknown = JSON.parse(new TextDecoder().decode(plaintext));
-    if (!validPayload(payload)) throw new OfflineVaultCorruptError();
-    return payload;
-  } catch {
-    throw new OfflineVaultCorruptError();
-  }
+function sameRecord(left: RecordEnvelope, right: RecordEnvelope): boolean {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
-function sameEnvelope(left: RecordEnvelope, right: RecordEnvelope): boolean {
-  if (
-    left.schemaVersion !== right.schemaVersion ||
-    left.ownerKey !== right.ownerKey ||
-    left.id !== right.id
-  )
-    return false;
-  if (
-    left.iv.byteLength !== right.iv.byteLength ||
-    left.ciphertext.byteLength !== right.ciphertext.byteLength
-  )
-    return false;
+function shouldPrune(record: RecordEnvelope, now: number): boolean {
+  if (record.pinned || record.kind === "pending" || record.kind === "conflict") return false;
+  if (record.kind === "cache") return now - record.lastAccessedAt >= cacheRetentionMs;
   return (
-    left.iv.every((value, index) => value === right.iv[index]) &&
-    left.ciphertext.every((value, index) => value === right.ciphertext[index])
+    record.kind === "applied" &&
+    record.sentAt !== undefined &&
+    now - record.sentAt >= appliedRetentionMs
   );
 }
 
-function sameVaultEnvelope(left: VaultEnvelope, right: VaultEnvelope): boolean {
-  if (
-    left.ownerKey !== right.ownerKey ||
-    left.schemaVersion !== right.schemaVersion ||
-    left.iterations !== right.iterations
-  )
-    return false;
-  if (
-    left.salt.byteLength !== right.salt.byteLength ||
-    left.iv.byteLength !== right.iv.byteLength ||
-    left.ciphertext.byteLength !== right.ciphertext.byteLength
-  )
-    return false;
-  return (
-    left.salt.every((value, index) => value === right.salt[index]) &&
-    left.iv.every((value, index) => value === right.iv[index]) &&
-    left.ciphertext.every((value, index) => value === right.ciphertext[index])
-  );
+function toPublicRecord<T>(record: RecordEnvelope): OfflineRecord<T> {
+  return {
+    id: record.id,
+    value: record.value as T,
+    kind: record.kind,
+    pinned: record.pinned,
+    storedAt: record.storedAt,
+    lastAccessedAt: record.lastAccessedAt,
+    ...(record.sentAt === undefined ? {} : { sentAt: record.sentAt }),
+  };
 }
 
 async function compareAndSwap(
   databaseName: string,
   ownerKey: string,
   id: string,
+  generation: number,
   expected: RecordEnvelope,
-  expectedVault: VaultEnvelope,
   isActive: () => boolean,
   replacement?: RecordEnvelope,
-): Promise<"updated" | "changed" | "blocked"> {
-  return withTransaction<"updated" | "changed" | "blocked">(
+): Promise<"updated" | "changed" | "blocked" | "inactive"> {
+  return withTransaction(
     databaseName,
     [vaultStoreName, recordStoreName, accessStoreName],
     "readwrite",
     (transaction, complete) => {
-      const vaultRequest = transaction.objectStore(vaultStoreName).get(ownerKey);
-      vaultRequest.onsuccess = () => {
+      const markerRequest = transaction.objectStore(vaultStoreName).get(ownerKey);
+      markerRequest.onsuccess = () => {
         if (!isActive()) {
-          transaction.abort();
+          complete("inactive");
           return;
         }
-        const currentVault: unknown = vaultRequest.result;
         if (
-          !isVaultEnvelope(currentVault, ownerKey) ||
-          !sameVaultEnvelope(currentVault, expectedVault)
+          !isVaultMarker(markerRequest.result, ownerKey) ||
+          markerRequest.result.generation !== generation
         ) {
           complete("changed");
           return;
         }
         const accessRequest = transaction.objectStore(accessStoreName).get(ownerKey);
         accessRequest.onsuccess = () => {
+          if (!isActive()) {
+            complete("inactive");
+            return;
+          }
           if (accessMarkerBlocks(accessRequest.result, ownerKey)) {
             complete("blocked");
             return;
@@ -526,8 +357,12 @@ async function compareAndSwap(
           const store = transaction.objectStore(recordStoreName);
           const request = store.get([ownerKey, id]);
           request.onsuccess = () => {
+            if (!isActive()) {
+              complete("inactive");
+              return;
+            }
             const current: unknown = request.result;
-            if (!isRecordEnvelope(current, ownerKey, id) || !sameEnvelope(current, expected)) {
+            if (!isRecordEnvelope(current, ownerKey, id) || !sameRecord(current, expected)) {
               complete("changed");
             } else if (replacement) {
               store.put(replacement);
@@ -543,100 +378,91 @@ async function compareAndSwap(
   );
 }
 
-function shouldPrune(payload: RecordPayload, now: number): boolean {
-  if (payload.pinned || payload.kind === "pending" || payload.kind === "conflict") return false;
-  if (payload.kind === "cache") return now - payload.lastAccessedAt >= cacheRetentionMs;
-  return (
-    payload.kind === "applied" &&
-    payload.sentAt !== undefined &&
-    now - payload.sentAt >= appliedRetentionMs
-  );
-}
-
-function toPublicRecord<T>(id: string, payload: RecordPayload): OfflineRecord<T> {
-  return {
-    id,
-    value: payload.value as T,
-    kind: payload.kind,
-    pinned: payload.pinned,
-    storedAt: payload.storedAt,
-    lastAccessedAt: payload.lastAccessedAt,
-    ...(payload.sentAt === undefined ? {} : { sentAt: payload.sentAt }),
-  };
-}
-
 class OfflineVaultImpl implements OfflineVault {
-  private dataKey: CryptoKey | undefined;
   private generation = 0;
+  private closed = false;
 
   constructor(
-    private readonly staffId: string,
     private readonly ownerKey: string,
     private readonly databaseName: string,
-    private readonly vaultEnvelope: VaultEnvelope,
-    dataKey: CryptoKey,
-  ) {
-    this.dataKey = dataKey;
-  }
+    private readonly vaultGeneration: number,
+  ) {}
 
   lock(): void {
+    this.closed = true;
     this.generation += 1;
-    this.dataKey = undefined;
   }
 
-  private session(): { key: CryptoKey; generation: number } {
-    if (!this.dataKey) throw new OfflineVaultLockedError();
-    return { key: this.dataKey, generation: this.generation };
+  private session(): number {
+    if (this.closed) throw new OfflineVaultLockedError();
+    return this.generation;
   }
 
   private assertActive(generation: number): void {
-    if (!this.dataKey || generation !== this.generation) throw new OfflineVaultLockedError();
+    if (generation !== this.generation) throw new OfflineVaultLockedError();
+  }
+
+  private async assertPersistent(generation: number): Promise<void> {
+    this.assertActive(generation);
+    const blockedMarker = await readValue<unknown>(
+      this.databaseName,
+      accessStoreName,
+      this.ownerKey,
+    );
+    this.assertActive(generation);
+    if (accessMarkerBlocks(blockedMarker, this.ownerKey))
+      throw new OfflineVaultAccessBlockedError();
+    const marker = await readValue<unknown>(this.databaseName, vaultStoreName, this.ownerKey);
+    this.assertActive(generation);
+    if (!isVaultMarker(marker, this.ownerKey) || marker.generation !== this.vaultGeneration)
+      throw new OfflineVaultLockedError();
   }
 
   async get<T = unknown>(id: string): Promise<OfflineRecord<T> | undefined> {
     assertId(id);
-    const { key: dataKey, generation } = this.session();
+    const generation = this.session();
     for (let attempt = 0; attempt < compareAttempts; attempt += 1) {
-      const envelope = await readValue<unknown>(this.databaseName, recordStoreName, [
+      await this.assertPersistent(generation);
+      const record = await readValue<unknown>(this.databaseName, recordStoreName, [
         this.ownerKey,
         id,
       ]);
       this.assertActive(generation);
-      if (envelope === undefined) return undefined;
-      if (!isRecordEnvelope(envelope, this.ownerKey, id)) throw new OfflineVaultCorruptError();
-      const payload = await decryptRecord(this.staffId, id, dataKey, envelope, this.ownerKey);
-      this.assertActive(generation);
-      if (shouldPrune(payload, Date.now())) {
+      if (record === undefined) return undefined;
+      if (!isRecordEnvelope(record, this.ownerKey, id)) throw new OfflineVaultCorruptError();
+      if (record.generation !== this.vaultGeneration) return undefined;
+      if (shouldPrune(record, Date.now())) {
         const result = await compareAndSwap(
           this.databaseName,
           this.ownerKey,
           id,
-          envelope,
-          this.vaultEnvelope,
-          () => this.dataKey !== undefined && this.generation === generation,
+          this.vaultGeneration,
+          record,
+          () => this.generation === generation,
         );
         this.assertActive(generation);
+        if (result === "inactive") throw new OfflineVaultLockedError();
         if (result === "blocked") throw new OfflineVaultAccessBlockedError();
-        if (result === "updated") return undefined;
-        continue;
+        if (result === "changed") continue;
+        return undefined;
       }
-      const touched = { ...payload, lastAccessedAt: Date.now() };
-      const replacement = await encryptRecord(this.ownerKey, this.staffId, id, dataKey, touched);
-      this.assertActive(generation);
+      const touched = toEnvelope(this.ownerKey, this.vaultGeneration, {
+        ...record,
+        lastAccessedAt: Date.now(),
+      });
       const result = await compareAndSwap(
         this.databaseName,
         this.ownerKey,
         id,
-        envelope,
-        this.vaultEnvelope,
-        () => this.dataKey !== undefined && this.generation === generation,
-        replacement,
+        this.vaultGeneration,
+        record,
+        () => this.generation === generation,
+        touched,
       );
+      this.assertActive(generation);
+      if (result === "inactive") throw new OfflineVaultLockedError();
       if (result === "blocked") throw new OfflineVaultAccessBlockedError();
-      if (result === "updated") {
-        this.assertActive(generation);
-        return toPublicRecord<T>(id, touched);
-      }
+      if (result === "updated") return toPublicRecord<T>(touched);
     }
     throw new Error("Offline record changed repeatedly while being read.");
   }
@@ -649,45 +475,42 @@ class OfflineVaultImpl implements OfflineVault {
     readonly sentAt?: number;
   }): Promise<void> {
     assertId(record.id);
-    const { key: dataKey, generation } = this.session();
-    const now = Date.now();
-    const pinned = record.pinned ?? false;
+    const generation = this.session();
     if (!isRecordKind(record.kind)) throw new TypeError("Invalid offline record kind.");
     if (record.sentAt !== undefined && !Number.isFinite(record.sentAt))
       throw new TypeError("sentAt must be a finite timestamp.");
     if (record.kind === "applied" && record.sentAt === undefined)
       throw new TypeError("Applied records require sentAt.");
-    const payload: RecordPayload = {
-      value: record.value,
-      kind: record.kind,
-      pinned,
-      storedAt: now,
-      lastAccessedAt: now,
-      ...(record.sentAt === undefined ? {} : { sentAt: record.sentAt }),
-    };
-    const envelope = await encryptRecord(this.ownerKey, this.staffId, record.id, dataKey, payload);
-    this.assertActive(generation);
-    const outcome = await withTransaction<"written" | "blocked" | "changed">(
+    const envelope = toEnvelope(this.ownerKey, this.vaultGeneration, {
+      ...record,
+      storedAt: Date.now(),
+      lastAccessedAt: Date.now(),
+    });
+    await this.assertPersistent(generation);
+    const outcome = await withTransaction<"written" | "blocked" | "changed" | "inactive">(
       this.databaseName,
       [vaultStoreName, recordStoreName, accessStoreName],
       "readwrite",
       (transaction, complete) => {
-        const request = transaction.objectStore(vaultStoreName).get(this.ownerKey);
-        request.onsuccess = () => {
-          if (!this.dataKey || this.generation !== generation) {
-            transaction.abort();
+        const markerRequest = transaction.objectStore(vaultStoreName).get(this.ownerKey);
+        markerRequest.onsuccess = () => {
+          if (this.generation !== generation) {
+            complete("inactive");
             return;
           }
-          const current: unknown = request.result;
           if (
-            !isVaultEnvelope(current, this.ownerKey) ||
-            !sameVaultEnvelope(current, this.vaultEnvelope)
+            !isVaultMarker(markerRequest.result, this.ownerKey) ||
+            markerRequest.result.generation !== this.vaultGeneration
           ) {
             complete("changed");
             return;
           }
           const accessRequest = transaction.objectStore(accessStoreName).get(this.ownerKey);
           accessRequest.onsuccess = () => {
+            if (this.generation !== generation) {
+              complete("inactive");
+              return;
+            }
             if (accessMarkerBlocks(accessRequest.result, this.ownerKey)) {
               complete("blocked");
               return;
@@ -698,34 +521,40 @@ class OfflineVaultImpl implements OfflineVault {
         };
       },
     );
+    this.assertActive(generation);
+    if (outcome === "inactive") throw new OfflineVaultLockedError();
     if (outcome === "blocked") throw new OfflineVaultAccessBlockedError();
     if (outcome === "changed") throw new OfflineVaultLockedError();
   }
 
   async delete(id: string): Promise<void> {
     assertId(id);
-    const { generation } = this.session();
-    const outcome = await withTransaction<"deleted" | "blocked" | "changed">(
+    const generation = this.session();
+    await this.assertPersistent(generation);
+    const outcome = await withTransaction<"deleted" | "blocked" | "changed" | "inactive">(
       this.databaseName,
       [vaultStoreName, recordStoreName, accessStoreName],
       "readwrite",
       (transaction, complete) => {
-        const request = transaction.objectStore(vaultStoreName).get(this.ownerKey);
-        request.onsuccess = () => {
-          if (!this.dataKey || this.generation !== generation) {
-            transaction.abort();
+        const markerRequest = transaction.objectStore(vaultStoreName).get(this.ownerKey);
+        markerRequest.onsuccess = () => {
+          if (this.generation !== generation) {
+            complete("inactive");
             return;
           }
-          const current: unknown = request.result;
           if (
-            !isVaultEnvelope(current, this.ownerKey) ||
-            !sameVaultEnvelope(current, this.vaultEnvelope)
+            !isVaultMarker(markerRequest.result, this.ownerKey) ||
+            markerRequest.result.generation !== this.vaultGeneration
           ) {
             complete("changed");
             return;
           }
           const accessRequest = transaction.objectStore(accessStoreName).get(this.ownerKey);
           accessRequest.onsuccess = () => {
+            if (this.generation !== generation) {
+              complete("inactive");
+              return;
+            }
             if (accessMarkerBlocks(accessRequest.result, this.ownerKey)) {
               complete("blocked");
               return;
@@ -736,13 +565,16 @@ class OfflineVaultImpl implements OfflineVault {
         };
       },
     );
+    this.assertActive(generation);
+    if (outcome === "inactive") throw new OfflineVaultLockedError();
     if (outcome === "blocked") throw new OfflineVaultAccessBlockedError();
     if (outcome === "changed") throw new OfflineVaultLockedError();
   }
 
   async prune(now = Date.now()): Promise<number> {
-    const { key: dataKey, generation } = this.session();
+    const generation = this.session();
     if (!Number.isFinite(now)) throw new TypeError("now must be a finite timestamp.");
+    await this.assertPersistent(generation);
     const records = await withTransaction<RecordEnvelope[]>(
       this.databaseName,
       recordStoreName,
@@ -752,32 +584,34 @@ class OfflineVaultImpl implements OfflineVault {
           .objectStore(recordStoreName)
           .index("byOwner")
           .getAll(this.ownerKey);
-        request.onsuccess = () => complete(request.result);
+        request.onsuccess = () => complete(request.result as RecordEnvelope[]);
       },
     );
     let deleted = 0;
     for (const snapshot of records) {
       this.assertActive(generation);
-      const id = snapshot.id;
+      if (!isRecordEnvelope(snapshot, this.ownerKey, snapshot.id))
+        throw new OfflineVaultCorruptError();
+      if (snapshot.generation !== this.vaultGeneration || !shouldPrune(snapshot, now)) continue;
       for (let attempt = 0; attempt < compareAttempts; attempt += 1) {
-        const envelope = await readValue<unknown>(this.databaseName, recordStoreName, [
+        const current = await readValue<unknown>(this.databaseName, recordStoreName, [
           this.ownerKey,
-          id,
+          snapshot.id,
         ]);
         this.assertActive(generation);
-        if (envelope === undefined) break;
-        if (!isRecordEnvelope(envelope, this.ownerKey, id)) throw new OfflineVaultCorruptError();
-        const payload = await decryptRecord(this.staffId, id, dataKey, envelope, this.ownerKey);
-        this.assertActive(generation);
-        if (!shouldPrune(payload, now)) break;
+        if (current === undefined) break;
+        if (!isRecordEnvelope(current, this.ownerKey, snapshot.id))
+          throw new OfflineVaultCorruptError();
+        if (!shouldPrune(current, now)) break;
         const result = await compareAndSwap(
           this.databaseName,
           this.ownerKey,
-          id,
-          envelope,
-          this.vaultEnvelope,
-          () => this.dataKey !== undefined && this.generation === generation,
+          current.id,
+          this.vaultGeneration,
+          current,
+          () => this.generation === generation,
         );
+        if (result === "inactive") throw new OfflineVaultLockedError();
         if (result === "blocked") throw new OfflineVaultAccessBlockedError();
         if (result === "updated") {
           deleted += 1;
@@ -789,19 +623,13 @@ class OfflineVaultImpl implements OfflineVault {
   }
 }
 
-function isRecordKind(kind: string): kind is OfflineRecordKind {
-  return kind === "cache" || kind === "applied" || kind === "pending" || kind === "conflict";
-}
-
 export async function createOfflineVault(
   options: CreateOfflineVaultOptions,
 ): Promise<OfflineVault> {
-  const { staffId, secret, databaseName = defaultDatabaseName } = options;
+  const { staffId, databaseName = defaultDatabaseName } = options;
   assertStaffId(staffId);
-  assertSecret(secret);
   const ownerKey = await ownerKeyFor(staffId);
-  const { envelope, dataKey } = await createVaultMaterial(ownerKey, secret);
-  const inserted = await withTransaction<boolean>(
+  const marker = await withTransaction<VaultMarker | undefined>(
     databaseName,
     vaultStoreName,
     "readwrite",
@@ -809,27 +637,34 @@ export async function createOfflineVault(
       const store = transaction.objectStore(vaultStoreName);
       const request = store.get(ownerKey);
       request.onsuccess = () => {
-        if (request.result !== undefined) complete(false);
-        else {
-          store.add(envelope);
-          complete(true);
+        const current: unknown = request.result;
+        if (isVaultMarker(current, ownerKey) && current.active) {
+          complete(undefined);
+          return;
         }
+        const previousGeneration = isVaultMarker(current, ownerKey) ? current.generation : 0;
+        const created: VaultMarker = {
+          ownerKey,
+          schemaVersion,
+          generation: previousGeneration + 1,
+          active: true,
+        };
+        store.put(created);
+        complete(created);
       };
     },
   );
-  if (!inserted) throw new OfflineVaultAlreadyExistsError();
-  return new OfflineVaultImpl(staffId, ownerKey, databaseName, envelope, dataKey);
+  if (!marker) throw new OfflineVaultAlreadyExistsError();
+  return new OfflineVaultImpl(ownerKey, databaseName, marker.generation);
 }
 
 export async function unlockOfflineVault(options: OfflineVaultOptions): Promise<OfflineVault> {
-  const { staffId, secret, databaseName = defaultDatabaseName } = options;
+  const { staffId, databaseName = defaultDatabaseName } = options;
   assertStaffId(staffId);
-  assertSecret(secret);
   const ownerKey = await ownerKeyFor(staffId);
-  const stored = await readValue<unknown>(databaseName, vaultStoreName, ownerKey);
-  if (!isVaultEnvelope(stored, ownerKey)) throw new OfflineVaultCorruptError();
-  const dataKey = await unlockDataKey(secret, stored);
-  return new OfflineVaultImpl(staffId, ownerKey, databaseName, stored, dataKey);
+  const marker = await readValue<unknown>(databaseName, vaultStoreName, ownerKey);
+  if (!isVaultMarker(marker, ownerKey) || !marker.active) throw new OfflineVaultCorruptError();
+  return new OfflineVaultImpl(ownerKey, databaseName, marker.generation);
 }
 
 export async function hasOfflineVault(
@@ -838,7 +673,8 @@ export async function hasOfflineVault(
 ): Promise<boolean> {
   assertStaffId(staffId);
   const ownerKey = await ownerKeyFor(staffId);
-  return (await readValue<unknown>(databaseName, vaultStoreName, ownerKey)) !== undefined;
+  const stored = await readValue<unknown>(databaseName, vaultStoreName, ownerKey);
+  return isVaultMarker(stored, ownerKey) && stored.active;
 }
 
 export async function isOfflineVaultBlocked(
@@ -922,7 +758,18 @@ export async function deleteOfflineVault(
     [vaultStoreName, recordStoreName, accessStoreName],
     "readwrite",
     (transaction, complete) => {
-      transaction.objectStore(vaultStoreName).delete(ownerKey);
+      const vaults = transaction.objectStore(vaultStoreName);
+      const vaultRequest = vaults.get(ownerKey);
+      vaultRequest.onsuccess = () => {
+        const current: unknown = vaultRequest.result;
+        const generation = isVaultMarker(current, ownerKey) ? current.generation : 0;
+        vaults.put({
+          ownerKey,
+          schemaVersion,
+          generation: generation + 1,
+          active: false,
+        } satisfies VaultMarker);
+      };
       const accessStore = transaction.objectStore(accessStoreName);
       const accessRequest = accessStore.get(ownerKey);
       accessRequest.onsuccess = () => {

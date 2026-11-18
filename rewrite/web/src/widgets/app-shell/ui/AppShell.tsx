@@ -3,7 +3,6 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router";
 import { useStaffSession } from "@/entities/session";
 import { useEmployeeTraining } from "@/features/employee-training";
-import { OfflineStorageDialog } from "@/features/manage-offline-storage";
 import { ReleaseNotesProvider, ReleaseVersion } from "@/features/view-release-notes";
 import type { Appearance } from "@/shared/lib/appearance";
 import { Brand } from "@/shared/ui/Brand";
@@ -46,7 +45,6 @@ function ShellContent({
   const [logoutFailed, setLogoutFailed] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [offlineOpen, setOfflineOpen] = useState(false);
   const navigation = (collapsed: boolean) => (
     <>
       <NavLink
@@ -163,14 +161,6 @@ function ShellContent({
                     <Menu.Item
                       className={styles.menuItem}
                       disabled={signingOut}
-                      onClick={() => setOfflineOpen(true)}
-                    >
-                      <Icon name="database" />
-                      Локальные данные
-                    </Menu.Item>
-                    <Menu.Item
-                      className={styles.menuItem}
-                      disabled={signingOut}
                       onClick={onToggleAppearance}
                     >
                       <Icon name={appearance === "light" ? "moon" : "sun"} />
@@ -211,7 +201,6 @@ function ShellContent({
         <main id="main-content" className={styles.workspaceContent}>
           <Outlet />
         </main>
-        <OfflineStorageDialog open={offlineOpen} onClose={() => setOfflineOpen(false)} />
       </div>
     </div>
   );

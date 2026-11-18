@@ -97,7 +97,7 @@ afterEach(() => {
 });
 
 describe("staff session", () => {
-  it("passes a password only after the second factor completes", async () => {
+  it("notifies the authenticated identity after the second factor completes", async () => {
     const onAuthenticated = vi.fn();
     const fetch = vi
       .fn()
@@ -123,13 +123,10 @@ describe("staff session", () => {
     await act(() => result.current.completeFactor("123456"));
 
     expect(onAuthenticated).toHaveBeenCalledOnce();
-    expect(onAuthenticated).toHaveBeenCalledWith(identity, {
-      source: "credential",
-      password: "private-password",
-    });
+    expect(onAuthenticated).toHaveBeenCalledWith(identity, { source: "credential" });
   });
 
-  it("drops a pending password when sign-in is cancelled", async () => {
+  it("does not pass credential material to lifecycle callbacks", async () => {
     installPasskeyChooser();
     const onAuthenticated = vi.fn();
     const fetch = vi
@@ -157,7 +154,6 @@ describe("staff session", () => {
     await act(() => result.current.signInWithPasskey());
 
     expect(onAuthenticated).toHaveBeenCalledWith(identity, { source: "credential" });
-    expect(onAuthenticated.mock.calls[0]?.[1]).not.toHaveProperty("password");
   });
 
   it("identifies cookie restoration without passing a password", async () => {

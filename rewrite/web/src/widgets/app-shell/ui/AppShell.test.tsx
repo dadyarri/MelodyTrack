@@ -23,15 +23,12 @@ vi.mock("@/features/view-release-notes", () => ({
   ReleaseNotesProvider: ({ children }: { children: ReactNode }) => children,
   ReleaseVersion: () => <span>Версия приложения</span>,
 }));
-vi.mock("@/features/manage-offline-storage", () => ({
-  OfflineStorageDialog: () => null,
-}));
 vi.mock("@/shared/ui/notifications", () => ({
   useErrorNotification: () => undefined,
 }));
 
 describe("app shell account menu", () => {
-  it("shows the local data action with its database icon", () => {
+  it("does not expose a local storage settings action", () => {
     render(
       <MemoryRouter>
         <AppShell appearance="light" onToggleAppearance={vi.fn()} />
@@ -40,7 +37,6 @@ describe("app shell account menu", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Меню пользователя anna" }));
 
-    const item = screen.getByRole("menuitem", { name: "Локальные данные" });
-    expect(item.querySelector("svg")).not.toBeNull();
+    expect(screen.queryByRole("menuitem", { name: "Локальные данные" })).toBeNull();
   });
 });

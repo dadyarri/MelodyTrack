@@ -262,6 +262,33 @@ describe("client editor", () => {
     offlineStorageMock.value = null;
   });
 
+  it("reports when local draft storage is unavailable", () => {
+    offlineStorageMock.value = {
+      staffId: "staff",
+      status: "error",
+      error: "Локальное хранилище недоступно.",
+      get: vi.fn(),
+      put: vi.fn(),
+      remove: vi.fn(),
+    };
+    render(
+      <ClientEditorDrawer
+        open
+        client={null}
+        sourceOptions={sources}
+        contactKinds={kinds}
+        persistNewClientDraft
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+      />,
+    );
+
+    expect(screen.getByRole("alert").textContent).toContain(
+      "Локальное хранилище недоступно. Черновик на этом устройстве не сохранён.",
+    );
+    expect(screen.getByRole("button", { name: "Сохранить" }).matches(":disabled")).toBe(true);
+  });
+
   it("blocks invalid birthday input and saves only after it is corrected", () => {
     const onSave = vi.fn();
     render(

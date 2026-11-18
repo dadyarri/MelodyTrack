@@ -20,14 +20,13 @@ import {
   unlockOfflineVault,
 } from "@/shared/offline";
 
-type Status = "idle" | "checking" | "missing" | "locked" | "unlocked" | "blocked" | "error";
+type Status = "idle" | "checking" | "unlocked" | "blocked" | "error";
 type State = { staffId: string | null; status: Status; error: string | null };
-type Authentication = { source: "credential" | "restore"; password?: string };
+type Authentication = { source: "credential" | "restore" };
 export type OfflineStorageContextValue = State & {
   authenticate(staffId: string, context: Authentication): void;
   clear(): void;
   logout(): Promise<void>;
-  unlock(secret: string): Promise<void>;
   get(id: string): Promise<unknown | undefined>;
   put(
     id: string,
@@ -90,18 +89,17 @@ export function OfflineStorageProvider({ children }: { children: ReactNode }) {
     }
   }, [block]);
 
-  const open = useCallback(async (staffId: string, secret: string, id: number) => {
+  const open = useCallback(async (staffId: string, id: number) => {
     let opened: OfflineVault | null = null;
     try {
-      if (!secret) throw new Error("Missing unlock secret");
       const exists = await hasOfflineVault(staffId);
       try {
         opened = exists
-          ? await unlockOfflineVault({ staffId, secret })
-          : await createOfflineVault({ staffId, secret });
+          ? await unlockOfflineVault({ staffId })
+          : await createOfflineVault({ staffId });
       } catch (error) {
         if (!(error instanceof OfflineVaultAlreadyExistsError)) throw error;
-        opened = await unlockOfflineVault({ staffId, secret });
+        opened = await unlockOfflineVault({ staffId });
       }
       if (id !== generation.current || owner.current !== staffId || revoked.current) {
         opened.lock();
@@ -119,9 +117,8 @@ export function OfflineStorageProvider({ children }: { children: ReactNode }) {
       if (id === generation.current && owner.current === staffId)
         setState({
           staffId,
-          status: "locked",
-          error:
-            "Не удалось открыть локальные данные. Проверьте пароль или ключ. Существующие данные сохранены.",
+          status: "error",
+          error: "Локальное хранилище недоступно.",
         });
     }
   }, []);
@@ -155,54 +152,20 @@ export function OfflineStorageProvider({ children }: { children: ReactNode }) {
               return;
             }
           }
-          if (context.password) {
-            const task = open(staffId, context.password, id);
-            opening.current = task;
-            await task;
-            if (opening.current === task) opening.current = null;
-            return;
-          }
-          const exists = await hasOfflineVault(staffId);
-          if (id === generation.current && owner.current === staffId)
-            setState({ staffId, status: exists ? "locked" : "missing", error: null });
+          const task = open(staffId, id);
+          opening.current = task;
+          await task;
+          if (opening.current === task) opening.current = null;
         } catch {
           if (id === generation.current)
             setState({
               staffId,
               status: "error",
-              error: "Локальное хранилище недоступно. Работа с сервером продолжается.",
+              error: "Локальное хранилище недоступно.",
             });
         }
       };
       void run();
-    },
-    [block, lock, open],
-  );
-
-  const unlock = useCallback(
-    async (secret: string) => {
-      const staffId = owner.current;
-      if (!staffId || revoked.current) return;
-      const start = generation.current;
-      try {
-        const blocked =
-          localStorage.getItem(blockedKey(staffId)) || (await isOfflineVaultBlocked(staffId));
-        if (start !== generation.current || owner.current !== staffId) return;
-        if (blocked) {
-          block();
-          return;
-        }
-      } catch {
-        block();
-        return;
-      }
-      lock();
-      const id = generation.current;
-      setState({ staffId, status: "checking", error: null });
-      const task = open(staffId, secret, id);
-      opening.current = task;
-      await task;
-      if (opening.current === task) opening.current = null;
     },
     [block, lock, open],
   );
@@ -365,7 +328,6 @@ export function OfflineStorageProvider({ children }: { children: ReactNode }) {
         authenticate,
         clear,
         logout,
-        unlock,
         get,
         put,
         remove,

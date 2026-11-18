@@ -66,7 +66,7 @@ type SessionContextValue = SessionState & {
 type StaffSessionLifecycleCallbacks = {
   onAuthenticated?: (
     identity: StaffIdentity,
-    context: { source: "credential" | "restore"; password?: string },
+    context: { source: "credential" | "restore" },
   ) => void;
   onSessionCleared?: () => void;
   onLogout?: () => void | Promise<void>;
@@ -176,9 +176,6 @@ export function StaffSessionProvider({
     onLogout,
   });
   callbacks.current = { onAuthenticated, onSessionCleared, onLogout };
-  const pendingPassword = useRef<string | null>(null);
-  const pendingPasswordExpiresAt = useRef<number | null>(null);
-  const pendingPasswordTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const notify = useCallback((callback: (() => void) | undefined) => {
     try {
@@ -189,7 +186,7 @@ export function StaffSessionProvider({
   }, []);
 
   const notifyAuthenticated = useCallback(
-    (identity: StaffIdentity, context: { source: "credential" | "restore"; password?: string }) => {
+    (identity: StaffIdentity, context: { source: "credential" | "restore" }) => {
       try {
         callbacks.current.onAuthenticated?.(identity, context);
       } catch {
@@ -198,19 +195,6 @@ export function StaffSessionProvider({
     },
     [],
   );
-
-  const schedulePasswordExpiry = useCallback((expiresAt: number) => {
-    if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
-    pendingPasswordExpiresAt.current = expiresAt;
-    pendingPasswordTimer.current = setTimeout(
-      () => {
-        pendingPassword.current = null;
-        pendingPasswordExpiresAt.current = null;
-        pendingPasswordTimer.current = null;
-      },
-      Math.max(0, expiresAt - Date.now()),
-    );
-  }, []);
 
   const stopTimer = useCallback(() => {
     if (refreshTimer.current !== null) clearTimeout(refreshTimer.current);
@@ -243,10 +227,6 @@ export function StaffSessionProvider({
       staff.current = null;
       factor.current = null;
       primaryPasskey.current = null;
-      pendingPassword.current = null;
-      pendingPasswordExpiresAt.current = null;
-      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
-      pendingPasswordTimer.current = null;
       setState({ ...initialState, error });
       notify(callbacks.current.onSessionCleared);
     },
@@ -314,20 +294,14 @@ export function StaffSessionProvider({
   }, [restoreSession]);
 
   const beginSignIn = useCallback(
-    (presentation: FactorPresentation | null = null, preservePendingPassword = false) => {
-      const password = preservePendingPassword ? pendingPassword.current : null;
-      const passwordExpiresAt = preservePendingPassword ? pendingPasswordExpiresAt.current : null;
+    (presentation: FactorPresentation | null = null) => {
       clearLocal();
-      if (password && passwordExpiresAt && passwordExpiresAt > Date.now()) {
-        pendingPassword.current = password;
-        schedulePasswordExpiry(passwordExpiresAt);
-      }
       const controller = new AbortController();
       activeRequest.current = controller;
       setState({ ...initialState, status: "authenticating", factor: presentation });
       return { controller, id: generation.current };
     },
-    [clearLocal, schedulePasswordExpiry],
+    [clearLocal],
   );
 
   const acceptOutcome = useCallback(
@@ -355,12 +329,7 @@ export function StaffSessionProvider({
       primaryPasskey.current = null;
       setState({ ...initialState, staff: identity, status: "authenticated" });
       scheduleRefresh(outcome.expiresIn);
-      const password = pendingPassword.current;
-      pendingPassword.current = null;
-      pendingPasswordExpiresAt.current = null;
-      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
-      pendingPasswordTimer.current = null;
-      notifyAuthenticated(identity, { source: "credential", ...(password ? { password } : {}) });
+      notifyAuthenticated(identity, { source: "credential" });
     },
     [notifyAuthenticated, scheduleRefresh],
   );
@@ -380,8 +349,6 @@ export function StaffSessionProvider({
   const signInWithPassword = useCallback(
     async (login: string, password: string) => {
       const { controller, id } = beginSignIn();
-      pendingPassword.current = password;
-      schedulePasswordExpiry(Date.now() + 5 * 60_000);
       try {
         const outcome = readStaffOutcome(
           await withSessionCookieLock(
@@ -398,7 +365,7 @@ export function StaffSessionProvider({
         failSignIn(error, id);
       }
     },
-    [acceptOutcome, beginSignIn, failSignIn, schedulePasswordExpiry],
+    [acceptOutcome, beginSignIn, failSignIn],
   );
 
   const completeRegistration = useCallback(
@@ -511,13 +478,10 @@ export function StaffSessionProvider({
     async (code: string) => {
       const pending = factor.current;
       if (!pending) return;
-      const { controller, id } = beginSignIn(
-        {
-          method: pending.method,
-          canUsePasskey: Boolean(pending.optionsJson),
-        },
-        true,
-      );
+      const { controller, id } = beginSignIn({
+        method: pending.method,
+        canUsePasskey: Boolean(pending.optionsJson),
+      });
       try {
         const outcome = readStaffOutcome(
           await withSessionCookieLock(
@@ -540,13 +504,10 @@ export function StaffSessionProvider({
   const completeFactorWithPasskey = useCallback(async () => {
     const pending = factor.current;
     if (!pending?.optionsJson || pending.method !== "authenticatorOrPasskey") return;
-    const { controller, id } = beginSignIn(
-      {
-        method: pending.method,
-        canUsePasskey: Boolean(pending.optionsJson),
-      },
-      true,
-    );
+    const { controller, id } = beginSignIn({
+      method: pending.method,
+      canUsePasskey: Boolean(pending.optionsJson),
+    });
     try {
       const passkeyResponse = await getPasskeyAssertion(pending.optionsJson, controller.signal);
       const outcome = readStaffOutcome(
@@ -701,10 +662,6 @@ export function StaffSessionProvider({
       refreshTask.current = null;
       stopTimer();
       stopPasskeyPreparation();
-      pendingPassword.current = null;
-      pendingPasswordExpiresAt.current = null;
-      if (pendingPasswordTimer.current !== null) clearTimeout(pendingPasswordTimer.current);
-      pendingPasswordTimer.current = null;
       notify(callbacks.current.onSessionCleared);
       updates?.close();
       channel.current = null;
