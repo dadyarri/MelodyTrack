@@ -100,6 +100,30 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         });
     }
 
+    [Theory]
+    [InlineData("abcdefg hijklmn", true)]
+    [InlineData("abcxefg hijklmn", true)]
+    [InlineData("abcdefg xhijklmn", true)]
+    [InlineData("abcdefghijk lmn", false)]
+    [InlineData("abcdefghijklmn", false)]
+    [InlineData("abcdefgxhijklmn", false)]
+    [InlineData("defghijk", false)]
+    public async Task Read_NameFragment_DoesNotEditWordBoundaries(string query, bool matches)
+    {
+        await WithStore(async store =>
+        {
+            var page = await store.ReadAsync(new(Q: query, SourceId: Source, PageSize: 1), Token);
+
+            Assert.Equal(matches ? 1 : 0, page.TotalCount);
+            if (matches) Assert.Equal(First, Assert.Single(page.Items).Id);
+            else Assert.Empty(page.Items);
+        }, async database =>
+        {
+            await database.Query("UPDATE public.clients SET last_name='Abcdefg',first_name='Hijklmn',middle_name=NULL WHERE id=@id")
+                .WithParameter("id", First).ExecuteAsync(Token);
+        });
+    }
+
     [Fact]
     public async Task Read_ShortFragment_DoesNotReduceThreeEditTolerance()
     {
@@ -428,6 +452,8 @@ public sealed class ClientDirectoryStoreTests(PostgreSqlFixture fixture) : IClas
         await database.Query(nameSimilarity).ExecuteAsync(Token);
         var fragmentSearch = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", "0017_AddClientNameFragmentSearch.sql"), Token);
         await database.Query(fragmentSearch).ExecuteAsync(Token);
+        var wordBoundaries = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "Schema", "0018_RespectClientNameWordBoundaries.sql"), Token);
+        await database.Query(wordBoundaries).ExecuteAsync(Token);
         using var protector = new PersonalDataProtector("test", new Dictionary<string, string>
         {
             ["test"] = Convert.ToBase64String(Enumerable.Repeat((byte)29, 32).ToArray())

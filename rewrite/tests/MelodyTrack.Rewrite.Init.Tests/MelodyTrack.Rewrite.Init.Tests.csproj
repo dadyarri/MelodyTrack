@@ -47,6 +47,8 @@
           Link="Schema/0016_CreateClientCardCommands.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0017_AddClientNameFragmentSearch.sql"
           Link="Schema/0017_AddClientNameFragmentSearch.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../src/MelodyTrack.Rewrite.Init/Migrations/0018_RespectClientNameWordBoundaries.sql"
+          Link="Schema/0018_RespectClientNameWordBoundaries.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Testcontainers.PostgreSql" />

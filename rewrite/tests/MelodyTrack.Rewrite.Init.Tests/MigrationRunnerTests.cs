@@ -173,6 +173,9 @@ public sealed class MigrationRunnerTests(PostgreSqlFixture fixture) : IClassFixt
         Assert.True(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('богданова полина', 'багд')"));
         Assert.False(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('богданова полина', 'xxxxанова')"));
         Assert.Equal(1L, await Scalar<long>(connection, "SELECT count(*) FROM public.schema_migrations WHERE version=17 AND name='0017_AddClientNameFragmentSearch.sql'"));
+        Assert.False(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('abcdefg hijklmn', 'abcdefghijklmn')"));
+        Assert.True(await Scalar<bool>(connection, "SELECT public.client_name_fragment_matches('abcdefg hijklmn', 'abcxefg hijklmn')"));
+        Assert.Equal(1L, await Scalar<long>(connection, "SELECT count(*) FROM public.schema_migrations WHERE version=18 AND name='0018_RespectClientNameWordBoundaries.sql'"));
         Assert.Empty(await MigrationHistory.GetPendingAsync(connection, steps, Token));
     });
 
